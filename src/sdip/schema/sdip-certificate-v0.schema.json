@@ -6,44 +6,100 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "certificate_schema_version", "spec_version",
-    "source_path", "source_sha256", "source_bytes", "segy_revision", "detected_encoding",
-    "spec_id", "spec_field_count", "spec_itemsize", "spec_gap_free", "spec_sha256",
-    "output_path", "output_zarr_format", "output_bytes", "output_array_manifest",
-    "planes", "roundtrip", "transforms_declared", "warnings", "codecs_used",
-    "lossy_codec_present", "env", "git", "gates", "verdict", "issued_at", "issued_by"
+    "certificate_schema_version",
+    "spec_version",
+    "source_path",
+    "source_sha256",
+    "source_bytes",
+    "segy_revision",
+    "detected_encoding",
+    "spec_id",
+    "spec_field_count",
+    "spec_itemsize",
+    "spec_gap_free",
+    "spec_sha256",
+    "output_path",
+    "output_zarr_format",
+    "output_bytes",
+    "output_array_manifest",
+    "planes",
+    "roundtrip",
+    "transforms_declared",
+    "warnings",
+    "codecs_used",
+    "lossy_codec_present",
+    "env",
+    "git",
+    "gates",
+    "verdict",
+    "issued_at",
+    "issued_by"
   ],
   "properties": {
     "certificate_schema_version": {
       "const": "0",
       "description": "Versioned independently of the software (spec 4.7)."
     },
-    "spec_version": { "const": "1.0" },
-
-    "source_path": { "type": "string" },
-    "source_sha256": { "$ref": "#/$defs/sha256" },
+    "spec_version": {
+      "const": "1.0"
+    },
+    "source_path": {
+      "type": "string"
+    },
+    "source_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
     "source_sha256_post_read": {
       "$ref": "#/$defs/sha256",
       "description": "Hashed again after ingestion to detect read-path corruption (spec 11.3). A mismatch with source_sha256 voids the certificate."
     },
-    "source_bytes": { "type": "integer", "minimum": 0 },
-    "segy_revision": { "enum": ["0", "1", "2", "2.1", "unknown"] },
+    "source_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "segy_revision": {
+      "enum": [
+        "0",
+        "1",
+        "2",
+        "2.1",
+        "unknown"
+      ]
+    },
     "detected_encoding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["encoding", "decode_status"],
+      "required": [
+        "encoding",
+        "decode_status"
+      ],
       "properties": {
-        "encoding": { "type": "string", "examples": ["ebcdic-cp-us", "ascii"] },
+        "encoding": {
+          "type": "string",
+          "examples": [
+            "ebcdic-cp-us",
+            "ascii"
+          ]
+        },
         "decode_status": {
-          "enum": ["decoded", "raw_preserved_decode_failed"],
+          "enum": [
+            "decoded",
+            "raw_preserved_decode_failed"
+          ],
           "description": "Decode failure is not an ingestion failure; silent substitution is (spec 4.2)."
         },
-        "detail": { "type": "string" }
+        "detail": {
+          "type": "string"
+        }
       }
     },
-
-    "spec_id": { "type": "string" },
-    "spec_field_count": { "type": "integer", "minimum": 1 },
+    "spec_id": {
+      "type": "string"
+    },
+    "spec_field_count": {
+      "type": "integer",
+      "minimum": 1
+    },
     "spec_itemsize": {
       "const": 240,
       "description": "Every SEG-Y trace header is 240 bytes. Anything else fails G1."
@@ -52,164 +108,447 @@
       "const": true,
       "description": "A sparse spec is a rejected input, not a fast path (SP4). A certificate cannot be issued with false here."
     },
-    "spec_sha256": { "$ref": "#/$defs/sha256" },
+    "spec_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
     "spec_override": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "description": "Survey spec override applied (spec 6.4). An override with no cited evidence is rejected at review.",
-      "required": ["name", "version", "evidence"],
+      "required": [
+        "name",
+        "version",
+        "evidence"
+      ],
       "properties": {
-        "name": { "type": "string" },
-        "version": { "type": "string" },
-        "evidence": { "type": "string", "minLength": 20 }
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 20
+        }
       }
     },
-
-    "output_path": { "type": "string" },
-    "output_zarr_format": { "const": 3 },
-    "output_bytes": { "type": "integer", "minimum": 0 },
+    "output_path": {
+      "type": "string"
+    },
+    "output_zarr_format": {
+      "const": 3
+    },
+    "output_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
     "output_array_manifest": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "data_type", "zarr_v3_core_spec", "shape", "chunks", "codecs"],
+        "required": [
+          "name",
+          "data_type",
+          "zarr_v3_core_spec",
+          "shape",
+          "chunks",
+          "codecs"
+        ],
         "properties": {
-          "name": { "type": "string" },
-          "data_type": { "type": ["string", "object"] },
+          "name": {
+            "type": "string"
+          },
+          "data_type": {
+            "type": [
+              "string",
+              "object"
+            ]
+          },
           "zarr_v3_core_spec": {
             "type": "boolean",
             "description": "False for the structured `headers` array, whose data_type {\"name\": \"struct\"} has no Zarr v3 specification. Measured, spec Appendix A.1; open debt D3, probe P4."
           },
-          "shape": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
-          "chunks": { "type": "array", "items": { "type": "integer", "minimum": 1 } },
-          "codecs": { "type": "array", "items": { "type": "string" } }
-        }
-      }
-    },
-
-    "planes": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["plane_1", "plane_2", "plane_3", "plane_4", "plane_5"],
-      "description": "All five must hold simultaneously. Partial satisfaction is NON-EQUIVALENT, never 'mostly equivalent'. There is no partial credit (spec 4.1).",
-      "properties": {
-        "plane_1": { "$ref": "#/$defs/plane", "title": "Textual header, 3200 bytes verbatim" },
-        "plane_2": { "$ref": "#/$defs/plane", "title": "Binary header, 400 bytes; raw authoritative" },
-        "plane_3": { "$ref": "#/$defs/plane", "title": "All 240 trace-header bytes, bit-exact" },
-        "plane_4": { "$ref": "#/$defs/plane", "title": "Live samples bit-exact; exact equality, never allclose" },
-        "plane_5": { "$ref": "#/$defs/plane", "title": "Cardinality, ordering, live mask, duplicates" }
-      }
-    },
-
-    "roundtrip": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["performed", "byte_identical"],
-      "properties": {
-        "performed": { "type": "boolean" },
-        "export_sha256": { "$ref": "#/$defs/sha256" },
-        "export_bytes": { "type": "integer", "minimum": 0 },
-        "byte_identical": { "type": "boolean" },
-        "scoped": {
-          "type": ["object", "null"],
-          "description": "ROUNDTRIP-SCOPED is permitted only where the source is non-conforming in a way that makes byte-identity impossible (spec G3). It requires per-plane equality plus a written justification naming the specific non-conformance.",
-          "required": ["justification", "non_conformance"],
-          "properties": {
-            "justification": { "type": "string", "minLength": 40 },
-            "non_conformance": { "type": "string", "minLength": 10 }
+          "shape": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "chunks": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "codecs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
     },
-
+    "planes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plane_1",
+        "plane_2",
+        "plane_3",
+        "plane_4",
+        "plane_5"
+      ],
+      "description": "All five must hold simultaneously. Partial satisfaction is NON-EQUIVALENT, never 'mostly equivalent'. There is no partial credit (spec 4.1).",
+      "properties": {
+        "plane_1": {
+          "$ref": "#/$defs/plane",
+          "title": "Textual header, 3200 bytes verbatim"
+        },
+        "plane_2": {
+          "$ref": "#/$defs/plane",
+          "title": "Binary header, 400 bytes; raw authoritative"
+        },
+        "plane_3": {
+          "$ref": "#/$defs/plane",
+          "title": "All 240 trace-header bytes, bit-exact"
+        },
+        "plane_4": {
+          "$ref": "#/$defs/plane",
+          "title": "Live samples bit-exact; exact equality, never allclose"
+        },
+        "plane_5": {
+          "$ref": "#/$defs/plane",
+          "title": "Cardinality, ordering, live mask, duplicates"
+        }
+      }
+    },
+    "roundtrip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "performed",
+        "byte_identical"
+      ],
+      "properties": {
+        "performed": {
+          "type": "boolean"
+        },
+        "export_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "export_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byte_identical": {
+          "type": "boolean"
+        },
+        "scoped": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "ROUNDTRIP-SCOPED is permitted only where the source is non-conforming in a way that makes byte-identity impossible (spec G3). It requires per-plane equality plus a written justification naming the specific non-conformance.",
+          "required": [
+            "justification",
+            "non_conformance"
+          ],
+          "properties": {
+            "justification": {
+              "type": "string",
+              "minLength": 40
+            },
+            "non_conformance": {
+              "type": "string",
+              "minLength": 10
+            }
+          }
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "ROUNDTRIP-SCOPED"
+          ]
+        },
+        "first_difference": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    },
     "transforms_declared": {
       "type": "array",
       "description": "SP1: the only permitted transform at v1.0 is the declared SEG-Y sample-format decode. Every entry must be exactly invertible and verified by round trip.",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["from", "to", "applies_to", "invertibility"],
+        "required": [
+          "from",
+          "to",
+          "applies_to",
+          "invertibility"
+        ],
         "properties": {
-          "from": { "type": "string", "examples": ["ibm32"] },
-          "to": { "type": "string", "examples": ["float32"] },
-          "applies_to": { "enum": ["samples", "header_fields"] },
-          "field_names": { "type": "array", "items": { "type": "string" } },
+          "from": {
+            "type": "string",
+            "examples": [
+              "ibm32"
+            ]
+          },
+          "to": {
+            "type": "string",
+            "examples": [
+              "float32"
+            ]
+          },
+          "applies_to": {
+            "enum": [
+              "samples",
+              "header_fields"
+            ]
+          },
+          "field_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "invertibility": {
-            "enum": ["VERIFIED", "UNVERIFIED", "SCOPED"],
+            "enum": [
+              "VERIFIED",
+              "UNVERIFIED",
+              "SCOPED"
+            ],
             "description": "UNVERIFIED blocks a production ibm32-bearing spec until probe P2 clears (open debt D1)."
           },
-          "scope_note": { "type": "string" }
+          "scope_note": {
+            "type": "string"
+          },
+          "sample_format": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "probe": {
+            "type": "string"
+          },
+          "bit_identical_exponent_codes": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "raw_uint32_view_stored": {
+            "type": "boolean",
+            "description": "Whether the undecoded uint32 sample words are stored in parallel. Probe P2's own remedy: 1,939 of 4,103 ibm32 words lose the VALUE in the decode and are unrecoverable from the decoded float alone."
+          },
+          "coordinate_scalar": {
+            "type": "integer"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "uniform_across_traces": {
+            "type": "boolean"
+          },
+          "distinct_scalars_found": {
+            "type": "array"
+          },
+          "traces_checked": {
+            "type": "integer"
+          }
         }
       }
     },
-
     "warnings": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["observed", "suppressions_installed", "known_upstream_suppressions"],
+      "required": [
+        "observed",
+        "suppressions_installed",
+        "known_upstream_suppressions",
+        "scope"
+      ],
       "description": "SP6. A warning suppressed by a filter installed inside a dependency cannot be re-raised without monkeypatching, which spec 3.3 forbids; the suppression itself is recorded instead. See DECISIONS.md D-0004.",
       "properties": {
         "observed": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["category", "message"],
+            "required": [
+              "category",
+              "message"
+            ],
             "properties": {
-              "category": { "type": "string" },
-              "message": { "type": "string" },
-              "filename": { "type": "string" },
-              "lineno": { "type": "integer" }
+              "category": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "filename": {
+                "type": "string"
+              },
+              "lineno": {
+                "type": "integer"
+              }
             }
           }
         },
-        "observed_count": { "type": "integer", "minimum": 0 },
+        "observed_count": {
+          "type": "integer",
+          "minimum": 0
+        },
         "suppressions_installed": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["action", "category", "message_regex", "status"],
+            "required": [
+              "action",
+              "category",
+              "message_regex",
+              "status"
+            ],
             "properties": {
-              "action": { "type": "string" },
-              "category": { "type": "string" },
-              "message_regex": { "type": "string" },
-              "known_id": { "type": ["string", "null"] },
-              "status": { "enum": ["declared", "UNDECLARED"] }
+              "action": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "message_regex": {
+                "type": "string"
+              },
+              "known_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "declared",
+                  "UNDECLARED"
+                ]
+              }
             }
           }
         },
-        "undeclared_suppression_count": { "type": "integer", "minimum": 0 },
-        "known_upstream_suppressions": { "type": "array", "items": { "type": "object" } },
-        "sp6_scope_note": { "type": "string" }
+        "undeclared_suppression_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "known_upstream_suppressions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "sp6_scope_note": {
+          "type": "string"
+        },
+        "logged": {
+          "type": "array",
+          "description": "Log records upstream emitted at WARNING or above. A SEPARATE CHANNEL from Python warnings: only one of the two is suppressible by a filter, and flattening them would misreport which mechanism was involved.",
+          "items": {
+            "type": "object"
+          }
+        },
+        "logged_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "suppression_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "undeclared_filter_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "What this ledger does and does not cover. REQUIRED, because an empty `observed` list must not be readable as evidence of a quiet run: warnings raised inside MDIO's spawn workers never reach the parent process at all (OPEN_DEBTS D26).",
+          "properties": {
+            "covers": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "covers"
+          ]
+        }
       }
     },
-
-    "codecs_used": { "type": "array", "items": { "type": "string" } },
+    "codecs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "lossy_codec_present": {
       "const": false,
       "description": "SP3. A store whose codec manifest contains a lossy entry is void; a certificate cannot be issued with true here."
     },
-
     "env": {
       "type": "object",
-      "required": ["python", "packages", "declared_pins"],
+      "required": [
+        "python",
+        "packages",
+        "declared_pins"
+      ],
       "properties": {
-        "python": { "type": "string" },
-        "python_implementation": { "type": "string" },
-        "platform": { "type": "string" },
-        "machine": { "type": "string" },
-        "packages": { "type": "object" },
+        "python": {
+          "type": "string"
+        },
+        "python_implementation": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "machine": {
+          "type": "string"
+        },
+        "packages": {
+          "type": "object"
+        },
         "declared_pins": {
           "type": "object",
           "description": "Commit SHAs are declared, not runtime-verified: a wheel does not carry the SHA it was built from. Open debt D9.",
           "additionalProperties": {
             "type": "object",
-            "required": ["version", "commit_sha", "sha_verification"],
+            "required": [
+              "version",
+              "commit_sha",
+              "sha_verification"
+            ],
             "properties": {
-              "version": { "type": "string" },
-              "commit_sha": { "$ref": "#/$defs/sha1" },
-              "repository": { "type": "string" },
-              "sha_verification": { "const": "declared-not-runtime-verified" }
+              "version": {
+                "type": "string"
+              },
+              "commit_sha": {
+                "$ref": "#/$defs/sha1"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "sha_verification": {
+                "const": "declared-not-runtime-verified"
+              }
             }
           }
         },
@@ -218,103 +557,306 @@
           "minimum": 1,
           "description": "Pinned in production runs and recorded so G6 determinism holds (spec 11.1)."
         },
-        "memory_ceiling_bytes": { "type": "integer", "minimum": 1 },
-        "peak_rss_bytes": { "type": "integer", "minimum": 0 }
+        "memory_ceiling_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "peak_rss_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
-
     "git": {
       "type": "object",
-      "required": ["sdip_version", "sdip_commit", "dirty"],
+      "required": [
+        "sdip_version",
+        "sdip_commit",
+        "dirty"
+      ],
       "properties": {
-        "sdip_version": { "type": "string" },
-        "sdip_commit": { "$ref": "#/$defs/sha1" },
-        "branch": { "type": "string" },
+        "sdip_version": {
+          "type": "string"
+        },
+        "sdip_commit": {
+          "$ref": "#/$defs/sha1"
+        },
+        "branch": {
+          "type": "string"
+        },
         "dirty": {
           "const": false,
           "description": "A certificate from a dirty working tree is invalid (spec 11.3). There is no --force."
         },
-        "describe": { "type": "string" }
+        "describe": {
+          "type": "string"
+        }
       }
     },
-
     "gates": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["G1", "G2", "G3", "G4", "G5", "G6", "G7"],
+      "required": [
+        "G1",
+        "G2",
+        "G3",
+        "G4",
+        "G5",
+        "G6",
+        "G7"
+      ],
       "properties": {
-        "G1": { "$ref": "#/$defs/gate" },
-        "G2": { "$ref": "#/$defs/gate" },
-        "G3": { "$ref": "#/$defs/gate" },
-        "G4": { "$ref": "#/$defs/gate" },
-        "G5": { "$ref": "#/$defs/gate" },
-        "G6": { "$ref": "#/$defs/gate" },
+        "G1": {
+          "$ref": "#/$defs/gate"
+        },
+        "G2": {
+          "$ref": "#/$defs/gate"
+        },
+        "G3": {
+          "$ref": "#/$defs/gate"
+        },
+        "G4": {
+          "$ref": "#/$defs/gate"
+        },
+        "G5": {
+          "$ref": "#/$defs/gate"
+        },
+        "G6": {
+          "$ref": "#/$defs/gate"
+        },
         "G7": {
           "$ref": "#/$defs/gate",
           "description": "Non-vacuity. A G7 failure blocks certificate issuance for the entire engine, not just the affected plane. Until G7 passes, every certificate the engine issues is unvalidated."
         }
       }
     },
-
     "verdict": {
-      "enum": ["EQUIVALENT", "NON-EQUIVALENT", "PROVISIONAL"],
+      "enum": [
+        "EQUIVALENT",
+        "NON-EQUIVALENT",
+        "PROVISIONAL"
+      ],
       "description": "A certificate with verdict != EQUIVALENT is still committed. Failures are evidence (SP10). A store with verdict != EQUIVALENT must not be presented downstream as confirmed data (spec 10.1)."
     },
-    "verdict_reason": { "type": "string" },
-    "issued_at": { "type": "string", "format": "date-time" },
-    "issued_by": { "type": "string" }
+    "verdict_reason": {
+      "type": "string"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "issued_by": {
+      "type": "string"
+    },
+    "portability": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "title": "G4 portability result",
+      "description": "Per-array Zarr v3 core-spec conformance and whether mdio was ever imported. Null means NOT_RUN.",
+      "additionalProperties": true
+    },
+    "nonvacuity": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "title": "G7 non-vacuity audit",
+      "description": "Every corruption and the exact gate set it failed. Null means NOT_RUN - and an engine never shown capable of failing has not checked anything (SP11).",
+      "additionalProperties": true
+    },
+    "roundtrip_closure": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "title": "Arrow 3 - the exported SEG-Y validated as an artifact",
+      "description": "The export re-ingested and checked against the original store. G3 proves the export matches the source; this proves it is a well-formed SEG-Y in its own right.",
+      "additionalProperties": true
+    },
+    "determinism": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "title": "G6 determinism result",
+      "description": "Two independent ingests compared on chunk bytes AND array values.",
+      "additionalProperties": true
+    },
+    "scale": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "title": "G5 scale result",
+      "description": "A completed survey-scale run judged against ceilings declared BEFORE it (SP9).",
+      "additionalProperties": true
+    },
+    "release_readiness": {
+      "type": "object",
+      "additionalProperties": true,
+      "title": "Release acceptance evaluation",
+      "description": "Stricter than `verdict`: requires EVERY gate PASS with NONE NOT_RUN, plus round-trip closure. `verdict` tolerates unrun gates because they are visible on the face of the certificate; at release an unrun gate is not a passing one.",
+      "properties": {
+        "release_ready": {
+          "type": "boolean"
+        },
+        "blocking": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "criterion": {
+          "type": "string"
+        }
+      }
+    },
+    "transform_scope_blocks_equivalence": {
+      "type": "boolean",
+      "description": "True when a declared transform is not provably invertible on THIS data and an EQUIVALENT verdict is therefore unavailable. Probe P2 measured ibm32 -> float32 as not exactly invertible in general; whole-file byte identity is the proof that it was invertible here."
+    },
+    "transform_scope_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
   },
-
   "allOf": [
     {
-      "if": { "properties": { "verdict": { "const": "EQUIVALENT" } }, "required": ["verdict"] },
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "EQUIVALENT"
+          }
+        },
+        "required": [
+          "verdict"
+        ]
+      },
       "then": {
         "description": "EQUIVALENT requires all five planes PASS, no lossy codec, a clean tree, and G7 passing. There is no partial credit.",
         "properties": {
           "planes": {
             "properties": {
-              "plane_1": { "properties": { "status": { "const": "PASS" } } },
-              "plane_2": { "properties": { "status": { "const": "PASS" } } },
-              "plane_3": { "properties": { "status": { "const": "PASS" } } },
-              "plane_4": { "properties": { "status": { "const": "PASS" } } },
-              "plane_5": { "properties": { "status": { "const": "PASS" } } }
+              "plane_1": {
+                "properties": {
+                  "status": {
+                    "const": "PASS"
+                  }
+                }
+              },
+              "plane_2": {
+                "properties": {
+                  "status": {
+                    "const": "PASS"
+                  }
+                }
+              },
+              "plane_3": {
+                "properties": {
+                  "status": {
+                    "const": "PASS"
+                  }
+                }
+              },
+              "plane_4": {
+                "properties": {
+                  "status": {
+                    "const": "PASS"
+                  }
+                }
+              },
+              "plane_5": {
+                "properties": {
+                  "status": {
+                    "const": "PASS"
+                  }
+                }
+              }
             }
           },
           "gates": {
             "properties": {
-              "G1": { "const": "PASS" },
-              "G2": { "const": "PASS" },
-              "G7": { "const": "PASS" }
+              "G1": {
+                "const": "PASS"
+              },
+              "G2": {
+                "const": "PASS"
+              },
+              "G7": {
+                "const": "PASS"
+              }
             }
           },
-          "git": { "properties": { "dirty": { "const": false } } },
-          "lossy_codec_present": { "const": false }
+          "git": {
+            "properties": {
+              "dirty": {
+                "const": false
+              }
+            }
+          },
+          "lossy_codec_present": {
+            "const": false
+          }
         }
       }
     }
   ],
-
   "$defs": {
-    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-    "sha1": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
-    "gate": { "enum": ["PASS", "FAIL", "NOT_RUN"] },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sha1": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "gate": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "NOT_RUN"
+      ]
+    },
     "plane": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "evidence"],
+      "required": [
+        "status",
+        "evidence"
+      ],
       "properties": {
-        "status": { "enum": ["PASS", "FAIL", "NOT_RUN"] },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_RUN"
+          ]
+        },
         "evidence": {
           "type": "object",
           "description": "Whatever the plane checker measured. A plane that cannot say what it compared is not evidence.",
           "properties": {
-            "compared": { "type": "string" },
-            "n": { "type": "integer", "minimum": 0 },
+            "compared": {
+              "type": "string"
+            },
+            "n": {
+              "type": "integer",
+              "minimum": 0
+            },
             "sampling": {
               "type": "string",
               "description": "'exhaustive' or a pre-registered sampling scheme (SP9). Never chosen after seeing the result."
             },
-            "first_difference": { "type": ["object", "null"] }
+            "first_difference": {
+              "type": [
+                "object",
+                "null"
+              ]
+            }
           }
         }
       }

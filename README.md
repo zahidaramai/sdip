@@ -29,7 +29,7 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 [![dco](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml)
 
 ![Phase](https://img.shields.io/badge/roadmap_phase-F5–F7-orange?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-619_passing-success?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-627_passing-success?style=flat-square)
 ![Gates enforcing](https://img.shields.io/badge/gates_enforcing-7_of_7-success?style=flat-square)
 ![Certificates](https://img.shields.io/badge/certificates_issued-0-lightgrey?style=flat-square)
 ![Type checked](https://img.shields.io/badge/mypy-strict-2A6DB2?style=flat-square)
@@ -82,12 +82,12 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Repository** | `github.com/zahidaramai/sdip` — public, open contribution |
 | **Roadmap phase** | **F5–F7** — probes. F0–F4 complete; see [Roadmap & Status](#️-roadmap--status) |
 | **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
-| **Source** | 9,093 lines across 43 modules |
-| **Tests** | 619 passing · mypy strict clean · ruff clean |
+| **Source** | 9,168 lines across 43 modules |
+| **Tests** | 627 passing · mypy strict clean · ruff clean |
 | **Gates enforcing** | **7 of 7** — every gate the specification defines |
 | **Certificates issued** | `EQUIVALENT` demonstrated on a real survey; none committed (restricted source) |
-| **Decision record** | 47 entries, append-only |
-| **Open debts** | 51 entries, append-only — scheduled, never cancelled |
+| **Decision record** | 50 entries, append-only |
+| **Open debts** | 54 entries, append-only — scheduled, never cancelled |
 
 > **Read the two rows in bold before using anything here.** Zero gates enforce today. What has actually been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md). Where a property is unmeasured this project says so and names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
 
@@ -366,7 +366,7 @@ Only measured numbers appear here.
 
 | Dimension | Evidence |
 |---|---|
-| **Unit tests** | **619 passing**, 0 failing |
+| **Unit tests** | **627 passing**, 0 failing |
 | **Type checking** | `mypy --strict` clean across **40** source modules |
 | **Lint / format** | `ruff check` and `ruff format --check` clean |
 | **Warnings** | `filterwarnings = ["error"]` — any warning reaching pytest fails the suite |

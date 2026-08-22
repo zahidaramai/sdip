@@ -183,18 +183,25 @@ def test_an_absent_view_is_reported_as_unchecked_not_as_a_pass(ingested, tmp_pat
     assert plane.evidence["raw_ibm32_identical"] is None
 
 
-def test_a_corrupted_raw_word_is_reported_and_leaves_the_verdict_alone(ingested, tmp_path):
-    """The deliberate separation, asserted so nobody restores it by accident.
+def test_a_corrupted_raw_word_fails_g2d_without_touching_the_decoded_leg(ingested, tmp_path):
+    """CORRECTED. This test asserted ``plane.status == "PASS"`` when first written.
 
-    A flipped word in the raw view is **reported** — ``raw_ibm32_identical`` goes False
-    with the offending cell and both words named — and G2d still passes, because G2d is
-    defined on the decoded samples (§4.5) and those are untouched. That is the design
-    the task set: a store can have correct raw words and a lossy decode, and neither
-    fact is allowed to stand in for the other.
+    That was the design as specified: the raw leg was evidence-only so a raw pass could
+    not mask a float failure. The author flagged the consequence rather than papering
+    over it — **no gate failed on a corrupted raw word**, so the evidence had no G7
+    control and was not a check at all.
 
-    **Consequence worth stating**: no gate currently fails on a corrupted raw word, so
-    this evidence is not yet a gate and has no G7 control. It is a finding for the
-    maintainer, not something this test papers over.
+    **The maintainer ruling went the other way** (`DECISIONS.md` D-0048). The two legs
+    are now ``AND``-ed, which satisfies the original concern *and* closes the hole: a raw
+    pass still cannot rescue a failed float comparison, and a raw failure now fails the
+    plane. `amplitude_raw_ibm32` is the only recoverable copy of the source bits for an
+    ``ibm32`` source, so a store that silently corrupted it would have been certifiable.
+
+    The two legs stay **independent**, which is what this test now pins: the raw leg
+    fails, and the decoded leg's ``mismatch_count`` stays 0. A G7 control
+    (``flipped_raw_ibm32_word``) now covers it and must fail G2d and only G2d.
+
+    The assertion is inverted rather than deleted, so the ruling is visible in the diff.
     """
     article, store, result = ingested
     copy = tmp_path / "corrupt.mdio"
@@ -208,7 +215,9 @@ def test_a_corrupted_raw_word_is_reported_and_leaves_the_verdict_alone(ingested,
     assert plane.evidence["raw_ibm32_mismatch_count"] == 1
     assert plane.evidence["raw_ibm32_first_difference"]["cell"] == [0, 0]
     assert plane.evidence["raw_ibm32_first_difference"]["first_sample"] == 0
-    assert plane.status == "PASS"
+    assert plane.status == "FAIL", "a corrupted raw word must fail G2d - it is the only "
+    # The decoded leg is genuinely untouched: the two legs remain independent, and the
+    # failure above comes from the raw comparison alone.
     assert plane.evidence["mismatch_count"] == 0
 
 

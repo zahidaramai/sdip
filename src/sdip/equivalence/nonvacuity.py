@@ -59,6 +59,7 @@ from typing import Any, Final
 import numpy as np
 
 from sdip.ingest.file_headers import ATTR_RAW_BINARY, ATTR_RAW_TEXT
+from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY
 
 ALL_GATES: tuple[str, ...] = ("G2a", "G2b", "G2c", "G2d", "G2e", "G3")
 """Every gate G7 audits. §7 G7 names exactly these."""
@@ -163,6 +164,26 @@ def _transpose_two_traces(store: Path) -> None:
         group[name][:] = data
 
 
+def _flip_raw_ibm32_word(store: Path) -> None:
+    """Flip one bit of one undecoded IBM word in ``amplitude_raw_ibm32``.
+
+    The raw view is the only recoverable copy of the source bits for an ``ibm32``
+    source (`OPEN_DEBTS.md` D1), so a defect in it is silent by construction: the
+    decoded ``amplitude`` array is untouched and every float comparison still passes.
+    Without this control, SDIP could write a corrupted raw view and no gate would notice.
+    """
+    import numpy as np
+
+    group = _group(store)
+    if RAW_IBM32_ARRAY not in group:
+        msg = f"{RAW_IBM32_ARRAY} absent; this control applies only to an ibm32 source"
+        raise KeyError(msg)
+    words = group[RAW_IBM32_ARRAY][:]
+    cell = (*tuple(0 for _ in words.shape[:-1]), 0)
+    words[cell] = np.uint32(int(words[cell]) ^ 1)
+    group[RAW_IBM32_ARRAY][:] = words
+
+
 @dataclass(frozen=True, slots=True)
 class Corruption:
     """One deliberate defect and the exact set of gates it must fail."""
@@ -258,6 +279,14 @@ CONTROLS: tuple[Corruption, ...] = (
         clause="§7 G7 minimum set",
         # Zeroes headers and samples and clears the mask bit: three arrays, all written.
         touches=frozenset({"trace_mask", "headers", "amplitude"}),
+    ),
+    Corruption(
+        name="flipped_raw_ibm32_word",
+        description="One bit flipped in the undecoded uint32 sample word",
+        must_fail=frozenset({"G2d"}),
+        apply=_flip_raw_ibm32_word,
+        touches=frozenset({RAW_IBM32_ARRAY}),
+        clause="OPEN_DEBTS D1 - the only recoverable copy of the source bits",
     ),
     Corruption(
         name="transposed_traces",

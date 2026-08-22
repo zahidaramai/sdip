@@ -1885,3 +1885,111 @@ mitigation and is recorded as debt.
 **D3 stays OPEN, but its reason changed from *unmeasured* to *measured*.** What was an
 argument from the specification — *"support is an implementation choice, not conformance"* —
 is now an observation: a second reader refuses the same array in the same store.
+
+---
+
+## D-0048 — 2026-08-23 — **The published schema had been invalid for phases, and nothing checked**
+
+**Found by the D26 agent**, which noticed its new `warnings` keys would be rejected by
+`additionalProperties: false` and stopped to ask rather than editing a file outside its
+allowance. Investigating that question found something much larger.
+
+**The published certificate schema rejected the real certificate in six places:**
+
+| Location | Rejected |
+|---|---|
+| root | `portability`, `nonvacuity`, `roundtrip_closure`, `determinism`, `scale`, `release_readiness`, `transform_scope_blocks_equivalence`, `transform_scope_reason` |
+| `warnings` | `logged`, `logged_count`, `scope`, `suppression_count`, `undeclared_filter_count` |
+| `roundtrip` | `status`, `first_difference` |
+| `transforms_declared[]` | `sample_format`, `probe`, `bit_identical_exponent_codes`, `raw_uint32_view_stored` |
+
+**Two of those — `suppression_count` and `undeclared_filter_count` — were added at
+D-0022, several phases ago.** The schema has been wrong since F3.
+
+**Why nothing caught it.** There was **no test validating a certificate against the
+schema**. `jsonschema` was not installed and nothing compared the document to the
+contract that describes it. Every other test passed, `sdip certify` produced
+certificates, and the schema sat in the package looking authoritative.
+
+§4.7's promise is precise about who this hurts:
+
+> published so third parties can validate SDIP output **without running SDIP**
+
+It was false **only for them**. Anyone running SDIP saw nothing wrong; anyone taking the
+project at its word and validating externally got a spurious failure on every
+certificate. **A published contract nobody checks against the thing it describes is
+documentation, not a contract.**
+
+**Fixed in the order that matters.** The guard was written **first**, watched fail, and
+only then was the schema corrected — the same discipline as a negative control. It
+validates the **fullest** chain the engine can run, because a sparse certificate would
+pass while leaving the newest blocks — the ones most likely to have diverged —
+unexercised. It reports *every* violation rather than the first, because drift arrives in
+clusters and fixing one error per run is how it got this far.
+
+`jsonschema` is a **dev** dependency. The runtime tree is licence-scanned and must not
+grow: a consumer brings their own validator, which is the entire point of publishing a
+schema rather than a library.
+
+**One violation was the schema being right.** `git/dirty: False was expected` fired
+because the test fixture issues from a dirty tree to run at all. §11.3 says a certificate
+from a dirty tree is invalid, and the schema enforces it. The fixture now sets
+`dirty: false` and says why, rather than the schema being loosened to accommodate a test.
+
+---
+
+## D-0049 — 2026-08-23 — The raw leg is ANDed into G2d, not merely reported
+
+**Ruling on a question the D1 agent raised rather than decided.** It built the raw-word
+comparison as **evidence only**, exactly as instructed, and then flagged the consequence:
+*"a corrupted word in `amplitude_raw_ibm32` is reported and no gate fails. So this
+evidence has no G7 control and is not yet a gate."*
+
+**It was right to flag it, and the instruction was wrong.** The original reasoning was
+that a raw pass must not mask a float failure. `AND` satisfies that concern completely —
+a raw pass cannot rescue a failed float comparison — **and** closes the hole: a raw
+failure now fails the plane.
+
+Left as evidence-only, SDIP could write a corrupted `amplitude_raw_ibm32` and no gate
+would notice. That array is **the only recoverable copy of the source bits** for an
+`ibm32` source (D-0045), so such a store would be certifiable while the thing the raw
+view exists to protect was already gone. **Evidence nothing can fail is not a check; it
+is a comment** — and shipping one is precisely the vacuity G7 exists to catch (**SP11**).
+
+**Measured:** a flipped raw word now fails G2d with `raw_ibm32_identical: false`, while
+the decoded leg's `mismatch_count` stays **0**. The legs remain independent; both bind.
+
+**A G7 control ships with it** — `flipped_raw_ibm32_word`, declaring `{G2d}`. Measured:
+**9 controls, each failing exactly the gates it declares and no others.** A gate without
+a control is what this project spent F4 refusing to ship.
+
+`None` (array absent, correct for a non-`ibm32` source) is **not** a failure; only an
+explicit `False` fails.
+
+---
+
+## D-0050 — 2026-08-23 — Two staleness bugs of the same shape
+
+Both surfaced by agents working outside their own allowance and reporting rather than
+patching. Both are **a constant that stopped being true**, and neither could go stale in
+a way a test would notice.
+
+**1. `raw_uint32_view_stored` was hard-coded `False`.** The moment the raw view was
+built, **every `ibm32` certificate carried a false statement about its own contents.** It
+is now read from the store — `ARRAY_NAME in group` — because the certificate's job is to
+describe what is on disk, and the only reliable way to do that is to look.
+
+**2. The CLI's warnings line said `0 observed` while every sample was `inf`.** It is the
+exact misreading D26 exists to prevent, printed at the operator. It now shows Python
+warnings **and** log records **and** the declared scope:
+
+```
+warnings      0 python warning(s), 2 log record(s), 2 suppression(s), 0 UNDECLARED
+              covers: parent-process Python warnings and parent-process log records only
+              workers: NOT CAPTURED - see OPEN_DEBTS D26
+              [WARNING] mdio.ingestion.grid_qc: Ingestion grid is sparse...
+```
+
+**Printing counts without the scope is how a zero gets misread as quiet.** The
+certificate has carried the scope since D-0046; the terminal an operator actually watches
+did not.

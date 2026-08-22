@@ -479,7 +479,22 @@ def plane_4(
             if len(mismatches) >= 20:
                 break
 
-    ok = not mismatches and trace_map.invertible
+    # The raw-word leg is ANDed into the verdict, not merely reported.
+    #
+    # It was evidence-only when first built, on the reasoning that a raw pass must not
+    # mask a float failure. AND achieves that and more: a raw pass cannot rescue a failed
+    # float comparison, and a raw FAILURE now fails the plane. Left as evidence-only,
+    # SDIP could write a corrupted `amplitude_raw_ibm32` and no gate would notice - which
+    # is exactly the vacuity G7 exists to catch (SP11). Evidence nothing can fail is not
+    # a check; it is a comment.
+    #
+    # `None` means the array is absent, which is correct for a non-ibm32 source and is
+    # NOT a failure. Only an explicit False fails.
+    raw_evidence = _raw_ibm32_evidence(source, group, trace_map)
+    raw_identical = raw_evidence.get("raw_ibm32_identical")
+    raw_ok = raw_identical is not False
+
+    ok = not mismatches and trace_map.invertible and raw_ok
     return PlaneResult(
         plane=4,
         gate="G2d",
@@ -499,7 +514,7 @@ def plane_4(
                 "compared. No tolerance is applied anywhere in this comparison."
             ),
         }
-        | _raw_ibm32_evidence(source, group, trace_map),
+        | raw_evidence,
     )
 
 

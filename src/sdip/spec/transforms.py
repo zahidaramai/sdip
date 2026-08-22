@@ -80,8 +80,17 @@ class Ibm32Exposure:
         """True when this spec touches ``ibm32`` anywhere."""
         return bool(self.header_fields) or self.sample_format is not None
 
-    def to_json(self) -> dict[str, Any]:
-        """Certificate-shaped ``transforms_declared`` entry."""
+    def to_json(self, *, raw_view_stored: bool = False) -> dict[str, Any]:
+        """Certificate-shaped ``transforms_declared`` entry.
+
+        Args:
+            raw_view_stored: Whether the store actually carries the undecoded ``uint32``
+                sample words. **Passed in, never assumed.** It was a hard-coded ``False``
+                until the raw view was built, at which point every ``ibm32`` certificate
+                carried a false statement about its own contents — and nothing caught it,
+                because a constant cannot go stale in a way a test notices. It is now a
+                function of what is on disk.
+        """
         return {
             "from": "ibm32",
             "to": "float32",
@@ -92,7 +101,7 @@ class Ibm32Exposure:
             "scope_note": P2_SCOPE_NOTE,
             "probe": "P2",
             "bit_identical_exponent_codes": list(BIT_IDENTICAL_EXPONENT_CODES),
-            "raw_uint32_view_stored": False,
+            "raw_uint32_view_stored": raw_view_stored,
         }
 
 

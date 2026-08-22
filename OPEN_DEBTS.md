@@ -934,3 +934,56 @@ not write that array — MDIO does — but SDIP already stores its authoritative
 **attributes**, which every reader can parse. The question is whether the array itself
 should exist in a form that does not break enumeration.
 
+---
+
+## D33 — The published schema was invalid for phases, unchecked
+
+- **Status:** `CLOSED` 2026-08-23 · **Decision:** `DECISIONS.md` D-0048
+
+The certificate schema rejected the real certificate in **six places**, two of them since
+D-0022 several phases back. **Nothing caught it: no test validated a certificate against
+the schema**, and `jsonschema` was not installed.
+
+§4.7's promise — *published so third parties can validate without running SDIP* — was
+false **only for third parties**. Anyone running SDIP saw nothing wrong.
+
+Closed by writing the guard **first**, watching it fail, then correcting the schema. It
+validates the fullest chain the engine can run and reports every violation at once.
+
+**Recorded as a debt rather than a plain fix** because it was a *published contract
+silently diverging from the artifact it describes*, and that failure mode is worth having
+on the record: it is invisible from inside the project by construction.
+
+---
+
+## D34 — The raw view had no gate; now it has one
+
+- **Status:** `CLOSED` 2026-08-23 · **Decision:** `DECISIONS.md` D-0049
+
+The raw-word comparison was evidence-only, so **a corrupted `amplitude_raw_ibm32` failed
+nothing** — and that array is the only recoverable copy of the source bits for an `ibm32`
+source. A store that silently corrupted it was certifiable.
+
+Closed by ANDing the raw leg into G2d, which keeps the original concern satisfied (a raw
+pass cannot mask a float failure) and adds the missing direction. Ships with a G7 control,
+`flipped_raw_ibm32_word` — **9 controls now, each failing exactly its declared set.**
+
+---
+
+## D35 — Worker-process warnings remain uncaptured
+
+- **Status:** `OPEN` (carried from D26) · **Decision:** `DECISIONS.md` D-0046
+
+Blind spot 2 is closed; **blind spot 1 is not.** Warnings raised inside MDIO's `spawn`
+workers — including the 2,441 `ibm32` overflow warnings probe P2 measured — never reach
+the parent process, so they appear on no certificate.
+
+**It is now declared rather than silent.** Every certificate carries
+`scope.worker_process_warnings: "NOT CAPTURED"`, and the CLI prints it. An empty
+`warnings_raised[]` can no longer be read as evidence of a quiet run — but it is still
+empty, and the loss it fails to record is real.
+
+**Closure needs an upstream hook** — a pool initialiser or worker callback that lets a
+caller install a filter in the child. §3.3 bars monkeypatching, so if no hook exists the
+honest end state is the declaration, permanently.
+

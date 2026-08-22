@@ -66,6 +66,7 @@ dev = [
     # TEST-ONLY, and it must stay that way. Nothing in `src/sdip` may import it;
     # the runtime dependency tree is licence-scanned and must not grow.
     "tensorstore>=0.1.85",
+    "jsonschema>=4.26.0",
 ]
 
 [tool.hatch.build.targets.wheel]

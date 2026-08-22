@@ -36,6 +36,7 @@ from sdip.errors import DirtyTreeError
 from sdip.export.roundtrip import RoundTripResult
 from sdip.guard.pins import check_pins
 from sdip.ingest.orchestrator import IngestResult
+from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY_NAME
 from sdip.provenance.environment import capture_environment
 from sdip.provenance.git import capture_git_state
 from sdip.spec.transforms import (
@@ -208,6 +209,18 @@ def issue(
     # is not invertible in general, even where it happened to be invertible here.
     exposure = detect_ibm32(result.spec.segy_spec)
 
+    # Read from the store, not assumed: a constant here went stale the moment the raw
+    # view was built, and put a false statement on every ibm32 certificate.
+    raw_view_present = False
+    try:
+        import zarr
+
+        raw_view_present = RAW_IBM32_ARRAY_NAME in zarr.open_group(
+            str(result.output_path), mode="r"
+        )
+    except (KeyError, ValueError, OSError):  # pragma: no cover - unreadable store
+        raw_view_present = False
+
     # SP1(a): every transform declared. Probe P5 found the coordinate scalar applied to
     # the derived cdp_x/cdp_y arrays and named nowhere on the certificate.
     coord_transform = None
@@ -289,7 +302,7 @@ def issue(
         "determinism": determinism.to_json() if determinism is not None else None,
         "scale": scale.to_json() if scale is not None else None,
         "transforms_declared": (
-            ([exposure.to_json()] if exposure.present else [])
+            ([exposure.to_json(raw_view_stored=raw_view_present)] if exposure.present else [])
             + (
                 [coord_transform.to_json()]
                 if coord_transform is not None and not coord_transform.is_identity

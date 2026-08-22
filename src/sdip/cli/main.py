@@ -244,12 +244,21 @@ def ingest_cmd(
             "(source re-hashed after ingest)"
         )
         ledger = result.warnings
+        scope = ledger.to_json().get("scope", {})
         click.echo(
-            f"warnings      {len(ledger.observed)} observed, "
+            f"warnings      {len(ledger.observed)} python warning(s), "
+            f"{len(ledger.logged)} log record(s), "
             f"{len(ledger.suppressions)} suppression(s), "
             f"{len(ledger.undeclared_suppressions)} UNDECLARED"
         )
-
+        # Printing the counts without the scope is the exact misreading SP6 is about:
+        # zero observed warnings is not evidence of a quiet run when warnings raised in
+        # MDIO's spawn workers never reach this process (OPEN_DEBTS D26).
+        click.echo(f"              covers: {scope.get('covers', 'unknown')}")
+        if scope.get("worker_process_warnings"):
+            click.echo(f"              workers: {scope['worker_process_warnings']}")
+        for record in ledger.logged[:5]:
+            click.echo(f"              [{record.level}] {record.logger}: {record.message[:70]}")
     sys.exit(EXIT_OK if result.read_path_intact else EXIT_FAIL)
 
 
