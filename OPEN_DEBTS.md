@@ -600,3 +600,28 @@ here would corrupt the very store being certified.**
 Verified on the synthetic article: G7 `PASS`, all 8 controls exact, **original store
 byte-for-byte unchanged**.
 
+---
+
+## D7 — UNCHANGED 2026-08-22 — P8 could not run; no substitute was used
+
+- **Status:** `OPEN`, entirely unmeasured
+- **Probe:** P8, **NOT RUN**
+
+P8 needs real S3/GCS/Azure credentials. None are available, and CI has no network beyond
+the pinned package index.
+
+**A mock was deliberately not used.** `moto`, `minio` or an in-memory filesystem would
+each have produced a green result and answered a different question. P8 does not ask
+*"does the object-store code path execute"*; it asks whether a run that takes hours
+survives auth expiry, transient 5xx, connection reset and process kill — and whether it
+can leave a **partially written store that validates as complete**. A mock does not
+expire a credential mid-run or fail on the 17,000th PUT of 20,000.
+
+Reporting a mocked pass would have been a claim that does not mean what a reader would
+take it to mean (**SP8**).
+
+**The sharpest open item**, from §11.2: *"a harness that can return nothing after hours
+is a defect."* Nothing demonstrates that a killed cloud run leaves a resumable checkpoint
+or an unambiguously incomplete store. A partial store that validates as complete is a
+**security-class** finding — it produces a false `EQUIVALENT`.
+

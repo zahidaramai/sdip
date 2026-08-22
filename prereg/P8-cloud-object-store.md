@@ -60,3 +60,58 @@ Cloud deployment does not proceed for that backend and D7 stays open against it.
 partial-write failure that validates as complete is the most serious outcome and would
 additionally be treated as a **security-class** finding, per `SECURITY.md`: it produces
 a false `EQUIVALENT` verdict.
+
+---
+
+## Results — appended 2026-08-22, never edited into the sections above
+
+| Field | Value |
+|---|---|
+| Run date | 2026-08-22 |
+| **Verdict** | **NOT RUN — blocked on credentials.** The falsifier was not evaluated. |
+
+### Why it did not run
+
+P8 needs a real S3, GCS and Azure account. This machine has none, and the project's CI
+*"has no network access except the pinned package index"* (§7.8), so it cannot obtain
+them either.
+
+**No substitute was used, and that is a deliberate choice.** `moto`, `minio` and
+`fsspec`'s memory filesystem would all have produced a green result. None of them would
+have answered the question P8 actually asks, which is not *"does the object-store code
+path execute"* but:
+
+> **Does a run that takes hours survive auth expiry, transient 5xx, connection reset and
+> process kill, and does it ever leave a partially written store that validates as
+> complete?**
+
+A mock does not expire credentials mid-run, does not throttle, does not fail on the
+17,000th PUT of 20,000, and has no eventual-consistency behaviour. Reporting a mocked
+pass against this pre-registration would have been the *precise* failure this project
+exists to prevent: a claim with a number behind it that does not mean what a reader would
+take it to mean (**SP8**).
+
+### What this leaves open
+
+**`OPEN_DEBTS.md` D7 is untouched.** Cloud deployment is unsupported and unmeasured. The
+`cloud` extra exists in `pyproject.toml` and has never been exercised.
+
+The single most consequential unanswered item is the one §11.2 calls out directly:
+
+> **A harness that can return nothing after hours is a defect.**
+
+Nothing yet demonstrates that a killed or expired cloud run leaves either a resumable
+checkpoint or an unambiguously incomplete store. **A partially written store that
+validates as complete is a security-class finding** under `SECURITY.md`, because it
+produces a false `EQUIVALENT` verdict — and it is exactly the outcome a mocked run would
+be least likely to surface.
+
+### To run this later
+
+1. Credentials for at least one backend, and authorisation to spend on them.
+2. A fault-injection harness: expire a token mid-run, inject 5xx, reset the connection,
+   kill the process.
+3. The comparison is against a **local-filesystem ingest of the same source**, byte for
+   byte — the cloud store must be identical, not merely valid.
+
+Until then this probe is `NOT RUN`, and no claim about cloud behaviour may cite it.

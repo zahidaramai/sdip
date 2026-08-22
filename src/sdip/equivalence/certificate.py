@@ -26,6 +26,7 @@ from typing import Any
 
 from sdip import __version__
 from sdip._pins import CERTIFICATE_SCHEMA_VERSION, LOSSY_CODECS, SPEC_VERSION
+from sdip.equivalence.closure import ClosureResult
 from sdip.equivalence.nonvacuity import G7Result
 from sdip.equivalence.planes import PlaneResult
 from sdip.equivalence.portability import PortabilityResult
@@ -132,6 +133,7 @@ def issue(
     roundtrip: RoundTripResult | None = None,
     portability: PortabilityResult | None = None,
     nonvacuity: G7Result | None = None,
+    closure: ClosureResult | None = None,
     root: str | Path = ".",
     require_clean_tree: bool = True,
     issued_at: str,
@@ -146,6 +148,9 @@ def issue(
         roundtrip: G3 result, when a round trip was performed. Absent means
             ``NOT_RUN`` - never assumed to pass.
         portability: G4 result, when the portability check was run.
+        closure: Round-trip closure result — the exported SEG-Y re-ingested and checked
+            as an artifact in its own right (`DECISIONS.md` D-0031 arrow 3). Absent means
+            ``NOT_RUN``.
         nonvacuity: G7 result. **Absent means ``NOT_RUN``, and the verdict cannot reach
             ``EQUIVALENT``** - a store whose planes pass against an engine never shown
             capable of failing has not been checked.
@@ -253,6 +258,7 @@ def issue(
         ),
         "portability": portability.to_json() if portability is not None else None,
         "nonvacuity": nonvacuity.to_json() if nonvacuity is not None else None,
+        "roundtrip_closure": closure.to_json() if closure is not None else None,
         "transforms_declared": [exposure.to_json()] if exposure.present else [],
         "transform_scope_blocks_equivalence": transform_blocked,
         "transform_scope_reason": transform_reason or None,

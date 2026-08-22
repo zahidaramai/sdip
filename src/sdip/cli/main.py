@@ -354,6 +354,7 @@ def certify_cmd(
     import tempfile
 
     from sdip.equivalence import g4, issue
+    from sdip.equivalence.closure import roundtrip_closure
     from sdip.equivalence.nonvacuity import g3_control, g7
     from sdip.export import export as run_export
     from sdip.ingest import ingest as run_ingest
@@ -377,6 +378,12 @@ def certify_cmd(
         g3_check = g3_control(exported)
         g7_status, g7_summary = nonvacuity.status, nonvacuity.summary()
 
+        # Arrow 3: the exported SEG-Y validated as an artifact in its own right, not a
+        # by-product. G3 proves it is byte-identical to the source; this proves it is a
+        # well-formed SEG-Y that re-ingests to the same store (DECISIONS.md D-0031).
+        closure = roundtrip_closure(exported, output, spec, workdir=Path(scratch) / "closure")
+        closure_status, closure_summary = closure.status, closure.summary()
+
         issued_at = _dt.datetime.now(tz=_dt.UTC).isoformat(timespec="seconds")
         certificate = issue(
             result,
@@ -384,6 +391,7 @@ def certify_cmd(
             roundtrip=roundtrip,
             portability=portability,
             nonvacuity=nonvacuity,
+            closure=closure,
             issued_at=issued_at,
             issued_by=f"sdip {__version__}",
         )
@@ -398,6 +406,7 @@ def certify_cmd(
     click.echo(f"[{roundtrip.status}] G3        whole-file SHA-256")
     click.echo(f"[{portability.status}] G4        stock zarr+xarray without mdio")
     click.echo(f"[{g7_status}] G7        {g7_summary}")
+    click.echo(f"[{closure_status}] closure   {closure_summary}")
     click.echo("")
     click.echo(f"verdict:     {certificate.verdict}")
     click.echo(f"reason:      {certificate.payload['verdict_reason']}")
