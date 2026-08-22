@@ -65,6 +65,44 @@ Either:
 
 ---
 
+## Amendment A — latency leg parameters, declared 2026-08-22
+
+**Registered before any benchmark is run.** The original pre-registration left the
+parameter table unfilled, and the first P7 run reported the latency leg **NOT RUN** for
+exactly that reason: under **SP9**, a threshold invented after seeing a chunk shape is
+not a threshold. This amendment fixes the parameters so the leg becomes runnable.
+
+**It is an amendment, not an edit.** Nothing above is changed. A test
+(`test_the_pre_registration_latency_parameters_were_never_back_filled`) asserts the
+original table stays empty, and that test stays.
+
+| Parameter | Declared value |
+|---|---|
+| Geometries | The four the original method names: streamer shot, streamer field record, OBN receiver, CDP gather |
+| Candidate chunk shapes | **3 per geometry**: MDIO's default, a gather-contiguous shape, and a time-slice-contiguous shape |
+| Read patterns | single gather · offset slice · time slice · full inline |
+| **Latency target** | **≤ 2.0 s per read pattern**, cold cache, on the fixture sizes this probe uses (≤ 500 traces) |
+| Repetitions | **5** per (geometry, shape, pattern); the **median** is the reported figure |
+| Cache state | Cold — dropped between measurements |
+| Correctness precondition | **All five planes must PASS first.** A latency figure for a store that fails G2 is meaningless and must not be reported |
+
+**Falsifier for this leg**, unchanged in substance from the original: **no chunk shape
+meeting the declared target for a geometry.**
+
+**Why 2.0 s and why it is honest to name it now.** These fixtures are ≤ 500 traces — a
+read that takes longer than two seconds on data this small indicates a chunking that
+fights the access pattern, not a slow disk. The figure is deliberately generous: the leg
+is meant to catch a *pathological* shape, not to rank good ones. No benchmark has been
+run, and no chunk shape has been measured against any pattern, at the time this amendment
+is committed.
+
+**Scope limit stated in advance:** this measures *relative* behaviour on small synthetic
+fixtures. It is **not** a production latency claim, and a shape that wins here is not
+thereby validated at survey scale — that would need P3-class compute and its own
+pre-registration.
+
+---
+
 ## Results
 
 | Field | Value |

@@ -328,6 +328,26 @@ def export_cmd(store: Path, output: Path, source: Path, revision: str, as_json: 
 @click.option("--template", default="PostStack3DTime", show_default=True)
 @click.option("--overwrite", is_flag=True)
 @click.option(
+    "--rss-ceiling-gib",
+    type=float,
+    default=None,
+    help=(
+        "Declared peak-RSS ceiling in GiB. Enables gate G5. There is no default: a "
+        "ceiling this tool chose is not one you committed to before the run (SP9)."
+    ),
+)
+@click.option(
+    "--wall-ceiling-s",
+    type=float,
+    default=None,
+    help="Declared wall-clock ceiling in seconds. Enables gate G5. No default, per SP9.",
+)
+@click.option(
+    "--prereg",
+    default=None,
+    help="Where the ceilings were declared, e.g. 'prereg/P3-scale.md@690b05e'.",
+)
+@click.option(
     "--certificates",
     type=click.Path(file_okay=False, path_type=Path),
     default=Path("certificates"),
@@ -340,20 +360,31 @@ def certify_cmd(
     revision: str,
     template: str,
     overwrite: bool,
+    rss_ceiling_gib: float | None,
+    wall_ceiling_s: float | None,
+    prereg: str | None,
     certificates: Path,
 ) -> None:
     """Full chain: ingest, five planes, round trip, portability, certificate.
 
     Refuses to issue from a dirty working tree (spec 11.3). **There is no --force.**
 
+    Gate G5 runs only when a ceiling is declared on the command line. That is not an
+    oversight: G5 judges what a run cost against a limit somebody committed to
+    beforehand, and a default ceiling would be a limit this tool invented (SP9). Without
+    one, G5 is recorded NOT_RUN - which is honest, and which release_readiness treats as
+    blocking.
+
     The best verdict reachable today is PROVISIONAL: G7 does not exist, and a store
     whose planes pass against an engine never shown capable of failing has not been
     checked (OPEN_DEBTS D11).
     """
     import datetime as _dt
+    import resource
     import tempfile
+    import time
 
-    from sdip.equivalence import g4, issue
+    from sdip.equivalence import g4, g5, issue
     from sdip.equivalence.closure import roundtrip_closure
     from sdip.equivalence.determinism import g6
     from sdip.equivalence.nonvacuity import g3_control, g7
@@ -362,6 +393,7 @@ def certify_cmd(
     from sdip.spec import g1_for_spec
 
     number: float | int = float(revision) if "." in revision else int(revision)
+    started = time.monotonic()
     result = run_ingest(source, output, revision=number, template=template, overwrite=overwrite)
     spec = result.spec.segy_spec
     gate1 = g1_for_spec(result.spec)
@@ -391,6 +423,28 @@ def certify_cmd(
         determinism = g6(source, number, template=template, workdir=Path(scratch) / "g6")
         g6_status, g6_summary = determinism.status, determinism.summary()
 
+        # G5 only when a ceiling was DECLARED. See the docstring: a default would be a
+        # limit this tool invented rather than one the operator committed to (SP9).
+        scale = None
+        if rss_ceiling_gib is not None and wall_ceiling_s is not None:
+            scale = g5(
+                peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                wall_clock_s=time.monotonic() - started,
+                trace_count=int(planes[4].evidence.get("n", 0)),
+                planes_passed=all(p.passed for p in planes),
+                declared_rss_ceiling_bytes=int(rss_ceiling_gib * 1024**3),
+                declared_wall_ceiling_s=wall_ceiling_s,
+                prereg_reference=prereg or "declared on the command line, not recorded",
+            )
+        g5_line = (
+            f"[{scale.status}] G5        {scale.summary()}"
+            if scale is not None
+            else (
+                "[ -- ] G5        NOT_RUN - no ceiling declared "
+                "(--rss-ceiling-gib / --wall-ceiling-s)"
+            )
+        )
+
         issued_at = _dt.datetime.now(tz=_dt.UTC).isoformat(timespec="seconds")
         certificate = issue(
             result,
@@ -400,6 +454,7 @@ def certify_cmd(
             nonvacuity=nonvacuity,
             closure=closure,
             determinism=determinism,
+            scale=scale,
             issued_at=issued_at,
             issued_by=f"sdip {__version__}",
         )
@@ -414,6 +469,7 @@ def certify_cmd(
     click.echo(f"[{roundtrip.status}] G3        whole-file SHA-256")
     click.echo(f"[{portability.status}] G4        stock zarr+xarray without mdio")
     click.echo(f"[{g7_status}] G7        {g7_summary}")
+    click.echo(g5_line)
     click.echo(f"[{g6_status}] G6        {g6_summary}")
     click.echo(f"[{closure_status}] closure   {closure_summary}")
     click.echo("")
