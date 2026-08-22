@@ -1495,3 +1495,36 @@ every one**. The format is not the obstacle. SDIP is.
 declared target, no authorised compute for a cold-cache benchmark. Under **SP9** a
 threshold invented after seeing a chunk shape is not a threshold. A test now reads the
 pre-registration and **fails if the parameter table is ever back-filled**.
+
+---
+
+## D-0040 — 2026-08-22 — The coordinate scalar was an undeclared transform. SP1(a) fixed
+
+**Found by probe P5.** `mdio/segy/scalar.py` applies the coordinate scalar to the derived
+`cdp_x` and `cdp_y` arrays — multiplying on a positive scalar, dividing on a negative one
+— and `transforms_declared[]` named **only** the sample-format decode.
+
+**SP1(a) requires every transform declared.** This one was not, on any certificate the
+project has ever issued.
+
+**No data was lost and no plane was wrong.** The raw 240-byte trace header is untouched,
+so Plane 3 and G3 are unaffected and the round trip stays byte-identical. What was wrong
+is the **declaration**: a consumer reading `cdp_x` gets scaled coordinates and nothing
+said so. That is precisely the class of silent, undisclosed change §0.1 lists.
+
+**Fixed.** `detect_coordinate_scalar` reads the scalar and the certificate declares the
+transform with its operation, the arrays affected, and the probe that found it. An
+identity scalar (0 or 1) is correctly *not* declared — it transforms nothing.
+
+**The uniformity check is the sharper half, and it is new.** Upstream reads the scalar
+from **trace 0 only** and applies it to every trace. A survey whose scalar varies between
+traces — legal SEG-Y — would have one trace's scalar applied to all of them, which is a
+**fabrication under SP12**, not merely an undeclared transform. SDIP now checks *every*
+trace and records `uniform_across_traces` plus the distinct values found; a non-uniform
+file downgrades the declaration from `VERIFIED` to `SCOPED`.
+
+**Measured:** scalar `+100` declares `multiply`, `-100` declares `divide`, both
+`VERIFIED` and uniform across 20 traces, both with G3 still byte-identical.
+
+**Recorded, not fixed:** upstream reading trace 0 only is an upstream behaviour. SDIP
+cannot change it, but it can now *tell you* when trusting it would be wrong.

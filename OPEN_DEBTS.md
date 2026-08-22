@@ -703,3 +703,111 @@ unreachable.
 **Leg 2 proved the format is not the obstacle:** with names declared and an override
 supplied, upstream converted all seven with G3 byte-identical on every one.
 
+---
+
+## D26 — **SP6 has two blind spots.** `warnings_raised[]` can be empty while data is lost
+
+- **Status:** `OPEN` (raised 2026-08-22) · **Found by:** probes P2 and P5
+
+**SP6 promises that a suppressed warning becomes a recorded liability.** Two mechanisms
+defeat it, and neither involves suppression at all — the warning simply never reaches the
+ledger.
+
+**Blind spot 1 — spawned workers.** MDIO's header parser uses a `spawn` multiprocessing
+context, so a warning raised inside a worker is raised in a **different process**. The
+parent's `WarningLedger` sees nothing.
+
+**Measured by P2, and it is the serious one:** on an end-to-end ingest of a fixture with
+2,441 overflowing/underflowing `ibm32` sample words, `numpy` raised *"overflow encountered
+in ibm2ieee"* in the workers and **`IngestResult.warnings.observed` was empty**. A
+certificate for that store would have carried **no warning evidence of the loss at all** —
+while §4.7's `warnings_raised[]` sat there looking reassuringly empty.
+
+**Blind spot 2 — `logger.warning` is not a Python warning.** MDIO's grid-sparsity notice
+at ratio 3.0 goes through `logging`, not `warnings`. **Measured by P5:** the ledger
+recorded `observed: []` for a store with 54 padding cells. The sparsity surfaces only as
+Plane 5's `padding_cells` evidence, which a reader looking at `warnings_raised[]` would
+never think to check.
+
+**Why this matters more than the suppression case D-0004 handles.** There, SDIP could at
+least *detect the suppression* and declare it. Here there is nothing to detect: no filter
+is installed, no warning is silenced, and the ledger is honestly empty because nothing
+ever arrived.
+
+**Closure, in order of value:**
+
+1. **Capture worker warnings.** Pass a warnings-collecting initialiser into the pool, or
+   have workers return their warnings with their results. Needs an upstream hook that
+   may not exist — investigate, and if it does not, say so and record the gap on every
+   certificate rather than leaving `warnings_raised[]` misleadingly empty.
+2. **Attach a `logging.Handler`** for the duration of an ingest and record what upstream
+   logs alongside what it warns. Cheap, and closes blind spot 2 outright.
+3. Until both are closed, the certificate should state that `warnings_raised[]` covers
+   **parent-process Python warnings only** — an empty list is not evidence of a quiet run.
+
+---
+
+## D27 — Coordinate scalar 0 blocks ingestion at rev 0 and rev 1
+
+- **Status:** `OPEN` · **Found by:** P5
+
+`mdio/segy/scalar.py` normalises a zero coordinate scalar to 1 **only for rev 2+**. At
+rev 0 and rev 1 it raises `ValueError: Invalid coordinate scalar: 0`.
+
+A zero coordinate scalar is **very common in real data** — it is what a writer emits when
+coordinates are unscaled. SDIP cannot ingest such a file today.
+
+---
+
+## D28 — Little-endian SEG-Y cannot be declared to SDIP, and the blocker is ours
+
+- **Status:** `OPEN` · **Found by:** P5
+
+`build_gap_free_spec` inherits `endianness=big` from the standard and `ingest()` exposes
+no override, so a little-endian file fails with
+`ValueError: 256 is not a valid DataSampleFormatCode` — the format code read with the
+wrong byte order.
+
+**Measured:** the same file reads correctly with `spec.endianness=None`, which lets
+`segy` infer it — 20 traces, correct inlines and crosslines. **The blocker is SDIP's, not
+upstream's**, and the fix is a parameter.
+
+---
+
+## D29 — Header padding is zero-filled, not `NaN`-filled
+
+- **Status:** `OPEN` · **Found by:** P5 · **SP12 exposure**
+
+`amplitude`, `cdp_x` and `cdp_y` pad with `NaN`, which is unambiguous. The `headers`
+array is a structured integer dtype and pads with **zeros**, so `inline == 0` at a padding
+cell is indistinguishable *by value* from a real inline 0.
+
+**SDIP's own planes are unaffected** — they use `trace_mask`, which is exact. The exposure
+is for **any downstream reader that ignores the mask**, and SP12 says padding must be
+distinguishable from measured data.
+
+---
+
+## D30 — Grids sparser than ratio 10 cannot be ingested
+
+- **Status:** `OPEN` · **Found by:** P5
+
+Ratio 3.0 converts with a log line; ratio 12.0 is refused with `GridTraceSparsityError`.
+**A 2D or crooked-line survey indexed on inline/crossline falls in this class.**
+
+The only route past the bound is `MDIO_IGNORE_CHECKS`, which is **barred** (§9.1) — so
+this is a hard limit for SDIP, not a configuration choice. The correct answer is probably
+a different template or index, not a higher ratio.
+
+---
+
+## D31 — The `inf` clamp is a false-pass hazard for any future `ibm32` probe
+
+- **Status:** `OPEN` (locked in as a test) · **Found by:** P2
+
+`ieee2ibm` clamps infinity to `0x61100000`, which is **itself a valid IBM word that
+round-trips bit-identically while decoding to infinity**. A probe that happened to test
+only that word would report a clean pass on a total overflow.
+
+Locked in as a permanent test so no future narrowing of P2's sweep can reintroduce it.
+

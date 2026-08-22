@@ -38,7 +38,11 @@ from sdip.guard.pins import check_pins
 from sdip.ingest.orchestrator import IngestResult
 from sdip.provenance.environment import capture_environment
 from sdip.provenance.git import capture_git_state
-from sdip.spec.transforms import detect_ibm32, ibm32_blocks_equivalence
+from sdip.spec.transforms import (
+    detect_coordinate_scalar,
+    detect_ibm32,
+    ibm32_blocks_equivalence,
+)
 
 GATES = ("G1", "G2", "G3", "G4", "G5", "G6", "G7")
 PLANE_KEYS = ("plane_1", "plane_2", "plane_3", "plane_4", "plane_5")
@@ -203,6 +207,17 @@ def issue(
     # SP1 / probe P2. The exposure is declared whether or not it blocks: the transform
     # is not invertible in general, even where it happened to be invertible here.
     exposure = detect_ibm32(result.spec.segy_spec)
+
+    # SP1(a): every transform declared. Probe P5 found the coordinate scalar applied to
+    # the derived cdp_x/cdp_y arrays and named nowhere on the certificate.
+    coord_transform = None
+    try:
+        from segy import SegyFile
+
+        handle = SegyFile(str(result.source_path), spec=result.spec.segy_spec)
+        coord_transform = detect_coordinate_scalar(handle.header[:])
+    except Exception:
+        coord_transform = None
     byte_identical = bool(roundtrip is not None and roundtrip.byte_identical)
     transform_blocked, transform_reason = ibm32_blocks_equivalence(
         result.spec.segy_spec, roundtrip_byte_identical=byte_identical
@@ -273,7 +288,14 @@ def issue(
         "roundtrip_closure": closure.to_json() if closure is not None else None,
         "determinism": determinism.to_json() if determinism is not None else None,
         "scale": scale.to_json() if scale is not None else None,
-        "transforms_declared": [exposure.to_json()] if exposure.present else [],
+        "transforms_declared": (
+            ([exposure.to_json()] if exposure.present else [])
+            + (
+                [coord_transform.to_json()]
+                if coord_transform is not None and not coord_transform.is_identity
+                else []
+            )
+        ),
         "transform_scope_blocks_equivalence": transform_blocked,
         "transform_scope_reason": transform_reason or None,
         "warnings": result.warnings.to_json(),

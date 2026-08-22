@@ -81,12 +81,12 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Repository** | `github.com/zahidaramai/sdip` — public, open contribution |
 | **Roadmap phase** | **F4** — **G7 non-vacuity**: the gate on the gates |
 | **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
-| **Source** | 7,315 lines across 40 modules |
+| **Source** | 7,754 lines across 41 modules |
 | **Tests** | 431 passing · mypy strict clean · ruff clean |
 | **Gates enforcing** | **5 of 7** — G1, G2 (five planes), G3, G4, **G7**. G5 and G6 not built |
 | **Certificates issued** | `EQUIVALENT` reachable and demonstrated; none committed |
-| **Decision record** | 38 entries, append-only |
-| **Open debts** | 32 entries, append-only — scheduled, never cancelled |
+| **Decision record** | 40 entries, append-only |
+| **Open debts** | 43 entries, append-only — scheduled, never cancelled |
 
 > **Read the two rows in bold before using anything here.** Zero gates enforce today. What has actually been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md). Where a property is unmeasured this project says so and names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
 

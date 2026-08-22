@@ -193,3 +193,95 @@ def ibm32_blocks_equivalence(segy_spec: Any, *, roundtrip_byte_identical: bool) 
         f"that clause is for a non-conforming SOURCE, not for a transform that destroyed "
         f"measured values."
     )
+
+
+COORD_SCALAR_FIELD = "coordinate_scalar"
+COORD_ARRAYS: tuple[str, ...] = ("cdp_x", "cdp_y")
+
+
+@dataclass(frozen=True, slots=True)
+class CoordinateScalarTransform:
+    """The coordinate-scalar transform MDIO applies to the derived coordinate arrays.
+
+    **This is a transform on output data and SP1 requires it declared.** Probe P5 found
+    it undeclared: `transforms_declared[]` named only the sample-format decode, while
+    `mdio/segy/scalar.py` was multiplying (positive scalar) or dividing (negative scalar)
+    the `cdp_x` and `cdp_y` arrays a consumer reads.
+
+    **No data is lost and no plane was wrong.** The raw 240-byte trace header is
+    untouched, so Plane 3 and G3 are unaffected — the round trip stays byte-identical.
+    What was wrong is the *declaration*: a consumer reading `cdp_x` gets scaled
+    coordinates, and nothing on the certificate said a transform had been applied.
+    SP1(a) requires every transform declared, and this one was not.
+
+    **The uniformity check is the sharper half.** Upstream reads the scalar from
+    **trace 0 only** and applies it to every trace. A survey whose scalar varies between
+    traces — legal SEG-Y — would have one trace's scalar applied to all of them, which
+    *is* a fabrication under SP12. SDIP checks every trace and records whether they
+    agree, because the alternative is trusting a single header to speak for the file.
+    """
+
+    scalar: int
+    uniform: bool
+    distinct_values: tuple[int, ...]
+    trace_count: int
+
+    @property
+    def is_identity(self) -> bool:
+        """True when the scalar leaves coordinates unchanged."""
+        return self.scalar in (0, 1)
+
+    @property
+    def operation(self) -> str:
+        """What the scalar does to a coordinate."""
+        if self.is_identity:
+            return "identity"
+        return "multiply" if self.scalar > 0 else "divide"
+
+    def to_json(self) -> dict[str, Any]:
+        """Certificate-shaped ``transforms_declared`` entry."""
+        return {
+            "from": "int32 coordinate",
+            "to": "float64 scaled coordinate",
+            "applies_to": "derived_arrays",
+            "field_names": list(COORD_ARRAYS),
+            "coordinate_scalar": self.scalar,
+            "operation": self.operation,
+            "invertibility": "VERIFIED" if self.uniform else "SCOPED",
+            "uniform_across_traces": self.uniform,
+            "distinct_scalars_found": list(self.distinct_values),
+            "traces_checked": self.trace_count,
+            "scope_note": (
+                "MDIO applies the coordinate scalar to the derived cdp_x/cdp_y arrays. "
+                "The raw trace header is untouched, so Plane 3 and G3 are unaffected. "
+                "Upstream reads the scalar from TRACE 0 ONLY and applies it to every "
+                "trace; SDIP checks every trace and reports whether they agree, because "
+                "a non-uniform file would have one trace's scalar applied to all of "
+                "them - a fabrication under SP12. Found by probe P5."
+            ),
+            "probe": "P5",
+        }
+
+
+def detect_coordinate_scalar(source_headers: Any) -> CoordinateScalarTransform | None:
+    """Read the coordinate scalar from every trace and report whether they agree.
+
+    Args:
+        source_headers: Header array read from the source with the gap-free spec.
+
+    Returns:
+        The transform, or ``None`` when the spec declares no coordinate scalar.
+    """
+    import numpy as np
+
+    names = getattr(source_headers, "dtype", None)
+    if names is None or COORD_SCALAR_FIELD not in (names.names or ()):
+        return None
+    values = np.asarray(source_headers[COORD_SCALAR_FIELD]).ravel()
+    distinct = tuple(int(v) for v in np.unique(values))
+    return CoordinateScalarTransform(
+        scalar=int(values[0]) if values.size else 0,
+        uniform=len(distinct) <= 1,
+        distinct_values=distinct[:10],
+        trace_count=int(values.size),
+    )
