@@ -23,6 +23,7 @@ from typing import Any
 import numpy as np
 
 from sdip._pins import SEGY_BINARY_HEADER_BYTES, SEGY_TEXTUAL_HEADER_BYTES
+from sdip.errors import UntrustedInputError
 from sdip.ingest.file_headers import (
     read_raw_binary_from_store,
     read_raw_file_headers,
@@ -175,6 +176,53 @@ def _open_store(store: str | Path) -> Any:
     return zarr.open_group(str(store), mode="r")
 
 
+def store_dimensions(group: Any, *, variable: str = "headers") -> tuple[str, ...]:
+    """Read the grid dimension names from the store itself.
+
+    **Never hard-code these.** Planes 3, 4 and 5 originally assumed
+    ``("inline", "crossline")``, which is true of poststack and false of every prestack
+    geometry — probe **P7** found all three planes returning ``KeyError: 'inline'`` on
+    all seven prestack stores, so the Equivalence Contract could not be evaluated for
+    prestack **at all**. `NOT_RUN` is not a pass, and a checker that cannot run on a
+    geometry silently declines to check it. See ``DECISIONS.md`` D-0039.
+
+    Zarr v3 carries ``dimension_names`` in each array's metadata. It is **core-spec**, so
+    reading it needs no MDIO and does not weaken G4.
+
+    Args:
+        group: An open Zarr group.
+        variable: The array to read dimensions from. ``headers`` is indexed by exactly
+            the grid dimensions and no sample axis, which makes it the right source.
+
+    Returns:
+        Dimension names, outermost first.
+
+    Raises:
+        UntrustedInputError: If the store declares no dimension names.
+    """
+    meta = group[variable].metadata.to_dict()
+    names = meta.get("dimension_names")
+    if not names:
+        msg = (
+            f"store array {variable!r} declares no dimension_names; the grid dimensions "
+            "cannot be determined and no per-trace plane can be evaluated against it"
+        )
+        raise UntrustedInputError(msg)
+    return tuple(str(n) for n in names)
+
+
+def _grid_coordinates(group: Any, dimensions: tuple[str, ...]) -> dict[str, Any]:
+    """Coordinate values for each grid dimension, read from the store."""
+    missing = [d for d in dimensions if d not in group]
+    if missing:
+        msg = (
+            f"store declares grid dimensions {list(dimensions)} but carries no "
+            f"coordinate array for {missing}"
+        )
+        raise UntrustedInputError(msg)
+    return {d: group[d][:] for d in dimensions}
+
+
 def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool) -> PlaneResult:
     """**Plane 3 — trace header.** Gate G2c. Spec §4.4.
 
@@ -225,10 +273,8 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
     source_headers = handle.header[:]
     store_headers = group["headers"][:]
 
-    trace_map = build_trace_map(
-        source_headers,
-        {"inline": group["inline"][:], "crossline": group["crossline"][:]},
-    )
+    dimensions = store_dimensions(group)
+    trace_map = build_trace_map(source_headers, _grid_coordinates(group, dimensions), dimensions)
 
     field_names = tuple(source_headers.dtype.names or ())
     store_names = tuple(store_headers.dtype.names or ())
@@ -309,10 +355,8 @@ def plane_4(
     samples = handle.sample[:]
     volume = group[variable][:]
 
-    trace_map = build_trace_map(
-        source_headers,
-        {"inline": group["inline"][:], "crossline": group["crossline"][:]},
-    )
+    dimensions = store_dimensions(group)
+    trace_map = build_trace_map(source_headers, _grid_coordinates(group, dimensions), dimensions)
 
     mismatches: list[dict[str, Any]] = []
     compared = 0
@@ -380,10 +424,8 @@ def plane_5(source: str | Path, store: str | Path, spec: Any) -> PlaneResult:
     source_headers = handle.header[:]
     source_count = int(handle.num_traces)
 
-    trace_map = build_trace_map(
-        source_headers,
-        {"inline": group["inline"][:], "crossline": group["crossline"][:]},
-    )
+    dimensions = store_dimensions(group)
+    trace_map = build_trace_map(source_headers, _grid_coordinates(group, dimensions), dimensions)
 
     mask = np.asarray(group["trace_mask"][:]).astype(bool)
     live_cells = {tuple(int(i) for i in idx) for idx in zip(*np.nonzero(mask), strict=True)}

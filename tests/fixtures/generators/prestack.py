@@ -1,6 +1,6 @@
 """Synthetic prestack SEG-Y fixtures for probe **P7**.
 
-Six geometries, one generator, one seed. Each fixture is a small regular gather volume
+Seven geometries, one generator, one seed. Each fixture is a small regular gather volume
 whose index headers are exactly the ones an MDIO prestack template binds by name.
 
 Why this module exists at all
@@ -291,9 +291,7 @@ GEOMETRIES: tuple[PrestackGeometry, ...] = (
             *_shot_flip_flop(1000),
             DerivedColumn("source_coord_x", ("shot", "gun"), 500_000, (2500, 50)),
             DerivedColumn("source_coord_y", (), 600_000),
-            DerivedColumn(
-                "group_coord_x", ("shot", "gun", "channel"), 500_000, (2500, 50, -1200)
-            ),
+            DerivedColumn("group_coord_x", ("shot", "gun", "channel"), 500_000, (2500, 50, -1200)),
             DerivedColumn("group_coord_y", ("cable",), 600_000, (10_000,)),
         ),
         store_dimensions=("sail_line", "gun", "shot_index", "cable", "channel"),

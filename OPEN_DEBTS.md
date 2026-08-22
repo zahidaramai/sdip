@@ -661,3 +661,45 @@ selective, which is precisely what makes parallelism available.
 Note this does **not** breach P3's declared 900 s ceiling — the first file completed the
 full chain in 467 s. It is a cost that scales badly, not a failure.
 
+---
+
+## D4 — NARROWED 2026-08-22 — prestack partially evaluable; chunking still unmeasured
+
+- **Probe:** P7, clause 1 **FIRED** · **Decision:** `DECISIONS.md` D-0039
+
+**Correctness half:** planes now read `dimension_names` from the store instead of
+assuming `{inline, crossline}`. **4 of 7** prestack geometries fully establish the
+Equivalence Contract; one **fails visibly** (`AutoChannelWrap` reorders traces); two
+still raise, needing a computed dimension.
+
+**Chunking half: still entirely unmeasured.** No candidate shapes, no declared latency
+target, no authorised benchmark compute. **Do not guess in production.**
+
+---
+
+## D24 — `sdip ingest` cannot ingest prestack; the blocker is a name
+
+- **Status:** `OPEN` · **Decision:** D-0039 F1
+
+Seven geometries, seven refusals. Every prestack template binds header fields the rev 1
+standard does not name. **For `offset` and `cdp` the bytes already exist** — rev 1 byte 37
+is `source_to_receiver_distance` and byte 21 is `ensemble_num`, same bytes, same meaning,
+different name — and `ingest()` has no parameter to say so.
+
+**Closure:** §6.4 survey overrides (debt **D21**). One mechanism unblocks rev 0 *and* four
+prestack geometries.
+
+---
+
+## D25 — `ingest()` does not forward `grid_overrides`
+
+- **Status:** `OPEN` · **Decision:** D-0039 F2
+
+`segy_to_mdio` accepts `grid_overrides`; SDIP does not pass one. `StreamerFieldRecords3D`
+and `ObnReceiverGathers3D` cannot convert without it — their `shot_index` dimension is
+calculated. A declaration parameter alone fixes four of seven geometries and leaves three
+unreachable.
+
+**Leg 2 proved the format is not the obstacle:** with names declared and an override
+supplied, upstream converted all seven with G3 byte-identical on every one.
+

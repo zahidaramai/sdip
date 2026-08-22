@@ -1430,3 +1430,68 @@ gates, and the original store is byte-for-byte unchanged.
 whole pipeline** — 370 s and 2.83 GB copied for a 362 MB store. At a 20 GB survey that is
 ~160 GB and hours, which is the point where an operator switches the gate off. **A gate
 that gets switched off is worse than one that was never written** (**SP11**).
+
+---
+
+## D-0039 — 2026-08-22 — **P7 fired**, and the defect was ours: the planes hard-coded the grid
+
+**Result.** Probe P7's clause 1 fired on **all seven** prestack geometries — not as a
+measured mismatch, but as an **inability to evaluate**. Planes 1 and 2 passed everywhere;
+Planes 3, 4 and 5 returned **no verdict at all**, dying with `KeyError: 'inline'`.
+
+**The cause was SDIP's, not the data's and not upstream's.** All three planes called
+`build_trace_map` with a hard-coded `{"inline": ..., "crossline": ...}` — true of
+poststack, false of every prestack geometry. **`NOT_RUN` is not a pass**, and a checker
+that cannot run on a geometry silently declines to check it. The Equivalence Contract was
+not established for prestack at all, and nothing said so.
+
+**Fix.** The planes now read `dimension_names` from the store's own **Zarr v3 metadata**.
+That is core-spec, so it needs no MDIO and does not weaken G4 — and it means the planes
+evaluate whatever grid the store actually has rather than the grid they assumed.
+
+**Measured before and after, on the same seven geometries:**
+
+| Geometry | Before | After |
+|---|---|---|
+| `streamer_shot_3d` | 3/4/5 `RAISED` | **all five PASS** |
+| `streamer_shot_2d` | 3/4/5 `RAISED` | **all five PASS** |
+| `cdp_offset_3d` | 3/4/5 raised `ValueError`/`IndexError` | **all five PASS** |
+| `cdp_offset_2d` | 3/4/5 `RAISED` | **all five PASS** |
+| `streamer_shot_3d_wrapped` | 3/4/5 `RAISED` | 3/4/5 **FAIL** — a real mismatch, now visible |
+| `streamer_field_3d` | 3/4/5 `RAISED` | 3/4/5 `RAISED` — computed dimension |
+| `obn_receiver_3d` | 3/4/5 `RAISED` | 3/4/5 `RAISED` — computed dimension |
+
+**From 0 of 7 evaluable to 4 of 7 fully passing**, and one of the remainder now
+**fails visibly** instead of failing to run — which is the more valuable half of the
+change. `AutoChannelWrap` reorders traces, and a reordering that the map cannot invert
+is exactly what Plane 5 exists to surface.
+
+**The P7 test file had encoded the defect as expected behaviour**, asserting `RAISED`.
+That is the same trap as D-0028: a suite entirely green while pinning a bug in place. The
+expectations were corrected rather than deleted, so the change is visible in the diff,
+and the table above is carried in the file with both readings.
+
+### Two further P7 findings, recorded as debts rather than fixed here
+
+**F1 — `sdip ingest` cannot ingest prestack at all, and the blocker is a name.** Seven
+geometries, seven refusals: every prestack template binds trace-header fields the rev 1
+standard does not name — `cable`, `channel`, `gun`, `sail_line`, `receiver`, `shot_line`,
+`offset`, `cdp`. **For two of them the blocker is *only* a name:** rev 1 byte 37 is
+`source_to_receiver_distance`, which **is** offset; byte 21 is `ensemble_num`, which
+**is** the CDP. Same bytes, same width, same meaning — and `ingest()` has no parameter
+that lets a caller say so. That parameter is §6.4's survey override (debt **D21**).
+
+**F2 — three geometries need a grid override `ingest()` does not forward.**
+`segy_to_mdio` accepts `grid_overrides`; SDIP does not pass one. For
+`StreamerFieldRecords3D` and `ObnReceiverGathers3D` it is not optional — their
+`shot_index` dimension is *calculated*. So a declaration parameter alone fixes four of
+seven and leaves three unreachable.
+
+**Leg 2 is what makes these findings actionable:** with the names declared and an
+override supplied, the pinned upstream converted **all seven, with G3 byte-identical on
+every one**. The format is not the obstacle. SDIP is.
+
+**The latency half of P7 was not run**, and deliberately: no candidate chunk shapes, no
+declared target, no authorised compute for a cold-cache benchmark. Under **SP9** a
+threshold invented after seeing a chunk shape is not a threshold. A test now reads the
+pre-registration and **fails if the parameter table is ever back-filled**.
