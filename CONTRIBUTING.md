@@ -38,7 +38,7 @@ Specification v1.0 your change touches. The section, not the summary.
 ## Setup
 
 ```bash
-git clone https://github.com/OWNER/sdip && cd sdip
+git clone https://github.com/zahidaramai/sdip && cd sdip
 uv sync                    # Python >=3.12,<3.14
 uv run sdip doctor         # must pass before anything else
 uv run pytest

@@ -239,68 +239,133 @@ jobs:
             echo "::error::NOTICE/CITATION.cff carry an unresolved placeholder - OPEN_DEBTS D12"
             exit 1
           fi
-          if grep -rn 'OWNER/sdip' README.md CITATION.cff pyproject.toml ; then
-            echo "::error::repository URL placeholder OWNER/sdip is unresolved"
+          if grep -rn 'zahidaramai/sdip' README.md CITATION.cff pyproject.toml ; then
+            echo "::error::repository URL placeholder zahidaramai/sdip is unresolved"
             exit 1
           fi
 
   # ---------------------------------------------------------------------------
-  # Declared, not yet buildable. These fail with the roadmap phase rather than
-  # being absent, because an absent job renders as a green check.
+  # Gate jobs. Each one ARMS ITSELF: it looks for its own subject in the tree and
+  # either runs the real check or reports NOT_RUN with its roadmap phase.
+  #
+  # Why not simply fail while unbuilt. Spec 7.8 says any failure blocks merge, so a
+  # job that always fails blocks every PR forever - including the PR that would
+  # build it. That is not strictness, it is a broken gate, and a broken gate gets
+  # deleted or bypassed, which is worse than a missing one (SP11).
+  #
+  # Why not simply omit them. An absent job renders as a green check and nobody
+  # ever notices the gate does not exist.
+  #
+  # So: the job exists, runs on every PR, states its status in the run summary, and
+  # starts ENFORCING the moment its subject appears - no one has to remember to
+  # switch it on. Green here means "everything that exists passes", never "the gates
+  # pass". What has and has not been measured is in README.md and OPEN_DEBTS.md D11.
   # ---------------------------------------------------------------------------
-  integration:
-    name: integration (phase F3)
+  gates:
+    name: gates
     needs: doctor
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - gate: integration
+            phase: F3
+            subject: tests/integration/test_*.py
+            command: uv run pytest tests/integration -v
+            note: Lifted round-trip fixture extended to the 240-byte plane; SHA-256 assertion.
+          - gate: negative-G7
+            phase: F4
+            subject: tests/negative/test_*.py
+            command: uv run pytest tests/negative -v
+            note: >-
+              Non-vacuity. Until G7 passes, every certificate the engine issues is
+              unvalidated. OPEN_DEBTS D11.
+          - gate: portability-G4
+            phase: F3
+            subject: tests/integration/test_portability*.py
+            command: uv run pytest tests/integration -k portability -v
+            note: Store must open with stock zarr and xarray asserting 'mdio' not in sys.modules.
+          - gate: spawn-guard
+            phase: F2
+            subject: tests/integration/test_spawn_guard*.py
+            command: uv run pytest tests/integration -k spawn -v
+            note: >-
+              MDIO's header parser uses a spawn context; a missing __main__ guard kills
+              the pool with BrokenProcessPool.
+          - gate: determinism-G6
+            phase: F3
+            subject: tests/integration/test_determinism*.py
+            command: uv run pytest tests/integration -k determinism -v
+            note: Two ingests of the same fixture must produce identical array bytes.
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          echo "::error::integration requires the Equivalence Engine (roadmap phase F3)."
-          echo "Lifted round-trip fixture extended to the 240-byte plane; SHA-256 assertion."
-          exit 1
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
-  negative:
-    name: negative / G7 (phase F4)
-    needs: doctor
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          echo "::error::G7 non-vacuity suite does not exist (roadmap phase F4)."
-          echo "Until G7 passes, every certificate the engine issues is unvalidated."
-          echo "OPEN_DEBTS D11."
-          exit 1
+      - name: Is this gate armed?
+        id: arm
+        run: |
+          # shellcheck disable=SC2086
+          if compgen -G "${{ matrix.subject }}" > /dev/null; then
+            echo "armed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "armed=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
 
-  portability:
-    name: portability / G4 (phase F3)
-    needs: doctor
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          echo "::error::G4 requires a store to open (roadmap phase F3)."
-          echo "The store must open with stock zarr and xarray asserting 'mdio' not in sys.modules."
-          exit 1
+      - name: Report NOT_RUN
+        if: steps.arm.outputs.armed == 'false'
+        run: |
+          {
+            echo "### ${{ matrix.gate }} — \`NOT_RUN\` (roadmap phase ${{ matrix.phase }})"
+            echo
+            echo "No file matches \`${{ matrix.subject }}\`, so this gate has nothing to run."
+            echo
+            echo "> ${{ matrix.note }}"
+            echo
+            echo "It arms itself the moment that file appears. Green on this job means"
+            echo "*everything that exists passes* — it does **not** mean the gate passes."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=${{ matrix.gate }} NOT_RUN::roadmap phase ${{ matrix.phase }} — no subject in tree"
 
-  spawn-guard:
-    name: spawn-guard (phase F2)
-    needs: doctor
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          echo "::error::spawn-guard requires ingestion (roadmap phase F2)."
-          echo "MDIO's header parser uses a spawn context; a missing __main__ guard"
-          echo "kills the pool with BrokenProcessPool. Spec 11.1, Appendix A.5."
-          exit 1
+      - name: Run the gate
+        if: steps.arm.outputs.armed == 'true'
+        run: |
+          uv sync --all-extras --dev
+          ${{ matrix.command }}
 
-  determinism:
-    name: determinism / G6 (phase F3)
-    needs: doctor
+  # Makes the unbuilt gates visible in every run rather than only in a job that
+  # printed a notice and went green.
+  roadmap:
+    name: roadmap
+    needs: gates
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          echo "::error::G6 requires ingestion (roadmap phase F3)."
-          echo "Two ingests of the same fixture must produce identical array bytes."
-          exit 1
+      - name: Summarise what has and has not been measured
+        run: |
+          {
+            echo "## SDIP roadmap status"
+            echo
+            echo "Current phase: **F0** — repository skeleton, public-project files, \`sdip doctor\`."
+            echo
+            echo "| Gate | Phase | State |"
+            echo "|---|---|---|"
+            for row in \
+              "G1 spec completeness|F1|NOT BUILT" \
+              "G2 ingest identity|F3|NOT BUILT" \
+              "G3 round trip|F3|NOT BUILT" \
+              "G4 portability|F3|NOT BUILT" \
+              "G5 scale|F6|NOT BUILT — probe P3" \
+              "G6 determinism|F3|NOT BUILT" \
+              "G7 non-vacuity|F4|**NOT BUILT — OPEN_DEBTS D11**"; do
+              IFS='|' read -r g p s <<< "$row"; echo "| $g | $p | $s |"
+            done
+            echo
+            echo "**Until G7 passes, every certificate the engine issues is unvalidated.**"
+            echo "Do not publish certificates from an engine whose gates have never been"
+            echo "shown to fail. Live debts: \`OPEN_DEBTS.md\`."
+          } >> "$GITHUB_STEP_SUMMARY"

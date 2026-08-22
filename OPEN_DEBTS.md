@@ -226,3 +226,39 @@ name. It must be settled before the first public commit, not after.
 
 The technical specification is complete and correct regardless of how this resolves.
 It affects the name on the repository, not the contents of it.
+
+---
+
+## D12 — CLOSED 2026-08-22 — copyright holder resolved
+
+- **Closes:** D12 above, which is left in place unedited (**SP10**)
+- **Decision:** `DECISIONS.md` D-0011
+
+The holder is **Zahid Aramai**, personally. `NOTICE` and `CITATION.cff` carry the name;
+the `<<UNRESOLVED-COPYRIGHT-HOLDER>>` placeholder is gone and the
+`publication-readiness` CI job passes. The repository is published at
+`github.com/zahidaramai/sdip`.
+
+**Not closed by this entry:** the employment-policy clearance the internal companion
+§6 pairs with the copyright decision. That is a legal question this repository cannot
+observe, and D-0011 says so explicitly rather than implying it was settled.
+
+---
+
+## D14 — Green CI does not mean the gates pass
+
+- **Status:** `OPEN` (raised 2026-08-22)
+- **Blocks:** nothing; it is a standing risk of misreading
+- **Decision:** `DECISIONS.md` D-0012
+
+The five gate jobs report `NOT_RUN` while their subject does not exist, so the build is
+green with **zero gates enforced**. This is deliberate — an always-failing job would
+block the PR that builds the gate (D-0012) — but it means a reader who checks only the
+badge learns nothing about equivalence.
+
+Mitigations in place: the `roadmap` CI job writes all seven gate states into every run
+summary; `README.md` states the current phase and what was measured; **D11** records
+that until G7 passes every certificate is unvalidated.
+
+**Closure:** all seven gates built and enforcing, at which point green means what a
+reader assumes it means.

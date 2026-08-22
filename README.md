@@ -60,7 +60,7 @@ is already in an open format and nothing needs migrating.
 > **The only command implemented today is `doctor`.** See [Status](#status--honest-limits).
 
 ```bash
-git clone https://github.com/OWNER/sdip && cd sdip
+git clone https://github.com/zahidaramai/sdip && cd sdip
 uv sync                 # Python >=3.12,<3.14 — the pins intersect there
 uv run sdip doctor      # runs first in CI and first in every runbook
 ```

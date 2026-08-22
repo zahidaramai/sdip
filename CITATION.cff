@@ -15,8 +15,8 @@ abstract: >-
   installed. The product is not the file; the product is the file plus the proof.
 type: software
 license: Apache-2.0
-repository-code: "https://github.com/OWNER/sdip"
-url: "https://github.com/OWNER/sdip"
+repository-code: "https://github.com/zahidaramai/sdip"
+url: "https://github.com/zahidaramai/sdip"
 keywords:
   - SEG-Y
   - MDIO
@@ -29,14 +29,11 @@ keywords:
   - reproducibility
   - cloud-native
 
-# ---------------------------------------------------------------------------
-# BLOCKING FOR THE FIRST PUBLIC PUSH — see OPEN_DEBTS.md D12.
-# Authorship and the copyright holder are unresolved. The `publication-readiness`
-# CI job fails while the placeholder below is present, so this file cannot reach a
-# public repository unfilled.
-# ---------------------------------------------------------------------------
 authors:
-  - name: "<<UNRESOLVED-COPYRIGHT-HOLDER>>"
+  - family-names: "Aramai"
+    given-names: "Zahid"
+    alias: "zahidaramai"
+    email: "me@zahidaramai.com"
 
 version: 0.1.0.dev0
 date-released: "2026-08-22"

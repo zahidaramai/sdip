@@ -44,10 +44,23 @@ invalidates every certificate issued under the previous pin (spec §12.4).
 - The runtime dependency tree carries **no GPL or AGPL entry**: 51 distributions,
   one requiring an allowlist entry with cited evidence. See `DECISIONS.md` D-0005/D-0006.
 
+### Published
+
+- Copyright holder resolved and the repository published at
+  `github.com/zahidaramai/sdip` under Apache-2.0. Closes `OPEN_DEBTS.md` D12; see
+  `DECISIONS.md` D-0011.
+
+### Fixed before first publication
+
+- The five gate CI jobs were written to fail while unbuilt, which — under §7.8's "any
+  failure blocks merge" — would have blocked **every** PR permanently, including the PR
+  that built the gate. They now arm themselves on the presence of their own subject.
+  `DECISIONS.md` D-0012, recorded as a maintainer error.
+
 ### Not yet built
 
 `sdip spec build` (F1), `sdip ingest` (F2), `sdip verify` / `sdip export` /
 `sdip certify` (F3–F4). Each command exists and refuses with its roadmap phase.
 Nothing is stubbed out to look like it works.
 
-[Unreleased]: https://github.com/OWNER/sdip/commits/main
+[Unreleased]: https://github.com/zahidaramai/sdip/commits/main

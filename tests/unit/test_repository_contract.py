@@ -348,6 +348,38 @@ def test_gitignore_has_no_negation_for_an_unpublishable_path(repo_root):
         assert not any(pattern in line for pattern in NEVER_PUBLISH), line
 
 
+def test_every_gate_has_a_ci_job_that_arms_itself(repo_root):
+    """Spec 7.8. Every gate is represented, and none blocks merge while unbuilt.
+
+    An absent job renders as a green check, so the job must exist. A job that always
+    fails blocks every PR forever, including the PR that would build it, so it must
+    not fail while unbuilt. It therefore looks for its own subject and starts
+    enforcing the moment that subject appears.
+    """
+    ci = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
+    for gate in (
+        "integration",
+        "negative-G7",
+        "portability-G4",
+        "spawn-guard",
+        "determinism-G6",
+    ):
+        assert f"gate: {gate}" in ci, gate
+    assert "steps.arm.outputs.armed" in ci, "gates must self-arm on their subject"
+    assert "NOT_RUN" in ci
+
+
+def test_unbuilt_gates_do_not_hard_fail_the_build(repo_root):
+    """NEGATIVE CONTROL for the design above.
+
+    A leftover `exit 1` in a gate job would silently reintroduce the always-red
+    build that cannot be merged out of.
+    """
+    ci = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
+    gates_block = ci.split("  gates:", 1)[1].split("\n  roadmap:", 1)[0]
+    assert "exit 1" not in gates_block
+
+
 def test_firewall_is_enforced_in_ci_independently_of_doctor(repo_root):
     """The firewall job must not be gated on the environment being healthy.
 

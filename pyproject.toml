@@ -45,10 +45,10 @@ dependencies = [
 cloud = ["multidimio[cloud]==1.2.1"]
 
 [project.urls]
-Homepage = "https://github.com/OWNER/sdip"
-Documentation = "https://github.com/OWNER/sdip/blob/main/README.md"
-Changelog = "https://github.com/OWNER/sdip/blob/main/CHANGELOG.md"
-Issues = "https://github.com/OWNER/sdip/issues"
+Homepage = "https://github.com/zahidaramai/sdip"
+Documentation = "https://github.com/zahidaramai/sdip/blob/main/README.md"
+Changelog = "https://github.com/zahidaramai/sdip/blob/main/CHANGELOG.md"
+Issues = "https://github.com/zahidaramai/sdip/issues"
 
 [project.scripts]
 sdip = "sdip.cli.main:main"

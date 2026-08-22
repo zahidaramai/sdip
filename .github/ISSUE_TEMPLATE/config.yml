@@ -1,12 +1,12 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/OWNER/sdip/security/advisories/new
+    url: https://github.com/zahidaramai/sdip/security/advisories/new
     about: >-
       Report privately through GitHub Security Advisories. Do not open a public issue.
       A way to make certify issue a false EQUIVALENT verdict is a security issue.
   - name: How to contribute
-    url: https://github.com/OWNER/sdip/blob/main/CONTRIBUTING.md
+    url: https://github.com/zahidaramai/sdip/blob/main/CONTRIBUTING.md
     about: >-
       The rules a contribution must satisfy, the G7 negative-control discipline, and
       the test data policy. Read it before opening a PR.

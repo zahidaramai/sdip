@@ -317,3 +317,66 @@ sdist either — the firewall has to survive `uv build` as well as `git push`.
 **What overturns it.** A maintainer decision to publish a specific document, recorded
 as a new entry citing this one, and removing that path from `NEVER_PUBLISH`, from
 `.gitignore`, and from the CI job in the same commit.
+
+---
+
+## D-0011 — 2026-08-22 — Copyright holder resolved; repository published
+
+**Decision.** The `LICENSE` copyright line and the `NOTICE` attribution are held by
+**Zahid Aramai**, personally. `CITATION.cff` names the same holder. The repository is
+published at `github.com/zahidaramai/sdip`, public, Apache-2.0.
+
+**Closes** `OPEN_DEBTS.md` **D12**, which was blocking the first public push. Recorded
+here rather than by editing D12: the record is append-only (**SP10**), so D12 keeps its
+text and gains a closure entry beneath it.
+
+**Note on scope, stated because it is a legal question and not a technical one.** The
+internal companion §6 pairs the copyright decision with employment-policy clearance for
+publishing under a personal identity. This entry records the copyright holder as
+decided by the maintainer. It does **not** record that clearance was obtained, because
+that is not something this repository can observe. If clearance turns out to be
+required and absent, the remedy is a new entry here and a change of holder — not a
+silent edit of this one.
+
+**What overturns it.** A determination that the work is owned by an employer, which
+would require a new entry, a corrected `NOTICE` and `CITATION.cff`, and a decision about
+whether the repository may remain published at all.
+
+---
+
+## D-0012 — 2026-08-22 — Gate CI jobs arm themselves instead of failing while unbuilt
+
+**Decision.** The five gate jobs — `integration`, `negative-G7`, `portability-G4`,
+`spawn-guard`, `determinism-G6` — run on every PR, look for their own subject in the
+tree, and either run the real check or report `NOT_RUN` with their roadmap phase. They
+begin enforcing automatically the moment their subject file appears.
+
+**Correcting D-0007's sibling reasoning, and an error in the F0 commit.** Those jobs
+were originally written to `exit 1` with their roadmap phase, on the argument that an
+absent job renders as a green check. The first half of that argument is right and
+stands. The second half was wrong, and would have been wrong in a way that damaged the
+project:
+
+- Specification §7.8 states that **any failure blocks merge**.
+- A job that always fails therefore blocks **every** PR, permanently — **including the
+  PR that would build the very thing it is waiting for.**
+- A gate that cannot be satisfied by doing the work is not strict. It is broken, and a
+  broken gate gets deleted or bypassed, which leaves the project worse off than a
+  missing one (**SP11**).
+
+This was caught before the first push, while preparing the repository for publication.
+It is recorded as a maintainer error, on the precedent set by Appendix A.4.
+
+**Why self-arming rather than a checklist item.** The failure mode of "remember to
+switch the job on when you build the thing" is that nobody remembers, and the gate is
+discovered to have been inert only when something has already gone wrong. Keying the
+job to the presence of its own subject removes the human step entirely.
+
+**What green means now, stated so it cannot be misread.** A green build means
+*everything that exists passes*. It does **not** mean the gates pass. The `roadmap` job
+writes the state of all seven gates into every run summary, `README.md` states the
+current phase, and `OPEN_DEBTS.md` **D11** records that **until G7 passes, every
+certificate the engine issues is unvalidated**.
+
+**What overturns it.** All seven gates existing, at which point the arming logic is
+dead code and should be removed by a new entry citing this one.
