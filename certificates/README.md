@@ -9,9 +9,20 @@ curated, and a curated evidence set is not evidence.
 
 ## Validation
 
-Certificates validate against the SDIP certificate schema, which is versioned
-independently of the software so a third party can check SDIP output **without running
-SDIP**. Several project rules are encoded as schema constraints rather than left to
+Certificates validate against the SDIP certificate schema, shipped **inside the
+package** at [`src/sdip/schema/`](../src/sdip/schema/) and versioned independently of
+the software, so a third party can check SDIP output **without running SDIP**:
+
+```bash
+python -c "from sdip.schema import schema_path; print(schema_path())"
+
+uvx check-jsonschema \
+  --schemafile src/sdip/schema/sdip-certificate-v0.schema.json \
+  certificates/*.json
+```
+
+`pip install sdip` carries the schema, so a consumer who never clones this repository
+still has the validator. Several project rules are encoded as schema constraints rather than left to
 prose, so an invalid certificate cannot be produced by accident:
 
 | Constraint | Rule |

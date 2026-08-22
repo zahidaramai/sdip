@@ -508,9 +508,69 @@ def test_every_probe_has_a_preregistration(repo_root):
     assert {f"P{n}" for n in range(1, 9)} <= registered
 
 
-def test_certificate_schema_exists_locally(repo_root):
-    """The schema is versioned and published separately, not from this repository."""
-    schema_dir = repo_root / "docs" / "certificate-schema"
-    if not schema_dir.is_dir():
-        pytest.skip("docs/ is not distributed; nothing to check in a published clone")
-    assert list(schema_dir.glob("*.schema.json"))
+def test_certificate_schema_is_published(repo_root):
+    """Spec 4.7 requires the schema published so a third party can validate without SDIP.
+
+    It ships inside the package rather than in docs/, which is never committed. This
+    asserts the file is tracked in the public tree - "published" means a reader can
+    actually obtain it, not that it exists on someone's disk.
+    """
+    schema = repo_root / "src" / "sdip" / "schema" / "sdip-certificate-v0.schema.json"
+    assert schema.is_file()
+    result = _git(["ls-files", "--error-unmatch", str(schema.relative_to(repo_root))], repo_root)
+    if "not a git repository" not in result.stderr:
+        assert result.returncode == 0, "the schema exists but is not tracked"
+
+
+def test_certificate_schema_loads_from_the_installed_package(repo_root):
+    """`pip install sdip` must carry a validator for someone who never clones."""
+    from sdip.schema import available_versions, load_schema
+
+    assert available_versions() == ("0",)
+    schema = load_schema()
+    assert schema["title"] == "SDIP Equivalence Certificate v0"
+    assert schema["$schema"].endswith("2020-12/schema")
+
+
+def test_schema_encodes_the_rules_it_is_supposed_to_encode(repo_root):
+    """The schema is not merely descriptive; several project rules are constraints.
+
+    If one of these ever softens to a plain type, an invalid certificate becomes
+    representable and the schema stops being a gate.
+    """
+    from sdip.schema import load_schema
+
+    schema = load_schema()
+    props = schema["properties"]
+    assert props["spec_itemsize"]["const"] == 240
+    assert props["spec_gap_free"]["const"] is True
+    assert props["lossy_codec_present"]["const"] is False
+    assert props["output_zarr_format"]["const"] == 3
+    assert props["git"]["properties"]["dirty"]["const"] is False
+    assert set(props["verdict"]["enum"]) == {
+        "EQUIVALENT",
+        "NON-EQUIVALENT",
+        "PROVISIONAL",
+    }
+
+
+def test_equivalent_verdict_requires_its_evidence_in_the_same_document(repo_root):
+    """There is no partial credit (spec 4.1), and the schema must enforce that."""
+    from sdip.schema import load_schema
+
+    conditional = load_schema()["allOf"][0]
+    assert conditional["if"]["properties"]["verdict"]["const"] == "EQUIVALENT"
+    then = conditional["then"]["properties"]
+    for plane in ("plane_1", "plane_2", "plane_3", "plane_4", "plane_5"):
+        assert then["planes"]["properties"][plane]["properties"]["status"]["const"] == "PASS"
+    for gate in ("G1", "G2", "G7"):
+        assert then["gates"]["properties"][gate]["const"] == "PASS"
+
+
+def test_wheel_ships_the_schema(repo_root):
+    """The firewall must not accidentally strip a runtime artifact from the build."""
+    import tomllib
+
+    data = tomllib.loads((repo_root / "pyproject.toml").read_text())
+    artifacts = data["tool"]["hatch"]["build"]["targets"]["wheel"].get("artifacts", [])
+    assert any("schema" in a and a.endswith(".json") for a in artifacts), artifacts

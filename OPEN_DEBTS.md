@@ -278,3 +278,52 @@ now recorded and dated.
 No automated check verifies the attestation, and none could. It is recorded so the basis
 for publication is written down rather than assumed.
 
+---
+
+## D9 — NARROWED 2026-08-22 — artifact and installed-file verification added
+
+- **Narrows:** D9 above, left in place unedited (**SP10**)
+- **Decision:** `DECISIONS.md` D-0016
+
+Three claims are now made and kept separate: **version** verified exactly, **artifact
+sha256** read from `uv.lock` where `uv sync --frozen` enforces it at install time, and
+**145 installed files** recomputed against the wheels' own `RECORD` manifests.
+
+**Still open, and this is the whole of what remains:** none of it attests that the wheel
+was built from the declared commit. A wheel does not carry the SHA it was built from.
+Closing that needs a source build or an upstream provenance attestation, neither of
+which exists under the current pins. `commit_sha_verified` stays `False` everywhere, and
+a test asserts it so a future change has to edit that assertion deliberately.
+
+---
+
+## D10 — REPORTED 2026-08-22 — upstream issue filed
+
+- **Concerns:** D10 above; the debt stays `OPEN`
+- **Decision:** `DECISIONS.md` D-0017
+
+Filed as [TGSAI/mdio-python#864](https://github.com/TGSAI/mdio-python/issues/864),
+discharging the §3.3 obligation to report rather than merely route around. Every claim
+in the report was re-verified against the pinned code immediately before posting.
+
+**The debt does not close on being reported.** It closes when upstream fixes it — at
+which point SDIP's containment in `guard/warn.py` should be re-read to see what is still
+needed — or when upstream declines, at which point that is recorded and the containment
+becomes permanent.
+
+---
+
+## D15 — The certificate schema had no published copy
+
+- **Status:** `CLOSED` 2026-08-22
+- **Decision:** `DECISIONS.md` D-0015
+
+Spec §4.7 requires the certificate schema published so a third party can validate SDIP
+output without running SDIP. D-0010 made `docs/` unpublishable and the only copy lived
+there, so the requirement was **silently unsatisfiable** — `git ls-files` returned
+nothing — and F8's "published certificate schema" deliverable was unreachable.
+
+Closed by moving it to `src/sdip/schema/`, tracked and shipped in both wheel and sdist.
+Recorded as a debt rather than a plain fix because it was a **requirement quietly
+unmet**, not a task not yet started, and that failure mode is worth having on the record.
+

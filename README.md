@@ -29,7 +29,7 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 [![dco](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml)
 
 ![Phase](https://img.shields.io/badge/roadmap_phase-F0-orange?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-175_passing-success?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-186_passing-success?style=flat-square)
 ![Gates enforcing](https://img.shields.io/badge/gates_enforcing-0_of_7-critical?style=flat-square)
 ![Certificates](https://img.shields.io/badge/certificates_issued-0-lightgrey?style=flat-square)
 ![Type checked](https://img.shields.io/badge/mypy-strict-2A6DB2?style=flat-square)
@@ -81,12 +81,12 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Repository** | `github.com/zahidaramai/sdip` — public, open contribution |
 | **Roadmap phase** | **F0** — repository skeleton, public-project files, `sdip doctor` |
 | **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
-| **Source** | 1,935 lines across 23 modules |
-| **Tests** | 175 passing · mypy strict clean · ruff clean |
+| **Source** | 2,172 lines across 24 modules |
+| **Tests** | 186 passing · mypy strict clean · ruff clean |
 | **Gates enforcing** | **0 of 7** — the engine is phase F3, its non-vacuity suite is F4 |
 | **Certificates issued** | **0** |
-| **Decision record** | 14 entries, append-only |
-| **Open debts** | 16 entries, append-only — scheduled, never cancelled |
+| **Decision record** | 17 entries, append-only |
+| **Open debts** | 19 entries, append-only — scheduled, never cancelled |
 
 > **Read the two rows in bold before using anything here.** Zero gates enforce today. What has actually been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md). Where a property is unmeasured this project says so and names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
 
@@ -137,7 +137,7 @@ A store `Z` is **equivalent** to a source `S` **iff all five planes hold simulta
 - **Forbid-list enforcement** (`sdip.guard`) — barred environment variables, barred packages, binding upstream pins, a runtime dependency-tree licence scan, an SP6 warning ledger, and an `ast` scan proving SDIP never *sets* a barred variable.
 - **Provenance capture** (`sdip.provenance`) — streamed SHA-256 (bounded regardless of input size), full environment capture, and git working-tree state including untracked files.
 - **Publication firewall** — four layers, one of which prevents rather than detects. See [below](#-publication-firewall).
-- **Certificate JSON Schema v0** — where `verdict: EQUIVALENT` is structurally unrepresentable unless all five planes and `G1`/`G2`/`G7` are `PASS` in the same document.
+- **Published certificate JSON Schema v0** — shipped inside the package, so `pip install sdip` gives a validator to a consumer who never clones. `verdict: EQUIVALENT` is structurally unrepresentable unless all five planes and `G1`/`G2`/`G7` are `PASS` in the same document.
 
 ### Built but not yet armed
 
@@ -215,6 +215,7 @@ sdip/
 │   │   ├── licences.py           #   runtime tree scan, tiered evidence, no prose match
 │   │   └── warn.py               #   SP6 ledger: detects suppression, contains the leak
 │   ├── provenance/               # sha256, environment capture, git state
+│   ├── schema/                   # PUBLISHED certificate JSON Schema (spec §4.7)
 │   ├── cli/                      # doctor | spec | ingest | verify | export | certify
 │   ├── spec/                     # gap-free SegySpec generator + G1          [F1]
 │   ├── templates/                # MDIO template registration & chunking     [F2]
@@ -279,7 +280,7 @@ doctor: PASS (8 checks)
 | `uv run pytest` | Full suite — 175 tests |
 | `uv run pytest tests/unit -k "actually_detects or negative"` | Just the negative controls — proof the guards fire |
 | `uv run ruff check . && uv run ruff format --check .` | Lint and format |
-| `uv run mypy` | Strict type check across 23 modules |
+| `uv run mypy` | Strict type check across 24 modules |
 | `uv build` | Build sdist + wheel (`docs/` is excluded from both) |
 
 ---
@@ -290,12 +291,13 @@ Only measured numbers appear here.
 
 | Dimension | Evidence |
 |---|---|
-| **Unit tests** | **175 passing**, 0 failing |
-| **Type checking** | `mypy --strict` clean across **23** source modules |
+| **Unit tests** | **186 passing**, 0 failing |
+| **Type checking** | `mypy --strict` clean across **24** source modules |
 | **Lint / format** | `ruff check` and `ruff format --check` clean |
 | **Warnings** | `filterwarnings = ["error"]` — any warning reaching pytest fails the suite |
 | **Negative controls** | Every guard has one: barred env vars (6 forms), barred packages, pin mismatch, missing distribution, copyleft spellings, the pre-commit hook, and each firewall path |
 | **Upstream verification** | All three API claims re-verified against the *live pinned objects*, including cited line numbers — `DECISIONS.md` D-0002 |
+| **Pin integrity** | **145** installed files recomputed against the wheels' own `RECORD` manifests, plus artifact SHA-256 read from `uv.lock`. Commit SHAs remain declared-only and the report says so — D-0015 |
 | **Header coverage** | Measured for **every** SEG-Y revision: rev 0 → 131 gap-free fields, rev 1 → 97, rev 2 / 2.1 → 90 (already gap-free). Zero `ibm32` header fields in all four — D-0003 |
 | **Licence scan** | **51** runtime distributions, **zero GPL/AGPL**, one allowlisted with cited evidence — D-0005 / D-0006 |
 | **Reproducibility** | A fresh clone syncs, passes `doctor` 8/8, and runs the suite with no local state |

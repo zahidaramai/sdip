@@ -115,32 +115,38 @@ def _check_packages() -> Check:
     )
 
 
-def _check_pins() -> Check:
-    statuses = check_pins()
+def _check_pins(root: Path) -> Check:
+    statuses = check_pins(lockfile=root / "uv.lock")
     bad = [s for s in statuses if not s.ok]
+    files = sum(s.integrity.checked for s in statuses if s.integrity)
     return Check(
         name="upstream-pins",
         status=Status.PASS if not bad else Status.FAIL,
         clause="spec 3.3",
         summary=(
-            f"all {len(PINS)} binding pins match" if not bad else "; ".join(s.detail for s in bad)
+            f"all {len(PINS)} binding pins match; {files} installed files verified against RECORD"
+            if not bad
+            else "; ".join(s.detail for s in bad)
         ),
         evidence={
-            "pins": [
-                {
-                    "distribution": s.distribution,
-                    "expected": s.expected_version,
-                    "installed": s.installed_version,
-                    "declared_commit_sha": s.declared_commit_sha,
-                    "commit_sha_verified": s.commit_sha_verified,
-                    "ok": s.ok,
-                }
-                for s in statuses
-            ],
-            "note": (
-                "Commit SHAs are declared, not runtime-verified: a wheel does not "
-                "carry the SHA it was built from. Open debt D9."
-            ),
+            "pins": [s.to_json() for s in statuses],
+            "claims": {
+                "version": "verified exactly against installed metadata",
+                "artifact_sha256": (
+                    "read from uv.lock, where `uv sync --frozen` enforces it at "
+                    "install time. Attests the artifact, not the commit."
+                ),
+                "installed_files": (
+                    "recomputed against the wheel's own RECORD manifest, which "
+                    "catches a site-packages edit made after installation."
+                ),
+                "commit_sha": (
+                    "NOT verified. A wheel does not carry the SHA it was built from; "
+                    "closing that needs a source build or an upstream provenance "
+                    "attestation, neither of which exists under the current pins. "
+                    "Open debt D9."
+                ),
+            },
         },
     )
 
@@ -339,7 +345,7 @@ def run_doctor(root: str | Path = ".") -> Report:
             _check_python(),
             _check_env(),
             _check_packages(),
-            _check_pins(),
+            _check_pins(root_path),
             _check_licences(),
             _check_tree(root_path),
             _check_firewall(root_path),

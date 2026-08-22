@@ -63,6 +63,10 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sdip"]
+# The certificate schema is a runtime artifact, not documentation: spec 4.7 requires
+# it published so a third party can validate SDIP output without running SDIP.
+# `pip install sdip` must therefore carry it. See DECISIONS.md D-0015.
+artifacts = ["src/sdip/schema/*.json"]
 
 [tool.hatch.build.targets.sdist]
 # `/docs` is deliberately absent: it is maintained outside the published repository

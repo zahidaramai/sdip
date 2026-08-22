@@ -444,3 +444,103 @@ if the project gains a dedicated address.
 **What overturns it.** A purpose-made address on a domain the maintainer controls, at
 which point `SECURITY.md` gains it as an alternative and `CODE_OF_CONDUCT.md` moves to
 it. Recorded as a new entry citing this one.
+
+---
+
+## D-0015 — 2026-08-22 — Certificate schema ships inside the package, not in `docs/`
+
+**Decision.** The Equivalence Certificate JSON Schema lives at
+`src/sdip/schema/sdip-certificate-v0.schema.json`, is tracked in the public repository,
+and is shipped in both the wheel and the sdist. `docs/certificate-schema/` is deleted.
+
+**The problem this closes.** Specification §4.7 requires the certificate schema to be
+*"published so third parties can validate SDIP output without running SDIP."* D-0010
+made `docs/` unpublishable, and the only copy was there — so `git ls-files | grep
+schema.json` returned **zero**, and §4.7's requirement was silently unsatisfiable. F8
+also lists "published certificate schema" as a release deliverable it could not have
+reached.
+
+**Why this is not a firewall exception.** The schema is **not documentation.** It is a
+machine artifact that `sdip certify` needs at runtime to validate its own output, and
+that a consumer needs to check a certificate they were handed. D-0010 bars `docs/` and
+AI-assistant artifacts; it does not bar machine-readable contract artifacts, and
+relocating one to where it belongs is not a hole in the firewall.
+
+Shipping it in the package is also strictly better than shipping it in the repository
+root: `pip install sdip` now carries the validator to a consumer who never clones, which
+is closer to what §4.7 actually asks for than a file in a git tree.
+
+**No validator is vendored.** `sdip.schema.load_schema()` returns the parsed document;
+validating against it is the caller's choice of library. Adding a JSON Schema validator
+to the runtime tree would add a dependency and a licence surface for something every
+consumer already has.
+
+**Verified.** `uv build` produces a wheel containing
+`sdip/schema/sdip-certificate-v0.schema.json`, an sdist containing the same, and
+**neither contains `docs/`**. A test asserts the schema is *tracked*, not merely present
+on disk — "published" means a reader can obtain it.
+
+**What overturns it.** A decision to publish `docs/`, which would make the location a
+matter of taste again rather than of correctness.
+
+---
+
+## D-0016 — 2026-08-22 — Pin verification extended to artifacts and installed files
+
+**Decision.** `sdip.guard.pins` now makes three separate claims and keeps them separate:
+
+| Claim | Status | Attests |
+|---|---|---|
+| **Version** | verified | installed metadata matches the pin exactly |
+| **Artifact sha256** | read from `uv.lock` | the bytes `uv sync --frozen` enforces at install time — **the artifact, not the commit** |
+| **Installed files** | verified | every file recomputed against the wheel's own `RECORD` manifest |
+| **Commit SHA** | **NOT verified** | — |
+
+**Measured.** **145** installed files across the two pinned distributions
+(`multidimio` 100, `segy` 45) recompute to their `RECORD` digests. Artifact hashes for
+both the sdist and the wheel of each pin are present in `uv.lock` and are now recorded
+on the certificate rather than left implicit in a lockfile nobody quotes.
+
+**What this actually buys.** The realistic way a pinned dependency stops being what the
+pin says — without the version changing and without anything else noticing — is someone
+editing `site-packages` to make a gate pass. `RECORD` verification catches exactly that,
+and it is cheap: roughly 150 small hashes.
+
+**What it does not buy, stated because the temptation is to overclaim.** None of this
+attests that the wheel was built from the declared commit. A wheel does not carry the
+SHA it was built from. Closing that needs a source build or an upstream provenance
+attestation, and neither exists under the current pins.
+
+**D9 is therefore `NARROWED`, not closed**, and every code path keeps saying so:
+`PinStatus.commit_sha_verified` is `False`, the JSON carries
+`"does_not_attest": "that the wheel was built from the declared commit"`, and a test
+asserts both — so a future change that starts claiming verification has to edit the
+assertion deliberately.
+
+**Negative controls** ship with it: tampering with an installed file is detected, and
+deleting one is detected as `missing` rather than silently passing.
+
+---
+
+## D-0017 — 2026-08-22 — Upstream warning-filter leak reported
+
+**Decision.** Filed as **[TGSAI/mdio-python#864](https://github.com/TGSAI/mdio-python/issues/864)**.
+
+**Why it is a decision and not a chore.** §3.3 is explicit: where something appears to
+need reaching into upstream internals, *"that is a finding to raise in an issue, not a
+problem to route around."* SDIP routed around it in D-0004 by detecting the suppression
+instead of defeating it. Routing around **and not reporting** would have left the
+project quietly benefiting from knowledge of a defect it never disclosed, which is the
+posture this project criticises in others.
+
+**What was reported.** `zarr_warnings_suppress_unstable_structs_v3` and
+`zarr_warnings_suppress_unstable_numcodecs_v3` call `warnings.filterwarnings("ignore",
+…)` without `warnings.catch_warnings()` and end in `finally: pass`, leaking a
+process-global filter. Every claim in the issue was re-verified against the pinned code
+immediately before posting: no `catch_warnings` in `zarr_io`, `finally: pass` present,
+`creation.py` *does* use the correct pattern, filters go 10 → 12 and stay, and an outer
+`always`+`record` observes 0 suppressed warnings.
+
+**Resolves** the reporting obligation in `OPEN_DEBTS.md` **D10**. The debt itself stays
+open until upstream acts or declines — SDIP does not get to close a debt by writing
+about it.
