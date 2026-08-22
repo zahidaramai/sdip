@@ -83,6 +83,71 @@ Reproduces `DECISIONS.md` D-0003 through the generator rather than by static ari
 `ScalarType.STRING8` is `"S8"` and numpy rejects `"s8"` — case is preserved and
 regression-tested. See D-0018.
 
+### Added — phases F3, F4, F5, F7
+
+- **The Equivalence Engine**: all five planes (G2a–G2e), **G3** whole-file round trip,
+  **G4** portability in a clean subprocess, **G6** determinism, **G7** non-vacuity.
+- **`sdip verify`, `sdip export`, `sdip certify`** — the full command surface is live.
+- **Round-trip closure**: the exported SEG-Y validated as an artifact in its own right.
+- **`release_readiness`** — the machine-checkable form of the release criterion, stricter
+  than `verdict` and reported alongside it.
+- Probes **P2, P3, P4, P5, P6, P7** implemented and run against pre-registrations
+  committed beforehand. **P2, P6 and P7 fired.**
+
+### Fixed — defects the engine found in itself
+
+- **Planes 1 and 2 shared a validating reader**, so a truncated textual header failed
+  **G2b** as well as G2a. Found by G7 on its first run (D-0028).
+- **Planes 3–5 hard-coded `{inline, crossline}`**, so they returned no verdict at all on
+  prestack. Found by P7; fixed by reading `dimension_names` from Zarr v3 metadata —
+  prestack went **0/7 evaluable to 4/7 passing** (D-0039).
+- **The coordinate scalar was an undeclared transform** on the derived `cdp_x`/`cdp_y`
+  arrays — an **SP1(a) violation on every certificate ever issued**. Found by P5 (D-0040).
+- **Verdict ordering**: a blocked transform returned `PROVISIONAL` before checking plane
+  failures, softening a real defect into an open question.
+
+### Corrected — claims that were false
+
+- **§1.2 and this README claimed rev 0, 1, 2 and 2.1 support.** Measured: **only rev 1
+  works end to end** (D-0037).
+- **SP9 was unsatisfiable**: pre-registrations lived in `docs/`, which is never committed
+  (D-0032). Moved to a public `prereg/`.
+- **D-0038 overclaimed** that D18 was closed: the fix addressed bytes copied, not wall
+  clock (D23).
+
+### Added — phases F3, F4, F5, F7
+
+- **The Equivalence Engine**: all five planes (G2a–G2e), **G3** whole-file round trip,
+  **G4** portability in a clean subprocess, **G6** determinism, **G7** non-vacuity.
+- **`sdip verify`, `sdip export`, `sdip certify`** — the full command surface is live.
+- **Round-trip closure**: the exported SEG-Y validated as an artifact in its own right.
+- **`release_readiness`** — the machine-checkable form of the release criterion, stricter
+  than `verdict` and reported alongside it.
+- Probes **P2, P3, P4, P5, P6, P7** implemented and run against pre-registrations
+  committed beforehand. **P2, P6 and P7 fired.**
+
+### Fixed — defects the engine found in itself
+
+- **Planes 1 and 2 shared a validating reader**, so a truncated textual header failed
+  **G2b** as well as G2a. Found by **G7 on its first run** (D-0028).
+- **Planes 3–5 hard-coded `{inline, crossline}`** and returned no verdict at all on
+  prestack. Found by **P7**; fixed by reading `dimension_names` from Zarr v3 metadata —
+  prestack went **0/7 evaluable to 4/7 passing** (D-0039).
+- **The coordinate scalar was an undeclared transform** on the derived `cdp_x`/`cdp_y`
+  arrays — an **SP1(a) violation on every certificate ever issued**. Found by **P5**
+  (D-0040).
+- **Verdict ordering**: a blocked transform returned `PROVISIONAL` before checking plane
+  failures, softening a real defect into an open question.
+
+### Corrected — claims that were false
+
+- **§1.2 and this README claimed rev 0, 1, 2 and 2.1 support.** Measured: **only rev 1
+  works end to end** (D-0037).
+- **SP9 was unsatisfiable** — pre-registrations lived in `docs/`, which is never
+  committed. Moved to a public `prereg/` (D-0032).
+- **D-0038 overclaimed** that D18 was closed: the fix addressed bytes copied, not wall
+  clock (D23).
+
 ### Not yet built
 
 `sdip spec build` (F1), `sdip ingest` (F2), `sdip verify` / `sdip export` /

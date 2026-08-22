@@ -1528,3 +1528,99 @@ file downgrades the declaration from `VERIFIED` to `SCOPED`.
 
 **Recorded, not fixed:** upstream reading trace 0 only is an upstream behaviour. SDIP
 cannot change it, but it can now *tell you* when trusting it would be wrong.
+
+---
+
+## D-0041 — 2026-08-22 — **Consolidated status snapshot.** Where the project actually is
+
+A dated, append-only snapshot, written because the record had grown to 40 decisions and
+43 debts across seven phases and **no single entry said where the project stood**. This
+one does. It supersedes nothing; it summarises.
+
+### Phases (spec §13)
+
+| Phase | Deliverable | State |
+|---|---|---|
+| **F0** | Repo skeleton, public files, `NOTICE`, `sdip doctor` | **complete** |
+| **F1** | Gap-free spec generator + G1 + unit tests | **complete** |
+| **F2** | Ingest orchestration, certificate v0, provenance | **complete** |
+| **F3** | Equivalence Engine — five planes, G2–G4 | **complete** |
+| **F4** | G7 non-vacuity suite | **complete** |
+| **F5** | Probes P2, P5, P6 | **run — P2 and P6 fired** |
+| **F6** | Scale and cloud: P3, P8 | **partial** — P3 in flight, **P8 NOT RUN** |
+| **F7** | Prestack P7; portability P4 | **partial** — both run, both incomplete |
+| **F8** | v1.0.0 public release | **not started** |
+
+### Gates: **6 of 7 enforcing**
+
+| Gate | State | Evidence |
+|---|---|---|
+| G1 | **enforcing** | Coverage 1–240, itemsize 240, no overlaps, no void gaps. All four revisions. |
+| G2 (a–e) | **enforcing** | Five planes, exhaustive. 116,532 real traces × 97 fields. |
+| G3 | **enforcing** | Whole-file SHA-256. Byte-identical on 494,565,408 bytes. |
+| G4 | **enforcing** | Stock `zarr` + `xarray`, `mdio` never imported, asserted in a clean subprocess. |
+| G5 | **pending P3** | The only gate that judges a *run* rather than an artifact. |
+| G6 | **enforcing** | Two independent ingests; chunk bytes **and** array values. |
+| G7 | **enforcing** | 8 corruptions, each failing exactly its declared gate set. |
+
+### Probes
+
+| Probe | Verdict | What it cost |
+|---|---|---|
+| **P1** | `PASSED` (banked) | — |
+| **P2** | **FIRED** | `ibm32` is **not** exactly invertible. 1,939 of 4,103 words lose the **value**. SP1's only permitted transform does not satisfy SP1. |
+| **P3** | **in flight** | 7 of 11 files, **zero breaches**, max 467 s of 900, max 2.85 GiB of 8.0. |
+| **P4** | did **not** fire | A C++ reader read all 97 structured header fields byte-identically. One implementation ran, not the two asked for. |
+| **P5** | did **not** fire | All four clauses hold. Duplicates refused **and** surfaced. Four of ten conditions do not convert. |
+| **P6** | **FIRED (3 of 4)** | **Only rev 1 works end to end.** The §1.2 scope claim was false and is corrected. |
+| **P7** | **FIRED (clause 1)** | The planes hard-coded the grid. Fixed: prestack 0/7 → 4/7. Latency half **not run**. |
+| **P8** | **NOT RUN** | No credentials. A mock was **deliberately refused** — it would answer a different question. |
+
+### Against the acceptance criterion (D-0031)
+
+`release_readiness` reports **NOT READY**. Blocking, concretely:
+
+1. **G5 `NOT_RUN`** — clears when P3 completes.
+2. **P8 never ran.** Cloud is unmeasured and unsupported.
+3. **P7's latency half never ran** — no declared target, and inventing one after seeing a
+   chunk shape would violate **SP9**.
+4. **P4 ran one implementation, not two** — no JRE, no Rust toolchain, no network in CI.
+5. **43 open debts**, several substantive.
+
+### The four things that actually block a release
+
+**1. §6.4 survey spec overrides are specified and unbuilt (D21).** The highest-leverage
+item on the board. One mechanism unblocks **rev 0** (D6), **four prestack geometries**
+(D24), and **little-endian** (D28). Three probes independently arrived at it.
+
+**2. The `ibm32` raw `uint32` parallel view is unbuilt (D1).** P2's own "if it fires"
+clause requires it. Without it, an `ibm32` source whose round trip is not byte-identical
+has bits that are **not recoverable from the output at all**.
+
+**3. SP6 has two blind spots (D26).** `warnings_raised[]` can be empty while 2,441 samples
+are destroyed — worker-process warnings never reach the parent, and `logger.warning` is
+not a Python warning. This undermines a §4.7 field a consumer is meant to trust.
+
+**4. `NOT_RUN` must become a failure at release (D20).** Currently `EQUIVALENT` tolerates
+unrun gates. Honest today, wrong at release.
+
+### What is genuinely proven
+
+Stated plainly, because the failures above should not obscure it:
+
+- **A byte-identical round trip on 494,565,408 bytes**, with the source digest matching a
+  checksum manifest written **six years before the run**.
+- **One flipped bit in one sample, out of 116,648,532, fails G2d and nothing else.**
+- **G7 passes on real data**: every corruption fails exactly the gates it declares.
+- **Full 240-byte header preservation costs 2.0 B/trace — 0.06 % of the store**, roughly
+  10× cheaper than §5.4's own pessimistic figure.
+- **The engine found four defects in itself**: the shared header reader (D-0028), the
+  hard-coded grid (D-0039), the verdict ordering, and the undeclared coordinate scalar
+  (D-0040). Three were found by gates, not by tests.
+
+### Honest scope of everything above
+
+**rev 1 only. Poststack only, except four prestack geometries reachable via leg 2.
+Local filesystem only. One vintage of one survey plus synthetic fixtures. No cloud.**
+Every number in this entry is reproducible from the committed record; none of it is
+inferred.

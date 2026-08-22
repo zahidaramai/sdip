@@ -28,9 +28,9 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 [![ci](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml)
 [![dco](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml)
 
-![Phase](https://img.shields.io/badge/roadmap_phase-F4-orange?style=flat-square)
+![Phase](https://img.shields.io/badge/roadmap_phase-F5–F7-orange?style=flat-square)
 ![Tests](https://img.shields.io/badge/tests-431_passing-success?style=flat-square)
-![Gates enforcing](https://img.shields.io/badge/gates_enforcing-5_of_7-yellow?style=flat-square)
+![Gates enforcing](https://img.shields.io/badge/gates_enforcing-6_of_7-yellow?style=flat-square)
 ![Certificates](https://img.shields.io/badge/certificates_issued-0-lightgrey?style=flat-square)
 ![Type checked](https://img.shields.io/badge/mypy-strict-2A6DB2?style=flat-square)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.12%2C%3C3.14-3776AB?style=flat-square&logo=python&logoColor=white)
@@ -46,6 +46,7 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 ## 📑 Table of Contents
 
 - [Overview](#-overview)
+- [Roadmap & Status](#️-roadmap--status)
 - [The Equivalence Contract](#-the-equivalence-contract)
 - [Tech Stack](#-tech-stack)
 - [Features](#-features)
@@ -79,16 +80,80 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Author** | Zahid Aramai · KLCube Network Agency |
 | **Licence** | Apache-2.0 |
 | **Repository** | `github.com/zahidaramai/sdip` — public, open contribution |
-| **Roadmap phase** | **F4** — **G7 non-vacuity**: the gate on the gates |
+| **Roadmap phase** | **F5–F7** — probes. F0–F4 complete; see [Roadmap & Status](#️-roadmap--status) |
 | **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
 | **Source** | 7,754 lines across 41 modules |
 | **Tests** | 431 passing · mypy strict clean · ruff clean |
-| **Gates enforcing** | **5 of 7** — G1, G2 (five planes), G3, G4, **G7**. G5 and G6 not built |
-| **Certificates issued** | `EQUIVALENT` reachable and demonstrated; none committed |
+| **Gates enforcing** | **6 of 7** — G1, G2, G3, G4, G6, **G7**. G5 lands with P3 |
+| **Certificates issued** | `EQUIVALENT` demonstrated on a real survey; none committed (restricted source) |
 | **Decision record** | 40 entries, append-only |
 | **Open debts** | 43 entries, append-only — scheduled, never cancelled |
 
 > **Read the two rows in bold before using anything here.** Zero gates enforce today. What has actually been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md). Where a property is unmeasured this project says so and names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
+
+---
+
+## 🗺️ Roadmap & Status
+
+**Gates enforcing: 6 of 7** — G1, G2, G3, G4, G6, G7. G5 lands with probe P3.
+
+| Phase | Deliverable | Gates | State |
+|---|---|---|---|
+| F0 | Repo skeleton, public files, `NOTICE`, `sdip doctor` | — | **complete** |
+| F1 | Gap-free spec generator + G1 | G1 | **complete** |
+| F2 | Ingest orchestration, certificate v0, provenance | G1, G2a/b | **complete** |
+| F3 | Equivalence Engine — five planes, G2–G4 | G2, G3, G4 | **complete** |
+| F4 | **G7 non-vacuity suite** | G7 | **complete** |
+| F5 | Probes P2, P5, P6 | — | **run — P2 and P6 fired** |
+| F6 | Scale and cloud: P3, P8 | G5, G6 | **partial** — G6 done, P3 running, **P8 not run** |
+| F7 | Prestack P7; portability P4 | — | **partial** — both run, both incomplete |
+| F8 | **v1.0.0 public release** | full | not started |
+
+### Probe results — pre-registered before every run (**SP9**)
+
+| Probe | Verdict |
+|---|---|
+| **P1** gap-free spec | `PASSED` |
+| **P2** `ibm32` fidelity | **FIRED** — only 1,656 of 4,103 words round-trip; **1,939 lose the value** |
+| **P3** scale | in flight — **zero ceiling breaches** so far |
+| **P4** cross-implementation | did **not** fire — a C++ reader read all 97 header fields byte-identically |
+| **P5** irregular geometry | did **not** fire — duplicates refused **and** surfaced |
+| **P6** revision coverage | **FIRED for 3 of 4** — only rev 1 works end to end |
+| **P7** prestack | **FIRED** — the planes hard-coded the grid; fixed, 0/7 → 4/7 |
+| **P8** cloud object store | **NOT RUN** — no credentials, and a mock was deliberately refused |
+
+Pre-registrations live in [`prereg/`](prereg/), committed and timestamped **before** their
+runs. That is the whole mechanism: a commitment made after the result is not one.
+
+### Definition of done
+
+**Both outputs — the MDIO store and the exported SEG-Y — must pass full end-to-end
+validation and certification** (`DECISIONS.md` D-0031). Three arrows, each verified:
+
+```
+  SEG-Y source  ──①──▶  MDIO store  ──②──▶  SEG-Y export  ──③──▶  MDIO store′
+```
+
+`sdip certify` reports **`release_readiness`**, which is stricter than `verdict`: it
+requires *every* gate `PASS` with **none `NOT_RUN`**, plus round-trip closure. It
+currently reports **NOT READY**, blocking on G5, P8, P7's latency half, and P4's second
+implementation.
+
+### The four things that block a release
+
+1. **§6.4 survey spec overrides are specified and unbuilt** (D21) — the highest-leverage
+   item. One mechanism unblocks **rev 0**, **four prestack geometries**, and
+   **little-endian**. Three probes independently arrived at it.
+2. **The `ibm32` raw `uint32` parallel view is unbuilt** (D1) — P2's own remedy. Without
+   it, an `ibm32` source whose round trip is not byte-identical has bits that are **not
+   recoverable from the output at all**.
+3. **SP6 has two blind spots** (D26) — `warnings_raised[]` can be empty while 2,441
+   samples are destroyed: worker-process warnings never reach the parent, and
+   `logger.warning` is not a Python warning.
+4. **`NOT_RUN` must become a failure at release** (D20).
+
+Full consolidated status: [`DECISIONS.md`](DECISIONS.md) **D-0041**. Live debts:
+[`OPEN_DEBTS.md`](OPEN_DEBTS.md) — debts are scheduled, never cancelled.
 
 ---
 
@@ -164,8 +229,8 @@ Gates are **binary**. No warnings-as-passes. Every gate names the number that ki
 | `G2` | The five planes, per plane | One differing byte on any plane | F2–F3 | **G2a, G2b enforcing** |
 | `G3` | `sha256(export) == sha256(source)` for the whole file | Hash mismatch with no scoped justification | F3 | **enforcing** |
 | `G4` | Store opens with stock `zarr` and `xarray` in a process asserting `"mdio" not in sys.modules` | Any array a consumer needs being unreadable without MDIO | F3 | **enforcing** |
-| `G5` | Survey-scale ingest inside a declared memory ceiling | OOM, or peak RSS over the ceiling | F6 | not built |
-| `G6` | Two independent runs produce **identical array bytes** | Any array-content difference between runs | F3 | not built |
+| `G5` | Survey-scale ingest inside a **pre-declared** memory ceiling | OOM, or peak RSS over the ceiling | F6 | **built — P3 in flight** |
+| `G6` | Two independent runs produce **identical array bytes** | Any array-content difference between runs | F6 | **enforcing** |
 | `G7` | **Every corruption fails its gate and only its gate** | Any corruption that passes, or one that fails the wrong gate | **F4** | **enforcing** |
 
 ### G7 is the gate on the gates
@@ -317,8 +382,8 @@ Only measured numbers appear here.
 | **Real-survey validation** | Full chain — **including G7** — against a real 3D poststack survey: **116,532 traces, 494,565,408 bytes**. G1, G2, G3, G4, G7 all `PASS`; verdict **`EQUIVALENT`**. **One flipped bit in one sample, out of 116,648,532, failed G2d and nothing else** — D-0030 |
 | **G7 cost** | Was 370 s / 2.83 GB — **87 % of the chain**. Now copies only what a control touches, hard-links the rest, and hashes the original before and after. **D18 closed** — D-0038 |
 | **Header cost, measured on real data** | Full 240-byte preservation compressed to **2.0 B/trace (121:1)** — **0.06 % of the store**. ≈10× cheaper than §5.4's synthetic pessimistic figure |
-| **Gates enforcing** | **5 of 7** — G1, G2, G3, G4, **G7**. See [The Gates](#-the-gates). |
-| **Certificates issued** | `EQUIVALENT` reachable and demonstrated; none committed |
+| **Gates enforcing** | **6 of 7** — G1, G2, G3, G4, G6, G7. See [The Gates](#-the-gates). |
+| **Certificates issued** | `EQUIVALENT` demonstrated on a real survey; none committed (restricted source) |
 
 ### Two defects the tests caught, recorded rather than quietly fixed
 
