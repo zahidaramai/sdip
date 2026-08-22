@@ -1,26 +1,34 @@
-"""The Equivalence Engine: five plane checkers, gates G1-G7, certificate issuance.
+"""The Equivalence Engine: plane checkers, gates G1-G7, certificate issuance.
 
-Roadmap phase F3 (spec section 13). Not implemented at F0.
+Comparisons are array_equal or byte equality. **There is no tolerance anywhere in
+this package** - a tolerance-based comparison is a specification defect (§4.5, §9.5).
 
-Comparisons are array_equal or byte equality. There is no tolerance anywhere in this package - a
-tolerance-based comparison is a specification defect (spec 4.5, 9.5).
+Phase F2 implements Planes 1 and 2 (gates G2a, G2b) and certificate v0. Planes 3, 4 and
+5, and gates G3-G7, are phase F3-F4 and are **not stubbed**: they do not exist, so a
+caller gets an error rather than a plausible-looking PASS for a check that never ran.
 """
 
 from __future__ import annotations
 
-from sdip.errors import PhaseNotAuthorisedError
+from sdip.equivalence.certificate import (
+    GATES,
+    PLANE_KEYS,
+    Certificate,
+    issue,
+    read_codec_manifest,
+    verdict_for,
+)
+from sdip.equivalence.planes import PlaneResult, first_difference, plane_1, plane_2
 
-__all__ = ["PHASE", "not_yet"]
-
-PHASE = "F3"
-
-
-def not_yet(capability: str) -> PhaseNotAuthorisedError:
-    """Return the error to raise for a capability that belongs to a later phase.
-
-    SDIP refuses rather than returning a partial or unvalidated result.
-    """
-    return PhaseNotAuthorisedError(
-        f"{capability} is roadmap phase F3 (spec section 13); "
-        f"the repository is at F0. Nothing is stubbed out to look like it works."
-    )
+__all__ = [
+    "GATES",
+    "PLANE_KEYS",
+    "Certificate",
+    "PlaneResult",
+    "first_difference",
+    "issue",
+    "plane_1",
+    "plane_2",
+    "read_codec_manifest",
+    "verdict_for",
+]

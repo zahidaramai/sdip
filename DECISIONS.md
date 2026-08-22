@@ -616,3 +616,188 @@ data requiring cited evidence at review, and nothing consumes them until ingest 
 
 **Status: G1 is the first gate SDIP enforces.** Six remain unbuilt, and **G7 is still
 among them** — see `OPEN_DEBTS.md` D11.
+
+---
+
+## D-0019 — 2026-08-22 — MDIO discards both SEG-Y file headers by default
+
+**Measured**, read out of `multidimio` 1.2.1 and confirmed by inspecting a real store:
+
+`MDIOSettings.save_segy_file_header` **defaults to `0` — off**. A default
+`segy_to_mdio` call produces a store with **no `segy_file_header` variable at all**. The
+3200-byte textual header and the 400-byte binary header are simply not there.
+
+Three consequences, none of them loud:
+
+1. **Plane 1 and Plane 2 fail on a default ingest** — not because the data is wrong, but
+   because it does not exist.
+2. **G3 is unreachable.** `mdio_to_segy` raises `MDIOMissingVariableError` without that
+   variable, so a default store **cannot be exported back to SEG-Y at all**.
+3. Nothing warns. The ingest succeeds, the store looks complete, and the arrays a
+   consumer cares about are all present.
+
+This is precisely the failure §0.1 describes: *"None of these failures are loud. They
+surface years later…"* — and it is the **default behaviour of the tool SDIP is built on.**
+It is also a concrete answer to *why the project exists*, which is worth stating plainly
+because the question gets asked.
+
+**Note against Appendix A.1.** That appendix lists `segy_file_header` among the arrays
+produced. Reproducing the article with a default `segy_to_mdio` on the pinned versions
+produces **no such array**. Either A.1 was run with the setting enabled and did not
+record that, or upstream's default changed between the measurement and the pin. Recorded
+here as a discrepancy rather than resolved: the appendix is frozen (§12.4), and this
+entry is the correction (**SP10**).
+
+**Decision.** SDIP enables persistence explicitly, in **STRICT** mode, scoped to the
+call. See D-0020 and D-0021.
+
+---
+
+## D-0020 — 2026-08-22 — `save_segy_file_header` mode 2 is barred by §4.2
+
+**Decision.** SDIP sets `MDIO__IMPORT__SAVE_SEGY_FILE_HEADER=1` (**STRICT**) and
+**never** `2` (LENIENT).
+
+**Measured.** Mode 2 runs `mdio.segy.text_header.sanitize_text_header`, whose own
+docstring says it *"replaces unsafe characters with spaces and pads/truncates each row to
+80 chars"*, always returning exactly 40 rows.
+
+§4.2 is explicit and admits no reading around it:
+
+> If bytes cannot be decoded, the **raw 3200 bytes are preserved** and the decode failure
+> is recorded on the certificate. **Decode failure is not an ingestion failure; silent
+> substitution is.**
+
+Mode 2 *is* silent substitution. A non-conforming EBCDIC header — exactly the legacy
+vintage SDIP exists to rescue — would be rewritten, the store would validate, and the
+original bytes would be gone.
+
+**On setting an environment variable at all.** §9.1 bars `MDIO_IGNORE_CHECKS` and
+`MDIO__IMPORT__RAW_HEADERS`. `MDIO__IMPORT__SAVE_SEGY_FILE_HEADER` is not on that list,
+and the distinction is the **direction of travel**: a barred variable weakens a check or
+depends on a deprecated path, while this one causes **more of the source to be
+preserved**. It is the opposite of the thing §9.1 forbids. It is set through a context
+manager that restores the prior value, so SDIP does not leave the process configured
+differently from how it found it.
+
+**What overturns it.** Mode 1 raises on a malformed text header, which is *also* not
+what §4.2 asks for — §4.2 wants the raw bytes kept and the failure recorded, not the
+ingest refused. SDIP satisfies that itself (D-0021); the mode choice only governs
+upstream's parsed view. If upstream adds a mode that preserves without rewriting, revisit.
+
+---
+
+## D-0021 — 2026-08-22 — SDIP captures the raw file headers itself
+
+**Decision.** SDIP reads the first 3600 bytes of the source directly and stores them in
+the output under its own attribute namespace: `sdipRawTextHeader`, `sdipRawBinaryHeader`,
+and a sha256 for each. **These bytes are authoritative for Planes 1 and 2.**
+
+**Why it is necessary, not merely tidy.** §4.3 requires the binary header preserved as a
+parsed mapping **and as raw bytes**, with *"raw bytes authoritative on conflict"*.
+Measured: upstream writes `rawBinaryHeader` **only when `settings.raw_headers` is set** —
+and that is `MDIO__IMPORT__RAW_HEADERS`, **barred by §9.1**.
+
+So §4.3 is unreachable through MDIO without violating the forbid list. The resolution is
+the same shape as §3.2's: **reach the goal through a legitimate path rather than the
+deprecated flag.** The first 3600 bytes of a SEG-Y are the textual header followed by the
+binary header, at fixed offsets, in every revision — reading them needs no spec, no
+parser, no setting, and no barred variable. It also allocates nothing proportional to
+file size, which §11.4 requires.
+
+The result satisfies §4.3 completely: upstream's parsed mapping and SDIP's raw bytes both
+exist in the store, in separate namespaces, with the authoritative one unambiguous.
+
+Written with stock `zarr`, not MDIO, because a consumer must be able to read them with
+MDIO uninstalled (§10.3, gate **G4**).
+
+---
+
+## D-0022 — 2026-08-22 — `once` is not `ignore`: the SP6 ledger classifies by action
+
+**Decision.** `SuppressionRecord` carries a `kind`: **`suppression`** (`ignore` —
+information destroyed) or **`deduplication`** (`once`, `module`, `default` — first
+occurrence still shown). Only `ignore` counts toward `undeclared_suppressions`.
+
+**Why it changed.** The first real ingest flagged **two UNDECLARED suppressions**, which
+is the change-detector working. Investigating them found neither was a suppression:
+
+| Site | Action | What it is |
+|---|---|---|
+| `xarray/conventions.py:371` | `once` | xarray deduplicating its own `decode_timedelta` FutureWarning |
+| `numcodecs/checksum32.py:18` | `once` | numcodecs deduplicating its own crc32c deprecation, at **module import**, at module scope |
+
+Both mutate global warning state and both leak, so both are worth recording. Neither
+hides anything: a `once` filter shows the first occurrence.
+
+**Flattening them into "suppression" would have cried wolf, and a ledger that cries wolf
+gets ignored exactly when it matters.** SP6's concern is a *hidden liability*; a
+deduplicated warning is not hidden. All four filters are now declared, and the ledger
+reports `suppression_count`, `undeclared_suppression_count`, and the weaker
+`undeclared_filter_count` separately.
+
+**Bonus finding:** numcodecs installs its filter at **import time, at module scope** —
+it is not scoped to any call at all, so merely importing the package changes the
+process's warning behaviour.
+
+---
+
+## D-0023 — 2026-08-22 — The default SEG-Y textual header is non-deterministic
+
+**Measured.** `SegyFactory.create_textual_header()` with no argument calls
+`get_default_text()`, which writes
+`datetime.now(tz=UTC).isoformat(timespec="seconds")` into line 6.
+
+Two fixture builds therefore differ **whenever they straddle a second boundary**. That is
+**flaky, not reliably broken**, which is the worse failure: it passes locally, fails in
+CI, and the difference is 3200 bytes into a binary file where nobody looks. It would make
+§6.6's *"generated deterministically by committed code"* false and **G6**'s
+identical-bytes requirement unmeasurable.
+
+**Second, nastier finding in the same call:** `create_textual_header` **does not pad or
+validate**. `create_textual_header("C 1 HELLO")` returns **9 bytes**, not 3200 — every
+subsequent offset in the file is then wrong and the SEG-Y is silently malformed. The
+docstring says the length *"should match"* the spec and leaves it entirely to the caller.
+
+**Decision.** Every SDIP fixture passes explicit text built to exactly 40 rows × 80
+columns, and the generator **asserts the encoded header is 3200 bytes** before writing.
+A test builds two fixtures across a deliberate 1.2-second sleep and asserts byte
+identity — which is what would have caught this.
+
+---
+
+## D-0024 — 2026-08-22 — F2 built: ingest, Planes 1 and 2, certificate v0
+
+**Decision.** `sdip ingest` is live. Gates **G2a** and **G2b** enforce. Certificate v0
+issues.
+
+**An F2 certificate cannot say `EQUIVALENT`, and that is enforced in code.**
+`verdict_for` returns `EQUIVALENT` only when all five planes are `PASS` **and G7 is
+`PASS`**. Planes 3–5 and gates G3–G7 do not exist at F2, so they are `NOT_RUN`, and the
+best reachable verdict is `PROVISIONAL`. G7 is in the condition because *a store whose
+planes pass against an engine that has never been shown capable of failing has not been
+checked — it has been agreed with* (**SP11**).
+
+**Order of operations in `ingest` is load-bearing** and is asserted by tests: refuse on
+the spawn hazard → refuse if a barred variable is set → validate the source **before
+allocating** → hash → build spec and **run G1 before a single trace is read** → capture
+raw headers → convert → attach authoritative headers → **re-hash the source** to detect
+read-path corruption.
+
+**Planes compare the store on disk against the source file on disk.** Never against
+something remembered from the ingest that produced it: a checker validating its own
+memory is a tautology that would pass on a store that was never written.
+
+**Negative controls, in the same commit:** one flipped textual byte fails **G2a and only
+G2a**, reporting the exact offset; one flipped binary byte fails **G2b and only G2b**; a
+truncated textual header raises; a too-short file, a directory, and a header-only file
+are each refused with a typed error before anything is allocated.
+
+**spawn-guard is a real subprocess test.** A guarded script ingests successfully; an
+unguarded one must not silently produce a store. The negative control asserts the
+*outcome* rather than the exact `BrokenProcessPool` type, so it survives a pin bump — and
+it fails loudly with an instruction not to delete it if upstream ever stops using a spawn
+context.
+
+**Status: 2 of 7 gates enforcing** (G1, G2 — partially: G2a and G2b of five sub-gates).
+**G7 is still not built** (`OPEN_DEBTS.md` D11).

@@ -1,26 +1,39 @@
 """Thin orchestration over the MDIO converter.
 
-Roadmap phase F2 (spec section 13). Not implemented at F0.
-
-Every entry point that can trigger ingestion must sit behind an if __name__ == '__main__' guard:
-MDIO's header parser uses a spawn context (spec 11.1).
+Every entry point that can trigger ingestion must sit behind
+``if __name__ == "__main__":``. MDIO's header parser uses a ``spawn`` context, so
+without the guard the child re-executes the ingest and the pool dies with
+``BrokenProcessPool`` (spec §11.1, Appendix A.5).
 """
 
 from __future__ import annotations
 
-from sdip.errors import PhaseNotAuthorisedError
+from sdip.ingest.file_headers import (
+    RawFileHeaders,
+    attach_raw_file_headers,
+    file_headers_persisted,
+    read_raw_file_headers,
+    read_raw_file_headers_from_store,
+)
+from sdip.ingest.orchestrator import (
+    MIN_SEGY_BYTES,
+    IngestResult,
+    SpawnGuardError,
+    assert_main_guarded,
+    ingest,
+    validate_source,
+)
 
-__all__ = ["PHASE", "not_yet"]
-
-PHASE = "F2"
-
-
-def not_yet(capability: str) -> PhaseNotAuthorisedError:
-    """Return the error to raise for a capability that belongs to a later phase.
-
-    SDIP refuses rather than returning a partial or unvalidated result.
-    """
-    return PhaseNotAuthorisedError(
-        f"{capability} is roadmap phase F2 (spec section 13); "
-        f"the repository is at F0. Nothing is stubbed out to look like it works."
-    )
+__all__ = [
+    "MIN_SEGY_BYTES",
+    "IngestResult",
+    "RawFileHeaders",
+    "SpawnGuardError",
+    "assert_main_guarded",
+    "attach_raw_file_headers",
+    "file_headers_persisted",
+    "ingest",
+    "read_raw_file_headers",
+    "read_raw_file_headers_from_store",
+    "validate_source",
+]

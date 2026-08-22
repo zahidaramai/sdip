@@ -131,12 +131,35 @@ def test_suppressed_warnings_are_genuinely_unobservable():
     assert ledger.observed == []
 
 
-def test_known_suppressions_are_pinned_to_the_pinned_version():
+def test_known_suppressions_are_pinned_to_a_pinned_version():
+    """Every declared filter names the package, version and site it was read from.
+
+    The set spans three packages: multidimio suppresses, and xarray and numcodecs
+    deduplicate. All three mutate global warning state, so all three are declared.
+    """
+    packages = {e["package"] for e in KNOWN_UPSTREAM_SUPPRESSIONS}
+    assert packages == {"multidimio", "xarray", "numcodecs"}
     for entry in KNOWN_UPSTREAM_SUPPRESSIONS:
-        assert entry["package"] == "multidimio"
-        assert entry["version"] == "1.2.1"
+        assert entry["version"]
         assert entry["site"]
         assert entry["message_regex"]
+
+
+def test_deduplication_is_not_reported_as_suppression():
+    """`once` shows the first occurrence. Calling that a suppression cries wolf."""
+    import warnings
+
+    from sdip.guard.warn import recording_warnings
+
+    with recording_warnings(reemit=False) as ledger:
+        warnings.filterwarnings("once", message="a dedup filter", category=FutureWarning)
+    installed = ledger.suppressions_installed
+    assert len(installed) == 1
+    assert installed[0].kind == "deduplication"
+    assert installed[0].suppresses is False
+    assert ledger.suppressions == []
+    assert ledger.undeclared_suppressions == []
+    assert len(ledger.undeclared_filters) == 1
 
 
 def test_known_suppression_regexes_match_the_installed_source():

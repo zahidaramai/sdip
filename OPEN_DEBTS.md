@@ -327,3 +327,48 @@ Closed by moving it to `src/sdip/schema/`, tracked and shipped in both wheel and
 Recorded as a debt rather than a plain fix because it was a **requirement quietly
 unmet**, not a task not yet started, and that failure mode is worth having on the record.
 
+---
+
+## D16 — Appendix A.1 lists an array a default ingest does not produce
+
+- **Status:** `OPEN` (raised 2026-08-22)
+- **Decision:** `DECISIONS.md` D-0019
+
+Specification Appendix A.1 lists `segy_file_header` among the arrays produced by the
+banked P1 run. Reproducing that article with a default `segy_to_mdio` on the pinned
+versions produces **no such array**: `MDIOSettings.save_segy_file_header` defaults to
+`0`.
+
+Either A.1 was run with the setting enabled and did not record that, or upstream's
+default changed between the measurement and the pin. **Unresolved, and recorded rather
+than resolved:** the appendix is frozen (§12.4), and guessing which explanation is right
+would be exactly the assumption SP8 forbids.
+
+**Closure:** re-run the A.1 article under both settings and record which reproduces the
+listed array set.
+
+---
+
+## D17 — Plane 1 does not yet preserve an undecodable textual header
+
+- **Status:** `OPEN` (raised 2026-08-22)
+- **Blocks:** ingest of non-conforming legacy vintages
+- **Decision:** `DECISIONS.md` D-0020
+
+§4.2 requires that where bytes cannot be decoded, the **raw 3200 bytes are preserved and
+the decode failure is recorded on the certificate** — *"decode failure is not an
+ingestion failure."*
+
+SDIP preserves the raw bytes (D-0021), so half of that holds. But upstream mode 1
+**raises** on a malformed text header, so the ingest fails rather than completing with
+the failure recorded. Mode 2 would complete, by silently rewriting the header, which
+§4.2 bars outright.
+
+Neither upstream mode matches §4.2. SDIP currently takes the safe half: refuse rather
+than corrupt.
+
+**Closure:** capture and store the raw textual header **before** invoking the converter
+and let the ingest proceed with `decode_status: raw_preserved_decode_failed` on the
+certificate — the schema already has that enum value. Needs a fixture with a genuinely
+non-conforming header, which is probe **P5** territory.
+

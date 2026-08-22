@@ -89,6 +89,36 @@ KNOWN_UPSTREAM_SUPPRESSIONS: Final[tuple[dict[str, str], ...]] = (
         "leaks_globally": "yes - finally: pass, no catch_warnings()",
     },
     {
+        "id": "xarray-decode-timedelta-once",
+        "package": "xarray",
+        "version": "2026.7.0",
+        "site": "xarray/conventions.py:371",
+        "category": "FutureWarning",
+        "message_regex": "decode_timedelta",
+        "condition": (
+            "xarray deduplicates its own decode_timedelta FutureWarning. Action is "
+            "'once', not 'ignore': the first occurrence is still shown."
+        ),
+        "detected_independently_by": "not required - no information is lost",
+        "probe": "-",
+        "leaks_globally": "yes - module-scope filterwarnings, never restored",
+    },
+    {
+        "id": "numcodecs-crc32c-deprecation-once",
+        "package": "numcodecs",
+        "version": "0.16.5",
+        "site": "numcodecs/checksum32.py:18",
+        "category": "DeprecationWarning",
+        "message_regex": "crc32c usage is deprecated.*",
+        "condition": (
+            "numcodecs deduplicates its own crc32c deprecation notice at IMPORT time, "
+            "at module scope. Action is 'once', not 'ignore'."
+        ),
+        "detected_independently_by": "codec manifest read from zarr.json (G4)",
+        "probe": "-",
+        "leaks_globally": "yes - module-scope filterwarnings, never restored",
+    },
+    {
         "id": "mdio-1.2.1-chunk-separation",
         "package": "multidimio",
         "version": "1.2.1",
@@ -134,12 +164,25 @@ class WarningRecord:
         }
 
 
+SUPPRESSING_ACTIONS: Final[frozenset[str]] = frozenset({"ignore"})
+"""Actions that destroy information. Only these are suppressions in SP6's sense."""
+
+DEDUPLICATING_ACTIONS: Final[frozenset[str]] = frozenset({"once", "default", "module", "always"})
+"""Actions that change how often a warning is shown, never whether it is shown at all."""
+
+
 @dataclass(frozen=True, slots=True)
 class SuppressionRecord:
     """A warnings filter installed during a guarded call.
 
-    Its presence is evidence that something chose not to show a warning. SDIP cannot
-    always see the warning; it can always see this.
+    Its presence is evidence that something changed what the process will report. SDIP
+    cannot always see the warning; it can always see this.
+
+    **The action matters and is not flattened away.** ``ignore`` destroys information —
+    that is a suppression, and SP6's concern. ``once`` shows the first occurrence and
+    deduplicates the rest, so nothing is hidden; calling that a suppression would cry
+    wolf, and a ledger that cries wolf gets ignored exactly when it matters. Both are
+    recorded; only ``ignore`` counts as suppression.
     """
 
     action: str
@@ -149,13 +192,28 @@ class SuppressionRecord:
 
     @property
     def declared(self) -> bool:
-        """True when this suppression is one SDIP has read and recorded upstream."""
+        """True when this filter is one SDIP has read and recorded upstream."""
         return self.known_id is not None
+
+    @property
+    def suppresses(self) -> bool:
+        """True when this filter destroys information rather than deduplicating it."""
+        return self.action in SUPPRESSING_ACTIONS
+
+    @property
+    def kind(self) -> str:
+        """``"suppression"``, ``"deduplication"``, or ``"other"``."""
+        if self.action in SUPPRESSING_ACTIONS:
+            return "suppression"
+        if self.action in DEDUPLICATING_ACTIONS:
+            return "deduplication"
+        return "other"
 
     def to_json(self) -> dict[str, Any]:
         """Certificate-shaped mapping."""
         return {
             "action": self.action,
+            "kind": self.kind,
             "category": self.category,
             "message_regex": self.message_regex,
             "known_id": self.known_id,
@@ -171,8 +229,26 @@ class WarningLedger:
     suppressions_installed: list[SuppressionRecord] = field(default_factory=list)
 
     @property
+    def suppressions(self) -> list[SuppressionRecord]:
+        """Filters that destroy information. Deduplication is excluded."""
+        return [s for s in self.suppressions_installed if s.suppresses]
+
+    @property
     def undeclared_suppressions(self) -> list[SuppressionRecord]:
-        """Suppressions SDIP has not read and recorded. Each one is a finding."""
+        """Information-destroying filters SDIP has not read and recorded.
+
+        **Each one is a finding.** A `once` filter appearing after a pin bump is a
+        change; an undeclared `ignore` is a liability nobody has looked at.
+        """
+        return [s for s in self.suppressions if not s.declared]
+
+    @property
+    def undeclared_filters(self) -> list[SuppressionRecord]:
+        """Every new filter SDIP has not recorded, whatever its action.
+
+        Weaker than :attr:`undeclared_suppressions` and reported separately: a new
+        `once` filter after a pin bump is worth seeing without being alarming.
+        """
         return [s for s in self.suppressions_installed if not s.declared]
 
     def to_json(self) -> dict[str, Any]:
@@ -181,7 +257,9 @@ class WarningLedger:
             "observed": [w.to_json() for w in self.observed],
             "observed_count": len(self.observed),
             "suppressions_installed": [s.to_json() for s in self.suppressions_installed],
+            "suppression_count": len(self.suppressions),
             "undeclared_suppression_count": len(self.undeclared_suppressions),
+            "undeclared_filter_count": len(self.undeclared_filters),
             "known_upstream_suppressions": [dict(entry) for entry in KNOWN_UPSTREAM_SUPPRESSIONS],
             "sp6_scope_note": (
                 "A warning suppressed by a filter installed inside a dependency cannot "

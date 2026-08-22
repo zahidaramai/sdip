@@ -149,10 +149,54 @@ def spec_build(revision: str, as_json: bool) -> None:
     sys.exit(EXIT_OK if result.passed else EXIT_FAIL)
 
 
-@cli.command()
-def ingest() -> NoReturn:
-    """SEG-Y to MDIO. Must sit behind a ``__main__`` guard (spec 11.1). Phase F2."""
-    _not_yet("ingest", "F2", "It orchestrates the MDIO converter over a gap-free spec.")
+@cli.command("ingest")
+@click.argument("source", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("output", type=click.Path(path_type=Path))
+@click.option(
+    "--revision",
+    type=click.Choice(["0", "1", "2", "2.1"]),
+    default="1",
+    show_default=True,
+    help="SEG-Y revision for the base spec.",
+)
+@click.option("--template", default="PostStack3DTime", show_default=True, help="MDIO template.")
+@click.option("--overwrite", is_flag=True, help="Overwrite an existing store.")
+@click.option("--json", "as_json", is_flag=True, help="Emit a machine-readable report.")
+def ingest_cmd(
+    source: Path, output: Path, revision: str, template: str, overwrite: bool, as_json: bool
+) -> None:
+    """SEG-Y to MDIO, against a gap-free spec.
+
+    Runs G1 before a single trace is read, captures the raw textual and binary headers
+    directly from the source, and records every warning and every filter the run
+    installed. Exits 1 if G1 fails or the source hash changes during the run.
+    """
+    from sdip.ingest import ingest as run_ingest
+
+    number: float | int = float(revision) if "." in revision else int(revision)
+    result = run_ingest(source, output, revision=number, template=template, overwrite=overwrite)
+
+    if as_json:
+        click.echo(json.dumps(result.to_json(), indent=2, sort_keys=True))
+    else:
+        click.echo(f"source        {result.source_path}")
+        click.echo(f"source bytes  {result.source_bytes}")
+        click.echo(f"source sha256 {result.source_sha256}")
+        click.echo(f"spec          {result.spec.spec_id} ({result.spec.field_count} fields)")
+        click.echo(f"G1            {result.g1.status}")
+        click.echo(f"output        {result.output_path}")
+        click.echo(
+            f"read path     {'intact' if result.read_path_intact else 'CORRUPTED'} "
+            "(source re-hashed after ingest)"
+        )
+        ledger = result.warnings
+        click.echo(
+            f"warnings      {len(ledger.observed)} observed, "
+            f"{len(ledger.suppressions)} suppression(s), "
+            f"{len(ledger.undeclared_suppressions)} UNDECLARED"
+        )
+
+    sys.exit(EXIT_OK if result.read_path_intact else EXIT_FAIL)
 
 
 @cli.command()

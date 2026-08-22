@@ -80,6 +80,10 @@ include = [
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+# `tests` is an importable package so the fixture generators are shared between unit
+# and integration tests. Spec 6.6 makes the generator the fixture, so it has to be
+# importable from both.
+pythonpath = ["."]
 addopts = "-ra --strict-markers --strict-config"
 # SP6 - no suppressed warnings. Any warning that reaches pytest is an error
 # unless a test opts in explicitly. This is a project rule, not a preference.

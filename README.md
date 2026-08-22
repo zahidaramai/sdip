@@ -28,9 +28,9 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 [![ci](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml)
 [![dco](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml)
 
-![Phase](https://img.shields.io/badge/roadmap_phase-F1-orange?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-239_passing-success?style=flat-square)
-![Gates enforcing](https://img.shields.io/badge/gates_enforcing-1_of_7-orange?style=flat-square)
+![Phase](https://img.shields.io/badge/roadmap_phase-F2-orange?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-275_passing-success?style=flat-square)
+![Gates enforcing](https://img.shields.io/badge/gates_enforcing-2_of_7-orange?style=flat-square)
 ![Certificates](https://img.shields.io/badge/certificates_issued-0-lightgrey?style=flat-square)
 ![Type checked](https://img.shields.io/badge/mypy-strict-2A6DB2?style=flat-square)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.12%2C%3C3.14-3776AB?style=flat-square&logo=python&logoColor=white)
@@ -79,14 +79,14 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Author** | Zahid Aramai · KLCube Network Agency |
 | **Licence** | Apache-2.0 |
 | **Repository** | `github.com/zahidaramai/sdip` — public, open contribution |
-| **Roadmap phase** | **F1** — gap-free spec generator and gate **G1** |
+| **Roadmap phase** | **F2** — ingest orchestration, Planes 1–2, certificate v0 |
 | **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
-| **Source** | 2,869 lines across 27 modules |
-| **Tests** | 239 passing · mypy strict clean · ruff clean |
-| **Gates enforcing** | **1 of 7** — G1 only. The engine is phase F3, its non-vacuity suite is F4 |
+| **Source** | 3,869 lines across 31 modules |
+| **Tests** | 275 passing · mypy strict clean · ruff clean |
+| **Gates enforcing** | **2 of 7** — G1, and G2a/G2b of G2's five sub-gates. Non-vacuity (G7) is F4 |
 | **Certificates issued** | **0** |
-| **Decision record** | 18 entries, append-only |
-| **Open debts** | 19 entries, append-only — scheduled, never cancelled |
+| **Decision record** | 24 entries, append-only |
+| **Open debts** | 21 entries, append-only — scheduled, never cancelled |
 
 > **Read the two rows in bold before using anything here.** Zero gates enforce today. What has actually been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md). Where a property is unmeasured this project says so and names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
 
@@ -161,7 +161,7 @@ Gates are **binary**. No warnings-as-passes. Every gate names the number that ki
 | Gate | Asserts | What kills it | Phase | State |
 |---|---|---|---|---|
 | `G1` | Byte coverage `== {1..240}`, itemsize `== 240`, zero overlaps, zero void gaps | Any uncovered or doubly-covered byte | F1 | **enforcing** |
-| `G2` | The five planes, per plane | One differing byte on any plane | F3 | not built |
+| `G2` | The five planes, per plane | One differing byte on any plane | F2–F3 | **G2a, G2b enforcing** |
 | `G3` | `sha256(export) == sha256(source)` for the whole file | Hash mismatch with no scoped justification | F3 | not built |
 | `G4` | Store opens with stock `zarr` and `xarray` in a process asserting `"mdio" not in sys.modules` | Any array a consumer needs being unreadable without MDIO | F3 | not built |
 | `G5` | Survey-scale ingest inside a declared memory ceiling | OOM, or peak RSS over the ceiling | F6 | not built |
@@ -188,7 +188,7 @@ The five gate jobs **arm themselves**: each looks for its own subject in the tre
 sdip doctor       # env sanity: barred vars, barred packages, pins, licences,
                   # tree state, publication firewall, git hooks      [F0 — live]
 sdip spec build   # generate + validate a gap-free spec; runs G1     [F1 — live]
-sdip ingest       # SEG-Y -> MDIO  (must sit behind a __main__ guard)     [F2]
+sdip ingest       # SEG-Y -> MDIO  (must sit behind a __main__ guard) [F2 — live]
 sdip verify       # run the Equivalence Engine against a store (G2, G4)   [F3]
 sdip export       # MDIO -> SEG-Y                                          [F3]
 sdip certify      # full chain + round trip + certificate (G1–G7)      [F3–F4]
@@ -222,7 +222,7 @@ sdip/
 │   │   ├── generator.py          #   one uint8 filler per uncovered byte (SP5)
 │   │   └── gate.py               #   G1: five conditions, judged independently
 │   ├── templates/                # MDIO template registration & chunking     [F2]
-│   ├── ingest/                   # thin orchestration over the converter     [F2]
+│   ├── ingest/                   # orchestration + raw file-header capture [F2 — live]
 │   ├── export/                   # MDIO -> SEG-Y, round-trip driver          [F3]
 │   └── equivalence/              # THE ENGINE: five planes, G1–G7, certificates [F3]
 ├── tests/
@@ -284,7 +284,7 @@ doctor: PASS (8 checks)
 | `uv run sdip spec build --revision 0` | Build and validate a gap-free spec; runs G1 |
 | `uv run pytest tests/unit -k "actually_detects or negative"` | Just the negative controls — proof the guards fire |
 | `uv run ruff check . && uv run ruff format --check .` | Lint and format |
-| `uv run mypy` | Strict type check across 27 modules |
+| `uv run mypy` | Strict type check across 31 modules |
 | `uv build` | Build sdist + wheel (`docs/` is excluded from both) |
 
 ---
@@ -295,8 +295,8 @@ Only measured numbers appear here.
 
 | Dimension | Evidence |
 |---|---|
-| **Unit tests** | **239 passing**, 0 failing |
-| **Type checking** | `mypy --strict` clean across **27** source modules |
+| **Unit tests** | **275 passing**, 0 failing |
+| **Type checking** | `mypy --strict` clean across **31** source modules |
 | **Lint / format** | `ruff check` and `ruff format --check` clean |
 | **Warnings** | `filterwarnings = ["error"]` — any warning reaching pytest fails the suite |
 | **Negative controls** | Every guard has one: barred env vars (6 forms), barred packages, pin mismatch, missing distribution, copyleft spellings, the pre-commit hook, and each firewall path |
@@ -305,7 +305,7 @@ Only measured numbers appear here.
 | **Header coverage** | Measured for **every** SEG-Y revision: rev 0 → 131 gap-free fields, rev 1 → 97, rev 2 / 2.1 → 90 (already gap-free). Zero `ibm32` header fields in all four — D-0003 |
 | **Licence scan** | **51** runtime distributions, **zero GPL/AGPL**, one allowlisted with cited evidence — D-0005 / D-0006 |
 | **Reproducibility** | A fresh clone syncs, passes `doctor` 8/8, and runs the suite with no local state |
-| **Gates enforcing** | **1 of 7** — G1. See [The Gates](#-the-gates). |
+| **Gates enforcing** | **2 of 7** — G1, G2a/G2b. See [The Gates](#-the-gates). |
 | **Certificates issued** | **0** |
 
 ### Two defects the tests caught, recorded rather than quietly fixed

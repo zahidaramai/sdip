@@ -29,7 +29,6 @@ def test_all_six_commands_are_declared(runner):
 @pytest.mark.parametrize(
     ("args", "phase"),
     [
-        (["ingest"], "F2"),
         (["verify"], "F3"),
         (["export"], "F3"),
         (["certify"], "F3-F4"),
