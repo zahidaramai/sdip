@@ -262,3 +262,19 @@ that until G7 passes every certificate is unvalidated.
 
 **Closure:** all seven gates built and enforcing, at which point green means what a
 reader assumes it means.
+
+---
+
+## D12 — FULLY CLOSED 2026-08-22 — clearance attested
+
+- **Closes:** the remaining half of D12, left open by the closure entry above
+- **Decision:** `DECISIONS.md` D-0013
+
+The maintainer attests that SDIP is personal work created outside the scope of any
+employment and is clear to publish under a personal identity. Both halves of the
+internal companion §6 pairing — copyright holder and employment-policy clearance — are
+now recorded and dated.
+
+No automated check verifies the attestation, and none could. It is recorded so the basis
+for publication is written down rather than assumed.
+

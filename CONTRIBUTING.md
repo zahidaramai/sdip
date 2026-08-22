@@ -39,15 +39,55 @@ Specification v1.0 your change touches. The section, not the summary.
 
 ```bash
 git clone https://github.com/zahidaramai/sdip && cd sdip
-uv sync                    # Python >=3.12,<3.14
-uv run sdip doctor         # must pass before anything else
+git config core.hooksPath .githooks   # required - see "Publication firewall" below
+uv sync                               # Python >=3.12,<3.14
+uv run sdip doctor                    # must pass before anything else
 uv run pytest
 uv run ruff check . && uv run ruff format --check .
 uv run mypy
 ```
 
+The `core.hooksPath` line is not optional. Git does not track hooks, so a fresh clone
+has none, and `sdip doctor` has a `git-hooks` check rather than trusting that you
+remembered.
+
 `doctor` exits 1 on a dirty working tree. That is intentional and there is no override
 flag — see [`DECISIONS.md`](DECISIONS.md) D-0007.
+
+---
+
+## Publication firewall
+
+This repository is public, and some paths are **never committed** — not with
+`git add -f`, not "just this once to fix a link":
+
+```
+docs/                 CLAUDE.md              AGENTS.md
+.claude/              CLAUDE.local.md        .cursor/   .aider*
+.claude-session-sync.md                      .github/copilot-instructions.md
+```
+
+Four layers enforce it, and only the first one *prevents* anything:
+
+| # | Layer | Catches | Timing |
+|---|---|---|---|
+| 1 | `.githooks/pre-commit` | staged paths | **before the commit exists** |
+| 2 | `.gitignore` | an accidental `git add -A` | at `git add` |
+| 3 | `sdip doctor` → `publication-firewall` | index **and** `HEAD` | on demand |
+| 4 | CI `firewall` job | **any commit, any ref** | every PR and push |
+
+Layers 2–4 only *detect*. Once a path is in a commit the remedy is a history rewrite,
+because a clone receives history — `git rm --cached` removes a file from the index and
+leaves it in every commit that already had it.
+
+`git commit --no-verify` skips layer 1. It does not skip layers 3 or 4. That asymmetry
+is deliberate: you can get past the convenience layer in a hurry and still cannot get a
+leak merged.
+
+**`docs/` is why `CONTRIBUTING.md` restates rules instead of linking to them.** The
+governing specification lives outside this repository. If a rule you are asked to follow
+appears in none of `README.md`, this file, or `DECISIONS.md`, open an issue — that is a
+defect in those files, not in you.
 
 ---
 

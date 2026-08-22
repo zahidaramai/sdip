@@ -2,16 +2,19 @@
 
 ## Reporting a vulnerability
 
-Report privately through **GitHub Security Advisories** on this repository
-(*Security → Report a vulnerability*). Please do not open a public issue for a
-suspected vulnerability.
+**[Report a vulnerability privately →](https://github.com/zahidaramai/sdip/security/advisories/new)**
 
-Expect an acknowledgement within **3 working days** and an assessment within **10
-working days**. Coordinated disclosure is the default; we will agree a date with you
-before publishing.
+Use GitHub's private vulnerability reporting (*Security → Report a vulnerability*). The
+report is visible only to you and the maintainers until a fix ships. **Please do not open
+a public issue for a suspected vulnerability.**
 
-If you would rather not use GitHub, the maintainer contact in
-[`CITATION.cff`](CITATION.cff) accepts reports.
+This is the only reporting channel. There is deliberately no email address here: a
+private advisory thread gives you a durable record, a CVE path, and coordinated
+disclosure controls that an inbox does not.
+
+Expect an acknowledgement within **3 working days** and an assessment within **10 working
+days**. Coordinated disclosure is the default; we will agree a date with you before
+publishing.
 
 ## Supported versions
 

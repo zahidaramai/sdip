@@ -28,6 +28,7 @@ sent back.
 - [ ] Any entry point that can trigger ingestion is behind `if __name__ == "__main__":`
 - [ ] Append-only records updated where relevant (`DECISIONS.md`, `OPEN_DEBTS.md`, `EQUIVALENCE_LEDGER.md`) — **by appending**
 - [ ] No proprietary data added, attached, or referenced
+- [ ] Nothing from the publication firewall is staged (`docs/`, `CLAUDE.md`, `.claude/`, …)
 - [ ] Every commit is signed off (`git commit -s`)
 - [ ] A stranger could reproduce this from the repository alone
 

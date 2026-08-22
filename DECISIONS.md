@@ -380,3 +380,67 @@ certificate the engine issues is unvalidated**.
 
 **What overturns it.** All seven gates existing, at which point the arming logic is
 dead code and should be removed by a new entry citing this one.
+
+---
+
+## D-0013 — 2026-08-22 — Employment-policy clearance attested; publication cleared
+
+**Decision.** The maintainer attests that SDIP is **personal work, created outside the
+scope of any employment**, and is **clear to publish under a personal identity**.
+
+**Closes** the second half of the pairing in the internal companion §6, which held the
+copyright decision and employment-policy clearance together as jointly blocking for the
+first public push. D-0011 recorded the copyright and stated explicitly that clearance
+was *not* attested, because it is not something this repository can observe. This entry
+records the attestation, given by the maintainer on 2026-08-22.
+
+**What this entry is, and what it is not.** It is a record of an attestation by the
+person entitled to make it. It is not a legal opinion, and no automated check verifies
+it — no check could. It is recorded here so that the basis for publication is written
+down and dated rather than assumed, on the same principle as every other claim in this
+file: **the record says who claimed what, and when.**
+
+**Consequence.** `NOTICE` and `CITATION.cff` name Zahid Aramai personally, consistently
+with this attestation. The repository stays public at `github.com/zahidaramai/sdip`.
+`OPEN_DEBTS.md` **D12** is now closed in both halves.
+
+**What overturns it.** A determination that the work falls within an employment scope
+after all. That would require a new entry citing this one, a corrected `NOTICE` and
+`CITATION.cff`, and a decision on whether the repository may remain published — the
+last of which is materially harder now than it was before the first push, which is
+precisely why the attestation is dated.
+
+---
+
+## D-0014 — 2026-08-22 — Reporting runs through GitHub private advisories; no email published
+
+**Decision.** `SECURITY.md` and `CODE_OF_CONDUCT.md` route every report through
+**GitHub private vulnerability reporting**. `CITATION.cff` carries `alias: zahidaramai`
+and **no email address**. GitHub private vulnerability reporting is enabled on the
+repository.
+
+**Reasoning.** `SECURITY.md` previously named the maintainer contact in `CITATION.cff`,
+which meant publishing a personal email address in a machine-readable file on a public
+repository — a durable, scrapable target, and a different exposure from the same address
+appearing in commit author metadata where a reader has to go looking for it.
+
+A private advisory thread is also simply the better channel for what this project
+receives:
+
+- It is **private by construction** until a fix ships, which an inbox is not.
+- It gives the reporter a **durable record** and a **CVE path**.
+- It has **coordinated-disclosure controls** built in.
+- It has **no single point of failure** in a personal mailbox.
+
+`SECURITY.md` says so explicitly rather than leaving the absence of an email looking
+like an oversight.
+
+**On the Code of Conduct using the same channel.** Not ideal semantically — a conduct
+report is not a vulnerability report. It is chosen because it is the only channel this
+repository can offer that is genuinely private, and a Code of Conduct whose reporting
+address does not exist is worse than one that reuses a working private channel. Revisit
+if the project gains a dedicated address.
+
+**What overturns it.** A purpose-made address on a domain the maintainer controls, at
+which point `SECURITY.md` gains it as an alternative and `CODE_OF_CONDUCT.md` moves to
+it. Recorded as a new entry citing this one.

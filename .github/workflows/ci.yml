@@ -36,6 +36,8 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --all-extras --dev
+      - name: Install the publication firewall hook
+        run: git config core.hooksPath .githooks
       - name: sdip doctor
         run: uv run sdip doctor
       - name: Publish the doctor report as an artifact

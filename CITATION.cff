@@ -33,7 +33,6 @@ authors:
   - family-names: "Aramai"
     given-names: "Zahid"
     alias: "zahidaramai"
-    email: "me@zahidaramai.com"
 
 version: 0.1.0.dev0
 date-released: "2026-08-22"

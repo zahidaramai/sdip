@@ -235,6 +235,63 @@ def tracked_unpublishable(root: Path) -> list[str]:
     return sorted(found)
 
 
+def _check_hooks(root: Path) -> Check:
+    """Assert the pre-commit firewall hook is active.
+
+    The hook is the only layer that stops a leak *before* it exists. Every other layer
+    reports one that already happened, and once a path is in a commit the remedy is a
+    history rewrite. Git does not track hooks, so a fresh clone has none until
+    ``core.hooksPath`` is set - which makes "did anyone actually install it" a real
+    question and therefore a real check.
+    """
+    hook = root / ".githooks" / "pre-commit"
+    exe = shutil.which("git")
+    configured = ""
+    if exe is not None:
+        proc = subprocess.run(  # noqa: S603 - argv list, no shell, resolved executable
+            [exe, "config", "--get", "core.hooksPath"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        configured = proc.stdout.strip()
+
+    present = hook.is_file()
+    executable = present and hook.stat().st_mode & 0o111 != 0
+    active = configured == ".githooks"
+    ok = present and executable and active
+
+    if not present:
+        summary = ".githooks/pre-commit is missing"
+    elif not executable:
+        summary = ".githooks/pre-commit is not executable (chmod +x .githooks/pre-commit)"
+    elif not active:
+        summary = (
+            f"hooks are not installed (core.hooksPath={configured or 'unset'}); "
+            "run: git config core.hooksPath .githooks"
+        )
+    else:
+        summary = "pre-commit firewall hook is installed and executable"
+
+    return Check(
+        name="git-hooks",
+        status=Status.PASS if ok else Status.FAIL,
+        clause="publication firewall - prevention layer",
+        summary=summary,
+        evidence={
+            "hook": str(hook.relative_to(root)) if present else None,
+            "executable": executable,
+            "core_hooksPath": configured or None,
+            "note": (
+                "git commit --no-verify skips this hook. It does not skip the "
+                "publication-firewall check or the CI firewall job."
+            ),
+        },
+    )
+
+
 def _check_firewall(root: Path) -> Check:
     """Assert nothing unpublishable is tracked. This repository is public."""
     state = capture_git_state(root)
@@ -286,6 +343,7 @@ def run_doctor(root: str | Path = ".") -> Report:
             _check_licences(),
             _check_tree(root_path),
             _check_firewall(root_path),
+            _check_hooks(root_path),
         ]
     )
     return report

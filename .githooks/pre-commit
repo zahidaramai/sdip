@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# SDIP publication firewall - pre-commit.
+#
+# This repository is public. docs/ and every AI-assistant artifact are maintained on
+# the working copy and must never enter a commit.
+#
+# This hook is the ONLY layer that stops a leak BEFORE it exists. The other layers -
+# .gitignore, `sdip doctor`, and the CI firewall job - all report a leak that has
+# already happened, and once a path is in a commit the only remedy is a history
+# rewrite. That is cheap today, with two commits and one contributor, and expensive
+# the moment anyone has cloned.
+#
+# Install:  git config core.hooksPath .githooks
+# Verify:   git config --get core.hooksPath
+#
+# `git commit --no-verify` skips this hook. It does not skip `sdip doctor` or the CI
+# firewall job, both of which scan HEAD and history. That is deliberate.
+set -euo pipefail
+
+NEVER_PUBLISH=(
+  'docs'
+  'CLAUDE.md'
+  'CLAUDE.local.md'
+  'AGENTS.md'
+  '.claude'
+  '.claude-session-sync.md'
+  '.cursor'
+  '.github/copilot-instructions.md'
+)
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR -- "${NEVER_PUBLISH[@]}" || true)
+
+if [ -n "$staged" ]; then
+  printf '\n\033[1;31mBLOCKED: publication firewall\033[0m\n\n' >&2
+  printf '  This repository is public. These paths are staged and must never be committed:\n\n' >&2
+  printf '%s\n' "$staged" | sed 's/^/    /' >&2
+  printf '\n  Unstage them:\n\n    git restore --staged %s\n\n' "$(printf '%s\n' "$staged" | tr '\n' ' ')" >&2
+  printf '  They stay on your working copy and are used locally. Only tracking is barred.\n' >&2
+  printf '  See DECISIONS.md D-0010.\n\n' >&2
+  exit 1
+fi
+
+exit 0

@@ -338,6 +338,98 @@ def test_every_unpublishable_path_is_ignored(repo_root, path):
     assert result.returncode == 0, f"{path} is not covered by .gitignore"
 
 
+def test_all_four_firewall_layers_declare_the_same_set(repo_root):
+    """A path protected by three layers and missed by the fourth is protected by three.
+
+    The weakest layer is the real policy, so the sets must not drift. This fails a
+    partial change rather than letting it ship a hole.
+    """
+    from sdip.cli.doctor import NEVER_PUBLISH
+
+    gitignore = (repo_root / ".gitignore").read_text()
+    hook = (repo_root / ".githooks" / "pre-commit").read_text()
+    ci = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
+    firewall_job = ci.split("  firewall:", 1)[1].split("\n  fixture-policy:", 1)[0]
+
+    for pattern in NEVER_PUBLISH:
+        assert pattern in gitignore, f".gitignore is missing {pattern}"
+        assert pattern in hook, f".githooks/pre-commit is missing {pattern}"
+        assert pattern in firewall_job, f"CI firewall job is missing {pattern}"
+
+
+def test_the_precommit_hook_exists_and_is_executable(repo_root):
+    hook = repo_root / ".githooks" / "pre-commit"
+    assert hook.is_file()
+    assert hook.stat().st_mode & 0o111, "hook is not executable"
+    assert hook.read_text().startswith("#!")
+
+
+def test_the_precommit_hook_actually_blocks_a_staged_leak(tmp_path, repo_root):
+    """NEGATIVE CONTROL. A hook nobody has watched fire is not a hook (SP11)."""
+    import shutil
+
+    _git(["init", "-q", "-b", "main"], tmp_path)
+    _git(["config", "user.email", "t@example.invalid"], tmp_path)
+    _git(["config", "user.name", "T"], tmp_path)
+    hooks = tmp_path / ".githooks"
+    hooks.mkdir()
+    shutil.copy(repo_root / ".githooks" / "pre-commit", hooks / "pre-commit")
+    (hooks / "pre-commit").chmod(0o755)
+    _git(["config", "core.hooksPath", ".githooks"], tmp_path)
+
+    (tmp_path / "CLAUDE.md").write_text("working context\n")
+    _git(["add", "-f", "CLAUDE.md"], tmp_path)
+    result = _git(["commit", "-m", "leak", "--no-gpg-sign"], tmp_path)
+
+    assert result.returncode != 0, "the hook let a leak through"
+    assert "BLOCKED" in (result.stdout + result.stderr)
+    assert _git(["rev-parse", "HEAD"], tmp_path).returncode != 0, "a commit was created"
+
+
+def test_doctor_reports_a_missing_hook_file(git_repo):
+    """NEGATIVE CONTROL: no .githooks/pre-commit at all."""
+    from sdip.cli.doctor import run_doctor
+
+    hooks = next(c for c in run_doctor(git_repo).checks if c.name == "git-hooks")
+    assert hooks.status.value == "FAIL"
+    assert "missing" in hooks.summary
+
+
+def test_doctor_reports_a_hook_that_is_present_but_not_installed(git_repo, repo_root):
+    """NEGATIVE CONTROL: the file is there and `core.hooksPath` was never set.
+
+    This is the state of every fresh clone, and it is the one a contributor is most
+    likely to be in while believing they are protected.
+    """
+    import shutil
+
+    from sdip.cli.doctor import run_doctor
+
+    (git_repo / ".githooks").mkdir()
+    shutil.copy(repo_root / ".githooks" / "pre-commit", git_repo / ".githooks" / "pre-commit")
+    (git_repo / ".githooks" / "pre-commit").chmod(0o755)
+
+    hooks = next(c for c in run_doctor(git_repo).checks if c.name == "git-hooks")
+    assert hooks.status.value == "FAIL"
+    assert "core.hooksPath" in hooks.summary
+
+
+def test_doctor_reports_a_hook_that_is_not_executable(git_repo, repo_root):
+    """NEGATIVE CONTROL: git silently ignores a non-executable hook."""
+    import shutil
+
+    from sdip.cli.doctor import run_doctor
+
+    (git_repo / ".githooks").mkdir()
+    shutil.copy(repo_root / ".githooks" / "pre-commit", git_repo / ".githooks" / "pre-commit")
+    (git_repo / ".githooks" / "pre-commit").chmod(0o644)
+    _git(["config", "core.hooksPath", ".githooks"], git_repo)
+
+    hooks = next(c for c in run_doctor(git_repo).checks if c.name == "git-hooks")
+    assert hooks.status.value == "FAIL"
+    assert "not executable" in hooks.summary
+
+
 def test_gitignore_has_no_negation_for_an_unpublishable_path(repo_root):
     """A single `!CLAUDE.md` line would defeat the whole firewall silently."""
     from sdip.cli.doctor import NEVER_PUBLISH

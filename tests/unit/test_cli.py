@@ -47,7 +47,7 @@ def test_unbuilt_commands_refuse_and_name_their_phase(runner, args, phase):
     assert phase in str(result.exception)
 
 
-def test_doctor_runs_seven_checks(repo_root):
+def test_doctor_runs_every_declared_check(repo_root):
     report = run_doctor(repo_root)
     assert [c.name for c in report.checks] == [
         "python-version",
@@ -57,6 +57,7 @@ def test_doctor_runs_seven_checks(repo_root):
         "runtime-licences",
         "working-tree",
         "publication-firewall",
+        "git-hooks",
     ]
 
 
@@ -84,7 +85,7 @@ def test_doctor_json_is_machine_readable(runner, repo_root):
     payload = json.loads(result.output)
     assert payload["command"] == "doctor"
     assert payload["verdict"] in {"PASS", "FAIL"}
-    assert len(payload["checks"]) == 7
+    assert len(payload["checks"]) == 8
     assert payload["environment"]["packages"]["multidimio"] == "1.2.1"
 
 
