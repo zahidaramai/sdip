@@ -31,6 +31,16 @@ def sha256_file(path: str | Path, *, chunk_size: int = _CHUNK) -> str:
     return digest.hexdigest()
 
 
+def sha256_bytes(payload: bytes) -> str:
+    """Return the lowercase hex sha256 of an in-memory payload.
+
+    For digests over values SDIP itself constructed - a spec manifest, a codec list.
+    Never used on file content, which is streamed by :func:`sha256_file` so that an
+    attacker-controlled size cannot drive an unbounded allocation (spec 11.4).
+    """
+    return hashlib.sha256(payload).hexdigest()
+
+
 def sha256_tree(root: str | Path, *, exclude: Iterable[str] = ()) -> dict[str, str]:
     """Return ``{relative_posix_path: sha256}`` for every file under ``root``.
 

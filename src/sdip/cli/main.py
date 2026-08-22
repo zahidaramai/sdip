@@ -95,13 +95,58 @@ def spec() -> None:
 
 
 @spec.command("build")
-def spec_build() -> NoReturn:
-    """Generate and validate a gap-free spec; runs G1."""
-    _not_yet(
-        "spec build",
-        "F1",
-        "It emits one uint8 filler per uncovered byte and asserts coverage of 1..240.",
-    )
+@click.option(
+    "--revision",
+    type=click.Choice(["0", "1", "2", "2.1"]),
+    default="1",
+    show_default=True,
+    help="SEG-Y revision to build the gap-free spec for.",
+)
+@click.option("--json", "as_json", is_flag=True, help="Emit a machine-readable report.")
+def spec_build(revision: str, as_json: bool) -> None:
+    """Generate and validate a gap-free spec; runs G1.
+
+    Emits one uint8 filler per uncovered byte and asserts coverage of bytes 1-240 with
+    zero gaps, zero overlaps, and no numpy void padding. Exits 1 if G1 fails - a
+    failing G1 aborts ingestion before a single trace is read.
+    """
+    from sdip.spec import build_gap_free_spec, g1_for_spec
+
+    number: float | int = float(revision) if "." in revision else int(revision)
+    built = build_gap_free_spec(number)
+    result = g1_for_spec(built)
+
+    if as_json:
+        click.echo(
+            json.dumps(
+                {"command": "spec build", "spec": built.to_json(), "G1": result.to_json()},
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    else:
+        click.echo(f"revision      SEG-Y rev {built.revision}")
+        click.echo(f"base fields   {built.base_field_count}")
+        click.echo(
+            f"fillers       {len(built.fillers)} uint8"
+            + (
+                f"  ({built.fillers[0]}..{built.fillers[-1]})"
+                if built.fillers
+                else "  (already gap-free)"
+            )
+        )
+        click.echo(f"spec fields   {built.field_count}")
+        click.echo(f"itemsize      {built.itemsize}")
+        click.echo(f"spec_id       {built.spec_id}")
+        click.echo(f"spec_sha256   {built.sha256()}")
+        click.echo("")
+        for condition in result.conditions:
+            mark = "PASS" if condition.passed else "FAIL"
+            click.echo(f"[{mark}] {condition.name:<13} {condition.detail}")
+        click.echo("")
+        click.echo(result.summary())
+
+    sys.exit(EXIT_OK if result.passed else EXIT_FAIL)
 
 
 @cli.command()

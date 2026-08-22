@@ -544,3 +544,75 @@ immediately before posting: no `catch_warnings` in `zarr_io`, `finally: pass` pr
 **Resolves** the reporting obligation in `OPEN_DEBTS.md` **D10**. The debt itself stays
 open until upstream acts or declines — SDIP does not get to close a debt by writing
 about it.
+
+---
+
+## D-0018 — 2026-08-22 — F1 built: gap-free spec generator and G1
+
+**Decision.** `src/sdip/spec/` implements specification §5.1 construction and gate **G1**.
+`sdip spec build` is live.
+
+**Measured, reproducing `DECISIONS.md` D-0003 through the generator rather than by
+static arithmetic:**
+
+| Revision | Base fields | Fillers | Gap-free fields | Itemsize | G1 |
+|---|---|---|---|---|---|
+| rev 0 | 71 | **60** (`pad_181`…`pad_240`) | **131** | 240 | PASS |
+| rev 1 | 89 | **8** (`pad_233`…`pad_240`) | **97** | 240 | PASS |
+| rev 2 | 90 | **0** — already gap-free | **90** | 240 | PASS |
+| rev 2.1 | 90 | **0** — already gap-free | **90** | 240 | PASS |
+
+**Three design calls worth recording.**
+
+**1. Coverage arithmetic is separate from the generator, and G1 is separate from both.**
+G1 takes a field set, not a generator output, so it can judge a spec SDIP did not build:
+a survey override (§6.4), a hand-written spec, a spec from a future upstream. **A gate
+that can only assess its own output is not a gate** (**SP11**).
+
+**2. G1's four conditions are evaluated and reported independently.** `coverage`,
+`no-overlaps`, `in-range`, `itemsize`, `no-void-gaps` each carry their own verdict and
+their own detail string. A gate that collapses them into one boolean can say it failed
+but not what to fix — and an over-broad check that fails everything on any defect cannot
+localise a fault and gets silenced the first time it fires on something benign. This is
+G7's *"fails its gate and only its gate"* clause applied one level down, and the negative
+controls assert both halves: the target condition fails **and** the others still pass.
+
+**3. A missing dtype is a failure, not a skip.** Called without a dtype, G1 reports
+`itemsize` and `no-void-gaps` as **failed** with detail *"could not be checked"*. G1 is
+pre-flight for an ingestion; **"could not check" is not "fine"**.
+
+**Two upstream facts found while building, both now regression-tested.**
+
+- **`ScalarType.STRING8` has the value `"S8"`, and numpy rejects `"s8"`.** Normalising
+  case before the numpy lookup silently loses the only string format in the SEG-Y
+  standard, which would then read as a field of unknown width. Case is preserved; a
+  test asserts `np.dtype("s8")` still raises so the hazard cannot quietly disappear.
+- **`ibm32` has no numpy equivalent** and is resolved by name before numpy is consulted.
+
+**The base standard is deep-copied before customisation.** `get_segy_standard` returns a
+fresh object per call today; relying on that would let a future upstream change to
+caching silently corrupt the shared standard for every other caller in the process. A
+test asserts the standard is unchanged after a build.
+
+**`spec_sha256`** hashes the field manifest — name, start byte, width — in **byte
+order**, not declaration order. Two specs declaring the same fields in a different order
+are the same spec. rev 2 and rev 2.1 hash identically, which is correct: they declare
+the same trace header.
+
+**Negative controls ship in the same commit** (`CLAUDE.md` §4.2): the raw rev 0 and rev 1
+standards fail G1 on `coverage` and `no-void-gaps` and nothing else; one dropped field
+fails `coverage` only; a doubly-covered byte fails `no-overlaps` only; a 4-byte field at
+byte 238 fails `in-range`; a 239-byte dtype fails `itemsize` only; a numpy-padded dtype
+fails `no-void-gaps`.
+
+**On where G1's controls live.** In `tests/unit/`, not `tests/negative/`. G7's controls
+are store corruptions; G1 runs before a single trace is read, so no store exists to
+corrupt and its controls construct a defective *specification* instead. Putting them in
+`tests/negative/` would arm the `negative-G7` CI job on content that is not G7 and make
+an unbuilt gate look built.
+
+**Not built at F1**, and deliberately: survey spec overrides (§6.4). They are declarative
+data requiring cited evidence at review, and nothing consumes them until ingest exists.
+
+**Status: G1 is the first gate SDIP enforces.** Six remain unbuilt, and **G7 is still
+among them** — see `OPEN_DEBTS.md` D11.

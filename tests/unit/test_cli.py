@@ -29,7 +29,6 @@ def test_all_six_commands_are_declared(runner):
 @pytest.mark.parametrize(
     ("args", "phase"),
     [
-        (["spec", "build"], "F1"),
         (["ingest"], "F2"),
         (["verify"], "F3"),
         (["export"], "F3"),
@@ -179,3 +178,45 @@ def test_version_flag_reports_the_specification_version(runner):
     result = runner.invoke(cli, ["--version"])
     assert result.exit_code == 0
     assert "specification v1.0" in result.output
+
+
+# ---------------------------------------------------------------------------
+# `sdip spec build` — phase F1
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("revision", ["0", "1", "2", "2.1"])
+def test_spec_build_passes_g1_for_every_revision(runner, revision):
+    result = runner.invoke(cli, ["spec", "build", "--revision", revision])
+    assert result.exit_code == 0, result.output
+    assert "G1 PASS" in result.output
+    assert "itemsize      240" in result.output
+
+
+def test_spec_build_json_carries_the_certificate_block(runner):
+    result = runner.invoke(cli, ["spec", "build", "--revision", "1", "--json"])
+    payload = json.loads(result.output)
+    assert payload["spec"]["spec_field_count"] == 97
+    assert payload["spec"]["spec_itemsize"] == 240
+    assert payload["spec"]["spec_gap_free"] is True
+    assert len(payload["spec"]["spec_sha256"]) == 64
+    assert payload["G1"]["status"] == "PASS"
+    assert len(payload["G1"]["conditions"]) == 5
+
+
+def test_spec_build_reports_fillers_honestly(runner):
+    """Rev 2 needs none; saying "0 fillers" without saying why would read as a bug."""
+    assert "already gap-free" in runner.invoke(cli, ["spec", "build", "--revision", "2"]).output
+    assert "pad_233..pad_240" in runner.invoke(cli, ["spec", "build", "--revision", "1"]).output
+
+
+def test_spec_build_rejects_an_unsupported_revision(runner):
+    result = runner.invoke(cli, ["spec", "build", "--revision", "3"])
+    assert result.exit_code != 0
+
+
+def test_spec_build_is_deterministic(runner):
+    """G6 starts here: the same revision must address the header identically."""
+    first = json.loads(runner.invoke(cli, ["spec", "build", "--json"]).output)
+    second = json.loads(runner.invoke(cli, ["spec", "build", "--json"]).output)
+    assert first["spec"]["spec_sha256"] == second["spec"]["spec_sha256"]

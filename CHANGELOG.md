@@ -57,6 +57,32 @@ invalidates every certificate issued under the previous pin (spec §12.4).
   that built the gate. They now arm themselves on the presence of their own subject.
   `DECISIONS.md` D-0012, recorded as a maintainer error.
 
+### Added — roadmap phase F1
+
+- **Gap-free spec generator** (`sdip.spec`) implementing §5.1: one `uint8` filler per
+  uncovered byte, named `pad_<byte>` (**SP5**). Never a wider filler over a run — a
+  multi-byte integer would commit to an endianness for bytes whose meaning is undeclared.
+- **Gate G1** — five conditions (`coverage`, `no-overlaps`, `in-range`, `itemsize`,
+  `no-void-gaps`) evaluated and reported **independently**, so a failure says what to fix.
+  Takes a field set rather than a generator output, so it can judge a spec SDIP did not
+  build. A missing dtype is a **failure**, not a skip.
+- **`sdip spec build`** with `--revision` and `--json`. Exits 1 if G1 fails.
+- Negative controls in the same commit: raw rev 0/1 standards, a dropped field, a
+  doubly-covered byte, an out-of-range field, a wrong itemsize, numpy void padding.
+  Each asserts its condition fails **and the others still pass**.
+
+### Measured — F1
+
+| Revision | Base fields | Fillers | Gap-free fields | G1 |
+|---|---|---|---|---|
+| rev 0 | 71 | 60 | 131 | PASS |
+| rev 1 | 89 | 8 | 97 | PASS |
+| rev 2 / 2.1 | 90 | 0 — already gap-free | 90 | PASS |
+
+Reproduces `DECISIONS.md` D-0003 through the generator rather than by static arithmetic.
+`ScalarType.STRING8` is `"S8"` and numpy rejects `"s8"` — case is preserved and
+regression-tested. See D-0018.
+
 ### Not yet built
 
 `sdip spec build` (F1), `sdip ingest` (F2), `sdip verify` / `sdip export` /
