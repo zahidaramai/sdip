@@ -6,13 +6,18 @@ binding pins. If a pin bump changes any of it, these fail — which is the point
 
 from __future__ import annotations
 
+import logging
+import subprocess
+import sys
 import warnings
 
 import pytest
 
 from sdip.guard.warn import (
     KNOWN_UPSTREAM_SUPPRESSIONS,
+    LEDGER_SCOPE,
     WarningLedger,
+    recording_log_records,
     recording_warnings,
 )
 
@@ -183,3 +188,158 @@ def test_ledger_serialises_for_a_certificate():
     assert payload["undeclared_suppression_count"] == 0
     assert len(payload["known_upstream_suppressions"]) == len(KNOWN_UPSTREAM_SUPPRESSIONS)
     assert "monkeypatching" in payload["sp6_scope_note"]
+
+
+# --------------------------------------------------------------------------------------
+# Blind spot 2 — `logger.warning` is not a Python warning. OPEN_DEBTS D26.
+# --------------------------------------------------------------------------------------
+
+
+def test_a_log_record_is_recorded():
+    """The channel `catch_warnings` cannot see, by construction."""
+    with recording_log_records() as ledger:
+        logging.getLogger("upstream.grid_qc").warning("Ingestion grid is sparse. %s", 3.0)
+
+    assert len(ledger.logged) == 1
+    record = ledger.logged[0]
+    assert record.logger == "upstream.grid_qc"
+    assert record.level == "WARNING"
+    assert record.levelno == logging.WARNING
+    assert record.message == "Ingestion grid is sparse. 3.0"
+    assert record.module == "test_guard_warnings"
+
+
+def test_the_two_channels_are_not_merged():
+    """A warning and a log record are different mechanisms and stay in different lists.
+
+    Only one of the two is suppressible by a filter. Flattening them would report the
+    wrong mechanism for half the entries, and the mechanism is the point.
+    """
+    ledger = WarningLedger()
+    with recording_warnings(ledger, reemit=False), recording_log_records(ledger):
+        warnings.warn("through the warnings module", UserWarning, stacklevel=1)
+        logging.getLogger("upstream").warning("through the logging module")
+
+    assert [w.message for w in ledger.observed] == ["through the warnings module"]
+    assert [r.message for r in ledger.logged] == ["through the logging module"]
+
+    payload = ledger.to_json()
+    assert payload["observed_count"] == 1
+    assert payload["logged_count"] == 1
+
+
+def test_records_below_the_threshold_are_not_recorded():
+    """WARNING and above. SP6 is about warnings, not about upstream's INFO chatter."""
+    with recording_log_records() as ledger:
+        logging.getLogger("upstream").info("routine progress")
+        logging.getLogger("upstream").error("a real problem")
+
+    assert [r.level for r in ledger.logged] == ["ERROR"]
+
+
+def test_the_handler_is_removed_even_when_the_block_raises():
+    """This module must not leak global state, which is what it criticises upstream for."""
+    root = logging.getLogger()
+    before = list(root.handlers)
+
+    with pytest.raises(RuntimeError, match="from inside the block"):
+        with recording_log_records():
+            assert len(root.handlers) == len(before) + 1
+            raise RuntimeError("from inside the block")
+
+    assert root.handlers == before
+
+
+def test_the_recorder_does_not_silence_a_bare_root_logger(repo_root):
+    """MEASURED. The recorder must not quieten the run it is measuring.
+
+    ``Logger.callHandlers`` falls back to ``logging.lastResort`` — which prints to
+    stderr — only when it finds **no** handler in the chain. SDIP configures no logging
+    and neither does MDIO, so during an ingest that fallback is the only thing putting
+    upstream's warnings on the terminal. Attaching any handler displaces it.
+
+    Run in a subprocess because pytest's own logging plugin attaches a handler to the
+    root logger, so the condition being measured — a genuinely bare root logger, which
+    is what `sdip ingest` actually has — cannot exist inside a test process.
+    """
+    recorded = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import logging\n"
+            "from sdip.guard.warn import recording_log_records\n"
+            "with recording_log_records() as ledger:\n"
+            "    logging.getLogger('upstream').warning('SENTINEL')\n"
+            "assert [r.message for r in ledger.logged] == ['SENTINEL']\n",
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "SENTINEL" in recorded.stderr, (
+        "the recorder swallowed a message that would otherwise have reached stderr"
+    )
+
+
+def test_a_plain_handler_really_does_silence_a_bare_root_logger(repo_root):
+    """NEGATIVE CONTROL for the test above.
+
+    Same subprocess, same log call, a recorder that does *not* carry the displaced
+    fallback. If this ever starts printing, ``lastResort`` no longer works the way the
+    test above depends on and the re-emission can be reconsidered — this failing is how
+    anyone would find out.
+    """
+    silenced = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import logging\n"
+            "class Silent(logging.Handler):\n"
+            "    def emit(self, record): pass\n"
+            "logging.getLogger().addHandler(Silent(level=logging.WARNING))\n"
+            "logging.getLogger('upstream').warning('SENTINEL')\n",
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "SENTINEL" not in silenced.stderr, (
+        "lastResort is no longer displaced by an attached handler; re-read "
+        "recording_log_records, whose re-emission exists only for that"
+    )
+
+
+# --------------------------------------------------------------------------------------
+# Blind spot 1 — the ledger declares what it did not watch. OPEN_DEBTS D26.
+# --------------------------------------------------------------------------------------
+
+
+def test_the_ledger_declares_its_own_scope():
+    """An empty `observed` must stop reading as evidence of a quiet run.
+
+    **These strings are the claim.** A change that genuinely captures worker warnings
+    has to edit this assertion, which is deliberate: the capability and the claim land
+    in the same commit or neither does.
+    """
+    scope = WarningLedger().to_json()["scope"]
+
+    covers = "parent-process Python warnings and parent-process log records only"
+    assert scope["covers"] == covers
+    assert scope["worker_process_warnings"] == "NOT CAPTURED - see OPEN_DEBTS D26"
+    assert scope["worker_process_log_records"] == "NOT CAPTURED - see OPEN_DEBTS D26"
+    assert "spawn pool" in scope["empty_observed_means"]
+    assert "monkeypatching" in scope["why_workers_are_not_captured"]
+
+
+def test_the_scope_names_the_sites_that_were_searched():
+    """SP8: the "no hook exists" finding is a measurement, and names what was measured.
+
+    The version-specific line numbers are the evidence. A pin bump moves them, and
+    whoever bumps the pin has to look again rather than inherit the conclusion.
+    """
+    why = LEDGER_SCOPE["why_workers_are_not_captured"]
+    for site in ("mdio/segy/blocked_io.py:104", "mdio/segy/parsers.py:61"):
+        assert site in why
+    assert "spec 3.3" in why

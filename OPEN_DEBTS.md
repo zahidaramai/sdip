@@ -832,3 +832,105 @@ fully populated, zero dead traces), one revision (rev 1), one survey in three vi
 local filesystem only, 5 GiB not 20 GiB. **A scale result that does not say what it did
 not cover is not a scale result.**
 
+---
+
+## D21 — CLOSED 2026-08-23 — survey spec overrides built
+
+- **Decision:** `DECISIONS.md` D-0044
+
+§6.4 is implemented: named, versioned, declarative overrides with mandatory cited
+evidence, G1 re-asserted after application, `ibm32` refused outright naming the failed
+probe P2, and byte content unchanged by construction.
+
+**rev 0 now ingests end to end** — G1 PASS at 119 fields, all five planes PASS, **G3
+byte-identical**. Three overrides ship with real evidence prose.
+
+---
+
+## D6 — NARROWED FURTHER 2026-08-23 — rev 0 works; rev 2 / 2.1 remain upstream-blocked
+
+- **Decision:** D-0044
+
+rev 0's blocker is **gone**: the survey override declares the four index fields and the
+whole leg passes byte-identically. **rev 0 and rev 1 both work end to end.**
+
+rev 2 and 2.1 remain blocked on two upstream defects, both filed:
+[#865](https://github.com/TGSAI/mdio-python/issues/865) (`S8` `trace_header_name` has no
+`ScalarType`) and [#866](https://github.com/TGSAI/mdio-python/issues/866) (rev 1
+`segy_revision` injected, evicting `segy_revision_major`/`minor`). Neither is SDIP's to
+fix — §3.3 bars monkeypatching and no fork is authorised.
+
+---
+
+## D22 — CLOSED 2026-08-23 — a sample format can now be supplied
+
+- **Decision:** D-0044
+
+The override mechanism gives an operator a place to declare what a rev 0 file does not.
+**Under SP1 an assumed sample format is a declared transform**, and the override carries
+cited evidence into the certificate, which is what the record needed.
+
+---
+
+## D28 — CLOSED 2026-08-23 — endianness can now be declared
+
+- **Decision:** D-0044
+
+An override can set the spec endianness, including inferring it. P5's measured finding —
+the same little-endian file reads correctly with the endianness left to `segy` — is now
+reachable through a supported parameter rather than an unavailable one.
+
+---
+
+## D1 — CLOSED 2026-08-23 — the raw `uint32` view is stored
+
+- **Decision:** `DECISIONS.md` D-0045 · **Probe:** P2, fired
+
+P2's own "if it fires" remedy is built. `amplitude_raw_ibm32` holds the undecoded
+big-endian sample words read from the source by raw offset, for `ibm32` sources only.
+
+**The transform is still not invertible** — that is a property of `float32`'s range and
+nothing SDIP does can change it. What has changed is that **the source bits are no longer
+lost**: the 1,939 words in 4,103 that lose the value in the decode are recoverable from
+the parallel view.
+
+Plane 4 verifies the raw words against the source as a **separate leg**, exactly
+invertible by construction, never folded into G2d's verdict — two decoded arrays that both
+read `inf` are equal without either being the source sample.
+
+---
+
+## D26 — HALF CLOSED 2026-08-23 — log records captured; worker warnings declared
+
+- **Status:** `OPEN` for blind spot 1 · **Decision:** `DECISIONS.md` D-0046
+
+**Blind spot 2 is closed.** `recording_log_records()` captures what upstream logs at
+WARNING and above, in a channel separate from Python warnings. On a real sparse ingest it
+records the sparsity notice P5 found missing **and** a coordinate-unit warning that had
+been raised on every ingest this project ever ran and appeared on no certificate.
+
+**Blind spot 1 remains open but is no longer silent.** The ledger declares its own scope —
+`covers: parent-process Python warnings and log records only`,
+`worker_process_warnings: NOT CAPTURED`. **An empty `warnings_raised[]` can no longer be
+read as evidence of a quiet run.**
+
+---
+
+## D32 — The `uint8` header plane would not fix group listing
+
+- **Status:** `OPEN` (raised 2026-08-23) · **Found by:** P4 leg 2
+
+zarr-java's `Group.list()` **fails outright** on an SDIP store: listing opens every child
+node, and one unparsable `data_type` takes the whole enumeration down. **A zarr-java
+consumer cannot list the store at all.**
+
+The pre-approved mitigation — a parallel `(n_traces, 240)` `uint8` header plane — would
+make the *header data* readable but **would not fix listing**, because `segy_file_header`
+keeps `fixed_length_utf32`. That materially changes the mitigation's shape and was not
+visible from leg 1.
+
+**Closure:** decide whether the mitigation must also address `segy_file_header`. SDIP does
+not write that array — MDIO does — but SDIP already stores its authoritative bytes as JSON
+**attributes**, which every reader can parse. The question is whether the array itself
+should exist in a form that does not break enumeration.
+

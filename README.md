@@ -29,7 +29,7 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 [![dco](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml)
 
 ![Phase](https://img.shields.io/badge/roadmap_phase-F5–F7-orange?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-431_passing-success?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-619_passing-success?style=flat-square)
 ![Gates enforcing](https://img.shields.io/badge/gates_enforcing-7_of_7-success?style=flat-square)
 ![Certificates](https://img.shields.io/badge/certificates_issued-0-lightgrey?style=flat-square)
 ![Type checked](https://img.shields.io/badge/mypy-strict-2A6DB2?style=flat-square)
@@ -82,12 +82,12 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Repository** | `github.com/zahidaramai/sdip` — public, open contribution |
 | **Roadmap phase** | **F5–F7** — probes. F0–F4 complete; see [Roadmap & Status](#️-roadmap--status) |
 | **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
-| **Source** | 7,754 lines across 41 modules |
-| **Tests** | 431 passing · mypy strict clean · ruff clean |
+| **Source** | 9,093 lines across 43 modules |
+| **Tests** | 619 passing · mypy strict clean · ruff clean |
 | **Gates enforcing** | **7 of 7** — every gate the specification defines |
 | **Certificates issued** | `EQUIVALENT` demonstrated on a real survey; none committed (restricted source) |
-| **Decision record** | 40 entries, append-only |
-| **Open debts** | 43 entries, append-only — scheduled, never cancelled |
+| **Decision record** | 47 entries, append-only |
+| **Open debts** | 51 entries, append-only — scheduled, never cancelled |
 
 > **Read the two rows in bold before using anything here.** Zero gates enforce today. What has actually been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md). Where a property is unmeasured this project says so and names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
 
@@ -116,7 +116,7 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **P1** gap-free spec | `PASSED` |
 | **P2** `ibm32` fidelity | **FIRED** — only 1,656 of 4,103 words round-trip; **1,939 lose the value** |
 | **P3** scale | did **not** fire — **1,281,852 traces, 5.07 GiB, 11 files, zero breaches** |
-| **P4** cross-implementation | did **not** fire — a C++ reader read all 97 header fields byte-identically |
+| **P4** cross-implementation | did **not** fire — **method now satisfied, two readers ran**. TensorStore reads all 97 header fields; **zarr-java refuses them and cannot even list the store** |
 | **P5** irregular geometry | did **not** fire — duplicates refused **and** surfaced |
 | **P6** revision coverage | **FIRED for 3 of 4** — only rev 1 works end to end |
 | **P7** prestack | **FIRED** — the planes hard-coded the grid; fixed, 0/7 → 4/7 |
@@ -366,7 +366,7 @@ Only measured numbers appear here.
 
 | Dimension | Evidence |
 |---|---|
-| **Unit tests** | **431 passing**, 0 failing |
+| **Unit tests** | **619 passing**, 0 failing |
 | **Type checking** | `mypy --strict` clean across **40** source modules |
 | **Lint / format** | `ruff check` and `ruff format --check` clean |
 | **Warnings** | `filterwarnings = ["error"]` — any warning reaching pytest fails the suite |
@@ -374,7 +374,7 @@ Only measured numbers appear here.
 | **Upstream verification** | All three API claims re-verified against the *live pinned objects*, including cited line numbers — `DECISIONS.md` D-0002 |
 | **Pin integrity** | **145** installed files recomputed against the wheels' own `RECORD` manifests, plus artifact SHA-256 read from `uv.lock`. Commit SHAs remain declared-only and the report says so — D-0015 |
 | **Header coverage** | Gap-free construction measured for **every** revision: rev 0 → 131 fields, rev 1 → 97, rev 2 / 2.1 → 90 (gap-free as shipped). Zero `ibm32` header fields in all four — D-0003 |
-| **Revision support, end to end** | **rev 1 only.** G1 passes on all four; rev 0, 2 and 2.1 then **fail to ingest**. Construction generalises; construction is not enough — **P6 fired**, D-0037 |
+| **Revision support, end to end** | **rev 0 and rev 1**, both byte-identical. rev 0 needed a §6.4 survey override, now built (D-0044). rev 2 / 2.1 blocked on two filed upstream defects |
 | **`ibm32` invertibility** | **P2 fired.** Only **1,656 of 4,103** IBM words (40.4 %) round-trip bit-identically; **1,939 lose the value**, not just the spelling. The one transform SP1 permits is **not** exactly invertible — D-0034 |
 | **Irregular geometry** | **P5 did not fire.** Duplicates refused at ingest *and* surfaced by Plane 5 — two independent defences. Padding is `NaN` and excluded from Plane 4. No suppressed check anywhere — D-0036 |
 | **Cross-implementation** | **P4 did not fire.** TensorStore (C++, no shared code with `zarr-python`) read all **97** structured header fields byte-identically. The same reader **refused** `segy_file_header`'s dtype — extension support is per-implementation — D-0035 |
@@ -424,7 +424,7 @@ Layer 4 deliberately does **not** declare `needs: doctor` and uses no Python: a 
 
 ### In scope
 
-- SEG-Y → MDIO v1 / Zarr v3 ingestion. **Measured revision support: rev 1 only** — see below. rev 0, 2 and 2.1 build a valid gap-free spec and pass G1, then fail to ingest for three named reasons (D-0037)
+- SEG-Y → MDIO v1 / Zarr v3 ingestion. **Measured revision support: rev 0 and rev 1** end to end, byte-identical. rev 2 / 2.1 build a valid gap-free spec and pass G1, then fail on two upstream defects that are filed (D-0037, D-0044)
 - Gap-free trace-header specification generation and management
 - The Equivalence Engine, its gates, and the Equivalence Certificate
 - MDIO → SEG-Y export and round-trip verification

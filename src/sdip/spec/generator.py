@@ -20,6 +20,15 @@ right is 60 extra fields on the worst revision, which is nothing - see spec 5.2.
 The base spec is deep-copied before customisation. ``get_segy_standard`` returns a
 fresh object per call today, but relying on that would make a future upstream change to
 caching silently corrupt the shared standard for every other caller in the process.
+
+Survey overrides (§6.4)
+-----------------------
+An optional :class:`~sdip.spec.overrides.SurveyOverride` is applied **after** the fillers
+are merged, which is the only order that makes sense: a survey override renames and
+retypes bytes the base spec already covered, so there has to be full coverage for it to
+rename. Fillers are therefore computed against the *revision standard*, not against the
+override, and ``fillers`` on the result stays a statement about the revision — the
+override then displaces whichever of them it covers. See :mod:`sdip.spec.overrides`.
 """
 
 from __future__ import annotations
@@ -34,6 +43,7 @@ from segy.standards import get_segy_standard
 from sdip._pins import SEGY_TRACE_HEADER_BYTES
 from sdip.provenance.hashing import sha256_bytes
 from sdip.spec.coverage import Coverage, compute_coverage
+from sdip.spec.overrides import SurveyOverride, apply_override
 
 FILLER_PREFIX = "pad_"
 """Filler naming, per §5.1 step 4. ``pad_233`` is a byte, not a field with meaning."""
@@ -51,6 +61,7 @@ class GapFreeSpec:
     fillers: tuple[str, ...]
     base_coverage: Coverage
     coverage: Coverage
+    override: SurveyOverride | None = None
 
     @property
     def field_count(self) -> int:
@@ -69,8 +80,16 @@ class GapFreeSpec:
 
     @property
     def spec_id(self) -> str:
-        """Stable identifier: revision plus filler count."""
-        return f"segy-rev{self.revision}-gapfree-{len(self.fillers)}f"
+        """Stable identifier: revision, filler count, and the override if there is one.
+
+        The override belongs in the identifier rather than only in ``spec_sha256``.
+        Fillers are computed before the override is applied, so a revision ingested with
+        and without one produces the *same* revision and the *same* filler count — two
+        specs that address the header differently would otherwise share an id, and an
+        identifier that cannot tell them apart is not an identifier.
+        """
+        base = f"segy-rev{self.revision}-gapfree-{len(self.fillers)}f"
+        return base if self.override is None else f"{base}+{self.override.identifier}"
 
     def field_manifest(self) -> tuple[tuple[str, int, int], ...]:
         """``(name, start_byte, size)`` for every field, in byte order.
@@ -104,6 +123,7 @@ class GapFreeSpec:
             "spec_itemsize": self.itemsize,
             "spec_gap_free": self.coverage.gap_free,
             "spec_sha256": self.sha256(),
+            "spec_override": self.override.to_json() if self.override else None,
             "fillers": list(self.fillers),
             "coverage": self.coverage.to_json(),
         }
@@ -117,20 +137,37 @@ def filler_fields(uncovered: frozenset[int]) -> list[HeaderField]:
     ]
 
 
-def build_gap_free_spec(revision: float | int = 1) -> GapFreeSpec:
-    """Build a gap-free trace-header spec for a SEG-Y revision. Spec §5.1.
+def build_gap_free_spec(
+    revision: float | int = 1, *, override: SurveyOverride | None = None
+) -> GapFreeSpec:
+    """Build a gap-free trace-header spec for a SEG-Y revision. Spec §5.1, §6.4.
 
-    Does **not** assert G1 — :func:`sdip.spec.gate.g1` does, deliberately separately, so
-    that the assertion is not written by the thing it judges.
+    Does **not** assert G1 for the base construction — :func:`sdip.spec.gate.g1` does,
+    deliberately separately, so that the assertion is not written by the thing it judges.
+
+    **An override is checked here, and that is not a contradiction of the sentence
+    above.** The two cases have different failure modes. Base construction either
+    produces coverage or it does not, and an independent gate run afterwards sees
+    exactly what happened. An override *mutates* a spec that was already gap-free, and
+    ``HeaderSpec.customize`` removes every existing field the new declarations intersect
+    — so a declaration narrower than what it displaces uncovers the difference, raises
+    nothing, and leaves a spec that looks built. Checking at the point of mutation names
+    the override in the error. It replaces no external gate: the caller still runs
+    :func:`sdip.spec.gate.g1_for_spec`, and :func:`sdip.ingest.ingest` still refuses on
+    a failing G1 before a single trace is read.
 
     Args:
         revision: SEG-Y revision. `0`, `1`, `2`, or `2.1`.
+        override: A validated survey override (§6.4), applied after the fillers are
+            merged. ``None`` builds the revision standard alone.
 
     Returns:
-        The spec, its filler names, and coverage before and after customisation.
+        The spec, its filler names, the override applied, and coverage before and after
+        customisation.
 
     Raises:
         ValueError: If the revision has no standard in the pinned ``segy``.
+        SurveyOverrideError: If the override leaves the spec not gap-free.
     """
     try:
         base = get_segy_standard(revision)
@@ -149,6 +186,9 @@ def build_gap_free_spec(revision: float | int = 1) -> GapFreeSpec:
     if fillers:
         header.customize(fillers)
 
+    if override is not None:
+        apply_override(spec, override)
+
     coverage = compute_coverage(spec.trace.header.fields, itemsize=spec.trace.header.dtype.itemsize)
     return GapFreeSpec(
         revision=revision,
@@ -156,6 +196,7 @@ def build_gap_free_spec(revision: float | int = 1) -> GapFreeSpec:
         fillers=tuple(f.name for f in fillers),
         base_coverage=base_coverage,
         coverage=coverage,
+        override=override,
     )
 
 

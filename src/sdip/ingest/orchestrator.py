@@ -29,16 +29,18 @@ from typing import Any
 
 from sdip.errors import SdipError, UntrustedInputError
 from sdip.guard.env import check_barred_env_vars
-from sdip.guard.warn import WarningLedger, recording_warnings
+from sdip.guard.warn import WarningLedger, recording_log_records, recording_warnings
 from sdip.ingest.file_headers import (
     RawFileHeaders,
     attach_raw_file_headers,
     file_headers_persisted,
     read_raw_file_headers,
 )
+from sdip.ingest.raw_samples import RawSampleView, attach_raw_sample_view
 from sdip.provenance.hashing import sha256_file
 from sdip.spec.gate import G1Result, g1_for_spec
 from sdip.spec.generator import GapFreeSpec, build_gap_free_spec
+from sdip.spec.overrides import SurveyOverride
 
 MIN_SEGY_BYTES = 3600 + 240
 """Textual (3200) + binary (400) header, plus one trace header. Smaller cannot be valid."""
@@ -113,6 +115,9 @@ class IngestResult:
     template: str
     raw_headers: RawFileHeaders
     warnings: WarningLedger = field(default_factory=WarningLedger)
+    raw_samples: RawSampleView | None = None
+    """The parallel raw ``uint32`` view, or ``None`` when the source is not ``ibm32``
+    and the source bits are therefore recoverable from the decode itself."""
 
     @property
     def read_path_intact(self) -> bool:
@@ -135,6 +140,9 @@ class IngestResult:
                 "output_path": self.output_path,
                 "template": self.template,
                 "raw_file_headers": self.raw_headers.to_json(),
+                "raw_sample_view": (
+                    self.raw_samples.to_json() if self.raw_samples is not None else None
+                ),
                 "warnings": self.warnings.to_json(),
             }
             | self.spec.to_json()
@@ -149,6 +157,7 @@ def ingest(
     revision: float | int = 1,
     template: str = "PostStack3DTime",
     overwrite: bool = False,
+    override: SurveyOverride | None = None,
 ) -> IngestResult:
     """Convert a SEG-Y file to an MDIO store against a gap-free spec.
 
@@ -162,9 +171,13 @@ def ingest(
     5. Build the gap-free spec and **run G1 before a single trace is read** (§7 G1).
     6. Capture the raw textual and binary headers directly from the source (§4.2, §4.3).
     7. Convert with file-header persistence enabled in STRICT mode, recording every
-       observable warning and every filter installed.
+       observable warning, every filter installed, and every log record upstream emits
+       at WARNING or above — a different channel, reported separately (**SP6**, D26).
     8. Attach SDIP's authoritative raw headers to the store.
-    9. Hash the source again, to detect read-path corruption (§11.3).
+    9. Store the undecoded ``uint32`` sample view in parallel when — and only when — the
+       source's sample format is ``ibm32``, whose decode probe **P2** measured as not
+       exactly invertible (``OPEN_DEBTS`` D1).
+    10. Hash the source again, to detect read-path corruption (§11.3).
 
     Args:
         source: Input SEG-Y.
@@ -172,12 +185,19 @@ def ingest(
         revision: SEG-Y revision for the base spec.
         template: Registered MDIO template name.
         overwrite: Overwrite an existing store.
+        override: A validated survey override (§6.4), applied over the gap-free base.
+            It renames and retypes bytes the base spec already covered — it supplies the
+            names a template binds on, never new content. Load one with
+            :func:`sdip.spec.overrides.load_override`.
 
     Returns:
         The ingest result, in certificate shape.
 
     Raises:
         SpecCompletenessError: If G1 fails. Nothing is read.
+        SurveyOverrideError: If the override leaves the spec not gap-free. Nothing is
+            read; step 5 happens before any trace I/O and an override cannot reach a
+            byte it did not survive.
         UntrustedInputError: If the source fails pre-allocation validation.
         SpawnGuardError: If the spawn hazard is detected.
     """
@@ -194,14 +214,18 @@ def ingest(
     size = validate_source(source_path)
     before = sha256_file(source_path)
 
-    built = build_gap_free_spec(revision)
+    built = build_gap_free_spec(revision, override=override)
     gate = g1_for_spec(built)
     gate.raise_for_status()
 
     raw_headers = read_raw_file_headers(source_path)
 
     ledger = WarningLedger()
-    with recording_warnings(ledger, reemit=False), file_headers_persisted():
+    with (
+        recording_warnings(ledger, reemit=False),
+        recording_log_records(ledger),
+        file_headers_persisted(),
+    ):
         from mdio import segy_to_mdio
         from mdio.builder.template_registry import get_template
 
@@ -217,6 +241,12 @@ def ingest(
     # these bytes are the ones Planes 1 and 2 are checked against (§4.3).
     attach_raw_file_headers(output_path, raw_headers)
 
+    # Probe P2 measured ibm32 -> float32 as NOT exactly invertible, with 1,939 of 4,103
+    # words losing the value outright. For such a source the decoded array is not a
+    # recoverable copy of the source bits, so the undecoded words are stored in parallel
+    # (OPEN_DEBTS D1). Returns None for any other sample format, and writes nothing.
+    raw_samples = attach_raw_sample_view(output_path, source_path, built.segy_spec)
+
     after = sha256_file(source_path)
     return IngestResult(
         source_path=str(source_path),
@@ -229,6 +259,7 @@ def ingest(
         template=template,
         raw_headers=raw_headers,
         warnings=ledger,
+        raw_samples=raw_samples,
     )
 
 

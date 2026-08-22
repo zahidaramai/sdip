@@ -1,0 +1,36 @@
+# SDIP survey spec override — specification §6.4.
+#
+# A pure rename over one existing rev 1 field. Same bytes, same width, same meaning,
+# different label. It changes no byte content, which Plane 3 (G2c) re-verifies.
+
+name = "rev1-cdp-alias"
+version = "1"
+
+evidence = """
+SEG-Y rev 1 defines trace-header bytes 21-24 as "Ensemble number (CDP, CMP, CRP, etc.)",
+a 4-byte signed integer. The standard names the CDP in the field's own definition; the
+pinned segy 0.6.0 carries it as ensemble_num at byte 21, format int32.
+
+The prestack MDIO templates for CDP gathers bind the index field by the name cdp, which
+is not a SEG-Y rev 1 field name. Measured in DECISIONS.md D-0039 (probe P7): the
+cdp_offset_2d geometry is refused with "Required fields ['cdp', 'offset'] ... not found
+in the provided segy_spec". The same probe asserted the identity directly - the declared
+(byte, format) of cdp equals the standard's (byte, format) for ensemble_num, and neither
+cdp nor offset appears anywhere in the rev 1 field set.
+
+So the blocker is a name, not a byte. This override supplies the name. It is an alias
+over an unchanged 4-byte int32 at byte 21, not a reinterpretation: the bytes read are
+the bytes the standard already declared, at the width the standard already declared, and
+the value a consumer gets is the value ensemble_num held.
+
+SCOPE. The standard's own wording is a list - CDP, CMP, CRP - so bytes 21-24 carry
+whichever ensemble the survey was sorted into. Naming the field cdp is right for a
+CDP-sorted survey and is a mislabelling for one sorted into some other ensemble, even
+though the bytes are identical either way. Check the sort order before applying it. Pair
+with rev1-offset-alias for a CDP-offset gather, which needs both names.
+"""
+
+[[field]]
+name = "cdp"
+byte = 21
+format = "int32"

@@ -12,14 +12,19 @@ from sdip.guard.packages import check_barred_packages
 from sdip.guard.pins import check_pins
 from sdip.guard.warn import (
     KNOWN_UPSTREAM_SUPPRESSIONS,
+    LEDGER_SCOPE,
+    LoggedRecord,
     SuppressionRecord,
     WarningLedger,
     WarningRecord,
+    recording_log_records,
     recording_warnings,
 )
 
 __all__ = [
     "KNOWN_UPSTREAM_SUPPRESSIONS",
+    "LEDGER_SCOPE",
+    "LoggedRecord",
     "SuppressionRecord",
     "WarningLedger",
     "WarningRecord",
@@ -27,6 +32,7 @@ __all__ = [
     "check_barred_packages",
     "check_pins",
     "check_runtime_licences",
+    "recording_log_records",
     "recording_warnings",
     "scan_source_for_barred_assignments",
     "scrub_barred_env_vars",

@@ -9,9 +9,9 @@ and this module is the measurement that closes it.
 
 What is actually at risk
 ------------------------
-Seven of the nine arrays carry Zarr v3 **core-spec** ``data_type`` values (``float32``,
-``int32``, ``int8``, ``float64``). Nothing can go wrong there that is SDIP's fault: a
-reader that fails on ``float32`` has a bug, and the pre-registration says so explicitly —
+Eight of the ten arrays carry Zarr v3 **core-spec** ``data_type`` values (``float32``,
+``uint32``, ``int32``, ``int8``, ``float64``). Nothing can go wrong there that is SDIP's
+fault: a reader that fails on ``float32`` has a bug, and the pre-registration says so —
 **a non-Python implementation failing on a core-spec array is not a falsifier.** The
 probe tests SDIP's output, not other people's readers.
 
@@ -84,6 +84,7 @@ ts = pytest.importorskip(
 
 CORE_SPEC_ARRAYS: tuple[str, ...] = (
     "amplitude",
+    "amplitude_raw_ibm32",
     "inline",
     "crossline",
     "time",
@@ -97,6 +98,13 @@ A failure on any of these is a bug in the reader, reported upstream, **not** a f
 against SDIP. They are checked anyway: the pre-registered success criterion is that
 every core-spec array reads bit-identically, and an unchecked criterion is not a
 criterion.
+
+``amplitude_raw_ibm32`` is **conditional**: :mod:`sdip.ingest.raw_samples` writes it only
+when the source's sample format is ``ibm32``, which the Appendix A.1 article is. It is
+listed here rather than special-cased because its ``data_type`` is the plain string
+``uint32`` — core-spec, so it changes the count and nothing else. If the fixture's sample
+format ever changes, the array disappears and
+:func:`test_the_store_is_the_one_the_probe_registered` is what says so.
 """
 
 EXTENSION_ARRAYS: tuple[str, ...] = ("headers", "segy_file_header")

@@ -1,0 +1,61 @@
+# SDIP survey spec override — specification §6.4.
+#
+# Declarative data, not a code branch. Loaded by `sdip.spec.overrides.load_override`
+# and applied over the gap-free base spec with `HeaderSpec.customize`. It renames and
+# retypes bytes the base spec already covered; it never changes byte content, which
+# Plane 3 (G2c) re-verifies on every ingest.
+
+name = "segy-rev0-poststack3d"
+version = "1"
+
+evidence = """
+SEG-Y rev 1 (2002) standardises four trace-header positions that rev 0 (1975) does not
+define at all: bytes 181-184 X coordinate of the ensemble (CDP) position, 185-188 Y
+coordinate of the ensemble position, 189-192 in-line number for 3-D poststack data, and
+193-196 cross-line number. All four are 4-byte signed integers, unchanged in rev 2 and
+rev 2.1.
+
+The rev 0 standard declares no field above byte 180 - the last is taper_overtravel at
+179-180 - so a gap-free rev 0 spec covers 181-240 with uint8 fillers, correctly under
+SP5, and the PostStack3DTime template finds none of the four index fields it binds.
+Measured in DECISIONS.md D-0037 (probe P6): rev 0 satisfies G1 with 131 fields and then
+fails to ingest with "Required fields ['cdp_x', 'cdp_y', 'crossline', 'inline'] for
+template PostStack3DTime not found in the provided segy_spec".
+
+The bytes are present in the file at exactly those offsets. Rev 0 predates their
+standardisation, so a rev 0 writer that carried 3-D geometry had nowhere else
+conventional to put it, and rev 0 archives in practice use the positions rev 1 later
+ratified. D-0037 measured the consequence directly: declaring these four keeps the spec
+gap-free (G1 PASS, 131 - 16 fillers + 4 fields = 119 fields) and the whole rev 0 leg then
+passes all five planes with a byte-identical round trip.
+
+SCOPE. This override asserts a convention, not a universal property of rev 0. It is
+correct for a rev 0 file that places 3-D geometry at the rev 1 canonical offsets and
+wrong for one that places it elsewhere or leaves those bytes unused. Before applying it
+to an unfamiliar survey, read the file's textual header - a conforming rev 0 writer
+records its non-standard byte assignments there - and check that the values at 181-196
+are plausible inline, crossline and coordinate numbers rather than zeros or noise. A
+wrong mapping here does not corrupt data (Plane 3 still compares all 240 bytes and G3
+still hashes the whole file); it produces a store indexed on the wrong numbers, which is
+a labelling error that no gate in SDIP can catch for you.
+"""
+
+[[field]]
+name = "cdp_x"
+byte = 181
+format = "int32"
+
+[[field]]
+name = "cdp_y"
+byte = 185
+format = "int32"
+
+[[field]]
+name = "inline"
+byte = 189
+format = "int32"
+
+[[field]]
+name = "crossline"
+byte = 193
+format = "int32"

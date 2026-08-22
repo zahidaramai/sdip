@@ -25,6 +25,13 @@ EXIT_OK = 0
 EXIT_FAIL = 1
 EXIT_USAGE = 2
 
+OVERRIDE_HELP = (
+    "Survey spec override to apply over the gap-free base (spec 6.4). A committed TOML "
+    "file, conventionally under overrides/. It renames and retypes bytes the base spec "
+    "already covered and changes no byte content; G1 is re-asserted after it is applied "
+    "and Plane 3 (G2c) re-verifies the bytes on every ingest."
+)
+
 _GLYPH = {Status.PASS: "PASS", Status.FAIL: "FAIL", Status.NOT_RUN: " -- "}
 
 
@@ -102,18 +109,30 @@ def spec() -> None:
     show_default=True,
     help="SEG-Y revision to build the gap-free spec for.",
 )
+@click.option(
+    "--override",
+    "override_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help=OVERRIDE_HELP,
+)
 @click.option("--json", "as_json", is_flag=True, help="Emit a machine-readable report.")
-def spec_build(revision: str, as_json: bool) -> None:
+def spec_build(revision: str, override_path: Path | None, as_json: bool) -> None:
     """Generate and validate a gap-free spec; runs G1.
 
     Emits one uint8 filler per uncovered byte and asserts coverage of bytes 1-240 with
     zero gaps, zero overlaps, and no numpy void padding. Exits 1 if G1 fails - a
     failing G1 aborts ingestion before a single trace is read.
+
+    With --override, the named survey override is applied over the gap-free base and G1
+    is asserted again afterwards. An override that declares ibm32 is refused outright:
+    probe P2 measured that transform as not exactly invertible (DECISIONS.md D-0034).
     """
-    from sdip.spec import build_gap_free_spec, g1_for_spec
+    from sdip.spec import build_gap_free_spec, g1_for_spec, load_override
 
     number: float | int = float(revision) if "." in revision else int(revision)
-    built = build_gap_free_spec(number)
+    override = load_override(override_path) if override_path else None
+    built = build_gap_free_spec(number, override=override)
     result = g1_for_spec(built)
 
     if as_json:
@@ -135,6 +154,15 @@ def spec_build(revision: str, as_json: bool) -> None:
                 else "  (already gap-free)"
             )
         )
+        if built.override is not None:
+            declared = ", ".join(
+                f"{f.name}@{f.byte}:{f.format}"
+                for f in sorted(built.override.fields, key=lambda f: f.byte)
+            )
+            click.echo(f"override      {built.override.identifier}  [{declared}]")
+            endianness = built.override.endianness
+            if endianness is not None:
+                click.echo(f"endianness    {endianness}")
         click.echo(f"spec fields   {built.field_count}")
         click.echo(f"itemsize      {built.itemsize}")
         click.echo(f"spec_id       {built.spec_id}")
@@ -161,20 +189,46 @@ def spec_build(revision: str, as_json: bool) -> None:
 )
 @click.option("--template", default="PostStack3DTime", show_default=True, help="MDIO template.")
 @click.option("--overwrite", is_flag=True, help="Overwrite an existing store.")
+@click.option(
+    "--override",
+    "override_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help=OVERRIDE_HELP,
+)
 @click.option("--json", "as_json", is_flag=True, help="Emit a machine-readable report.")
 def ingest_cmd(
-    source: Path, output: Path, revision: str, template: str, overwrite: bool, as_json: bool
+    source: Path,
+    output: Path,
+    revision: str,
+    template: str,
+    overwrite: bool,
+    override_path: Path | None,
+    as_json: bool,
 ) -> None:
     """SEG-Y to MDIO, against a gap-free spec.
 
     Runs G1 before a single trace is read, captures the raw textual and binary headers
     directly from the source, and records every warning and every filter the run
     installed. Exits 1 if G1 fails or the source hash changes during the run.
+
+    --override supplies a survey spec override (spec 6.4) - the mechanism that lets a
+    template find index fields the revision standard does not name, such as inline and
+    crossline in a rev 0 file. It is applied before G1 and changes no byte content.
     """
     from sdip.ingest import ingest as run_ingest
+    from sdip.spec import load_override
 
     number: float | int = float(revision) if "." in revision else int(revision)
-    result = run_ingest(source, output, revision=number, template=template, overwrite=overwrite)
+    override = load_override(override_path) if override_path else None
+    result = run_ingest(
+        source,
+        output,
+        revision=number,
+        template=template,
+        overwrite=overwrite,
+        override=override,
+    )
 
     if as_json:
         click.echo(json.dumps(result.to_json(), indent=2, sort_keys=True))

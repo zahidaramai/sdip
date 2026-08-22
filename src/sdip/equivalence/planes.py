@@ -211,7 +211,7 @@ def store_dimensions(group: Any, *, variable: str = "headers") -> tuple[str, ...
     return tuple(str(n) for n in names)
 
 
-def _grid_coordinates(group: Any, dimensions: tuple[str, ...]) -> dict[str, Any]:
+def grid_coordinates(group: Any, dimensions: tuple[str, ...]) -> dict[str, Any]:
     """Coordinate values for each grid dimension, read from the store."""
     missing = [d for d in dimensions if d not in group]
     if missing:
@@ -274,7 +274,7 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
     store_headers = group["headers"][:]
 
     dimensions = store_dimensions(group)
-    trace_map = build_trace_map(source_headers, _grid_coordinates(group, dimensions), dimensions)
+    trace_map = build_trace_map(source_headers, grid_coordinates(group, dimensions), dimensions)
 
     field_names = tuple(source_headers.dtype.names or ())
     store_names = tuple(store_headers.dtype.names or ())
@@ -329,6 +329,94 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
     )
 
 
+RAW_IBM32_NOTE = (
+    "Second leg, reported separately and NOT part of G2d's verdict. The decoded "
+    "comparison above is the gate; this one compares the undecoded uint32 words in "
+    "amplitude_raw_ibm32 against the same words read from the source by raw byte "
+    "offset. It is EXACTLY invertible by construction - a uint32 is copied, not "
+    "transformed - so it holds precisely where the float comparison cannot: probe P2 "
+    "measured 1,939 of 4,103 ibm32 words losing the VALUE in the decode, and two "
+    "decoded arrays that both read `inf` are equal without either being the source "
+    "sample. A store can have correct raw words and a lossy decode; both facts belong "
+    "on the certificate, and neither is allowed to stand in for the other."
+)
+
+
+def _raw_ibm32_evidence(source: str | Path, group: Any, trace_map: Any) -> dict[str, Any]:
+    """Compare the stored raw ``ibm32`` words against the source, as ``uint32``.
+
+    Absent array means **not checked**, never checked-and-passed: a ``float32`` source
+    carries no such array by design, and so does any store written before the view
+    existed. ``raw_ibm32_words_verified`` says which of those a reader is looking at.
+
+    Live cells only. Padding is not data (**SP12**), and the fill word is a valid IBM
+    word, so comparing it against anything would be comparing against a number nobody
+    measured.
+    """
+    from sdip.ingest.raw_samples import ARRAY_NAME, read_source_words
+
+    if ARRAY_NAME not in group:
+        return {
+            "raw_ibm32_view_present": False,
+            "raw_ibm32_words_verified": False,
+            "raw_ibm32_identical": None,
+            "raw_ibm32_note": (
+                f"store carries no {ARRAY_NAME} array. Written only for an ibm32 source "
+                "(OPEN_DEBTS D1); its absence is NOT evidence that the raw words match."
+            ),
+        }
+
+    stored = np.asarray(group[ARRAY_NAME][:])
+    try:
+        words = read_source_words(source, samples_per_trace=int(stored.shape[-1]))
+    except UntrustedInputError as exc:
+        # Recorded rather than raised: this leg must never be able to convert the
+        # decoded comparison's verdict into an exception. A raw-view defect masking a
+        # float finding is the exact inversion of what this evidence is for.
+        return {
+            "raw_ibm32_view_present": True,
+            "raw_ibm32_words_verified": False,
+            "raw_ibm32_identical": None,
+            "raw_ibm32_error": f"{type(exc).__name__}: {exc}",
+            "raw_ibm32_note": RAW_IBM32_NOTE,
+        }
+
+    mismatches: list[dict[str, Any]] = []
+    compared = 0
+    for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
+        compared += 1
+        expected = np.asarray(words[ordinal], dtype=np.uint32)
+        observed = np.asarray(stored[cell])
+        if not np.array_equal(expected, observed):
+            differing = np.flatnonzero(expected != observed)
+            first = int(differing[0]) if differing.size else None
+            mismatches.append(
+                {
+                    "source_ordinal": ordinal,
+                    "cell": list(cell),
+                    "first_sample": first,
+                    "expected_word": None if first is None else f"0x{int(expected[first]):08X}",
+                    "observed_word": None if first is None else f"0x{int(observed[first]):08X}",
+                    "differing_words": int(differing.size),
+                }
+            )
+            if len(mismatches) >= 20:
+                break
+
+    return {
+        "raw_ibm32_view_present": True,
+        "raw_ibm32_words_verified": True,
+        "raw_ibm32_identical": not mismatches,
+        "raw_ibm32_compared": "np.array_equal on uint32 words, source vs store - EXACT",
+        "raw_ibm32_n": compared,
+        "raw_ibm32_words_per_trace": int(stored.shape[-1]),
+        "raw_ibm32_sampling": "exhaustive over live traces",
+        "raw_ibm32_first_difference": mismatches[0] if mismatches else None,
+        "raw_ibm32_mismatch_count": len(mismatches),
+        "raw_ibm32_note": RAW_IBM32_NOTE,
+    }
+
+
 def plane_4(
     source: str | Path, store: str | Path, spec: Any, *, variable: str = "amplitude"
 ) -> PlaneResult:
@@ -346,6 +434,17 @@ def plane_4(
     **Grid padding is not part of this plane.** A cell no source trace maps to is
     padding introduced to regularise the grid; it is **not data** (**SP12**) and is
     excluded by the live mask rather than compared against anything.
+
+    **The raw ``ibm32`` words are a second, separate leg.** Where the store carries the
+    parallel ``amplitude_raw_ibm32`` view (``OPEN_DEBTS`` D1), the undecoded ``uint32``
+    words are additionally compared against the source, and the result is recorded as
+    ``raw_ibm32_words_verified`` / ``raw_ibm32_identical``. That comparison is **exactly
+    invertible by construction** and therefore says something the decoded comparison
+    cannot — but it does **not** decide this plane's verdict, in either direction: it
+    cannot rescue a decoded mismatch, and a raw mismatch cannot convert a decoded pass
+    into a failure here. G2d is defined on the decoded samples (§4.5); the raw leg is
+    evidence the certificate carries alongside it, and a reader must be able to see the
+    two facts separately because a store can have correct raw words and a lossy decode.
     """
     from sdip.equivalence.trace_map import build_trace_map
 
@@ -356,7 +455,7 @@ def plane_4(
     volume = group[variable][:]
 
     dimensions = store_dimensions(group)
-    trace_map = build_trace_map(source_headers, _grid_coordinates(group, dimensions), dimensions)
+    trace_map = build_trace_map(source_headers, grid_coordinates(group, dimensions), dimensions)
 
     mismatches: list[dict[str, Any]] = []
     compared = 0
@@ -399,7 +498,8 @@ def plane_4(
                 "Grid padding is not data (SP12) and is excluded by the live mask, not "
                 "compared. No tolerance is applied anywhere in this comparison."
             ),
-        },
+        }
+        | _raw_ibm32_evidence(source, group, trace_map),
     )
 
 
@@ -425,7 +525,7 @@ def plane_5(source: str | Path, store: str | Path, spec: Any) -> PlaneResult:
     source_count = int(handle.num_traces)
 
     dimensions = store_dimensions(group)
-    trace_map = build_trace_map(source_headers, _grid_coordinates(group, dimensions), dimensions)
+    trace_map = build_trace_map(source_headers, grid_coordinates(group, dimensions), dimensions)
 
     mask = np.asarray(group["trace_mask"][:]).astype(bool)
     live_cells = {tuple(int(i) for i in idx) for idx in zip(*np.nonzero(mask), strict=True)}

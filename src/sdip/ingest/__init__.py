@@ -25,19 +25,33 @@ from sdip.ingest.orchestrator import (
     ingest,
     validate_source,
 )
+from sdip.ingest.raw_samples import (
+    ARRAY_NAME as RAW_SAMPLE_ARRAY_NAME,
+)
+from sdip.ingest.raw_samples import (
+    RawSampleView,
+    attach_raw_sample_view,
+    open_raw_sample_view,
+    read_source_words,
+)
 
 __all__ = [
     "MIN_SEGY_BYTES",
+    "RAW_SAMPLE_ARRAY_NAME",
     "IngestResult",
     "RawFileHeaders",
+    "RawSampleView",
     "SpawnGuardError",
     "assert_main_guarded",
     "attach_raw_file_headers",
+    "attach_raw_sample_view",
     "file_headers_persisted",
     "ingest",
+    "open_raw_sample_view",
     "read_raw_binary_from_store",
     "read_raw_file_headers",
     "read_raw_file_headers_from_store",
     "read_raw_textual_from_store",
+    "read_source_words",
     "validate_source",
 ]

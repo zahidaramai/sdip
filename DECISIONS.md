@@ -1697,3 +1697,191 @@ remaining blockers are no longer about the engine:
 
 The engine is done and proven at survey scale. What remains is coverage, one unbuilt
 mechanism, and two honest gaps.
+
+---
+
+## D-0043 — 2026-08-23 — Four agents died mid-work; the tree was assessed before resuming
+
+**What happened.** Four parallel builds — survey overrides (D21), the `ibm32` raw view
+(D1), SP6's blind spots (D26), and P4's second implementation — were all killed
+simultaneously by a usage limit, mid-flight. Two had written to the tree.
+
+**Assessed before restarting anything**, because a partial edit from a killed process is
+**unreviewed work of unknown completeness**, and inheriting it silently is how a defect
+gets built on:
+
+| File | State found | Disposition |
+|---|---|---|
+| `src/sdip/spec/overrides.py` | 392 lines, untracked, imports cleanly, complete-looking API | **kept** — handed to the new agent as *a draft by someone else, not as trusted* |
+| `src/sdip/guard/warn.py` | +72 lines: a sound docstring section, and an `import logging` that nothing used | **kept** — the unused import was the only thing failing `ruff` |
+| `local/p4java/` | test store built, no Maven project | kept; `local/` is firewalled and committed nothing |
+
+**The tree was inert, not broken: 525 tests still passed.** That is the fact that made
+keeping the partial work defensible rather than reckless — had the suite been red, the
+right move would have been to revert both files and start clean.
+
+**Why keep 392 unreviewed lines at all.** Discarding them would have been the *safer*
+choice and the wrong one: the module imports, its shape matches the task, and the
+alternative is paying twice for the same work. The safeguard is not trusting it — the
+resumed agent was told explicitly to *review it, keep what is correct, fix what is not*,
+and the acceptance test it must pass is unchanged. **Provenance is a reason for scrutiny,
+not for deletion.**
+
+**Related to D-0033**, which recorded `git add -A` sweeping unreviewed work into a public
+commit. Same underlying hazard — work of unknown provenance entering the tree — caught
+at a different point. The lesson generalises: **know what is in the tree before you build
+on it or commit it.**
+
+---
+
+## D-0044 — 2026-08-23 — §6.4 survey spec overrides built. **rev 0 now round-trips.**
+
+**Decision.** `src/sdip/spec/overrides.py` implements §6.4: named, versioned, declarative
+overrides mapping a survey to field renames and retypes over the gap-free base, each
+carrying cited evidence. Threaded through `build_gap_free_spec`, `ingest()`, and both CLI
+commands.
+
+**Measured — this is P6's own diagnosis, now executed:**
+
+| | |
+|---|---|
+| G1 after override | **PASS**, 119 fields |
+| Planes 1–5 | **PASS ×5** |
+| G3 | **PASS, byte-identical** |
+
+**rev 0 ingests end to end for the first time.** The blocker was never the format: the
+four index bytes were in the file at the canonical positions all along, and rev 0 simply
+predates their standardisation, so the gap-free spec covered them as `uint8` fillers —
+**correctly, under SP5** — and the template could not find fields it binds by name.
+
+**Three probes arrived at this one mechanism.** P6 (rev 0), P7 (`offset` and `cdp`, whose
+bytes already exist under other names), P5 (little-endian, unable to be declared). Three
+independent failures, one missing feature.
+
+**Four rules the implementation enforces, each from §6.4 or a probe result:**
+
+1. **Evidence is mandatory and length-checked.** §6.4: *"an override with no cited
+   evidence is rejected at review."* Enforced at load, not left to a reviewer's attention.
+2. **G1 must still pass.** An override that breaks gap-freeness is refused, and the error
+   says so.
+3. **`ibm32` in an override is REFUSED, naming P2.** This is the sharp one. Before, an
+   `ibm32` override would have been "deferred pending P2". **P2 has now failed**, so it is
+   refused outright — a survey override is the *only* route by which `ibm32` can reach a
+   trace header (D-0003 measured zero such fields in every standard), and that route is
+   now closed.
+4. **Byte content never changes.** Names and types over the same bytes; G2c re-verifies
+   it on every ingest.
+
+**Three overrides ship**, each with real evidence prose citing byte ranges and revisions:
+`segy-rev0-poststack3d`, `rev1-offset-alias`, `rev1-cdp-alias`.
+
+---
+
+## D-0045 — 2026-08-23 — The raw `uint32` sample view is stored. **D1's remedy is built.**
+
+**Decision.** For a source whose sample format is `ibm32`, SDIP writes
+`amplitude_raw_ibm32` — the **undecoded big-endian 4-byte sample words, read from the
+source file by raw offset**, shaped like `amplitude`, written with stock `zarr`.
+
+**This is probe P2's own "if it fires" remedy.** P2 measured 1,939 of 4,103 IBM words
+losing the **value** in the decode — overflow to `inf`, underflow to zero — and **no
+re-encoding can reconstruct them, because the information left at decode time**. The raw
+view is the only thing that makes those bits recoverable.
+
+`uint32` is a **container, not an interpretation** — the same reasoning as SP5's `uint8`
+fillers. It carries no float semantics, so no decode can be applied to it by accident.
+
+**Plane 4 gains a second leg, reported separately and deliberately not folded into its
+verdict.** The raw-word comparison is **exactly invertible by construction** — a `uint32`
+is copied, not transformed — so it holds precisely where the float comparison cannot.
+Keeping it separate matters: **two decoded arrays that both read `inf` are equal without
+either being the source sample.** A store can have correct raw words and a lossy decode,
+and neither fact is allowed to stand in for the other.
+
+Written with stock `zarr`, not MDIO, so a consumer reads it with MDIO uninstalled (§10.3,
+G4). Only written when the source is `ibm32` — no cost where there is no risk.
+
+---
+
+## D-0046 — 2026-08-23 — SP6 blind spot 2 closed. A warning nobody had ever seen
+
+**Decision.** `recording_log_records()` attaches a handler for the duration of an
+ingest and records what upstream **logs** at WARNING and above, alongside what it
+**warns**. Two separate channels, two separate lists — flattening them would misreport
+which mechanism was involved, and only one of the two is suppressible by a filter.
+
+**Measured on a real sparse ingest**, where the ledger previously recorded nothing:
+
+```
+python warnings : 0
+log records     : 2
+   [WARNING] mdio.ingestion.grid_qc: Ingestion grid is sparse. Sparsity ratio: 3.00
+   [WARNING] mdio.ingestion.segy.coordinates: Unexpected value in coordinate unit
+             (measurement_system_code) header: 0
+```
+
+The first is the sparsity notice **probe P5 found missing**. The second is a coordinate-unit
+warning **that has been raised on every ingest this project has ever run and appeared on no
+certificate** — it was not suppressed, not filtered, and not noticed. Nobody was looking at
+`logging`.
+
+**Careful detail worth recording:** if the root logger has no handlers, upstream's records
+currently reach stderr via `lastResort`, and attaching *any* handler silences that. The
+implementation **carries `lastResort` forward** rather than replacing it — SDIP must not
+leave the process quieter than it found it, which is the same discipline D-0004 applies to
+the warning filters it criticises upstream for leaking.
+
+**Blind spot 1 remains open, and is now declared rather than silent.** The ledger states
+its own scope on every certificate:
+
+```
+covers: "parent-process Python warnings and parent-process log records only"
+worker_process_warnings: "NOT CAPTURED - see OPEN_DEBTS D26"
+```
+
+**An empty `warnings_raised[]` can no longer be read as evidence of a quiet run.** That
+does not capture the 2,441 `ibm32` overflow warnings P2 found stranded in spawn workers —
+but it converts a silent gap into a declared one, which is the difference between a
+certificate that misleads and one that is merely incomplete.
+
+---
+
+## D-0047 — 2026-08-23 — **P4's method is satisfied.** Two readers disagree about the same array
+
+**Result.** zarr-java 0.2.0 (JVM) ran as P4's second implementation. **The method asked
+for at least two; two have now run.**
+
+| Reader | `struct` (`headers`) | `fixed_length_utf32` (`segy_file_header`) |
+|---|---|---|
+| TensorStore 0.1.85 (C++) | **accepts** — 97/97 fields, byte-identical | refuses |
+| zarr-java 0.2.0 (JVM) | **refuses** | refuses |
+| `zarr-python` 3.3.0 | accepts, with a warning | accepts |
+
+**Three readers, three different answers about which extension dtypes exist.**
+
+**The falsifier still did not fire, and this leg does not revive it.** *"Headers unreadable
+outside Python"* is a universal claim, and leg 1 produced the counterexample. **One reader
+that can read them settles whether they can be read. A second that cannot does not
+un-settle it.** A reader declining an unspecified `data_type` is standards-conformant and
+still right.
+
+**The number to quote is not the verdict:** of the two non-Python implementations measured,
+**`headers` is readable by one and not the other.** Core-spec arrays are readable by both,
+byte-identically, with no exceptions.
+
+**A finding leg 1 could not have produced.** `Group.list()` **fails outright** in zarr-java:
+
+```
+Failed to read node metadata for key 'segy_file_header/zarr.json':
+Cannot deserialize value of type DataType from Object value
+```
+
+Listing opens every child node, so **one unparsable `data_type` takes the whole listing
+down**. A zarr-java consumer cannot enumerate the store at all — not merely read one array.
+**And the pre-approved `uint8` header plane would not fix that by itself**, because
+`segy_file_header` keeps `fixed_length_utf32`. That materially changes the shape of the
+mitigation and is recorded as debt.
+
+**D3 stays OPEN, but its reason changed from *unmeasured* to *measured*.** What was an
+argument from the specification — *"support is an implementation choice, not conformance"* —
+is now an observation: a second reader refuses the same array in the same store.

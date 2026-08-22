@@ -1,0 +1,37 @@
+# SDIP survey spec override — specification §6.4.
+#
+# A pure rename over one existing rev 1 field. Same bytes, same width, same meaning,
+# different label. It changes no byte content, which Plane 3 (G2c) re-verifies.
+
+name = "rev1-offset-alias"
+version = "1"
+
+evidence = """
+SEG-Y rev 1 defines trace-header bytes 37-40 as "Distance from center of the source
+point to the center of the receiver group", a 4-byte signed integer, negative if
+opposite to the direction of shooting. That quantity is the source-receiver offset; the
+standard simply spells it out rather than naming it, and the pinned segy 0.6.0 carries
+it as source_to_receiver_distance at byte 37, format int32.
+
+Every prestack MDIO template binds the index field by the name offset, which is not a
+SEG-Y rev 1 field name. Measured in DECISIONS.md D-0039 (probe P7): the cdp_offset_3d
+and cdp_offset_2d geometries are refused before a single trace is read, with "Required
+fields ['offset'] ... not found in the provided segy_spec". The same probe asserted the
+identity directly - the declared (byte, format) of offset equals the standard's
+(byte, format) for source_to_receiver_distance, and neither offset nor cdp appears
+anywhere in the rev 1 field set.
+
+So the blocker is a name, not a byte. This override supplies the name. It is an alias
+over an unchanged 4-byte int32 at byte 37, not a reinterpretation: the bytes read are
+the bytes the standard already declared, at the width the standard already declared,
+and the value a consumer gets is the value source_to_receiver_distance held.
+
+SCOPE. Correct for any file whose bytes 37-40 conform to rev 1. A survey that
+repurposed those bytes for something else needs its own override with its own evidence,
+not this one.
+"""
+
+[[field]]
+name = "offset"
+byte = 37
+format = "int32"
