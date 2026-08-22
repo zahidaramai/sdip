@@ -225,7 +225,10 @@ def test_certificate_is_provisional_at_f2(ingested):
     assert payload["gates"]["G2"] == "NOT_RUN"
     assert payload["gates"]["G7"] == "NOT_RUN"
     assert payload["planes"]["plane_3"]["status"] == "NOT_RUN"
-    assert "D11" in payload["verdict_reason"]
+    # At F2 there is no round trip, so P2's ibm32 scope has no byte-identity proof to
+    # rest on and it is the binding reason. See D-0034.
+    assert payload["transform_scope_blocks_equivalence"] is True
+    assert "NOT exactly invertible" in payload["verdict_reason"]
 
 
 def test_unrun_planes_are_never_assumed_to_pass(ingested):

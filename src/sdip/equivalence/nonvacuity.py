@@ -25,16 +25,36 @@ own gate": it catches an over-broad checker that fails everything, **and** a nar
 that misses the corruption, in the same assertion.
 
 Nothing here mutates the store under test. Every corruption is applied to a copy.
+
+Why the copy is **selective** (``OPEN_DEBTS`` D18)
+--------------------------------------------------
+The first implementation copied the whole store once per control. Measured on a 362 MB
+survey store that is 2.83 GB copied across the eight controls and 370.4 s of wall clock —
+87 % of the entire pipeline, and it scales linearly with the survey. A 20 GB survey would
+copy ~160 GB. That is the point at which an operator switches the gate off, and **a gate
+that gets switched off is worse than one that was never written** (SP11). The cost was
+therefore a correctness risk, not a performance nuisance.
+
+Each control now declares the store subpaths it writes (:attr:`Corruption.touches`), and
+the working copy is materialised from that declaration: real copies for what the control
+writes, hard links for the rest. The split is drawn where it is for **safety** rather
+than for speed - :func:`_materialise` gives the measurement behind that and says plainly
+what today's upstream would and would not do.
+
+Because "the original is unchanged" is no longer self-evident from ``copytree``, it is
+**measured**: :func:`g7` fingerprints the store before and after the audit, reports the
+answer on :attr:`G7Result.original_store_intact`, and a failure there makes G7 FAIL.
 """
 
 from __future__ import annotations
 
 import base64
+import os
 import shutil
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import numpy as np
 
@@ -42,6 +62,16 @@ from sdip.ingest.file_headers import ATTR_RAW_BINARY, ATTR_RAW_TEXT
 
 ALL_GATES: tuple[str, ...] = ("G2a", "G2b", "G2c", "G2d", "G2e", "G3")
 """Every gate G7 audits. §7 G7 names exactly these."""
+
+_METADATA_FILENAME: Final[str] = "zarr.json"
+"""Zarr v3 keeps all node metadata - including attributes - in files with this name.
+
+They are always real copies, never links, wherever they sit in the store: an operation
+can rewrite metadata without touching a single chunk - an attribute update is exactly
+that - so metadata is written in more places than any ``touches`` set names. They are
+kilobytes. Copying every one of them costs nothing measurable and takes a whole class of
+paths out of the argument in :func:`_materialise` rather than into it.
+"""
 
 
 def _group(store: Path) -> Any:
@@ -142,6 +172,22 @@ class Corruption:
     must_fail: frozenset[str]
     apply: Callable[[Path], None]
     clause: str
+    touches: frozenset[str]
+    """Store subpaths ``apply`` writes, relative to the store root, POSIX-separated.
+
+    A **declaration of write scope**, and the working copy is built from it: everything
+    named here (and everything beneath it) is a real copy; everything else is hard-linked
+    from the store under audit. Under-declaring is a safety regression rather than a
+    missed optimisation - it stakes the integrity of the store being certified on how
+    upstream happens to write its chunks, which :func:`_materialise` explains SDIP will
+    not do. There is deliberately **no default**, so a new control cannot acquire an
+    empty write scope by omission, and :func:`g7` measures the store afterwards rather
+    than trusting the declaration.
+
+    Subpaths are whole Zarr nodes, not chunks. A control that assigns to a whole array
+    (``group["amplitude"][:] = volume``) rewrites every chunk of it, so nothing finer
+    would be honest.
+    """
 
     def to_json(self) -> dict[str, Any]:
         """Certificate-shaped mapping."""
@@ -150,6 +196,7 @@ class Corruption:
             "description": self.description,
             "must_fail": sorted(self.must_fail),
             "clause": self.clause,
+            "touches": sorted(self.touches),
         }
 
 
@@ -160,6 +207,8 @@ CONTROLS: tuple[Corruption, ...] = (
         must_fail=frozenset({"G2a"}),
         apply=_flip_textual_byte,
         clause="§4.2",
+        # An attribute rewrite on one node. Kilobytes, not a survey.
+        touches=frozenset({"segy_file_header"}),
     ),
     Corruption(
         name="truncated_textual_header",
@@ -167,6 +216,7 @@ CONTROLS: tuple[Corruption, ...] = (
         must_fail=frozenset({"G2a"}),
         apply=_truncate_textual_header,
         clause="§7 G7 minimum set",
+        touches=frozenset({"segy_file_header"}),
     ),
     Corruption(
         name="flipped_binary_byte",
@@ -174,6 +224,7 @@ CONTROLS: tuple[Corruption, ...] = (
         must_fail=frozenset({"G2b"}),
         apply=_flip_binary_byte,
         clause="§4.3",
+        touches=frozenset({"segy_file_header"}),
     ),
     Corruption(
         name="flipped_header_byte",
@@ -181,6 +232,7 @@ CONTROLS: tuple[Corruption, ...] = (
         must_fail=frozenset({"G2c"}),
         apply=_flip_header_byte,
         clause="§7 G7 minimum set",
+        touches=frozenset({"headers"}),
     ),
     Corruption(
         name="flipped_sample_bit",
@@ -188,6 +240,7 @@ CONTROLS: tuple[Corruption, ...] = (
         must_fail=frozenset({"G2d"}),
         apply=_flip_sample_bit,
         clause="§7 G7 minimum set",
+        touches=frozenset({"amplitude"}),
     ),
     Corruption(
         name="inverted_live_mask",
@@ -195,6 +248,7 @@ CONTROLS: tuple[Corruption, ...] = (
         must_fail=frozenset({"G2e"}),
         apply=_invert_live_mask,
         clause="§7 G7 minimum set",
+        touches=frozenset({"trace_mask"}),
     ),
     Corruption(
         name="dropped_trace",
@@ -202,6 +256,8 @@ CONTROLS: tuple[Corruption, ...] = (
         must_fail=frozenset({"G2c", "G2d", "G2e"}),
         apply=_drop_a_trace,
         clause="§7 G7 minimum set",
+        # Zeroes headers and samples and clears the mask bit: three arrays, all written.
+        touches=frozenset({"trace_mask", "headers", "amplitude"}),
     ),
     Corruption(
         name="transposed_traces",
@@ -209,6 +265,7 @@ CONTROLS: tuple[Corruption, ...] = (
         must_fail=frozenset({"G2c", "G2d"}),
         apply=_transpose_two_traces,
         clause="§7 G7 minimum set",
+        touches=frozenset({"headers", "amplitude"}),
     ),
 )
 """The permanent control set. Covers every gate in :data:`ALL_GATES` except G3.
@@ -223,6 +280,130 @@ not a corrupted store, so it cannot share this machinery.
 """
 
 
+# --- selective materialisation of the working copy - OPEN_DEBTS D18 ---------
+
+
+@dataclass(frozen=True, slots=True)
+class _CopyCost:
+    """What building one working copy actually moved."""
+
+    bytes_copied: int = 0
+    bytes_hardlinked: int = 0
+
+
+def _is_touched(relative: str, touches: frozenset[str]) -> bool:
+    """True when ``relative`` is, or lies under, a subpath the control declares it writes."""
+    return any(relative == node or relative.startswith(f"{node}/") for node in touches)
+
+
+def _materialise(store: Path, dest: Path, touches: frozenset[str]) -> _CopyCost:
+    """Build a control's working copy at ``dest``, copying only what it will write.
+
+    Real copies for everything under a declared ``touches`` subpath and for every
+    ``zarr.json``; hard links for everything else.
+
+    **Why a modified path must be a real copy and never a hard link.**
+    A hard link is a second *name* for one inode, not a second copy of the bytes, so
+    whether a write through one reaches the store under audit depends entirely on *how*
+    the writer writes. Truncate-and-rewrite in place (``open(path, "wb")``) writes
+    through to every name for that inode. Write-to-temp-then-rename does not: the rename
+    swaps only the directory entry the writer holds.
+
+    **Measured, not assumed** (SP8). Under the resolved ``zarr`` 3.3.0,
+    ``LocalStore._put`` goes through ``_atomic_write``, which writes a ``.partial`` file
+    and calls ``Path.replace``. Hard-linking a whole store, writing chunks *and*
+    attributes into the copy, then re-reading the original leaves the original's inodes
+    and bytes identical - so today's upstream does **not** write through, and this
+    function could hard-link everything and still be correct.
+
+    It does not, because that correctness is on loan. ``zarr`` arrives here as a
+    *transitive* dependency: SDIP's binding pins are ``multidimio`` and ``segy`` (§3.2),
+    and neither pins ``LocalStore``'s write strategy. Upstream reverting to an in-place
+    write would silently convert G7 from an auditor of the store into a corrupter of it,
+    with no signal at the SDIP boundary and a certificate issued over the damage. Copying
+    the declared write scope costs a fraction of a whole-store copy and removes that
+    dependency entirely, which is the trade §7 G7 exists to make.
+
+    Hard-linking the remainder rests on a narrower and locally verifiable claim: nothing
+    in the audit opens those paths for writing at all. The checkers open the store
+    read-only (``mode="r"``), and a corruption writes only what it declared. That "only"
+    is still a declaration, so :func:`g7` measures it afterwards rather than trusting it.
+
+    Args:
+        store: The store under audit. Read, never written.
+        dest: Directory to build. Must not already exist.
+        touches: Subpaths of ``store``, POSIX-separated, that the control writes.
+
+    Returns:
+        The bytes really copied and the bytes hard-linked.
+    """
+    copied = linked = 0
+    dest.mkdir(parents=True)
+    for path in sorted(store.rglob("*")):
+        relative = path.relative_to(store).as_posix()
+        target = dest / relative
+        if path.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        size = path.stat().st_size
+        if path.name == _METADATA_FILENAME or _is_touched(relative, touches):
+            shutil.copy2(path, target)
+            copied += size
+            continue
+        try:
+            os.link(path, target)
+        except OSError:
+            # Cross-device, or a filesystem without hard links. A real copy is always
+            # correct here - only slower - so degrade rather than fail the gate.
+            shutil.copy2(path, target)
+            copied += size
+        else:
+            linked += size
+    return _CopyCost(bytes_copied=copied, bytes_hardlinked=linked)
+
+
+def _content_fingerprint(store: Path) -> dict[str, str]:
+    """SHA-256 of every file in the store. The authoritative unchanged-ness evidence."""
+    from sdip.provenance.hashing import sha256_tree
+
+    return sha256_tree(store)
+
+
+def _stat_tripwire(store: Path) -> dict[str, tuple[int, int, int]]:
+    """``{relative path: (inode, size, mtime_ns)}`` - a content-free write tripwire.
+
+    Cheap enough to run after every control, which is the point: it stops a mis-declared
+    ``touches`` at the **first** control instead of letting the remaining seven compound
+    the damage. A write through a hard link keeps the inode - that is what a hard link
+    is - but moves ``mtime``, so the pair is the signal.
+
+    Creating and removing the links themselves move the original's ``ctime`` (its link
+    count changes) and never its ``mtime``, which is why ``ctime`` is not compared.
+
+    This is a tripwire, not proof: a filesystem with coarse timestamps could miss a
+    write. :func:`_content_fingerprint` is the proof.
+    """
+    signature: dict[str, tuple[int, int, int]] = {}
+    for path in sorted(store.rglob("*")):
+        if not path.is_file():
+            continue
+        info = path.stat()
+        signature[path.relative_to(store).as_posix()] = (
+            info.st_ino,
+            info.st_size,
+            info.st_mtime_ns,
+        )
+    return signature
+
+
+def _differences(before: Mapping[str, Any], after: Mapping[str, Any]) -> list[str]:
+    """Keys present in one mapping only, or mapped to different values. Sorted."""
+    changed = set(before) ^ set(after)
+    changed |= {key for key in before.keys() & after.keys() if before[key] != after[key]}
+    return sorted(changed)
+
+
 @dataclass(slots=True)
 class ControlOutcome:
     """What one corruption actually did to the gates."""
@@ -230,6 +411,10 @@ class ControlOutcome:
     corruption: Corruption
     failed_gates: frozenset[str]
     error: str | None = None
+    bytes_copied: int = 0
+    """Bytes really copied to build this control's working copy."""
+    bytes_hardlinked: int = 0
+    """Bytes shared with the store under audit by hard link, and so never copied."""
 
     @property
     def passed(self) -> bool:
@@ -255,6 +440,8 @@ class ControlOutcome:
             "missed_failures": self.missed,
             "error": self.error,
             "status": "PASS" if self.passed else "FAIL",
+            "bytes_copied": self.bytes_copied,
+            "bytes_hardlinked": self.bytes_hardlinked,
         }
 
 
@@ -265,6 +452,14 @@ class G7Result:
     outcomes: list[ControlOutcome] = field(default_factory=list)
     baseline_clean: bool = False
     baseline_detail: str = ""
+    original_store_intact: bool = False
+    """Whether the store under audit is byte-for-byte what it was before G7 ran.
+
+    Defaults to **False** so that no path out of :func:`g7` - including one taken by an
+    exception - can leave the result claiming an integrity it never measured. It is set
+    only by comparing SHA-256 over every file before and after.
+    """
+    original_store_detail: str = "not verified"
 
     @property
     def failed(self) -> list[ControlOutcome]:
@@ -272,9 +467,38 @@ class G7Result:
         return [o for o in self.outcomes if not o.passed]
 
     @property
+    def bytes_copied(self) -> int:
+        """Bytes really copied across the whole audit."""
+        return sum(o.bytes_copied for o in self.outcomes)
+
+    @property
+    def bytes_hardlinked(self) -> int:
+        """Bytes shared by hard link across the whole audit, and so never copied."""
+        return sum(o.bytes_hardlinked for o in self.outcomes)
+
+    @property
+    def whole_store_copy_bytes(self) -> int:
+        """What one whole-store copy per control would have cost - the D18 baseline.
+
+        Every control materialises the entire store one way or the other, so the two
+        figures together are exactly what ``copytree`` moved before D18.
+        """
+        return self.bytes_copied + self.bytes_hardlinked
+
+    @property
     def passed(self) -> bool:
-        """True only when the baseline is clean and every control behaved exactly."""
-        return self.baseline_clean and bool(self.outcomes) and not self.failed
+        """True only when baseline, controls and the store's own integrity all held.
+
+        The last conjunct is not decoration. The working copies share inodes with the
+        store, so a mis-declared write scope would corrupt the store being certified;
+        that must make the gate FAIL, not appear as a footnote under a PASS.
+        """
+        return (
+            self.baseline_clean
+            and bool(self.outcomes)
+            and not self.failed
+            and self.original_store_intact
+        )
 
     @property
     def status(self) -> str:
@@ -283,6 +507,10 @@ class G7Result:
 
     def summary(self) -> str:
         """One line naming what killed it, or what held."""
+        if not self.original_store_intact:
+            # Loudest first: this one says the audit damaged the artifact being
+            # certified, which outranks anything a control did or did not detect.
+            return f"G7 FAIL: {self.original_store_detail}"
         if not self.baseline_clean:
             return f"G7 FAIL: baseline is not clean - {self.baseline_detail}"
         if self.passed:
@@ -309,7 +537,12 @@ class G7Result:
             "status": self.status,
             "summary": self.summary(),
             "baseline_clean": self.baseline_clean,
+            "original_store_intact": self.original_store_intact,
+            "original_store_detail": self.original_store_detail,
             "control_count": len(self.outcomes),
+            "bytes_copied": self.bytes_copied,
+            "bytes_hardlinked": self.bytes_hardlinked,
+            "bytes_if_whole_store_copied_per_control": self.whole_store_copy_bytes,
             "controls": [o.to_json() for o in self.outcomes],
             "note": (
                 "A gate a corrupted store passes is not a gate. Each control declares "
@@ -345,24 +578,61 @@ def _failing_gates(source: Path, store: Path, spec: Any) -> tuple[frozenset[str]
     return frozenset(failed), None
 
 
+def _verify_original(result: G7Result, store: Path, before: dict[str, str]) -> None:
+    """Measure whether the store under audit is byte-identical to what it was, and record it.
+
+    Args:
+        result: The result to annotate. Mutated in place.
+        store: The store under audit.
+        before: Its content fingerprint taken before anything in the audit ran.
+    """
+    changed = _differences(before, _content_fingerprint(store))
+    result.original_store_intact = not changed
+    result.original_store_detail = (
+        f"store under audit unchanged: {len(before)} files byte-identical before and after"
+        if not changed
+        else (
+            "the store under audit was MODIFIED by G7 itself - "
+            f"{len(changed)} file(s), first: {', '.join(changed[:5])}"
+        )
+    )
+
+
 def g7(source: str | Path, store: str | Path, spec: Any, *, workdir: str | Path) -> G7Result:
     """Audit the engine's non-vacuity against a real store.
 
-    For each control: copy the store, corrupt the copy, run every gate, and compare the
-    set that failed against the set the control declares it must fail.
+    For each control: materialise a working copy of the store, corrupt the copy, run every
+    gate, and compare the set that failed against the set the control declares it must
+    fail.
+
+    The working copy is built from the control's declared write scope
+    (:attr:`Corruption.touches`) rather than by copying the whole store, because the whole
+    store copy made the gate unaffordable at survey scale and an unaffordable gate gets
+    switched off (D18, SP11). The copies share unwritten bytes with the store by hard
+    link, so ``store`` being unmodified is a claim with a mechanism behind it - and
+    therefore one that is **measured** here, twice: a cheap ``stat`` tripwire after every
+    control so a mis-declaration stops at the first one, and a SHA-256 fingerprint over
+    every file before and after as the proof. Either failing makes the result FAIL.
 
     Args:
         source: The source SEG-Y the store was built from.
-        store: The clean store to audit against. **Never modified.**
+        store: The clean store to audit against. **Never modified**, and verified so.
         spec: The gap-free ``SegySpec`` used for the ingest.
-        workdir: Directory for the corrupted copies. Should be temporary.
+        workdir: Directory for the corrupted copies. Should be temporary, and on the same
+            filesystem as ``store`` if the hard links are to be usable.
 
     Returns:
-        The audit result. ``PASS`` only when the clean baseline passes every gate **and**
-        every control fails exactly the gates it declares.
+        The audit result. ``PASS`` only when the clean baseline passes every gate, every
+        control fails exactly the gates it declares, **and** the store came through the
+        audit byte-for-byte unchanged.
     """
     source_path, store_path, work = Path(source), Path(store), Path(workdir)
     work.mkdir(parents=True, exist_ok=True)
+
+    # Read both fingerprints before anything else runs, so they describe the store as it
+    # was handed over rather than as G7 left it.
+    before_content = _content_fingerprint(store_path)
+    before_stat = _stat_tripwire(store_path)
 
     # The baseline matters as much as the controls. If the clean store does not pass
     # every gate, "the corrupted one failed" proves nothing at all.
@@ -377,29 +647,43 @@ def g7(source: str | Path, store: str | Path, spec: Any, *, workdir: str | Path)
         ),
     )
     if not result.baseline_clean:
+        _verify_original(result, store_path, before_content)
         return result
 
     for control in CONTROLS:
         copy = work / f"control_{control.name}.mdio"
         if copy.exists():
             shutil.rmtree(copy)
-        shutil.copytree(store_path, copy)
+        cost = _materialise(store_path, copy, control.touches)
+        outcome = ControlOutcome(
+            corruption=control,
+            failed_gates=frozenset(),
+            bytes_copied=cost.bytes_copied,
+            bytes_hardlinked=cost.bytes_hardlinked,
+        )
         try:
             control.apply(copy)
         except Exception as exc:
-            result.outcomes.append(
-                ControlOutcome(
-                    corruption=control,
-                    failed_gates=frozenset(),
-                    error=f"could not apply: {type(exc).__name__}: {exc}",
-                )
-            )
-            shutil.rmtree(copy, ignore_errors=True)
-            continue
-        failed, _detail = _failing_gates(source_path, copy, spec)
-        result.outcomes.append(ControlOutcome(corruption=control, failed_gates=failed, error=None))
+            outcome.error = f"could not apply: {type(exc).__name__}: {exc}"
+        else:
+            outcome.failed_gates, _detail = _failing_gates(source_path, copy, spec)
+        result.outcomes.append(outcome)
         shutil.rmtree(copy, ignore_errors=True)
 
+        # Stop at the first control that wrote through a link instead of letting the
+        # remaining ones compound the damage to the store being certified.
+        touched = _differences(before_stat, _stat_tripwire(store_path))
+        if touched:
+            _verify_original(result, store_path, before_content)
+            result.original_store_intact = False
+            result.original_store_detail = (
+                f"control {control.name} wrote into the store under audit - "
+                f"{len(touched)} file(s) changed on disk, first: {', '.join(touched[:5])}; "
+                f"content check says: {result.original_store_detail}"
+            )
+            return result
+
+    _verify_original(result, store_path, before_content)
     return result
 
 

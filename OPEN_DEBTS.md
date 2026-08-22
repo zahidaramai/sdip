@@ -475,3 +475,128 @@ that any `NOT_RUN` yields `PROVISIONAL`.
 `PROVISIONAL` while saying nothing the `gates` block does not already say. Recorded so it
 cannot be forgotten at the moment it stops being cosmetic.
 
+---
+
+## D1 — NARROWED HARD 2026-08-22 — `ibm32` measured as NOT invertible
+
+- **Status:** `OPEN` and **blocking**, character changed
+- **Decision:** `DECISIONS.md` D-0034 · **Probe:** P2, **FIRED**
+
+D1 said the transform was *"unverified"*. It is now **verified as not invertible**:
+**2,447 of 4,103** words fail bit-identity, **1,939 losing the value** and not merely the
+spelling. Bit-identity requires exponent code **33–96** with a normalised, non-zero
+fraction.
+
+**Built in response:** the exposure is always declared `SCOPED` on the certificate with
+the measured regime named, and `EQUIVALENT` is blocked when `ibm32` is declared **and**
+G3 did not achieve byte identity — byte identity being the empirical proof that this
+data round-tripped. `ROUNDTRIP-SCOPED` is explicitly refused for this case in code.
+
+**Still open:** the pre-registration's remaining remedy — **storing the raw `uint32` view
+in parallel** — is not built. Until it is, an `ibm32` source whose round trip is not
+byte-identical has bits that are **not recoverable from the output at all**.
+
+---
+
+## D3 — NARROWED 2026-08-22 — a C++ reader read the structured headers
+
+- **Status:** `OPEN`
+- **Decision:** `DECISIONS.md` D-0035 · **Probe:** P4, did **not** fire
+
+TensorStore 0.1.85 read **all 97 fields** of the structured `headers` array
+byte-identically. The falsifier did not fire.
+
+**Two things keep it open.** Only one implementation ran — zarr-java and zarr-rs are
+unmeasured, and `struct` has no Zarr v3 specification, so TensorStore's support is an
+implementation choice rather than conformance. And the *same reader refused*
+`segy_file_header`'s `fixed_length_utf32`, which is a same-run demonstration that
+extension-dtype support is per-implementation.
+
+**Measured and load-bearing:** SDIP's Plane 1 and Plane 2 bytes are recoverable **with a
+JSON parser alone**, because D-0021 stored them as base64 attributes rather than array
+payload. That was a correctness decision for §4.3; it also makes them strictly more
+portable than any array-based storage.
+
+---
+
+## D5 — CLOSED 2026-08-22 — irregular geometry handled correctly
+
+- **Decision:** `DECISIONS.md` D-0036 · **Probe:** P5, did **not** fire
+
+All four falsifier clauses hold across ten synthetic fixtures. **A duplicate index tuple
+is refused at ingest AND surfaced by Plane 5** — two independent defences, neither
+suppressible. Padding is `NaN` and excluded from Plane 4. `MDIO_IGNORE_CHECKS` absent
+throughout.
+
+**Closed within its measured scope:** 20–80 traces, one template, poststack 3D, revisions
+0 and 1, sparsity at 1.0/1.56/3.0/12.0, one duplicate with two colliding ordinals. Every
+fixture is **synthetic and well-formed** — a hostile or malformed irregular file is D8,
+not this.
+
+---
+
+## D6 — NARROWED HARD 2026-08-22 — only rev 1 works end to end
+
+- **Status:** `OPEN` and blocking for legacy vintages
+- **Decision:** `DECISIONS.md` D-0037 · **Probe:** P6, **FIRED for 3 of 4 revisions**
+
+G1 passes on all four — gap-free construction generalises. **rev 0, rev 2 and rev 2.1
+then fail to ingest**, so G3 is unreachable for them. Only rev 1 completes.
+
+| Blocker | Revision | Owner |
+|---|---|---|
+| Template needs `cdp_x`/`cdp_y`/`inline`/`crossline`, undeclared before rev 1 | rev 0 | **SDIP** — §6.4 survey overrides are specified and **not built** |
+| `data_sample_format` read unconditionally; a genuine rev 0 file carries zero there and does not open. **SDIP exposes no way to supply it.** | rev 0 | **SDIP** — no surface exists |
+| `S8` `trace_header_name` has no `ScalarType` | rev 2, 2.1 | upstream — [mdio-python#865](https://github.com/TGSAI/mdio-python/issues/865) |
+| rev 1 `segy_revision` injected, evicting `segy_revision_major`/`minor` | rev 2, 2.1 | upstream — [mdio-python#866](https://github.com/TGSAI/mdio-python/issues/866) |
+
+**The public scope claim was false and is corrected.** §1.2 and `README.md` said rev 0–2.1
+were supported. Only rev 1 is.
+
+---
+
+## D21 — Survey spec overrides (§6.4) are specified and not built
+
+- **Status:** `OPEN` (raised 2026-08-22)
+- **Blocks:** rev 0 support · **Decision:** D-0037
+
+P6 showed rev 0 is **one specified-but-unimplemented mechanism away from working**:
+declaring `cdp_x`, `cdp_y`, `inline`, `crossline` over bytes 181–196 keeps the spec
+gap-free (G1 still PASS, 119 fields) and the whole leg passes byte-identically.
+
+That declaration *is* a §6.4 survey override. The section exists; the code does not.
+
+**Note the interaction with D1:** an override may now declare field types, and P2 has
+**failed**. An override declaring an `ibm32` header field must be refused at review, not
+merely deferred.
+
+---
+
+## D22 — No surface exists to supply a sample format for rev 0
+
+- **Status:** `OPEN` (raised 2026-08-22)
+- **Blocks:** any genuine rev 0 archive · **Decision:** D-0037
+
+`SegyFile._update_spec()` reads `data_sample_format` from bytes 3225–3226 unconditionally
+for every revision. A genuine rev 0 file carries zero there — the standard never mandated
+it — and the file does not open: `ValueError: 0 is not a valid DataSampleFormatCode`.
+
+P6's rev 0 fixture reads **only because SDIP's own generator stamped the code into it**.
+An operator-supplied sample format is a stated requirement and **there is nowhere to
+state it**. Under **SP1** an assumed sample format is a declared transform and must be
+recorded on the certificate, so the surface has to carry it through to issuance.
+
+---
+
+## D18 — CLOSED 2026-08-22 — G7 copies only what a control touches
+
+- **Decision:** `DECISIONS.md` D-0038
+
+G7 no longer copies the whole store per control. Each control declares the store subpaths
+it modifies; those are real copies and everything else is hard-linked. The original store
+is hashed before and after the audit and a mismatch fails the gate — **a hard-link bug
+here would corrupt the very store being certified.**
+
+Verified on the synthetic article: G7 `PASS`, all 8 controls exact, **original store
+byte-for-byte unchanged**.
+

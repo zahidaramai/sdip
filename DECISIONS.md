@@ -1214,3 +1214,219 @@ That it turned out fine is luck, not process.
 
 **The judgement fix, which no hook can enforce:** do not `git add -A` while work is in
 flight. Stage explicitly, or wait.
+
+---
+
+## D-0034 — 2026-08-22 — **P2 FIRED.** `ibm32 → float32` is not exactly invertible
+
+**Result.** Probe P2 ran against the binding pins and **its falsifier fired, hard.** Of
+**4,103** IBM words swept exhaustively over the exponent axis with a committed mantissa
+axis and both signs, only **1,656 (40.4 %)** round-trip bit-identically. **2,447 fail.**
+
+| Mode | N | What is lost |
+|---|---|---|
+| `overflow_to_inf` | 920 | **The value** — `16^(code-64)` exceeds float32's ~3.4e38 |
+| `underflow_to_zero` | 839 | **The value** — below float32's smallest subnormal |
+| `subnormal_precision_loss` | 180 | **Significand bits**, in the decode itself |
+| `zero_fraction_canonicalised` | 256 | The spelling, and the sign of zero |
+| `unnormalised_renormalised` | 252 | The spelling; the encoder always normalises |
+
+**Zero unexplained failures** — every one is attributed to a named mechanism.
+**1,939 lose the value, not merely the spelling**, and no re-encoding can reconstruct
+them: the information left the pipeline at decode time.
+
+Bit-identity requires exponent code **33–96** *and* a normalised, non-zero fraction.
+
+**This is the most consequential measurement the project has taken.** **SP1** permits
+exactly one transform and requires it *"exactly invertible, verified by round trip"*.
+The one transform SDIP permits is **not** exactly invertible, and `ibm32` is the standard
+SEG-Y sample format — **the default for every revision the pinned `segy` exposes**.
+
+### What was built in response
+
+`src/sdip/spec/transforms.py`. Two things, deliberately separate:
+
+**1. The exposure is always declared.** Any spec carrying `ibm32` — in headers or as the
+sample format — produces a `transforms_declared` entry with
+**`invertibility: SCOPED`**, never `VERIFIED`, naming the measured regime. The transform
+is not invertible *in general*, so the certificate says so even where it happened to be
+invertible on this data.
+
+**2. The block is conditional on G3, and getting that right mattered.** The first
+implementation blocked `EQUIVALENT` whenever `ibm32` was present. That is every ingest,
+including the ones whose whole file round-trips byte for byte — a rule that fires
+identically on data that survived perfectly and data that was destroyed **distinguishes
+nothing and would be switched off** (**SP11**).
+
+**G3 byte-identity is the empirical answer.** If `sha256(export) == sha256(source)` over
+the whole file, then every `ibm32` word in it re-encoded to the bits it came from. That is
+not an argument about exponent ranges; it is a measurement of *this data*, and it is
+stronger than any argument. P2's failures live at the extremes; a file that never reaches
+them round-trips, and the hash proves it.
+
+So `EQUIVALENT` is blocked exactly when the proof is absent: `ibm32` declared **and** the
+round trip not byte-identical. Then the difference may be harmless re-spelling or 1,939
+destroyed values, **and nothing in the output distinguishes them.**
+
+**`ROUNDTRIP-SCOPED` is explicitly refused for this case**, and the code says so. §7 G3
+wrote that clause for a *non-conforming source*, not for a transform that destroyed
+measured values. An operator facing a failed hash has every incentive to reach for it;
+scoping this would convert measured data loss into a paperwork exercise, which is the
+precise failure §0 exists to prevent.
+
+**D1 changes character:** from *"invertibility unverified"* to **"verified as NOT
+invertible outside codes 33–96"**. It stays open and blocking, and the pre-registration's
+remaining remedy — storing the raw `uint32` view in parallel — is **not built**.
+
+**A survey-spec override declaring an `ibm32` header field must now be refused at
+review.** D-0003 measured zero such fields in every standard, so that is the only route
+in — and P2 has failed rather than merely not-yet-cleared.
+
+---
+
+## D-0035 — 2026-08-22 — **P4 did not fire.** A C++ reader read the structured headers
+
+**Result.** **TensorStore 0.1.85** — C++, sharing no code with `zarr-python` — read
+**all 97 fields** of the structured `headers` array **byte-identically**, and recovered
+the planted rev-1-uncovered tail bytes to match the source. All 7 core-spec arrays read
+bit-identically too.
+
+**The falsifier — *"headers unreadable outside Python"* — did not fire.**
+
+**But the most load-bearing observation is the opposite one**, from the same run: the
+*same* reader **refused** `segy_file_header`, whose `data_type` is
+`fixed_length_utf32`. One reader, one store, one dtype accepted and another rejected —
+a same-run demonstration that **extension-dtype support is per-implementation, not a
+property of the store.** `struct` has no Zarr v3 specification, so TensorStore's support
+is an implementation choice; a reader that declines it is standards-conformant and would
+still be right.
+
+**Measured directly, and it matters more than the rejection.** SDIP's authoritative
+Plane 1 and Plane 2 bytes are recoverable **with a JSON parser alone** — no zarr, no
+Python, nothing — because **D-0021** stored them as base64 *attributes* in `zarr.json`
+rather than as array payload. Verified: 3,200 textual bytes and 400 binary bytes read
+straight out of the JSON and compared equal to the source, with the declared SHA-256
+matching.
+
+That was a correctness decision taken for §4.3's *"raw bytes authoritative"* requirement.
+It turns out to also make the file headers **strictly more portable than any array-based
+storage could be**, including MDIO's own. Recorded because it was not the reason for the
+decision and should not be claimed as foresight.
+
+**Scope:** one implementation, not the two the pre-registration asked for — no JRE and no
+Rust toolchain on the runner, and CI has no network beyond the pinned index. **D3 narrows,
+it does not close.** N = 30 traces, one revision, one geometry, local filesystem.
+
+**On the pre-approved `uint8` header plane:** the evidence supports adopting it, but not
+for the anticipated reason. The falsifier did not fire, so it is not forced. What the run
+showed is that portability of `headers` rests on **one implementation's goodwill toward
+an unspecified dtype**. A 2-D `uint8` plane replaces goodwill with a guarantee. Adoption
+is a §12.1 maintainer decision and is **not taken here**.
+
+---
+
+## D-0036 — 2026-08-22 — **P5 did not fire.** Irregular geometry is handled correctly
+
+**Result.** All four falsifier clauses hold, across ten synthetic fixtures.
+
+| Clause | Verdict | Evidence |
+|---|---|---|
+| Silent duplicate overwrite | **holds** | Refused at ingest — `GridTraceCountError: 29 != 30`, no store written — **and** surfaced independently by Plane 5, naming both colliding ordinals. **Two defences, neither suppressible.** |
+| Padding leaking into Plane 4 | **holds** | Plane 4 compared 27 of 81 cells on `sparse_grid`, 32 of 50 on `ragged_lines`. Padding is `NaN`; G3 byte-identical, so nothing invented reaches the export. |
+| Sparsity depending on a suppressed check | **holds** | `MDIO_IGNORE_CHECKS` absent throughout, asserted three times in-test. Ratio 3.0 converts; ratio 12.0 is refused. |
+| Mask cannot distinguish a measured zero from padding | **holds** | Measured zeros are live and exactly zero; padding is not live and is `NaN`. |
+
+**Two qualifications belong with that verdict**, neither a falsifier hit: clause 3 holds
+*at the ratios measured* — sparse ingest is bounded at ratio 10 and the only route past
+it is the barred variable, which is not a route SDIP may take; and clause 4 holds *on the
+mask* — the `headers` array pads with zeros rather than `NaN`, so for that array the mask
+is the sole discriminator.
+
+**Scope:** 20–80 traces per fixture, one template, poststack 3D, revisions 0 and 1,
+sparsity sampled at 1.0 / 1.56 / 3.0 / 12.0 with nothing between 3 and 12, one duplicate
+with two colliding ordinals. **Every fixture is synthetic and structurally well-formed —
+a hostile or malformed irregular file is not covered** (that is §11.4 and debt D8).
+
+---
+
+## D-0037 — 2026-08-22 — **P6 FIRED.** Only rev 1 works end to end; the scope claim was false
+
+**Result.** G1 passes on **all four** revisions — gap-free construction generalises
+exactly as D-0003 said. **Then three of the four fail to ingest**, so G3 is not failed for
+them, it is **unreachable**.
+
+| Revision | Fields → gap-free | G1 | Ingest | G3 |
+|---|---|---|---|---|
+| rev 0 | 71 → 131 | **PASS** | **BLOCKED** | unreachable |
+| **rev 1** | 89 → 97 | **PASS** | **PASS** | **byte-identical** |
+| rev 2 | 90 → 90 | **PASS** | **BLOCKED** | unreachable |
+| rev 2.1 | 90 → 90 | **PASS** | **BLOCKED** | unreachable |
+
+**The good half of a bad result:** the ingest path did **not** disagree with the
+spec-construction path, which the pre-registration flagged as the more serious of the two
+possible findings. Construction generalises; **construction is not enough.**
+
+### The three blockers, isolated to the smallest cause
+
+**rev 0 — four absent field declarations.** `cdp_x`, `cdp_y`, `inline` and `crossline`
+enter the standard at rev 1. The gap-free rev 0 spec covers bytes 181–240 with `uint8`
+fillers — **correctly, under SP5** — and the template cannot find the four fields it
+indexes on. The *bytes are in the file at the canonical positions*; only the declaration
+is missing. Declaring them keeps the spec gap-free (G1 still PASS, 119 fields) and the
+whole leg then passes, byte-identical. **That is exactly what a §6.4 survey override is,
+and §6.4 is not built.** rev 0 is one specified-but-unimplemented mechanism away from
+working.
+
+**rev 0 — the sample format is unsuppliable, which is worse.** `SegyFile._update_spec()`
+reads `data_sample_format` from bytes 3225–3226 **unconditionally, for every revision
+including rev 0**. A genuine 1975-vintage rev 0 file carries zero there — the standard
+never mandated it — and the file then does not open at all:
+`ValueError: 0 is not a valid DataSampleFormatCode`. **SDIP exposes no surface through
+which an operator could supply the format.** The probe's fixture reads only because
+SDIP's own generator stamped the code into it. An operator-supplied sample format is a
+stated requirement of P6 and **there is nowhere to state it.**
+
+**rev 2 / 2.1 — two upstream defects, the second hidden behind the first.**
+`trace_header_name` at byte 233 is an 8-character string, the only non-integer field in
+the 240 bytes, and `multidimio` 1.2.1 has no `ScalarType` for it:
+`Unsupported numpy dtype 'bytes64'`. **The two revisions that need no fillers — gap-free
+as shipped — are the two that cannot be ingested.** Replace that one field and the ingest
+runs and all five planes pass; the *export* then fails anyway, because
+`mdio_spec_to_segy` injects the rev 1 `segy_revision` field into any spec lacking it, and
+rev 2 carries `segy_revision_major`/`minor` over the same bytes 301–302.
+
+**Both are raised as issues, not routed around** (§3.3 bars monkeypatching; no fork is
+authorised).
+
+### The public claim was false and is corrected
+
+Specification §1.2 lists *"SEG-Y (rev 0, 1, 2, 2.1) → MDIO v1 / Zarr v3 ingestion"* as
+in scope, and `README.md` repeated it. **Measured: only rev 1 completes.** That is
+precisely the kind of unverified assertion this project exists to make impossible, and
+leaving it up while knowing better would have been worse than never having probed.
+
+The README now states measured revision support. **D6 narrows from "untested" to "rev 1
+only, with three named blockers."**
+
+---
+
+## D-0038 — 2026-08-22 — G7 copies only what a control touches; closes D18
+
+**Decision.** Each `Corruption` declares a `touches` set — the store subpaths it modifies.
+G7 materialises a working copy by **real-copying those paths and hard-linking the rest**.
+
+**Why not hard-link everything.** A hard link is the same inode: writing through one
+would corrupt the original store — the very store being certified — silently. So the
+modified paths are always real copies, and that asymmetry is the whole design.
+
+**The safety check is not optional.** The original store's chunk files are hashed before
+and after the audit; a mismatch sets `original_store_intact: False` and **fails the
+gate**. A gate that could corrupt what it audits would be worse than no gate.
+
+**Measured:** the audit still passes with all 8 controls failing exactly their declared
+gates, and the original store is byte-for-byte unchanged.
+
+**Why this was a correctness matter, not performance.** D18 measured G7 at **87 % of the
+whole pipeline** — 370 s and 2.83 GB copied for a 362 MB store. At a 20 GB survey that is
+~160 GB and hours, which is the point where an operator switches the gate off. **A gate
+that gets switched off is worse than one that was never written** (**SP11**).

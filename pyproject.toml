@@ -59,6 +59,13 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.9",
     "mypy>=1.14",
+    # Probe P4 only. TensorStore is a C++ Zarr implementation with Python bindings,
+    # so it parses `zarr.json` with code that shares nothing with `zarr-python` -
+    # which is the whole point: it is the non-Python reader that answers whether
+    # §10.3 portability survives outside the Python ecosystem (debt D3).
+    # TEST-ONLY, and it must stay that way. Nothing in `src/sdip` may import it;
+    # the runtime dependency tree is licence-scanned and must not grow.
+    "tensorstore>=0.1.85",
 ]
 
 [tool.hatch.build.targets.wheel]

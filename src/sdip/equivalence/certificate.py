@@ -35,6 +35,7 @@ from sdip.guard.pins import check_pins
 from sdip.ingest.orchestrator import IngestResult
 from sdip.provenance.environment import capture_environment
 from sdip.provenance.git import capture_git_state
+from sdip.spec.transforms import detect_ibm32, ibm32_blocks_equivalence
 
 GATES = ("G1", "G2", "G3", "G4", "G5", "G6", "G7")
 PLANE_KEYS = ("plane_1", "plane_2", "plane_3", "plane_4", "plane_5")
@@ -42,7 +43,13 @@ PLANE_KEYS = ("plane_1", "plane_2", "plane_3", "plane_4", "plane_5")
 NOT_RUN = "NOT_RUN"
 
 
-def verdict_for(planes: dict[str, str], gates: dict[str, str], *, lossy: bool) -> str:
+def verdict_for(
+    planes: dict[str, str],
+    gates: dict[str, str],
+    *,
+    lossy: bool,
+    transform_blocked: bool = False,
+) -> str:
     """Derive the verdict. There is no partial credit (§4.1).
 
     ``EQUIVALENT`` requires **all five planes PASS and G7 PASS**. Any plane failing
@@ -51,13 +58,24 @@ def verdict_for(planes: dict[str, str], gates: dict[str, str], *, lossy: bool) -
     G7 is in the condition because a gate a corrupted store passes is not a gate
     (**SP11**). A store whose five planes pass against an engine that has never been
     shown capable of failing has not been checked — it has been agreed with.
+
+    ``transform_blocked`` carries probe **P2**'s result: the ``ibm32 → float32`` decode
+    is **not** exactly invertible in general (2,447 of 4,103 words fail; 1,939 lose the
+    value). **SP1** permits only an exactly invertible transform, so when a source
+    declares ``ibm32`` and the round trip did not prove invertibility on that data by
+    whole-file byte identity, ``EQUIVALENT`` is not available.
     """
+    # Order matters. A measured FAILURE outranks an unproven claim: a store with a
+    # failing plane is NON-EQUIVALENT whether or not the transform could be verified,
+    # and returning PROVISIONAL there would soften a real defect into an open question.
     if lossy:
         return "NON-EQUIVALENT"
     if any(planes.get(k) == "FAIL" for k in PLANE_KEYS):
         return "NON-EQUIVALENT"
     if any(v == "FAIL" for v in gates.values()):
         return "NON-EQUIVALENT"
+    if transform_blocked:
+        return "PROVISIONAL"
     if gates.get("G3") == "ROUNDTRIP-SCOPED":
         # Permitted only with a written justification naming the non-conformance
         # (§7 G3). It is not byte-identity, so it is not an unqualified EQUIVALENT.
@@ -169,6 +187,14 @@ def issue(
     codecs = read_codec_manifest(result.output_path)
     lossy = bool(set(codecs) & LOSSY_CODECS)
 
+    # SP1 / probe P2. The exposure is declared whether or not it blocks: the transform
+    # is not invertible in general, even where it happened to be invertible here.
+    exposure = detect_ibm32(result.spec.segy_spec)
+    byte_identical = bool(roundtrip is not None and roundtrip.byte_identical)
+    transform_blocked, transform_reason = ibm32_blocks_equivalence(
+        result.spec.segy_spec, roundtrip_byte_identical=byte_identical
+    )
+
     gate_block = dict.fromkeys(GATES, NOT_RUN)
     gate_block["G1"] = result.g1.status
     if planes:
@@ -187,7 +213,9 @@ def issue(
         gate_block["G7"] = nonvacuity.status
 
     plane_status = {k: v["status"] for k, v in plane_block.items()}
-    verdict = verdict_for(plane_status, gate_block, lossy=lossy)
+    verdict = verdict_for(
+        plane_status, gate_block, lossy=lossy, transform_blocked=transform_blocked
+    )
 
     store_path = Path(result.output_path)
     output_bytes = sum(f.stat().st_size for f in store_path.rglob("*") if f.is_file())
@@ -225,7 +253,9 @@ def issue(
         ),
         "portability": portability.to_json() if portability is not None else None,
         "nonvacuity": nonvacuity.to_json() if nonvacuity is not None else None,
-        "transforms_declared": [],
+        "transforms_declared": [exposure.to_json()] if exposure.present else [],
+        "transform_scope_blocks_equivalence": transform_blocked,
+        "transform_scope_reason": transform_reason or None,
         "warnings": result.warnings.to_json(),
         "codecs_used": codecs,
         "lossy_codec_present": lossy,
@@ -233,16 +263,31 @@ def issue(
         "git": git.to_json() | {"sdip_version": __version__},
         "gates": gate_block,
         "verdict": verdict,
-        "verdict_reason": _verdict_reason(verdict, plane_status, gate_block),
+        "verdict_reason": _verdict_reason(
+            verdict,
+            plane_status,
+            gate_block,
+            transform_blocked=transform_blocked,
+            transform_reason=transform_reason,
+        ),
         "issued_at": issued_at,
         "issued_by": issued_by,
     }
     return Certificate(payload=payload)
 
 
-def _verdict_reason(verdict: str, planes: dict[str, str], gates: dict[str, str]) -> str:
+def _verdict_reason(
+    verdict: str,
+    planes: dict[str, str],
+    gates: dict[str, str],
+    *,
+    transform_blocked: bool = False,
+    transform_reason: str = "",
+) -> str:
     if verdict == "EQUIVALENT":
         return "All five planes PASS and G7 PASS."
+    if transform_blocked:
+        return f"PROVISIONAL. {transform_reason}"
     unrun_planes = [k for k in PLANE_KEYS if planes.get(k) == NOT_RUN]
     unrun_gates = [g for g in GATES if gates.get(g) == NOT_RUN]
     if verdict == "NON-EQUIVALENT":
