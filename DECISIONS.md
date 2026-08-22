@@ -1174,3 +1174,43 @@ the ceilings, which is how thresholds are set, but it cannot also be judged by t
 runs on files never ingested.
 
 **What overturns it.** Nothing short of abandoning SP9.
+
+---
+
+## D-0033 — 2026-08-22 — `git add -A` swept unreviewed work into a public commit
+
+**What happened.** Commit `690b05e` ("Move pre-registrations to a public prereg/") was
+staged with `git add -A` while parallel work was writing files. It carried two things its
+message does not mention and its author had not reviewed:
+
+- `src/sdip/equivalence/determinism.py` — 497 lines, gate **G6**, mid-flight.
+- `_g6check.py` — a throwaway verification script, now in the public history.
+
+**It was pushed.** Nothing secret leaked — the firewall held, and `docs/`, `local/` and
+every AI-assistant artifact stayed out, which is what those four layers exist for. But
+the firewall is not a review process, and it was never meant to be one.
+
+**Why this is worth an entry rather than a quiet cleanup.** The project's own rule is
+that a commit message states **what was measured, under what config, with what N**
+(`CLAUDE.md` §4.4). A commit that silently carries 497 lines of unreviewed gate
+implementation is a false record, and the append-only discipline (**SP10**) means the
+remedy is a new entry, not a rewrite.
+
+**Verified after the fact**, which is the wrong order and is stated as such:
+`determinism.py` passes the tolerance/suppression `ast` audit, references no barred
+variable, uses `array_equal`, excludes `zarr.json` from the byte comparison as G6
+requires, is ruff- and mypy-clean, and **G6 PASSES** on the synthetic article — 2
+independent ingests, 9 arrays, chunk bytes *and* values identical.
+
+That it turned out fine is luck, not process.
+
+**Fixes, both mechanical:**
+
+1. `/_*.py`, `/_*.sh`, `/_*.json` are gitignored — a leading underscore at the repository
+   root now means "never mine".
+2. **The pre-commit hook refuses them**, which is the layer that *prevents* rather than
+   detects. It is the same asymmetry as the publication firewall: `.gitignore` is
+   defeated by `git add -f` and by anything already tracked; the hook is not.
+
+**The judgement fix, which no hook can enforce:** do not `git add -A` while work is in
+flight. Stage explicitly, or wait.

@@ -54,6 +54,13 @@ AGENTS.md
 /scratch/
 /out/
 
+# Throwaway verification scripts. `git add -A` while work is in flight swept one of
+# these into a public commit (DECISIONS.md D-0033); a leading underscore at the
+# repository root now means "never mine".
+/_*.py
+/_*.sh
+/_*.json
+
 # ---------------------------------------------------------------------------
 # RESTRICTED TEST DATA - local use only, never committed.
 # SDIP is verified end to end against real survey data licensed for local use.

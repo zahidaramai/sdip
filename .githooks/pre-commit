@@ -31,6 +31,17 @@ NEVER_PUBLISH=(
 
 staged=$(git diff --cached --name-only --diff-filter=ACMR -- "${NEVER_PUBLISH[@]}" || true)
 
+# Throwaway verification scripts at the repository root. Not a firewall matter - just
+# junk that `git add -A` sweeps into a public commit when work is in flight.
+scratch=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^_[^/]*\.(py|sh|json)$' || true)
+if [ -n "$scratch" ]; then
+  printf '\n\033[1;33mBLOCKED: scratch file staged\033[0m\n\n' >&2
+  printf '%s\n' "$scratch" | sed 's/^/    /' >&2
+  printf '\n  A leading underscore at the repository root means throwaway.\n' >&2
+  printf '  Unstage it, or rename it if it is meant to ship.\n\n' >&2
+  exit 1
+fi
+
 if [ -n "$staged" ]; then
   printf '\n\033[1;31mBLOCKED: publication firewall\033[0m\n\n' >&2
   printf '  This repository is public. These paths are staged and must never be committed:\n\n' >&2
