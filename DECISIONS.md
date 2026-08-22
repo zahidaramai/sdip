@@ -848,3 +848,66 @@ from it; they must not carry the local path.
 **What overturns it.** A dataset whose licence permits redistribution *and* whose owner
 permits publication, which would make it an ordinary §6.6 fixture — fetched at test time
 by checksum, never vendored.
+
+---
+
+## D-0026 — 2026-08-22 — Engine validated end to end on a real survey
+
+**Measured.** The full chain — ingest, five planes, G3, G4 — run against a **real 3D
+poststack survey**, not a synthetic article. Recorded here because **SP8** makes a
+measurement worth exactly what its scope statement says, and this one has a scope worth
+stating precisely.
+
+| Quantity | Value |
+|---|---|
+| Source | Real 3D poststack SEG-Y, rev 1, **494,565,408 bytes** |
+| Traces | **116,532** — a 249 × 468 grid, fully populated, zero dead traces |
+| Samples per trace | 1,001 at 2000 µs |
+| Scale vs the banked article | **3,884× the trace count** |
+
+**Result: every implemented gate passed.**
+
+| Gate | Result | N |
+|---|---|---|
+| G1 | `PASS` | 97 fields, itemsize 240 |
+| G2a / G2b | `PASS` | 3,200 / 400 bytes, exhaustive |
+| **G2c** | `PASS` | **116,532 traces × 97 fields, exhaustive** |
+| **G2d** | `PASS`, exact equality | **116,532 × 1,001 samples** |
+| G2e | `PASS` | counts, invertible map, live mask, no duplicates |
+| **G3** | **`PASS` — byte-identical** | **494,565,408 bytes** |
+| G4 | `PASS`, `mdio` never imported | 9 arrays |
+| **Verdict** | **`PROVISIONAL`** | G5, G6, **G7** `NOT_RUN` |
+
+**The provenance chain is the part that makes the rest mean anything.** The source
+digest matches the checksum manifest written with the data **six years before this run**;
+it matches again after ingestion (no read-path corruption); and the **G3 export matches
+it too**. Four identical digests across half a gigabyte.
+
+**A better header-cost number than the specification's own.** The `headers` array
+compressed to **2.0 B/trace — 121:1** on the full 240 bytes, **0.06 % of the store**.
+§5.4 measured 19.4 B/trace, but on synthetic headers carrying *"a deliberately
+pessimistic 12 bytes of incompressible random data"*. Real acquisition headers are far
+more compressible: **≈10× cheaper than the spec's own pessimistic figure.** The cost
+argument against full header preservation is not merely closed — on this data it is not
+a rounding error.
+
+Wall clock 55.1 s end to end; peak RSS 2.84 GB.
+
+### What this is not, stated because it would be easy to overclaim
+
+- **NOT probe P3, and D2 stays open.** No pre-registered memory or wall-clock ceiling, no
+  pre-registered trace sample, no second run. **SP9**: a threshold chosen after seeing
+  the result is not a threshold. Running a large file is not measuring scale behaviour.
+- **NOT a G6 result.** Determinism needs two runs; this was one.
+- **NOT a G7 result.** Nothing was corrupted, so nothing here shows any gate is capable
+  of failing on this data. **D11 is untouched.**
+- **NOT a D5 result.** The grid is perfectly regular with zero dead traces and no
+  duplicates — none of the conditions P5 probes are present.
+- **One file, one vintage, one geometry, one revision.**
+
+The verdict was `PROVISIONAL` with every implemented gate green, which is the engine
+behaving correctly: **G7 has never run.**
+
+**The data is not in this repository and never will be.** It is licensed for local use
+only, everything derived from it went to the firewalled `local/`, and the register naming
+it is kept outside the repository (**D-0025**).

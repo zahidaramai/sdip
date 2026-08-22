@@ -305,6 +305,8 @@ Only measured numbers appear here.
 | **Header coverage** | Measured for **every** SEG-Y revision: rev 0 → 131 gap-free fields, rev 1 → 97, rev 2 / 2.1 → 90 (already gap-free). Zero `ibm32` header fields in all four — D-0003 |
 | **Licence scan** | **51** runtime distributions, **zero GPL/AGPL**, one allowlisted with cited evidence — D-0005 / D-0006 |
 | **Reproducibility** | A fresh clone syncs, passes `doctor` 8/8, and runs the suite with no local state |
+| **Real-survey validation** | Full chain run against a **real 3D poststack survey — 116,532 traces, 494,565,408 bytes**, 3,884× the synthetic article. Every implemented gate passed, including a **byte-identical G3 round trip**. Verdict still `PROVISIONAL` because G7 has not run — D-0026 |
+| **Header cost, measured on real data** | Full 240-byte preservation compressed to **2.0 B/trace (121:1)** — **0.06 % of the store**. ≈10× cheaper than §5.4's synthetic pessimistic figure |
 | **Gates enforcing** | **4 of 7** — G1, G2, G3, G4. See [The Gates](#-the-gates). |
 | **Certificates issued** | **0** |
 
