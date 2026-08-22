@@ -19,6 +19,7 @@ set -euo pipefail
 
 NEVER_PUBLISH=(
   'docs'
+  'local'
   'CLAUDE.md'
   'CLAUDE.local.md'
   'AGENTS.md'

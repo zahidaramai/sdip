@@ -28,6 +28,7 @@ MAX_PYTHON_EXCLUSIVE = (3, 14)
 
 NEVER_PUBLISH = (
     "docs",
+    "local",
     "CLAUDE.md",
     "CLAUDE.local.md",
     "AGENTS.md",
@@ -37,6 +38,13 @@ NEVER_PUBLISH = (
     ".github/copilot-instructions.md",
 )
 """Paths that must never be tracked in this repository. It is published on GitHub.
+
+``local/`` in full. The working directory for anything derived from restricted or
+local-only test data - stores, exports, certificates, logs. SDIP is verified against
+real survey data that is **licensed for local use only and must never be pushed**
+(``DECISIONS.md`` D-0025). The data itself lives outside the repository; this keeps
+everything *derived* from it out too, including certificates, which carry a source
+path and a source hash.
 
 ``docs/`` in full. The governing specification, the internal companion, the
 pre-registrations, the runbooks, and the certificate schema are maintained outside

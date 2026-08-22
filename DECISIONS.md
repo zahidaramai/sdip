@@ -801,3 +801,50 @@ context.
 
 **Status: 2 of 7 gates enforcing** (G1, G2 — partially: G2a and G2b of five sub-gates).
 **G7 is still not built** (`OPEN_DEBTS.md` D11).
+
+---
+
+## D-0025 — 2026-08-22 — Restricted local-only verification data; `local/` joins the firewall
+
+**Decision.** SDIP may be verified end to end against real survey data that is
+**licensed for local use only and must never be pushed**. The data is *used*, never
+*entered*: it lives outside the repository, everything derived from it is written to
+`local/`, and **`local/` joins the publication firewall** alongside `docs/`.
+
+**Why `local/` and not just trusting people to be careful.** The data itself is easy to
+keep out — it is gigabytes and lives elsewhere. What is easy to commit by accident is
+what comes *out* of it, and the most dangerous item is the one this project is built to
+produce: **a certificate carries a source path and a source hash**, so a certificate
+issued against restricted data is itself restricted. `certificates/` is otherwise a
+directory that is *meant* to be committed (§4.7, `EQUIVALENCE_LEDGER.md`), which makes
+it exactly the wrong place to rely on judgement. A separate firewalled directory removes
+the judgement call.
+
+All four layers were changed **in the same commit**, which the contract test enforces:
+`.gitignore`, `.githooks/pre-commit`, `NEVER_PUBLISH` in `sdip doctor`, and both steps
+of the CI `firewall` job. A path guarded by three layers and missed by the fourth is
+guarded by three, and the weakest layer is the real policy.
+
+**Three rules that keep this from being a loophole**, stated publicly in
+`tests/fixtures/PROVENANCE.md` so a contributor sees them:
+
+1. Nothing derived is committed, **including certificates**.
+2. **CI never depends on it.** Every committed test passes on the synthetic fixtures
+   alone — a test that needs data CI cannot fetch is a test that does not run.
+3. Results are reported **with their scope**.
+
+**Rule 3 is the one worth spelling out.** A single ingest of one large file is a real
+measurement and is worth recording. It is **not probe P3**. P3 requires a
+pre-registration with declared memory and wall-clock ceilings merged **before** the run
+(**SP9**), a pre-registered random trace sample plus all edge and corner traces, and two
+independent runs for G6. Running a big file and calling it a scale result would be
+exactly the post-hoc reasoning SP9 exists to prevent, and **D2 stays open** regardless
+of how well any such run goes.
+
+**Registered:** one dataset, recorded outside this repository with its BagIt manifest,
+its own checksums, and its measured geometry. Public records may cite measurements taken
+from it; they must not carry the local path.
+
+**What overturns it.** A dataset whose licence permits redistribution *and* whose owner
+permits publication, which would make it an ordinary §6.6 fixture — fetched at test time
+by checksum, never vendored.

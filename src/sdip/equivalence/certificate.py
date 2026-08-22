@@ -27,7 +27,9 @@ from typing import Any
 from sdip import __version__
 from sdip._pins import CERTIFICATE_SCHEMA_VERSION, LOSSY_CODECS, SPEC_VERSION
 from sdip.equivalence.planes import PlaneResult
+from sdip.equivalence.portability import PortabilityResult
 from sdip.errors import DirtyTreeError
+from sdip.export.roundtrip import RoundTripResult
 from sdip.guard.pins import check_pins
 from sdip.ingest.orchestrator import IngestResult
 from sdip.provenance.environment import capture_environment
@@ -55,6 +57,10 @@ def verdict_for(planes: dict[str, str], gates: dict[str, str], *, lossy: bool) -
         return "NON-EQUIVALENT"
     if any(v == "FAIL" for v in gates.values()):
         return "NON-EQUIVALENT"
+    if gates.get("G3") == "ROUNDTRIP-SCOPED":
+        # Permitted only with a written justification naming the non-conformance
+        # (§7 G3). It is not byte-identity, so it is not an unqualified EQUIVALENT.
+        return "PROVISIONAL"
     if all(planes.get(k) == "PASS" for k in PLANE_KEYS) and gates.get("G7") == "PASS":
         return "EQUIVALENT"
     return "PROVISIONAL"
@@ -104,6 +110,8 @@ def issue(
     result: IngestResult,
     planes: list[PlaneResult],
     *,
+    roundtrip: RoundTripResult | None = None,
+    portability: PortabilityResult | None = None,
     root: str | Path = ".",
     require_clean_tree: bool = True,
     issued_at: str,
@@ -115,6 +123,9 @@ def issue(
         result: The ingest.
         planes: Plane results actually produced. Planes absent from this list are
             recorded ``NOT_RUN`` — never assumed to pass.
+        roundtrip: G3 result, when a round trip was performed. Absent means
+            ``NOT_RUN`` - never assumed to pass.
+        portability: G4 result, when the portability check was run.
         root: Repository root, for git state.
         require_clean_tree: Refuse to issue from a dirty tree (§11.3). **There is no
             ``--force``**; this parameter exists so tests can exercise the refusal, and
@@ -155,9 +166,18 @@ def issue(
 
     gate_block = dict.fromkeys(GATES, NOT_RUN)
     gate_block["G1"] = result.g1.status
-    if any(p.plane in (1, 2) for p in planes):
-        every = all(p.passed for p in planes)
-        gate_block["G2"] = "PASS" if every else "FAIL"
+    if planes:
+        # G2 is the conjunction of G2a-G2e. It is PASS only when ALL FIVE planes ran
+        # and passed: four passing planes and one unrun is not a passing G2, because
+        # the unrun one is exactly where a defect would hide.
+        if len(planes) == len(PLANE_KEYS) and all(p.passed for p in planes):
+            gate_block["G2"] = "PASS"
+        elif any(not p.passed for p in planes):
+            gate_block["G2"] = "FAIL"
+    if roundtrip is not None:
+        gate_block["G3"] = roundtrip.status
+    if portability is not None:
+        gate_block["G4"] = portability.status
 
     plane_status = {k: v["status"] for k, v in plane_block.items()}
     verdict = verdict_for(plane_status, gate_block, lossy=lossy)
@@ -191,7 +211,12 @@ def issue(
         "output_bytes": output_bytes,
         "output_array_manifest": _array_manifest(result.output_path),
         "planes": plane_block,
-        "roundtrip": {"performed": False, "byte_identical": False},
+        "roundtrip": (
+            roundtrip.to_json()
+            if roundtrip is not None
+            else {"performed": False, "byte_identical": False}
+        ),
+        "portability": portability.to_json() if portability is not None else None,
         "transforms_declared": [],
         "warnings": result.warnings.to_json(),
         "codecs_used": codecs,
@@ -216,6 +241,14 @@ def _verdict_reason(verdict: str, planes: dict[str, str], gates: dict[str, str])
         failed = [k for k in PLANE_KEYS if planes.get(k) == "FAIL"]
         failed += [g for g in GATES if gates.get(g) == "FAIL"]
         return "Failed: " + ", ".join(failed)
+    if not unrun_planes and "G7" in unrun_gates:
+        return (
+            "PROVISIONAL. Every plane passed, but G7 has not run "
+            f"(also unrun: {', '.join(g for g in unrun_gates if g != 'G7') or 'none'}). "
+            "A gate a corrupted store passes is not a gate (SP11), so "
+            "an engine that has never been shown capable of failing cannot certify "
+            "equivalence. OPEN_DEBTS D11."
+        )
     return (
         f"PROVISIONAL. Not run: planes {', '.join(unrun_planes) or 'none'}; "
         f"gates {', '.join(unrun_gates) or 'none'}. Until G7 passes, every certificate "

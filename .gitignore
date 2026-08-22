@@ -21,6 +21,7 @@
 # `git add -f` defeats mechanism 1. It does not defeat 2 or 3. That is deliberate.
 # ===========================================================================
 docs/
+local/
 CLAUDE.md
 CLAUDE.local.md
 AGENTS.md
@@ -52,6 +53,21 @@ AGENTS.md
 *.zarr/
 /scratch/
 /out/
+
+# ---------------------------------------------------------------------------
+# RESTRICTED TEST DATA - local use only, never committed.
+# SDIP is verified end to end against real survey data licensed for local use.
+# The data lives OUTSIDE this repository; these patterns stop a copy, a symlink
+# target, or anything derived from it being added by accident. Everything derived
+# belongs in local/, which is itself in the publication firewall.
+# See DECISIONS.md D-0025 and the local-only register in docs/.
+# ---------------------------------------------------------------------------
+*.bag/
+bag-info.txt
+bagit.txt
+manifest-sha*.txt
+tagmanifest-sha*.txt
+license.pdf
 
 # Python
 __pycache__/

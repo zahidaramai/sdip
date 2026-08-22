@@ -204,7 +204,9 @@ def test_certificate_is_provisional_at_f2(ingested):
     payload = cert.payload
     assert payload["verdict"] == "PROVISIONAL"
     assert payload["gates"]["G1"] == "PASS"
-    assert payload["gates"]["G2"] == "PASS"
+    # G2 is the conjunction of G2a-G2e. Two passing planes is not a passing G2: the
+    # three unrun ones are exactly where a defect would hide.
+    assert payload["gates"]["G2"] == "NOT_RUN"
     assert payload["gates"]["G7"] == "NOT_RUN"
     assert payload["planes"]["plane_3"]["status"] == "NOT_RUN"
     assert "D11" in payload["verdict_reason"]

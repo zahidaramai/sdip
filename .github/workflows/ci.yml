@@ -179,7 +179,7 @@ jobs:
       - name: Nothing unpublishable is tracked at HEAD
         run: |
           tracked=$(git ls-files -- \
-            'docs' 'CLAUDE.md' 'CLAUDE.local.md' 'AGENTS.md' '.claude' \
+            'docs' 'local' 'CLAUDE.md' 'CLAUDE.local.md' 'AGENTS.md' '.claude' \
             '.claude-session-sync.md' '.cursor' '.github/copilot-instructions.md')
           if [ -n "$tracked" ]; then
             echo "::error::tracked and would be published:"
@@ -194,7 +194,7 @@ jobs:
           # commit that already had it. A clone gets the history, so HEAD being
           # clean is not enough.
           hits=$(git log --all --pretty=format:'%H' --name-only --diff-filter=A -- \
-            'docs' 'CLAUDE.md' 'CLAUDE.local.md' 'AGENTS.md' '.claude' \
+            'docs' 'local' 'CLAUDE.md' 'CLAUDE.local.md' 'AGENTS.md' '.claude' \
             '.claude-session-sync.md' '.cursor' '.github/copilot-instructions.md' \
             | grep -vE '^[0-9a-f]{40}$' | grep -v '^$' | sort -u || true)
           if [ -n "$hits" ]; then

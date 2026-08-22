@@ -58,6 +58,29 @@ review time:
 
 ---
 
+## Local-only verification data — permitted, never committed
+
+A maintainer may verify SDIP against **real survey data licensed for local use only**.
+That data is *used*, never *entered*: it lives outside the repository, everything
+derived from it is written to `local/`, and `local/` is in the publication firewall
+alongside `docs/`.
+
+Three rules make this safe rather than a loophole:
+
+1. **Nothing derived is committed — including certificates.** A certificate carries a
+   source path and a source hash, so a certificate issued against restricted data is
+   itself restricted.
+2. **CI never depends on it.** Every committed test passes on the synthetic fixtures
+   alone. A test that needs data CI cannot fetch is a test that does not run.
+3. **Results are reported with their scope.** A measurement taken on such a dataset is
+   real and should be recorded, naming the dataset and the N — but a single run on one
+   large file is **not** a scale probe. Probe **P3** requires a pre-registration with
+   declared ceilings merged *before* the run (**SP9**).
+
+The register of such datasets is kept outside this repository.
+
+---
+
 ## If you hit a bug on data you cannot share
 
 Reproduce it with a synthetic file that has the **same structural property** — byte

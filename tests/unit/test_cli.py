@@ -10,7 +10,6 @@ from click.testing import CliRunner
 from sdip.cli.doctor import run_doctor
 from sdip.cli.main import cli
 from sdip.cli.result import Status
-from sdip.errors import PhaseNotAuthorisedError
 
 
 @pytest.fixture
@@ -26,23 +25,29 @@ def test_all_six_commands_are_declared(runner):
         assert command in result.output
 
 
-@pytest.mark.parametrize(
-    ("args", "phase"),
-    [
-        (["verify"], "F3"),
-        (["export"], "F3"),
-        (["certify"], "F3-F4"),
-    ],
-)
-def test_unbuilt_commands_refuse_and_name_their_phase(runner, args, phase):
-    """DECISIONS.md D-0008: refuse, do not stub.
+def test_every_command_is_now_built(runner):
+    """F0-F3 built the whole surface. Nothing refuses with a phase any more.
 
-    A command that returns a plausible-looking result it did not compute is exactly
-    how an untrusted artifact reaches a consumer.
+    D-0008 said unbuilt commands refuse rather than stub. That rule has not changed -
+    there is simply nothing left it applies to, and this test replaces the one that
+    asserted the refusals so the change is visible in the diff rather than silent.
     """
-    result = runner.invoke(cli, args, standalone_mode=False)
-    assert isinstance(result.exception, PhaseNotAuthorisedError)
-    assert phase in str(result.exception)
+    for args in (["spec", "build"], ["ingest"], ["verify"], ["export"], ["certify"]):
+        result = runner.invoke(cli, [*args, "--help"])
+        assert result.exit_code == 0, args
+        assert "roadmap phase" not in result.output
+
+
+def test_certify_still_documents_the_g7_ceiling(runner):
+    """The strongest claim remains unreachable, and `--help` says so."""
+    output = runner.invoke(cli, ["certify", "--help"]).output
+    assert "PROVISIONAL" in output
+    assert "G7" in output
+    # The prose SAYS "there is no --force", which is the point - so the assertion
+    # has to look at the Options block, not at the whole help text.
+    options = output.split("Options:", 1)[1]
+    for flag in ("--force", "--allow-dirty", "--skip", "--no-verify"):
+        assert flag not in options
 
 
 def test_doctor_runs_every_declared_check(repo_root):
