@@ -1067,3 +1067,110 @@ hundred MB without weakening a single assertion.
 **The data is not in this repository and never will be** (D-0025). Everything derived —
 store, export, report, and the certificate, which carries a source path and a source hash
 — went to the firewalled `local/`.
+
+---
+
+## D-0031 — 2026-08-22 — Definition of done: full end-to-end validation of **both** outputs
+
+**Decision.** Recorded now, **before** it is needed. The Principal's acceptance criterion
+for the finished project is:
+
+> **Both outputs — the MDIO store and the exported SEG-Y — must have passed full
+> end-to-end validation and certification.**
+
+This is a **release gate for v1.0.0 (F8)**, not a requirement on the current phase. It is
+written down at F4 for the same reason a probe is pre-registered (**SP9**): a criterion
+agreed in advance cannot be quietly softened once it is inconvenient, and *"we thought it
+meant something less"* is not available to anyone later.
+
+### The criterion, made concrete
+
+Three arrows, each verified independently — a chain is only as good as its least-checked link:
+
+```
+  SEG-Y source  ──①──▶  MDIO store  ──②──▶  SEG-Y export  ──③──▶  MDIO store′
+```
+
+| # | Arrow | Established by | State at F4 |
+|---|---|---|---|
+| ① | source → store | G1, G2a–G2e, G4, **G6**, G7 | G6 missing |
+| ② | store → export | G3 whole-file SHA-256 | **met** |
+| ③ | export → store′ | **round-trip closure**, not yet built | **missing** |
+
+**Arrow ③ is the one nobody asks for and the one that closes the loop.** G3 proves the
+exported file is byte-identical to the source, which is the strongest possible claim
+*when it holds*. But `ROUNDTRIP-SCOPED` exists precisely for sources where byte-identity
+is impossible (§7 G3), and for those the export is currently trusted on a hash that was
+never going to match. Re-ingesting the export and checking the resulting store against it
+is what makes the exported SEG-Y a **validated artifact in its own right** rather than a
+by-product.
+
+### Release checklist — every line must be `PASS`, none may be `NOT_RUN`
+
+| # | Requirement | State |
+|---|---|---|
+| 1 | All five planes `PASS` on the source → store arrow | **met** |
+| 2 | **G3** byte-identical, or `ROUNDTRIP-SCOPED` with a written justification naming the non-conformance | **met** |
+| 3 | **G4** portability, `mdio` never imported | **met** |
+| 4 | **G7** non-vacuity, every control failing exactly its declared gates | **met** |
+| 5 | **G6** determinism — two independent ingests, identical array bytes | **in progress** |
+| 6 | **Round-trip closure** — the export re-ingests to an equivalent store | **not built** |
+| 7 | **G5** scale, inside a **pre-registered** memory ceiling | **not built — needs P3** |
+| 8 | Certificate verdict `EQUIVALENT` with **no gate `NOT_RUN`** | blocked by 5–7 |
+| 9 | Probes P2, P4, P5, P6, P7, P8 discharged or explicitly scoped | **not run** |
+| 10 | **D18 closed** — G7 affordable at survey scale, or it gets switched off | **open, measured** |
+
+**Item 8 is the machine-checkable form of the whole criterion**, and it is stricter than
+today's `EQUIVALENT`. The current verdict rule requires all five planes plus G7; it
+tolerates G5 and G6 being `NOT_RUN`. At release, **`NOT_RUN` anywhere is a failure** — an
+unrun gate is not a passing one, and a certificate with holes in it is exactly the
+untrusted artifact §0 describes.
+
+**That change is deliberately not made today.** Tightening the verdict rule now would
+make every current certificate `PROVISIONAL` and would say nothing true that the `gates`
+block does not already say. It is scheduled against F8 and recorded here so it cannot be
+forgotten.
+
+### What this does not do
+
+It does not authorise building items 5–9 now. **F5 is the next phase** (probes P2, P5,
+P6), each needing its own pre-registration merged before its run.
+
+---
+
+## D-0032 — 2026-08-22 — Pre-registrations move to a public `prereg/`; SP9 was unsatisfiable
+
+**Decision.** Probe pre-registrations move from `docs/prereg/` to **`prereg/` at the
+repository root**, tracked and pushed.
+
+**The conflict, which was real and silent.** **SP9** requires that *"verdict criteria,
+thresholds and N are committed and pushed **before** the run."* **D-0010** put `docs/` in
+the publication firewall — never committed, never pushed. Every pre-registration was
+therefore in a directory where SP9's requirement **could not be satisfied at all.**
+
+Nothing failed. The files existed, they were written before their runs, and a reader of
+the working copy would see nothing wrong. **The mechanism that makes a pre-registration
+mean anything was simply absent**, and would have stayed absent until the first probe
+result was published and somebody asked to see the commit that preceded it.
+
+**A pre-registration is not documentation.** Its entire value is being **publicly
+timestamped before the result exists** — git's commit history *is* the mechanism, not a
+convenience. A pre-registration that cannot be pushed is a write-up with good intentions.
+Same reasoning as the certificate schema in **D-0015**: an artifact whose purpose is to
+be verifiable by a third party does not belong in a directory that third parties never
+receive.
+
+`docs/` keeps the specification, the internal companion, the runbooks, and the local-only
+data register — all genuinely documentation, all genuinely internal.
+
+**Two tests now enforce it:** every probe P1–P8 has a file in `prereg/`, and every one of
+those files is **tracked in git**. The second is the one that matters — a pre-registration
+absent from git is not a pre-registration.
+
+**P3's parameters are filled in this commit, before the run they govern.** Ceilings:
+**8.0 GiB peak RSS**, **900 s per file** for the full chain. `06p07ful.sgy` has already
+been measured (3.11 GiB, 423 s) and **is excluded from the probe** — its numbers informed
+the ceilings, which is how thresholds are set, but it cannot also be judged by them. P3
+runs on files never ingested.
+
+**What overturns it.** Nothing short of abandoning SP9.

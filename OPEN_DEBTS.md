@@ -434,3 +434,44 @@ costume.
    written first and a refusal to certify while it exists.
 3. **Parallelise the controls.** Cuts wall clock, not bytes; disk is the ceiling.
 
+---
+
+## D19 — Round-trip closure: the exported SEG-Y is not validated as an artifact
+
+- **Status:** `OPEN` (raised 2026-08-22)
+- **Blocks:** the release criterion in `DECISIONS.md` **D-0031**, arrow ③
+- **Spec:** §7 G3
+
+**G3 proves the export is byte-identical to the source.** When it holds, that is the
+strongest claim available and nothing more is needed.
+
+`ROUNDTRIP-SCOPED` is the gap. §7 G3 permits it *"where the source is non-conforming in a
+way that makes byte-identity impossible"* — and in exactly that case the exported file is
+currently trusted on a hash comparison that was never going to match. Nothing checks that
+the export is a well-formed SEG-Y, that it parses under the same gap-free spec, or that
+it carries the same measured values.
+
+**Closure:** re-ingest the export into a second store and verify (a) all five planes of
+that store against the export, and (b) that its arrays are identical to the first store's.
+That makes the exported SEG-Y a validated artifact in its own right rather than a
+by-product, and it closes the loop for scoped round trips as well as byte-identical ones.
+
+---
+
+## D20 — At release, `NOT_RUN` must be a failure
+
+- **Status:** `OPEN` (raised 2026-08-22), scheduled against **F8**
+- **Decision:** `DECISIONS.md` D-0031 item 8
+
+`verdict_for` currently returns `EQUIVALENT` when all five planes and G7 pass. It
+tolerates **G5 and G6 being `NOT_RUN`**, which is right for today — they are not built,
+and the `gates` block says so plainly on every certificate.
+
+At release it will be wrong. **An unrun gate is not a passing one**, and a certificate
+with holes in it is the untrusted artifact §0 describes. The verdict rule must tighten so
+that any `NOT_RUN` yields `PROVISIONAL`.
+
+**Not done now, deliberately:** tightening it today would make every certificate
+`PROVISIONAL` while saying nothing the `gates` block does not already say. Recorded so it
+cannot be forgotten at the moment it stops being cosmetic.
+

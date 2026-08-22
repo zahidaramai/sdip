@@ -500,12 +500,30 @@ def test_sdist_does_not_ship_docs(repo_root):
 
 
 def test_every_probe_has_a_preregistration(repo_root):
-    """SP9. Registered before the run, one file per probe. Local artifact."""
-    prereg = repo_root / "docs" / "prereg"
-    if not prereg.is_dir():
-        pytest.skip("docs/ is not distributed; nothing to check in a published clone")
+    """SP9. One file per probe, at the repository root so it can be committed.
+
+    They are **not** in ``docs/``: that is never committed (D-0010), and a
+    pre-registration whose whole value is being publicly timestamped before the result
+    exists cannot live where it can never be pushed. See D-0032.
+    """
+    prereg = repo_root / "prereg"
+    assert prereg.is_dir(), "prereg/ must exist at the repository root"
     registered = {p.name.split("-")[0] for p in prereg.glob("P*.md")}
     assert {f"P{n}" for n in range(1, 9)} <= registered
+
+
+def test_preregistrations_are_tracked(repo_root):
+    """A pre-registration that is not in git is not a pre-registration.
+
+    Git's commit timestamp is the entire mechanism: it is what distinguishes a
+    commitment made before the run from a write-up composed after it.
+    """
+    if not (repo_root / ".git").exists():
+        pytest.skip("not a git repository")
+    result = _git(["ls-files", "prereg"], repo_root)
+    tracked = {line.split("/")[-1] for line in result.stdout.splitlines() if line.strip()}
+    for n in range(1, 9):
+        assert any(f.startswith(f"P{n}-") for f in tracked), f"P{n} pre-reg is not tracked"
 
 
 def test_certificate_schema_is_published(repo_root):

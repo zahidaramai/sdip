@@ -140,12 +140,14 @@ without its negative control fails the `negative` CI job, by design.
 
 Probes are pre-registered (**SP9**). The order is not negotiable:
 
-1. Open an issue with the **Probe proposal** template. It states the question, the
-   method, the threshold, the N, and the **falsifier** — what result would prove the
-   hypothesis wrong. A maintainer registers it against the probe register.
-2. **Merge it before running anything.**
+1. Open a PR adding `prereg/PN-short-name.md` from [`prereg/TEMPLATE.md`](prereg/TEMPLATE.md).
+   It states the question, the method, the threshold, the N, and the **falsifier** — what
+   result would prove the hypothesis wrong.
+2. **Merge it before running anything.** Git's timestamp on that commit is what makes it a
+   pre-registration rather than a write-up.
 3. Run the probe.
-4. Open a second PR with results.
+4. Open a second PR appending results **below** the results separator. Sections above it
+   are never edited.
 
 **Never write a pre-registration after seeing a result.** Better-than-expected does not
 tighten a gate post hoc; worse-than-expected does not relax one. Gates never bend in
