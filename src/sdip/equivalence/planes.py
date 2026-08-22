@@ -23,7 +23,11 @@ from typing import Any
 import numpy as np
 
 from sdip._pins import SEGY_BINARY_HEADER_BYTES, SEGY_TEXTUAL_HEADER_BYTES
-from sdip.ingest.file_headers import read_raw_file_headers, read_raw_file_headers_from_store
+from sdip.ingest.file_headers import (
+    read_raw_binary_from_store,
+    read_raw_file_headers,
+    read_raw_textual_from_store,
+)
 from sdip.provenance.hashing import sha256_bytes
 
 
@@ -88,7 +92,7 @@ def plane_1(source: str | Path, store: str | Path) -> PlaneResult:
         The plane verdict, with the first differing offset when it fails.
     """
     expected = read_raw_file_headers(source).textual
-    observed = read_raw_file_headers_from_store(store).textual
+    observed = read_raw_textual_from_store(store)
     difference = first_difference(expected, observed)
     return PlaneResult(
         plane=1,
@@ -125,7 +129,7 @@ def plane_2(source: str | Path, store: str | Path) -> PlaneResult:
         The plane verdict, with the first differing offset when it fails.
     """
     expected = read_raw_file_headers(source).binary
-    observed = read_raw_file_headers_from_store(store).binary
+    observed = read_raw_binary_from_store(store)
     difference = first_difference(expected, observed)
 
     parsed_present = False

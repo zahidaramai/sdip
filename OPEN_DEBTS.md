@@ -372,3 +372,44 @@ and let the ingest proceed with `decode_status: raw_preserved_decode_failed` on 
 certificate — the schema already has that enum value. Needs a fixture with a genuinely
 non-conforming header, which is probe **P5** territory.
 
+---
+
+## D11 — CLOSED 2026-08-22 — G7 exists, runs per store, and passes
+
+- **Closes:** D11 above, left in place unedited (**SP10**)
+- **Decision:** `DECISIONS.md` D-0027, D-0028, D-0029
+
+D11 said: *"A gate a corrupted store passes is not a gate. No negative control exists
+yet, because no gate exists yet."* Both halves are now false.
+
+**G7 is an executable gate**, not a test suite: `sdip certify` corrupts copies of the
+store it is certifying, re-runs every checker, and records the outcome on that store's
+certificate. Measured on the 30-trace article: baseline clean, **8 corruptions each
+failing exactly the gates it declares and no others**, plus G3's own control. `PASS`.
+
+**It found a real defect on its first run** — Planes 1 and 2 shared a validating reader,
+so truncating the textual header also failed G2b, which §7 G7 names as a killer
+(*"one that fails the wrong gate"*). Fixed in D-0028. The engine had been green on
+synthetic data, green on 116,532 real traces, and byte-identical on round trip, and still
+had two non-independent planes. Nothing but this gate would have caught it.
+
+**What stays open.** G7 passing here is not G7 passing at survey scale under a declared
+ceiling — that is **P3**, and **D2 is untouched**. G5 and G6 remain unbuilt.
+
+---
+
+## D18 — G7 is not yet run at survey scale
+
+- **Status:** `OPEN` (raised 2026-08-22)
+- **Blocks:** a production `EQUIVALENT` verdict on a real survey
+- **Decision:** `DECISIONS.md` D-0029 · **Probe:** P3
+
+G7 copies the store once per control. On the 30-trace article that is free. On a real
+survey the store is hundreds of megabytes and there are eight controls, so a naive audit
+copies the store eight times — a cost nobody has measured, and one that could make G7
+impractical exactly where it matters most.
+
+**Closure:** measure it, and if the copy cost is prohibitive, replace whole-store copies
+with a targeted approach that corrupts and restores in place — recording that the
+restore is verified, because an audit that leaves the store modified is worse than none.
+

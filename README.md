@@ -28,9 +28,9 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 [![ci](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml)
 [![dco](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml)
 
-![Phase](https://img.shields.io/badge/roadmap_phase-F3-orange?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-292_passing-success?style=flat-square)
-![Gates enforcing](https://img.shields.io/badge/gates_enforcing-4_of_7-yellow?style=flat-square)
+![Phase](https://img.shields.io/badge/roadmap_phase-F4-orange?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-307_passing-success?style=flat-square)
+![Gates enforcing](https://img.shields.io/badge/gates_enforcing-5_of_7-yellow?style=flat-square)
 ![Certificates](https://img.shields.io/badge/certificates_issued-0-lightgrey?style=flat-square)
 ![Type checked](https://img.shields.io/badge/mypy-strict-2A6DB2?style=flat-square)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.12%2C%3C3.14-3776AB?style=flat-square&logo=python&logoColor=white)
@@ -79,14 +79,14 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Author** | Zahid Aramai · KLCube Network Agency |
 | **Licence** | Apache-2.0 |
 | **Repository** | `github.com/zahidaramai/sdip` — public, open contribution |
-| **Roadmap phase** | **F3** — the Equivalence Engine: five planes, G3, G4 |
+| **Roadmap phase** | **F4** — **G7 non-vacuity**: the gate on the gates |
 | **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
-| **Source** | 4,810 lines across 34 modules |
-| **Tests** | 292 passing · mypy strict clean · ruff clean |
-| **Gates enforcing** | **4 of 7** — G1, G2 (all five planes), G3, G4. **G5, G6, G7 not built** |
+| **Source** | 5,314 lines across 35 modules |
+| **Tests** | 307 passing · mypy strict clean · ruff clean |
+| **Gates enforcing** | **5 of 7** — G1, G2 (five planes), G3, G4, **G7**. G5 and G6 not built |
 | **Certificates issued** | **0** |
-| **Decision record** | 25 entries, append-only |
-| **Open debts** | 21 entries, append-only — scheduled, never cancelled |
+| **Decision record** | 29 entries, append-only |
+| **Open debts** | 23 entries, append-only — scheduled, never cancelled |
 
 > **Read the two rows in bold before using anything here.** Zero gates enforce today. What has actually been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md). Where a property is unmeasured this project says so and names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
 
@@ -166,7 +166,7 @@ Gates are **binary**. No warnings-as-passes. Every gate names the number that ki
 | `G4` | Store opens with stock `zarr` and `xarray` in a process asserting `"mdio" not in sys.modules` | Any array a consumer needs being unreadable without MDIO | F3 | **enforcing** |
 | `G5` | Survey-scale ingest inside a declared memory ceiling | OOM, or peak RSS over the ceiling | F6 | not built |
 | `G6` | Two independent runs produce **identical array bytes** | Any array-content difference between runs | F3 | not built |
-| `G7` | **Every corruption fails its gate and only its gate** | Any corruption that passes, or one that fails the wrong gate | **F4** | **not built** |
+| `G7` | **Every corruption fails its gate and only its gate** | Any corruption that passes, or one that fails the wrong gate | **F4** | **enforcing** |
 
 ### G7 is the gate on the gates
 
@@ -174,7 +174,11 @@ Gates are **binary**. No warnings-as-passes. Every gate names the number that ki
 
 Every equivalence check must ship a permanent negative control that **must fail it**: one flipped header byte, one flipped sample bit, one dropped trace, two transposed traces, an inverted live mask, a truncated textual header. Each corruption must fail **its** gate and **only** its gate — a checker that fails everything on any corruption looks maximally safe and is maximally useless.
 
-**Until G7 passes, every certificate the engine issues is unvalidated.** F4 is not optional and is not last. This is tracked as **D11** in [`OPEN_DEBTS.md`](OPEN_DEBTS.md), and any report touching certificates has to say it.
+**G7 now runs per store.** `sdip certify` corrupts *copies* of the store it is certifying, re-runs every checker, and records the outcome on that store's certificate — because a certificate cannot report the result of a test suite that ran on somebody's laptop last Tuesday.
+
+Each control declares the **exact set** of gates it must fail, and the observed set must *equal* it. One assertion catches both failure modes: a **narrow** checker that misses the corruption, and an **over-broad** one that fires on somebody else's.
+
+**It found a real defect on its first run.** Planes 1 and 2 shared a validating reader, so truncating the *textual* header also failed **G2b** — §7 G7's *"fails the wrong gate"* killer. The engine had been green on synthetic data, green on 116,532 real traces, and byte-identical on round trip, and still had two non-independent planes. Nothing else would have caught it (D-0028).
 
 ### What green CI means here
 
@@ -282,9 +286,10 @@ doctor: PASS (8 checks)
 | `uv run sdip doctor --json` | Machine-readable report, suitable as a CI artifact |
 | `uv run pytest` | Full suite — 175 tests |
 | `uv run sdip spec build --revision 0` | Build and validate a gap-free spec; runs G1 |
+| `uv run pytest tests/negative -v` | The G7 non-vacuity suite — permanent negative controls |
 | `uv run pytest tests/unit -k "actually_detects or negative"` | Just the negative controls — proof the guards fire |
 | `uv run ruff check . && uv run ruff format --check .` | Lint and format |
-| `uv run mypy` | Strict type check across 34 modules |
+| `uv run mypy` | Strict type check across 35 modules |
 | `uv build` | Build sdist + wheel (`docs/` is excluded from both) |
 
 ---
@@ -295,8 +300,8 @@ Only measured numbers appear here.
 
 | Dimension | Evidence |
 |---|---|
-| **Unit tests** | **292 passing**, 0 failing |
-| **Type checking** | `mypy --strict` clean across **34** source modules |
+| **Unit tests** | **307 passing**, 0 failing |
+| **Type checking** | `mypy --strict` clean across **35** source modules |
 | **Lint / format** | `ruff check` and `ruff format --check` clean |
 | **Warnings** | `filterwarnings = ["error"]` — any warning reaching pytest fails the suite |
 | **Negative controls** | Every guard has one: barred env vars (6 forms), barred packages, pin mismatch, missing distribution, copyleft spellings, the pre-commit hook, and each firewall path |
@@ -307,7 +312,7 @@ Only measured numbers appear here.
 | **Reproducibility** | A fresh clone syncs, passes `doctor` 8/8, and runs the suite with no local state |
 | **Real-survey validation** | Full chain run against a **real 3D poststack survey — 116,532 traces, 494,565,408 bytes**, 3,884× the synthetic article. Every implemented gate passed, including a **byte-identical G3 round trip**. Verdict still `PROVISIONAL` because G7 has not run — D-0026 |
 | **Header cost, measured on real data** | Full 240-byte preservation compressed to **2.0 B/trace (121:1)** — **0.06 % of the store**. ≈10× cheaper than §5.4's synthetic pessimistic figure |
-| **Gates enforcing** | **4 of 7** — G1, G2, G3, G4. See [The Gates](#-the-gates). |
+| **Gates enforcing** | **5 of 7** — G1, G2, G3, G4, **G7**. See [The Gates](#-the-gates). |
 | **Certificates issued** | **0** |
 
 ### Two defects the tests caught, recorded rather than quietly fixed

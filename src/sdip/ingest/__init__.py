@@ -12,8 +12,10 @@ from sdip.ingest.file_headers import (
     RawFileHeaders,
     attach_raw_file_headers,
     file_headers_persisted,
+    read_raw_binary_from_store,
     read_raw_file_headers,
     read_raw_file_headers_from_store,
+    read_raw_textual_from_store,
 )
 from sdip.ingest.orchestrator import (
     MIN_SEGY_BYTES,
@@ -33,7 +35,9 @@ __all__ = [
     "attach_raw_file_headers",
     "file_headers_persisted",
     "ingest",
+    "read_raw_binary_from_store",
     "read_raw_file_headers",
     "read_raw_file_headers_from_store",
+    "read_raw_textual_from_store",
     "validate_source",
 ]

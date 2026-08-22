@@ -151,8 +151,18 @@ def test_a_flipped_binary_byte_fails_g2b_and_only_g2b(tmp_path):
     assert p1.passed, "G2a must still pass - only its gate"
 
 
-def test_a_truncated_textual_header_is_refused(tmp_path):
-    """NEGATIVE CONTROL: §7 G7's 'truncated textual header' control, at F2 scope."""
+def test_a_truncated_textual_header_fails_g2a_and_only_g2a(tmp_path):
+    """NEGATIVE CONTROL: §7 G7's 'truncated textual header' control.
+
+    **This assertion changed at F4, deliberately.** It used to expect
+    ``UntrustedInputError``, because Planes 1 and 2 shared a reader that validated both
+    header halves together - so a truncated *textual* header raised, and Plane 2 failed
+    on Plane 1's corruption. G7 caught that on its first run (`DECISIONS.md` D-0028).
+
+    Each plane now reads only its own half, so a truncation is what it should always
+    have been: **a finding Plane 1 reports with evidence**, not an exception for Plane 2
+    to trip over.
+    """
     article = make_poststack3d(tmp_path / "src.sgy")
     store = tmp_path / "out.mdio"
     ingest(article.path, store)
@@ -162,8 +172,14 @@ def test_a_truncated_textual_header_is_refused(tmp_path):
     short = base64.b64decode(node.attrs[ATTR_RAW_TEXT])[:3000]
     node.attrs.update({ATTR_RAW_TEXT: base64.b64encode(short).decode("ascii")})
 
-    with pytest.raises(UntrustedInputError, match="3000 bytes"):
-        plane_1(article.path, store)
+    p1, p2 = plane_1(article.path, store), plane_2(article.path, store)
+    assert p1.status == "FAIL"
+    assert p1.evidence["first_difference"] == {
+        "kind": "length",
+        "expected_bytes": 3200,
+        "observed_bytes": 3000,
+    }
+    assert p2.passed, "G2b must still pass - only its gate"
 
 
 # ---------------------------------------------------------------------------

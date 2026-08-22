@@ -911,3 +911,107 @@ behaving correctly: **G7 has never run.**
 **The data is not in this repository and never will be.** It is licensed for local use
 only, everything derived from it went to the firewalled `local/`, and the register naming
 it is kept outside the repository (**D-0025**).
+
+---
+
+## D-0027 — 2026-08-22 — G7 is an executable gate, not a test suite
+
+**Decision.** **G7 is a gate the engine runs**, in `src/sdip/equivalence/nonvacuity.py`.
+It corrupts *copies* of the store it just certified, re-runs its own checkers, and puts
+the outcome on the certificate for **that store**. `tests/negative/` holds the permanent
+controls that exercise the machinery; it is not the machinery.
+
+**Resolving the F3/F4 ambiguity, recorded because it was real.** Two readings were in
+play and both were right about different things:
+
+1. `CLAUDE.md` §4.2/§5 — *a gate ships its negative control in the same commit*. Under
+   this, G7 is not a phase; it is a property of every engine commit.
+2. Public spec §13 — F4 is a phase, and *"F4 is not optional and is not last"*.
+
+Reading 1 is a **review rule**, and it was followed throughout F3. Reading 2 is about
+something else: **§4.7's certificate carries `gates: {G7: PASS|FAIL|NOT_RUN}`**, and a
+certificate cannot report the result of a test suite that ran on somebody's laptop last
+Tuesday. A consumer reading a certificate is entitled to know that *this store* was
+audited, not that the engine passed its tests on a fixture once.
+
+So both hold: controls ship per commit **and** the audit is a gate that runs per store.
+
+**"And only that gate" is enforced as a declared set.** Each control declares the exact
+set of gates it must fail, and G7 asserts the observed set **equals** it. That is
+strictly stronger than "at least its own gate": one assertion catches a **narrow**
+checker that misses the corruption *and* an **over-broad** one that fires on someone
+else's, which "at least" would not.
+
+Two controls declare multi-gate sets because that is what they genuinely do:
+`transposed_traces` moves headers **and** samples (G2c + G2d); `dropped_trace` changes
+headers, samples **and** the mask (G2c + G2d + G2e). Demanding one gate for either would
+assert something false and would be "fixed" by weakening a checker — the opposite of
+what G7 is for.
+
+**The baseline is checked first.** If the clean store does not pass every gate, *"the
+corrupted one failed"* proves nothing, so G7 refuses before running a single control.
+
+**A raise counts as a detection.** A corruption that makes a checker throw *has* been
+detected by it. Treating a raise as a pass would be the exact vacuity G7 exists to catch.
+
+**G7 has its own negative control** (`tests/negative/`): Plane 4 is monkeypatched blind
+and G7 must **FAIL**, noticing that the flipped-sample control no longer fails G2d. SP11
+applies to G7 as much as to anything else — an audit never shown to fail is not an audit.
+
+---
+
+## D-0028 — 2026-08-22 — G7 found a real defect on its first run
+
+**What it found.** Truncating the **textual** header also failed **G2b**. §7 G7's killer
+is explicit: *"Kills it: any corruption that passes, or one that fails the wrong gate."*
+This was the second.
+
+**Cause.** Planes 1 and 2 shared `read_raw_file_headers_from_store`, which built a
+`RawFileHeaders` and validated **both** halves in `__post_init__`. A short textual header
+therefore raised while Plane 2 was reading *its* half — so Plane 2 failed on Plane 1's
+corruption.
+
+**Why it matters more than it looks.** Planes 1 and 2 are **separable claims** (§4.1),
+and a shared validating reader silently made them inseparable. Nothing else would have
+caught it: every plane still passed on a clean store, every plane still failed on its own
+corruption, and the F2 test suite asserted the *raise* — it encoded the defect as the
+expected behaviour. **Only a check that asks "did anything else fail?" could find it.**
+
+**Fix.** Each plane reads only its own attribute, unvalidated for length:
+`read_raw_textual_from_store` and `read_raw_binary_from_store`. A truncation is now what
+it always should have been — **a finding Plane 1 reports with a length difference**, not
+an exception for Plane 2 to trip over. This also brings Plane 1 closer to §4.2, which
+wants a decode failure *recorded*, not raised.
+
+**The F2 test that asserted the old behaviour was rewritten rather than deleted**, so the
+change is visible in the diff, and the corrected expectation carries a note saying why.
+
+**This is the entire argument for G7 in one incident.** The engine was green: five planes
+passing on synthetic data, five planes passing on 116,532 real traces, a byte-identical
+round trip. It still had a defect that made two of its five planes non-independent, and
+the first run of the gate on the gates found it in seconds.
+
+---
+
+## D-0029 — 2026-08-22 — F4 built; `EQUIVALENT` is now reachable
+
+**Decision.** `sdip certify` runs G7 against the store it is certifying, and
+`verdict_for` can therefore return **`EQUIVALENT`** for the first time.
+
+**Measured on the 30-trace article:** baseline clean, then **8 corruptions, each failing
+exactly the gates it declares and no others**, plus G3's own control (a flipped export
+byte is detected and the file restored). **G7 `PASS`.**
+
+**What this changes about the project's central claim.** Until today every certificate
+said `PROVISIONAL` and the reason field said so: *until G7 passes, every certificate the
+engine issues is unvalidated*. That is no longer the standing state — for a store whose
+G7 audit passes, the engine has been shown capable of failing, on that store, for every
+gate it claims.
+
+**What it does not change.** G5 and G6 still do not exist and are `NOT_RUN`. **D2 (scale)
+and D7 (cloud) are untouched.** G7 passing on a 30-trace article and on one real survey
+is not G7 passing at survey scale under a declared memory ceiling — that is **P3**, and
+it still requires a pre-registration merged before the run (**SP9**).
+
+**`OPEN_DEBTS.md` D11 closes.** It said *"a gate a corrupted store passes is not a gate;
+no negative control exists yet, because no gate exists yet."* Both halves are now false.

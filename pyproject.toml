@@ -89,7 +89,7 @@ addopts = "-ra --strict-markers --strict-config"
 # unless a test opts in explicitly. This is a project rule, not a preference.
 filterwarnings = ["error"]
 markers = [
-    "negative: G7 non-vacuity control - MUST fail the gate it targets",
+    "negative: G7 non-vacuity control - MUST fail the gate it targets, and only it",
     "integration: needs a fixture ingest",
     "slow: excluded from the fast unit lane",
     "phase: not yet in the authorised roadmap phase",

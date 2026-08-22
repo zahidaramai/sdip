@@ -178,33 +178,59 @@ def attach_raw_file_headers(store_path: str | Path, headers: RawFileHeaders) -> 
     node.attrs.update(headers.to_attrs())
 
 
-def read_raw_file_headers_from_store(store_path: str | Path) -> RawFileHeaders:
-    """Read SDIP's authoritative raw headers back out of a store, without MDIO.
+def _stored_attr(store_path: str | Path, attr: str) -> bytes:
+    """Read one SDIP raw-header attribute out of a store, without MDIO.
 
-    Raises:
-        UntrustedInputError: If the store carries no SDIP raw headers.
+    **One attribute, not both.** Planes 1 and 2 are separable claims (§4.1), and a
+    reader that loads and validates both halves makes them inseparable: a defect in the
+    textual header would make the binary reader raise, so Plane 2 would fail on Plane
+    1's corruption. **G7 caught exactly that** on its first run - §7 G7's killer is
+    *"one that fails the wrong gate"*, and a gate that fires on someone else's
+    corruption cannot localise a fault. See ``DECISIONS.md`` D-0028.
     """
     import zarr
 
     group = zarr.open_group(str(store_path), mode="r")
     node = group["segy_file_header"] if "segy_file_header" in group else group
     attrs = dict(node.attrs)
-    if ATTR_RAW_TEXT not in attrs or ATTR_RAW_BINARY not in attrs:
+    if attr not in attrs:
         msg = (
-            f"store carries no SDIP raw file headers ({ATTR_RAW_TEXT}, "
-            f"{ATTR_RAW_BINARY}). Planes 1 and 2 cannot be checked against it."
+            f"store carries no SDIP raw file header attribute {attr}. The plane that "
+            "needs it cannot be checked against this store."
         )
         raise UntrustedInputError(msg)
-    # Zarr attrs are JSON, so the values arrive typed as "any JSON value". They were
-    # written as base64 strings; anything else means the store was tampered with.
-    text_b64, binary_b64 = attrs[ATTR_RAW_TEXT], attrs[ATTR_RAW_BINARY]
-    if not isinstance(text_b64, str) or not isinstance(binary_b64, str):
-        msg = (
-            f"store attributes {ATTR_RAW_TEXT}/{ATTR_RAW_BINARY} are not base64 "
-            "strings; the store has been modified outside SDIP"
-        )
+    value = attrs[attr]
+    # Zarr attrs are JSON, so values arrive typed as "any JSON value". They were written
+    # as base64 strings; anything else means the store was modified outside SDIP.
+    if not isinstance(value, str):
+        msg = f"store attribute {attr} is not a base64 string; modified outside SDIP"
         raise UntrustedInputError(msg)
+    return base64.b64decode(value)
+
+
+def read_raw_textual_from_store(store_path: str | Path) -> bytes:
+    """Read only the authoritative textual header. Plane 1's reader.
+
+    Returns the bytes **unvalidated for length**: a truncated header is Plane 1's
+    finding to report with an offset, not an exception for Plane 2 to trip over.
+    """
+    return _stored_attr(store_path, ATTR_RAW_TEXT)
+
+
+def read_raw_binary_from_store(store_path: str | Path) -> bytes:
+    """Read only the authoritative binary header. Plane 2's reader."""
+    return _stored_attr(store_path, ATTR_RAW_BINARY)
+
+
+def read_raw_file_headers_from_store(store_path: str | Path) -> RawFileHeaders:
+    """Read both authoritative raw headers, validated. For callers that need the pair.
+
+    Planes 1 and 2 deliberately do **not** use this - see :func:`_stored_attr`.
+
+    Raises:
+        UntrustedInputError: If either header is absent or the wrong size.
+    """
     return RawFileHeaders(
-        textual=base64.b64decode(text_b64),
-        binary=base64.b64decode(binary_b64),
+        textual=read_raw_textual_from_store(store_path),
+        binary=read_raw_binary_from_store(store_path),
     )

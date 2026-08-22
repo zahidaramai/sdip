@@ -19,6 +19,14 @@ from sdip.equivalence.certificate import (
     read_codec_manifest,
     verdict_for,
 )
+from sdip.equivalence.nonvacuity import (
+    ALL_GATES,
+    CONTROLS,
+    Corruption,
+    G7Result,
+    g3_control,
+    g7,
+)
 from sdip.equivalence.planes import (
     PlaneResult,
     first_difference,
@@ -32,15 +40,21 @@ from sdip.equivalence.portability import PortabilityResult, g4
 from sdip.equivalence.trace_map import TraceMap, build_trace_map
 
 __all__ = [
+    "ALL_GATES",
+    "CONTROLS",
     "GATES",
     "PLANE_KEYS",
     "Certificate",
+    "Corruption",
+    "G7Result",
     "PlaneResult",
     "PortabilityResult",
     "TraceMap",
     "build_trace_map",
     "first_difference",
+    "g3_control",
     "g4",
+    "g7",
     "issue",
     "plane_1",
     "plane_2",

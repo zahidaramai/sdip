@@ -26,6 +26,7 @@ from typing import Any
 
 from sdip import __version__
 from sdip._pins import CERTIFICATE_SCHEMA_VERSION, LOSSY_CODECS, SPEC_VERSION
+from sdip.equivalence.nonvacuity import G7Result
 from sdip.equivalence.planes import PlaneResult
 from sdip.equivalence.portability import PortabilityResult
 from sdip.errors import DirtyTreeError
@@ -112,6 +113,7 @@ def issue(
     *,
     roundtrip: RoundTripResult | None = None,
     portability: PortabilityResult | None = None,
+    nonvacuity: G7Result | None = None,
     root: str | Path = ".",
     require_clean_tree: bool = True,
     issued_at: str,
@@ -126,6 +128,9 @@ def issue(
         roundtrip: G3 result, when a round trip was performed. Absent means
             ``NOT_RUN`` - never assumed to pass.
         portability: G4 result, when the portability check was run.
+        nonvacuity: G7 result. **Absent means ``NOT_RUN``, and the verdict cannot reach
+            ``EQUIVALENT``** - a store whose planes pass against an engine never shown
+            capable of failing has not been checked.
         root: Repository root, for git state.
         require_clean_tree: Refuse to issue from a dirty tree (§11.3). **There is no
             ``--force``**; this parameter exists so tests can exercise the refusal, and
@@ -178,6 +183,8 @@ def issue(
         gate_block["G3"] = roundtrip.status
     if portability is not None:
         gate_block["G4"] = portability.status
+    if nonvacuity is not None:
+        gate_block["G7"] = nonvacuity.status
 
     plane_status = {k: v["status"] for k, v in plane_block.items()}
     verdict = verdict_for(plane_status, gate_block, lossy=lossy)
@@ -217,6 +224,7 @@ def issue(
             else {"performed": False, "byte_identical": False}
         ),
         "portability": portability.to_json() if portability is not None else None,
+        "nonvacuity": nonvacuity.to_json() if nonvacuity is not None else None,
         "transforms_declared": [],
         "warnings": result.warnings.to_json(),
         "codecs_used": codecs,

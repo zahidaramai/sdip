@@ -354,6 +354,7 @@ def certify_cmd(
     import tempfile
 
     from sdip.equivalence import g4, issue
+    from sdip.equivalence.nonvacuity import g3_control, g7
     from sdip.export import export as run_export
     from sdip.ingest import ingest as run_ingest
     from sdip.spec import g1_for_spec
@@ -366,16 +367,27 @@ def certify_cmd(
     portability = g4(output)
 
     with tempfile.TemporaryDirectory() as scratch:
-        roundtrip = run_export(output, Path(scratch) / "roundtrip.sgy", spec, source=source)
+        exported = Path(scratch) / "roundtrip.sgy"
+        roundtrip = run_export(output, exported, spec, source=source)
+
+        # G7 runs against the very store being certified, on COPIES of it - never
+        # against a fixture from somewhere else. A non-vacuity result imported from
+        # another store says nothing about this one.
+        nonvacuity = g7(source, output, spec, workdir=Path(scratch) / "g7")
+        g3_check = g3_control(exported)
+        g7_status, g7_summary = nonvacuity.status, nonvacuity.summary()
+
         issued_at = _dt.datetime.now(tz=_dt.UTC).isoformat(timespec="seconds")
         certificate = issue(
             result,
             planes,
             roundtrip=roundtrip,
             portability=portability,
+            nonvacuity=nonvacuity,
             issued_at=issued_at,
             issued_by=f"sdip {__version__}",
         )
+        certificate.payload["nonvacuity"]["g3_control"] = g3_check
 
     certificates.mkdir(parents=True, exist_ok=True)
     stamp = issued_at.replace(":", "").replace("-", "")
@@ -385,6 +397,7 @@ def certify_cmd(
     _print_planes(planes)
     click.echo(f"[{roundtrip.status}] G3        whole-file SHA-256")
     click.echo(f"[{portability.status}] G4        stock zarr+xarray without mdio")
+    click.echo(f"[{g7_status}] G7        {g7_summary}")
     click.echo("")
     click.echo(f"verdict:     {certificate.verdict}")
     click.echo(f"reason:      {certificate.payload['verdict_reason']}")
