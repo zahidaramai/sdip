@@ -1,0 +1,14 @@
+* text=auto eol=lf
+
+# Fixtures and stores are binary and must never be line-ending normalised: a CRLF
+# rewrite of a SEG-Y fixture would silently break every byte-equality assertion.
+*.sgy   binary
+*.segy  binary
+*.su    binary
+*.npy   binary
+*.zarr  binary
+
+# The append-only records are prose; keep diffs readable.
+DECISIONS.md            text
+EQUIVALENCE_LEDGER.md   text
+OPEN_DEBTS.md           text

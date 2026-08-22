@@ -1,0 +1,74 @@
+cff-version: 1.2.0
+message: >-
+  If you use SDIP in a publication, please cite both the software and the
+  specification. The specification is the contribution; the software implements it.
+title: "SDIP — Seismic Data Ingestion & Preparation"
+abstract: >-
+  SEG-Y to MDIO/Zarr v3 conversion with a machine-checkable proof of 1-1 equivalence
+  to the source. SDIP defines a five-plane Equivalence Contract — textual header,
+  binary header, trace header, sample, and cardinality/ordering — and issues a
+  machine-readable Equivalence Certificate per ingestion. Comparisons are exact:
+  array equality or byte equality, never tolerance-based. Every ingestion runs against
+  a trace-header specification covering bytes 1-240 with zero gaps and zero overlaps,
+  so proprietary and undocumented byte locations survive the crossing. Output is a
+  plain Zarr v3 store readable with stock zarr or xarray with neither SDIP nor MDIO
+  installed. The product is not the file; the product is the file plus the proof.
+type: software
+license: Apache-2.0
+repository-code: "https://github.com/OWNER/sdip"
+url: "https://github.com/OWNER/sdip"
+keywords:
+  - SEG-Y
+  - MDIO
+  - Zarr
+  - seismic
+  - geophysics
+  - lossless conversion
+  - data validation
+  - provenance
+  - reproducibility
+  - cloud-native
+
+# ---------------------------------------------------------------------------
+# BLOCKING FOR THE FIRST PUBLIC PUSH — see OPEN_DEBTS.md D12.
+# Authorship and the copyright holder are unresolved. The `publication-readiness`
+# CI job fails while the placeholder below is present, so this file cannot reach a
+# public repository unfilled.
+# ---------------------------------------------------------------------------
+authors:
+  - name: "<<UNRESOLVED-COPYRIGHT-HOLDER>>"
+
+version: 0.1.0.dev0
+date-released: "2026-08-22"
+
+references:
+  - type: software
+    title: "mdio-python"
+    abstract: >-
+      Upstream MDIO implementation. Pinned at 1.2.1, commit
+      a2895b53088ffacbf4bd1b9e882856cbda78e235. Used through its public API only;
+      no source vendored, no internal monkeypatched.
+    repository-code: "https://github.com/TGSAI/mdio-python"
+    license: Apache-2.0
+    authors:
+      - name: "TGS"
+  - type: software
+    title: "segy"
+    abstract: >-
+      Upstream SEG-Y reader. Pinned at 0.6.0, commit
+      8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78. Pinned together with mdio-python:
+      the ibm32 header fix straddles the segy 0.6.0 boundary.
+    repository-code: "https://github.com/TGSAI/segy"
+    license: Apache-2.0
+    authors:
+      - name: "TGS"
+  - type: software
+    title: "seisio"
+    abstract: >-
+      Cited as design prior art for JSON-driven trace-header field definitions.
+      No code copied — see NOTICE.
+    repository-code: "https://github.com/ThomasHertweck/seisio"
+    license: LGPL-3.0-or-later
+    authors:
+      - family-names: "Hertweck"
+        given-names: "Thomas"

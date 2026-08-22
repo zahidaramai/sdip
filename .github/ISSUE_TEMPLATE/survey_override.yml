@@ -1,0 +1,60 @@
+name: Survey spec override
+description: Register a named override mapping a survey to field renames and retypes
+labels: ["override", "spec"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Overrides (§6.4) are **declarative data**, never code branches. They change
+        labels and numeric interpretation, **never byte content** — G2c is re-run after
+        applying one.
+
+        **An override with no cited evidence is rejected at review.**
+
+  - type: checkboxes
+    id: policy
+    attributes:
+      label: Policy
+      options:
+        - label: I have not attached proprietary or restricted data to this issue
+          required: true
+        - label: This override changes labels and interpretation only, never byte content
+          required: true
+
+  - type: input
+    id: survey-id
+    attributes:
+      label: Survey identifier
+      description: A public identifier. Not a client name, not a block or licence number.
+    validations:
+      required: true
+
+  - type: textarea
+    id: mapping
+    attributes:
+      label: Mapping
+      description: "Byte range -> name and type, for every field the override changes."
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Cited evidence
+      description: >-
+        What establishes this remapping: an observer report, a contractor
+        specification, textual-header content. Name it. "It looks like a coordinate"
+        is not evidence.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: ibm32
+    attributes:
+      label: ibm32 declaration
+      options:
+        - label: >-
+            This override declares NO ibm32 header field. (No SEG-Y standard trace
+            header declares one — DECISIONS.md D-0003 — so an override that adds one
+            is blocked until probe P2 clears. Leave unchecked and say so if it does.)

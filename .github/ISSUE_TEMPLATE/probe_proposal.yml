@@ -1,0 +1,69 @@
+name: Probe proposal
+description: Propose a new pre-registered probe (SP9)
+labels: ["probe", "prereg"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Probes are **pre-registered**. The order is not negotiable:
+
+        1. This issue is filed and a maintainer registers the probe
+        2. **Registration lands before anything is run**
+        3. Run the probe
+        4. A PR reports results against the registered falsifier, unchanged
+
+        **Never write a pre-registration after seeing a result.** Better-than-expected
+        does not tighten a gate post hoc; worse-than-expected does not relax one.
+
+  - type: checkboxes
+    id: not-yet-run
+    attributes:
+      label: Pre-registration discipline
+      options:
+        - label: I have not yet run this probe, or seen any result from it
+          required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: One sentence. What is actually unknown.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters
+      description: >-
+        The mechanism by which a wrong answer causes harm downstream. If you cannot
+        write this paragraph, the probe is not worth running.
+    validations:
+      required: true
+
+  - type: textarea
+    id: falsifier
+    attributes:
+      label: Falsifier
+      description: >-
+        The single concrete observable that would prove the hypothesis wrong.
+        "If fidelity looks poor" is not a falsifier. "Any value where ibm32 -> float32
+        -> ibm32 is not bit-identical" is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: parameters
+    attributes:
+      label: Pre-registered parameters
+      description: "N, sampling scheme, threshold, seed, environment. Fixed before the run."
+    validations:
+      required: true
+
+  - type: textarea
+    id: if-it-fires
+    attributes:
+      label: If it fires
+      description: What stops shipping, which clause gets scoped, which debt opens.
+    validations:
+      required: true

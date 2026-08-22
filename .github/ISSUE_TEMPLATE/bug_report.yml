@@ -1,0 +1,68 @@
+name: Bug report
+description: Something SDIP did that it should not have, or did not do that it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Before you start — the test data policy is binding
+
+        **Do not attach proprietary SEG-Y to this issue.** No proprietary or restricted
+        data enters this repository, ever, including in issue attachments.
+
+        If you hit this on data you cannot share, reproduce it with a **synthetic file
+        that has the same structural property** — byte layout, revision, geometry
+        irregularity — and attach that instead. A synthetic reproducer is more useful
+        anyway: it becomes a permanent fixture.
+
+  - type: checkboxes
+    id: data-policy
+    attributes:
+      label: Test data policy
+      options:
+        - label: I have not attached proprietary or restricted data to this issue
+          required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`sdip doctor --json` output"
+      description: Run it in the environment where the problem occurs and paste the JSON.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: >-
+        With numbers where you have them. "Plane 3 failed on 7 of 30 traces, first
+        difference at trace 4 byte 189" beats "headers are wrong".
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and which clause says so
+      description: Cite the specification section or gate. If nothing does, say that.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Reproducer
+      description: >-
+        A synthetic file plus the script that generated it, or the exact commands.
+        If a stranger cannot reproduce it from what is here, it did not happen.
+    validations:
+      required: true
+
+  - type: input
+    id: source-shape
+    attributes:
+      label: Source characteristics
+      description: "Revision, geometry, trace count, sample format, endianness — no identifying survey details."
+      placeholder: "rev 1, 3D poststack, ~12.8M traces, ibm32 samples, big-endian"

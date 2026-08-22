@@ -1,0 +1,306 @@
+# CI to specification v1.0 section 7.8: every job on every PR, any failure blocks merge.
+#
+# Jobs whose subject does not exist yet are declared and FAIL LOUDLY with the roadmap
+# phase, rather than being silently absent. An absent job looks like a passing one on a
+# green check, which is the whole failure mode this project exists to prevent.
+#
+# CI has no network access except the pinned package index.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_FROZEN: "1"
+  FORCE_COLOR: "1"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # doctor runs first. If doctor fails, nothing else runs.
+  # ---------------------------------------------------------------------------
+  doctor:
+    name: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+      - name: sdip doctor
+        run: uv run sdip doctor
+      - name: Publish the doctor report as an artifact
+        if: always()
+        run: uv run sdip doctor --json > doctor-report.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: doctor-report
+          path: doctor-report.json
+
+  lint:
+    name: lint / type
+    needs: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+
+  unit:
+    name: unit (py${{ matrix.python }})
+    needs: doctor
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The pins intersect at >=3.12,<3.14. See DECISIONS.md D-0001.
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev --python ${{ matrix.python }}
+      - run: uv run pytest tests/unit -v
+
+  # ---------------------------------------------------------------------------
+  # Forbid-list enforcement, asserted independently of the Python guard so a bug in
+  # the guard cannot hide a violation from CI. Spec section 9.
+  # ---------------------------------------------------------------------------
+  forbid-list:
+    name: forbid-list
+    needs: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+
+      - name: Barred environment variables are absent (spec 9.1)
+        run: |
+          for v in MDIO_IGNORE_CHECKS MDIO__IMPORT__RAW_HEADERS; do
+            if printenv "$v" >/dev/null 2>&1; then
+              echo "::error::barred environment variable $v is set (spec 9.1)"; exit 1
+            fi
+          done
+
+      # Parsed, not grepped. A grep for these names flags the guard's own docstring,
+      # this workflow, and every doc that explains why they are barred - and a gate
+      # that fires on prose is a gate that gets switched off (DECISIONS.md D-0005).
+      - name: SDIP never sets a barred variable
+        run: |
+          uv run python - <<'PY'
+          import sys
+          from pathlib import Path
+          from sdip.guard import scan_source_for_barred_assignments
+          findings = scan_source_for_barred_assignments(Path("src"))
+          findings += scan_source_for_barred_assignments(Path("tests"))
+          for f in findings:
+              print(f"::error::{f}")
+          sys.exit(1 if findings else 0)
+          PY
+
+      - name: zfpy is not importable (spec 9.2 / SP3)
+        run: |
+          uv run python - <<'PY'
+          import importlib.util, sys
+          if importlib.util.find_spec("zfpy") is not None:
+              sys.exit("::error::zfpy is installed - SP3 bars lossy codecs")
+          print("zfpy absent")
+          PY
+
+      - name: No tolerance-based comparison in the engine (spec 4.5 / 9.5)
+        run: uv run pytest tests/unit/test_repository_contract.py -k tolerance -v
+
+      - name: No suppressed warnings (SP6)
+        run: uv run pytest tests/unit/test_repository_contract.py -k suppress -v
+
+      - name: The forbid-list detectors have been shown to fire (SP11)
+        run: uv run pytest tests/unit -k "actually_detects or negative" -v
+
+  licence:
+    name: licence
+    needs: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+      - name: No GPL or AGPL in the runtime dependency tree (spec 3.6 / 9.4)
+        run: |
+          uv run python - <<'PY'
+          import json, sys
+          from sdip.guard.licences import check_runtime_licences
+          scan = check_runtime_licences()
+          print(json.dumps(scan.to_json(), indent=2))
+          if not scan.ok:
+              sys.exit("::error::runtime dependency tree blocks Apache-2.0 distribution")
+          print(f"{len(scan.records)} runtime distributions scanned, clean")
+          PY
+
+  # ---------------------------------------------------------------------------
+  # Publication firewall. This repository is public. docs/ and every AI-assistant
+  # artifact are maintained outside it and must never appear in the index or in
+  # ANY commit reachable from any ref.
+  #
+  # This job does not depend on `doctor`, and does not depend on Python. It must
+  # still run when the environment is broken, because a broken environment is
+  # exactly when someone force-adds a file to make a check go away.
+  # ---------------------------------------------------------------------------
+  firewall:
+    name: firewall
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Nothing unpublishable is tracked at HEAD
+        run: |
+          tracked=$(git ls-files -- \
+            'docs' 'CLAUDE.md' 'CLAUDE.local.md' 'AGENTS.md' '.claude' \
+            '.claude-session-sync.md' '.cursor' '.github/copilot-instructions.md')
+          if [ -n "$tracked" ]; then
+            echo "::error::tracked and would be published:"
+            echo "$tracked" | while read -r f; do echo "::error::  $f"; done
+            exit 1
+          fi
+          echo "firewall intact at HEAD"
+
+      - name: Nothing unpublishable appears anywhere in history
+        run: |
+          # git rm --cached removes a file from the index and leaves it in every
+          # commit that already had it. A clone gets the history, so HEAD being
+          # clean is not enough.
+          hits=$(git log --all --pretty=format:'%H' --name-only --diff-filter=A -- \
+            'docs' 'CLAUDE.md' 'CLAUDE.local.md' 'AGENTS.md' '.claude' \
+            '.claude-session-sync.md' '.cursor' '.github/copilot-instructions.md' \
+            | grep -vE '^[0-9a-f]{40}$' | grep -v '^$' | sort -u || true)
+          if [ -n "$hits" ]; then
+            echo "::error::present in repository HISTORY - a clone would receive these:"
+            echo "$hits" | while read -r f; do echo "::error::  $f"; done
+            echo "::error::History must be rewritten before this can be published."
+            exit 1
+          fi
+          echo "firewall intact across all history"
+
+  fixture-policy:
+    name: fixture-policy
+    needs: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No proprietary or unattributed data in tests/fixtures (spec 6.6)
+        run: |
+          test -f tests/fixtures/PROVENANCE.md \
+            || { echo "::error::tests/fixtures/PROVENANCE.md is mandatory"; exit 1; }
+          undeclared=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            base=$(basename "$f")
+            case "$base" in PROVENANCE.md|README.md|.gitkeep|*.py) continue ;; esac
+            if ! grep -qF "$base" tests/fixtures/PROVENANCE.md; then
+              echo "::error::$f has no entry in tests/fixtures/PROVENANCE.md"; undeclared=1
+            fi
+          done < <(git ls-files tests/fixtures)
+          exit $undeclared
+
+  publication-readiness:
+    name: publication-readiness
+    needs: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No unresolved placeholder may reach a public repository
+        run: |
+          # OPEN_DEBTS D12. The copyright holder and IP provenance are unresolved and
+          # are blocking for the first public push. This job is the mechanism that
+          # stops the repository being published with the placeholder still in it.
+          if grep -rn 'UNRESOLVED-COPYRIGHT-HOLDER' NOTICE CITATION.cff ; then
+            echo "::error::NOTICE/CITATION.cff carry an unresolved placeholder - OPEN_DEBTS D12"
+            exit 1
+          fi
+          if grep -rn 'OWNER/sdip' README.md CITATION.cff pyproject.toml ; then
+            echo "::error::repository URL placeholder OWNER/sdip is unresolved"
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Declared, not yet buildable. These fail with the roadmap phase rather than
+  # being absent, because an absent job renders as a green check.
+  # ---------------------------------------------------------------------------
+  integration:
+    name: integration (phase F3)
+    needs: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "::error::integration requires the Equivalence Engine (roadmap phase F3)."
+          echo "Lifted round-trip fixture extended to the 240-byte plane; SHA-256 assertion."
+          exit 1
+
+  negative:
+    name: negative / G7 (phase F4)
+    needs: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "::error::G7 non-vacuity suite does not exist (roadmap phase F4)."
+          echo "Until G7 passes, every certificate the engine issues is unvalidated."
+          echo "OPEN_DEBTS D11."
+          exit 1
+
+  portability:
+    name: portability / G4 (phase F3)
+    needs: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "::error::G4 requires a store to open (roadmap phase F3)."
+          echo "The store must open with stock zarr and xarray asserting 'mdio' not in sys.modules."
+          exit 1
+
+  spawn-guard:
+    name: spawn-guard (phase F2)
+    needs: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "::error::spawn-guard requires ingestion (roadmap phase F2)."
+          echo "MDIO's header parser uses a spawn context; a missing __main__ guard"
+          echo "kills the pool with BrokenProcessPool. Spec 11.1, Appendix A.5."
+          exit 1
+
+  determinism:
+    name: determinism / G6 (phase F3)
+    needs: doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          echo "::error::G6 requires ingestion (roadmap phase F3)."
+          echo "Two ingests of the same fixture must produce identical array bytes."
+          exit 1

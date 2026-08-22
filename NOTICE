@@ -1,0 +1,91 @@
+SDIP - Seismic Data Ingestion & Preparation
+Copyright <<UNRESOLVED-COPYRIGHT-HOLDER>>
+
+This product includes software developed as part of the SDIP project.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+================================================================================
+ATTRIBUTION - THIS SECTION IS A LEGAL OBLIGATION AND MUST SURVIVE REFACTORS
+================================================================================
+
+--------------------------------------------------------------------------------
+1. TGS - mdio-python  (Apache License 2.0)
+--------------------------------------------------------------------------------
+
+    https://github.com/TGSAI/mdio-python
+    Pinned version 1.2.1, commit a2895b53088ffacbf4bd1b9e882856cbda78e235
+
+    Copyright TGS. Licensed under the Apache License, Version 2.0.
+
+    SDIP depends on mdio-python through its public API only. No mdio-python
+    source is vendored into this repository, and no mdio-python internal is
+    monkeypatched, subclassed around, or reached into.
+
+--------------------------------------------------------------------------------
+2. TGS - segy  (Apache License 2.0)
+--------------------------------------------------------------------------------
+
+    https://github.com/TGSAI/segy
+    Pinned version 0.6.0, commit 8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78
+
+    Copyright TGS. Licensed under the Apache License, Version 2.0.
+
+    SDIP depends on segy through its public API only, on the same terms as above.
+
+--------------------------------------------------------------------------------
+3. TGS - mdio-python round-trip integration test  (Apache License 2.0)
+--------------------------------------------------------------------------------
+
+    DERIVED WORK. The SDIP Equivalence Engine's round-trip driver is seeded from:
+
+        tests/integration/test_segy_roundtrip_teapot.py
+        https://github.com/TGSAI/mdio-python/blob/
+        a2895b53088ffacbf4bd1b9e882856cbda78e235/tests/integration/
+        test_segy_roundtrip_teapot.py
+
+    Copyright TGS. Licensed under the Apache License, Version 2.0.
+
+    SDIP extends the upstream test - which is scoped to spec-declared header
+    fields - to the full 240-byte trace-header plane and to a whole-file SHA-256
+    assertion. The extension is SDIP's; the seed is TGS's, and this attribution
+    is required by section 4 of the Apache License.
+
+--------------------------------------------------------------------------------
+4. Thomas Hertweck - seisio  (LGPL)  -  DESIGN PRIOR ART, NO CODE COPIED
+--------------------------------------------------------------------------------
+
+    https://github.com/ThomasHertweck/seisio
+
+    seisio is cited as design prior art for JSON-driven trace-header field
+    definitions. It informed the shape of the SDIP gap-free specification
+    generator as a matter of design reading.
+
+    NO CODE FROM seisio HAS BEEN COPIED INTO SDIP, AT ANY SIZE. seisio is
+    LGPL-licensed and is not a dependency of SDIP. It does not appear in the
+    SDIP runtime dependency tree, and the CI licence job asserts that.
+
+--------------------------------------------------------------------------------
+5. EXCLUDED SOURCES - NO CODE TAKEN, AT ANY SIZE
+--------------------------------------------------------------------------------
+
+    The following projects were reviewed and are recorded here so that the
+    exclusion is auditable rather than assumed:
+
+      trhallam/segysak      - GPL.      Incompatible with Apache-2.0 distribution.
+      stuliveshere/pyseis-io - AGPL-3.0. Network copyleft; disqualifying for a
+                               permissively licensed library and for any
+                               downstream user exposing an API.
+
+    No code, of any size, including single functions, has been taken from either.
+
+================================================================================

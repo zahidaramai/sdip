@@ -1,0 +1,137 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sdip"
+version = "0.1.0.dev0"
+description = "SEG-Y to MDIO/Zarr v3 seismic conversion with a machine-checkable proof of lossless 1-1 equivalence and a validation certificate."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.12,<3.14"
+keywords = [
+    "segy", "seg-y", "mdio", "zarr", "seismic", "geophysics",
+    "lossless", "validation", "equivalence", "provenance", "cloud-native",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+
+# --- Upstream pins are BINDING. Spec v1.0 section 3.3. -------------------------
+# multidimio 1.2.1  SHA a2895b53088ffacbf4bd1b9e882856cbda78e235
+# segy       0.6.0  SHA 8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78
+# Pin BOTH together: the ibm32 header fix straddles the segy 0.6.0 boundary.
+# A bump invalidates every certificate issued under the previous pin and requires
+# a maintainer decision in DECISIONS.md plus a minor release with a migration note.
+# The `lossy` extra of multidimio (zfpy) is BARRED - spec section 9.2, SP3.
+dependencies = [
+    "multidimio==1.2.1",
+    "segy==0.6.0",
+    # Already a hard runtime dependency of dask, xarray and zarr. Declared
+    # explicitly because the licence guard evaluates environment markers with it;
+    # this adds nothing to the tree being scanned.
+    "packaging>=24.2",
+    "click>=8.4.2",
+]
+
+[project.optional-dependencies]
+# Cloud object-store backends. Untested at v1.0 - open debt D7, probe P8.
+cloud = ["multidimio[cloud]==1.2.1"]
+
+[project.urls]
+Homepage = "https://github.com/OWNER/sdip"
+Documentation = "https://github.com/OWNER/sdip/blob/main/README.md"
+Changelog = "https://github.com/OWNER/sdip/blob/main/CHANGELOG.md"
+Issues = "https://github.com/OWNER/sdip/issues"
+
+[project.scripts]
+sdip = "sdip.cli.main:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.9",
+    "mypy>=1.14",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sdip"]
+
+[tool.hatch.build.targets.sdist]
+# `/docs` is deliberately absent: it is maintained outside the published repository
+# and must not reach a source distribution either. See DECISIONS.md D-0010.
+include = [
+    "/src", "/tests", "/LICENSE", "/NOTICE", "/README.md",
+    "/CHANGELOG.md", "/CITATION.cff", "/DECISIONS.md", "/OPEN_DEBTS.md",
+    "/EQUIVALENCE_LEDGER.md",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+# SP6 - no suppressed warnings. Any warning that reaches pytest is an error
+# unless a test opts in explicitly. This is a project rule, not a preference.
+filterwarnings = ["error"]
+markers = [
+    "negative: G7 non-vacuity control - MUST fail the gate it targets",
+    "integration: needs a fixture ingest",
+    "slow: excluded from the fast unit lane",
+    "phase: not yet in the authorised roadmap phase",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",      # pycodestyle / pyflakes
+    "I",                # import order
+    "N",                # pep8-naming
+    "UP",               # pyupgrade
+    "B",                # bugbear
+    "A",                # builtin shadowing
+    "C4",               # comprehensions
+    "PTH",              # pathlib
+    "RUF",
+    "S",                # bandit - untrusted binary input surface, spec section 11.4
+    "ANN",              # annotations
+    "D",                # docstrings
+]
+ignore = [
+    "D203",   # conflicts with D211
+    "D213",   # conflicts with D212
+    "ANN401", # Any is permitted where upstream returns Any
+]
+
+[tool.ruff.lint.per-file-ignores]
+# S101 assert is the point of a test; S603/S607 git is invoked by name in fixtures;
+# SLF001 the licence guard's private helpers are what the regression tests pin.
+"tests/**" = ["S101", "S603", "S607", "D100", "D103", "ANN001", "ANN201"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src/sdip"]
+strict = true
+warn_unreachable = true
+# Upstream ships no py.typed for every module; do not let that weaken our own code.
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/sdip"]
+branch = true

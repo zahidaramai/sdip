@@ -1,0 +1,79 @@
+# ===========================================================================
+# PUBLICATION FIREWALL - DO NOT REMOVE, DO NOT NEGATE, DO NOT `git add -f`.
+#
+# This repository is published on GitHub. Nothing below may ever be committed,
+# at any size, for any reason, including "just this once to fix a link".
+#
+#   docs/**   The governing specification, the internal companion, the
+#             pre-registrations, the runbooks, and the certificate schema are
+#             maintained OUTSIDE the published repository. They stay on the
+#             working copy and are used locally; they are never distributed.
+#
+#   CLAUDE.md and every other AI-assistant artifact. These carry working
+#             context, internal framing, and instructions that are not part of
+#             the public product.
+#
+# Three independent mechanisms enforce this, because one is not enough:
+#   1. these patterns
+#   2. `sdip doctor`'s `publication-firewall` check
+#   3. the `firewall` CI job, which fails the build on any tracked match
+#
+# `git add -f` defeats mechanism 1. It does not defeat 2 or 3. That is deliberate.
+# ===========================================================================
+docs/
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+.claude/
+.claude-session-sync.md
+.cursor/
+.aider*
+.github/copilot-instructions.md
+
+# ---------------------------------------------------------------------------
+# TEST DATA POLICY (spec 6.6) - binding.
+# No proprietary or restricted data enters this repository, ever. Fixtures are
+# synthetic-and-generated-by-committed-code, or openly licensed with provenance
+# in tests/fixtures/PROVENANCE.md. Large open datasets are fetched at test time
+# by checksum, never vendored. These patterns stop an accidental `git add`.
+# ---------------------------------------------------------------------------
+*.sgy
+*.segy
+*.SGY
+*.SEGY
+*.su
+*.zgy
+*.vds
+*.sgz
+!tests/fixtures/**/*.generated.sgy
+
+# Generated stores and scratch output
+*.mdio/
+*.zarr/
+/scratch/
+/out/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.eggs/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
