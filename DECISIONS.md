@@ -1624,3 +1624,76 @@ Stated plainly, because the failures above should not obscure it:
 Local filesystem only. One vintage of one survey plus synthetic fixtures. No cloud.**
 Every number in this entry is reproducible from the committed record; none of it is
 inferred.
+
+---
+
+## D-0042 — 2026-08-22 — **P3 passed. G5 enforces. All seven gates now pass.**
+
+**Result.** Probe P3 ran against the ceilings committed in `690b05e`, **before any file
+it judges was ingested**. **The falsifier did not fire.**
+
+| Quantity | Value |
+|---|---|
+| Files | **11** — three vintages × four stacks |
+| Source bytes | **5,440,219,488** (5.07 GiB) |
+| Traces | **1,281,852** |
+| Samples compared | **1,283,133,852**, exhaustive, exact equality |
+| **G1 · G2a–e · G3 · G4 · G6 · G7** | **PASS on all eleven** |
+| G3 byte-identical | **11 of 11** |
+| Ceiling breaches | **zero** |
+
+| Ceiling | Declared | Worst observed | Headroom |
+|---|---|---|---|
+| Peak RSS | 8.0 GiB | **2.87 GiB** | **64 %** |
+| Wall clock per file | 900 s | **467 s** | **48 %** |
+
+**G5 therefore PASSES, and with it every gate the specification defines.**
+
+### The substantive observation is the flatness, not the margin
+
+Peak RSS varied by **0.06 GiB** across eleven files of identical size — 2.81 to 2.87.
+Memory tracks the **chunk working set**, not the file. That is what §7 G5's *"no
+unbounded growth"* means operationally, and it is the part that would extrapolate; the
+64 % headroom on its own would not.
+
+### G7 is 84 % of the probe, and D-0038 was half a fix
+
+| Stage | Total | Share |
+|---|---|---|
+| **G7** | **4,091 s** | **84 %** |
+| G6 | 201 s | 4 % |
+| Ingest | 104 s | 2 % |
+
+88 corruption audits — 11 files × 8 controls — each re-running five planes. The
+selective-copy fix closed the *bytes* problem; the wall clock is inherent, because G7
+cannot know a gate fires without running it. **D23** stands, and the fix is parallelism,
+not less auditing.
+
+### What this does not establish, stated because the numbers invite overreach
+
+- **One geometry.** All eleven are 249 × 468 fully populated poststack grids with **zero
+  dead traces**. Every condition **P5** probes is *absent from this data*.
+- **One revision.** rev 1 throughout — **D6** stands, only rev 1 works end to end.
+- **One survey.** Three vintages of the same acquisition: same geometry, same vendor,
+  same everything except the year.
+- **Local filesystem only.** **D7** and **P8** untouched; cloud remains unmeasured.
+- **5 GiB is not 20 GiB.** The flat RSS is evidence *for* extrapolating, not a
+  measurement of it.
+
+**D2 closes within that scope**, and the scope is the point: a scale result that does not
+say what it did not cover is not a scale result.
+
+### Where this leaves the release
+
+**Seven of seven gates pass.** `release_readiness` still reports **NOT READY**, and the
+remaining blockers are no longer about the engine:
+
+1. **P8 never ran** — no credentials.
+2. **P7's latency half never ran** — no declared target, and inventing one now would
+   violate **SP9**.
+3. **P4 ran one implementation, not two.**
+4. **§6.4 survey overrides unbuilt (D21)**, the **`ibm32` raw view unbuilt (D1)**, and
+   **SP6's blind spots (D26)**.
+
+The engine is done and proven at survey scale. What remains is coverage, one unbuilt
+mechanism, and two honest gaps.

@@ -811,3 +811,24 @@ only that word would report a clean pass on a total overflow.
 
 Locked in as a permanent test so no future narrowing of P2's sweep can reintroduce it.
 
+---
+
+## D2 — CLOSED 2026-08-22 — scale measured, within a declared ceiling
+
+- **Closes:** D2 above, left unedited (**SP10**) · **Probe:** P3, falsifier did **not** fire
+- **Decision:** `DECISIONS.md` D-0042
+
+D2 said everything was measured on a **30-trace** article and that thirty traces is not a
+survey. It now stands on **1,281,852 traces across 5.07 GiB in 11 files**, with
+**1,283,133,852 samples compared exhaustively and exactly**, every gate passing on every
+file, and **zero breaches** of ceilings declared before the run.
+
+Worst peak RSS **2.87 GiB of 8.0 declared**; slowest file **467 s of 900**. RSS varied by
+**0.06 GiB** across files of identical size — memory tracks the chunk working set, not
+the file, which is what "no unbounded growth" means in practice.
+
+**Closed within its scope, and the scope is load-bearing:** one geometry (249 × 468,
+fully populated, zero dead traces), one revision (rev 1), one survey in three vintages,
+local filesystem only, 5 GiB not 20 GiB. **A scale result that does not say what it did
+not cover is not a scale result.**
+

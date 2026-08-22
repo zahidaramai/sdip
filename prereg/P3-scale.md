@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Probe | `P3` · Status `REGISTERED` · Registered 2026-08-22 |
+| Probe | `P3` · Status **`PASSED`** (falsifier did not fire, 2026-08-22) · Registered 2026-08-22 |
 | Blocks | **production**, and any public claim about the project's contribution |
 | Related debt | `OPEN_DEBTS.md` D2 · Gates **G5**, **G6** · Spec §7 G5, §11.2 |
 
@@ -81,3 +81,109 @@ Any one of the following, on any file this pre-registration governs:
 Production ingest does not proceed. D2 stays open. The failure is recorded as a
 certificate with `verdict: NON-EQUIVALENT` or `PROVISIONAL` and **committed** — failures
 are evidence (**SP10**).
+
+---
+
+## Results — appended 2026-08-22, never edited into the sections above
+
+| Field | Value |
+|---|---|
+| Run date | 2026-08-22 |
+| Governed by | this file as committed in `690b05e`, **before** any file below was ingested |
+| Harness | `local/run_p3.py` — local only, per `DECISIONS.md` D-0025 |
+| Environment | Python 3.12.13 · `multidimio` 1.2.1 · `segy` 0.6.0 · `zarr` 3.3.0 · macOS arm64 |
+| **Verdict** | **THE FALSIFIER DID NOT FIRE.** |
+
+### Scope of the run
+
+| Quantity | Value |
+|---|---|
+| Files | **11** — three vintages × four stacks, `06p07ful.sgy` excluded as declared |
+| Source bytes | **5,440,219,488** (5.07 GiB) |
+| Traces | **1,281,852** |
+| Samples compared | **1,283,133,852** — exhaustive, exact equality, no sampling |
+| Total wall clock | 4,870 s (81.2 min) |
+
+### Per file
+
+| File | Wall | Peak RSS | G1 | G2a–e | G3 | G4 | G6 | G7 |
+|---|---|---|---|---|---|---|---|---|
+| `01p07far.sgy` | 467 s | 2.81 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+| `01p07ful.sgy` | 441 s | 2.85 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+| `01p07mid.sgy` | 442 s | 2.85 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+| `01p07nea.sgy` | 450 s | 2.85 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+| `06p07far.sgy` | 450 s | 2.85 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+| `06p07mid.sgy` | 451 s | 2.85 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+| `06p07nea.sgy` | 436 s | 2.85 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+| `94p07far.sgy` | 431 s | 2.85 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+| `94p07ful.sgy` | 438 s | 2.86 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+| `94p07mid.sgy` | 421 s | 2.86 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+| `94p07nea.sgy` | 443 s | 2.87 GiB | PASS | PASS ×5 | PASS | PASS | PASS | PASS |
+
+**Every G3 was byte-identical.** Eleven whole-file SHA-256 matches over 5.07 GiB.
+
+### Against the declared ceilings
+
+| Ceiling | Declared | Worst observed | Headroom |
+|---|---|---|---|
+| Peak RSS | **8.0 GiB** | **2.87 GiB** | **64 %** |
+| Wall clock per file | **900 s** | **467 s** | **48 %** |
+
+**Zero breaches.** RSS varied across the eleven files by **0.06 GiB** — 2.81 to 2.87 —
+against files of identical size. That flatness is the substantive observation: memory
+tracks the **chunk working set**, not the file, which is what "no unbounded growth" means
+in practice. Nothing trended upward across the run.
+
+### Verdict against the pre-registered falsifier
+
+> Any one of: **OOM** or peak RSS above 8.0 GiB · full chain above 900 s for one file ·
+> **any trace mismatch** on any plane · any difference between the two **G6** runs ·
+> **G7** failing or any control not failing exactly its declared gates · **G3** not
+> byte-identical with no written justification.
+
+**None fired.**
+
+- No OOM. Worst RSS 2.87 GiB, 36 % of ceiling.
+- No timeout. Slowest file 467 s, 52 % of ceiling.
+- **No trace mismatch, across 1,281,852 traces and 1,283,133,852 samples**, compared
+  exhaustively with exact equality.
+- **G6 passed on all eleven** — 22 independent ingests, compared on chunk bytes *and*
+  array values.
+- **G7 passed on all eleven** — 88 corruption audits, every control failing exactly the
+  gates it declares and no others.
+- **G3 byte-identical on all eleven.**
+
+### Where the time goes, and it is not where D18 assumed
+
+| Stage | Total | Share |
+|---|---|---|
+| **G7** | **4,091 s** | **84 %** |
+| G6 | 201 s | 4 % |
+| Ingest | 104 s | 2 % |
+| Everything else | 474 s | 10 % |
+
+**G7 is 84 % of the probe.** The selective-copy fix (D-0038) closed the *bytes* problem;
+the wall clock is dominated by re-running five planes per control, which is inherent —
+G7 cannot know a gate fires without running it. Recorded as debt **D23**, and the fix is
+parallelism, not less auditing.
+
+### What this establishes, and what it does not
+
+**Establishes:** **G5 PASSES.** Ingestion completes at survey scale inside a ceiling
+declared before the run, with no unbounded growth, and the full Equivalence Contract
+holds on every file.
+
+**Does not establish:**
+
+- **One geometry.** All eleven files are 249 × 468 fully populated poststack grids with
+  zero dead traces. **D5's conditions are absent from this data.**
+- **One revision.** rev 1 throughout — **D6** stands.
+- **One survey, three vintages.** Same acquisition, same geometry, same vendor.
+- **Local filesystem only.** **D7** and probe P8 are untouched.
+- **5 GiB is not 20 GiB.** Nothing here shows behaviour an order of magnitude up, and the
+  flat RSS is evidence *for* extrapolating but not a measurement of it.
+
+### Recorded in
+
+`DECISIONS.md` D-0042 · `OPEN_DEBTS.md` D2 **CLOSED** within the scope above.
+

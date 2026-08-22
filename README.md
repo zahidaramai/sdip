@@ -30,7 +30,7 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 
 ![Phase](https://img.shields.io/badge/roadmap_phase-F5–F7-orange?style=flat-square)
 ![Tests](https://img.shields.io/badge/tests-431_passing-success?style=flat-square)
-![Gates enforcing](https://img.shields.io/badge/gates_enforcing-6_of_7-yellow?style=flat-square)
+![Gates enforcing](https://img.shields.io/badge/gates_enforcing-7_of_7-success?style=flat-square)
 ![Certificates](https://img.shields.io/badge/certificates_issued-0-lightgrey?style=flat-square)
 ![Type checked](https://img.shields.io/badge/mypy-strict-2A6DB2?style=flat-square)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.12%2C%3C3.14-3776AB?style=flat-square&logo=python&logoColor=white)
@@ -84,7 +84,7 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
 | **Source** | 7,754 lines across 41 modules |
 | **Tests** | 431 passing · mypy strict clean · ruff clean |
-| **Gates enforcing** | **6 of 7** — G1, G2, G3, G4, G6, **G7**. G5 lands with P3 |
+| **Gates enforcing** | **7 of 7** — every gate the specification defines |
 | **Certificates issued** | `EQUIVALENT` demonstrated on a real survey; none committed (restricted source) |
 | **Decision record** | 40 entries, append-only |
 | **Open debts** | 43 entries, append-only — scheduled, never cancelled |
@@ -95,7 +95,7 @@ None of these failures are loud. They surface years later, in an inversion that 
 
 ## 🗺️ Roadmap & Status
 
-**Gates enforcing: 6 of 7** — G1, G2, G3, G4, G6, G7. G5 lands with probe P3.
+**Gates enforcing: 7 of 7.** Every gate the specification defines now passes — G1, G2, G3, G4, G5, G6, G7.
 
 | Phase | Deliverable | Gates | State |
 |---|---|---|---|
@@ -105,7 +105,7 @@ None of these failures are loud. They surface years later, in an inversion that 
 | F3 | Equivalence Engine — five planes, G2–G4 | G2, G3, G4 | **complete** |
 | F4 | **G7 non-vacuity suite** | G7 | **complete** |
 | F5 | Probes P2, P5, P6 | — | **run — P2 and P6 fired** |
-| F6 | Scale and cloud: P3, P8 | G5, G6 | **partial** — G6 done, P3 running, **P8 not run** |
+| F6 | Scale and cloud: P3, P8 | G5, G6 | **partial** — **G5 and G6 done, P3 passed**; **P8 not run** |
 | F7 | Prestack P7; portability P4 | — | **partial** — both run, both incomplete |
 | F8 | **v1.0.0 public release** | full | not started |
 
@@ -115,7 +115,7 @@ None of these failures are loud. They surface years later, in an inversion that 
 |---|---|
 | **P1** gap-free spec | `PASSED` |
 | **P2** `ibm32` fidelity | **FIRED** — only 1,656 of 4,103 words round-trip; **1,939 lose the value** |
-| **P3** scale | in flight — **zero ceiling breaches** so far |
+| **P3** scale | did **not** fire — **1,281,852 traces, 5.07 GiB, 11 files, zero breaches** |
 | **P4** cross-implementation | did **not** fire — a C++ reader read all 97 header fields byte-identically |
 | **P5** irregular geometry | did **not** fire — duplicates refused **and** surfaced |
 | **P6** revision coverage | **FIRED for 3 of 4** — only rev 1 works end to end |
@@ -136,8 +136,9 @@ validation and certification** (`DECISIONS.md` D-0031). Three arrows, each verif
 
 `sdip certify` reports **`release_readiness`**, which is stricter than `verdict`: it
 requires *every* gate `PASS` with **none `NOT_RUN`**, plus round-trip closure. It
-currently reports **NOT READY**, blocking on G5, P8, P7's latency half, and P4's second
-implementation.
+currently reports **NOT READY** — but no longer on any gate. The remaining blockers are
+coverage, not the engine: **P8** never ran, **P7's latency half** never ran, and **P4**
+ran one implementation rather than two.
 
 ### The four things that block a release
 
@@ -229,7 +230,7 @@ Gates are **binary**. No warnings-as-passes. Every gate names the number that ki
 | `G2` | The five planes, per plane | One differing byte on any plane | F2–F3 | **G2a, G2b enforcing** |
 | `G3` | `sha256(export) == sha256(source)` for the whole file | Hash mismatch with no scoped justification | F3 | **enforcing** |
 | `G4` | Store opens with stock `zarr` and `xarray` in a process asserting `"mdio" not in sys.modules` | Any array a consumer needs being unreadable without MDIO | F3 | **enforcing** |
-| `G5` | Survey-scale ingest inside a **pre-declared** memory ceiling | OOM, or peak RSS over the ceiling | F6 | **built — P3 in flight** |
+| `G5` | Survey-scale ingest inside a **pre-declared** memory ceiling | OOM, or peak RSS over the ceiling | F6 | **enforcing** |
 | `G6` | Two independent runs produce **identical array bytes** | Any array-content difference between runs | F6 | **enforcing** |
 | `G7` | **Every corruption fails its gate and only its gate** | Any corruption that passes, or one that fails the wrong gate | **F4** | **enforcing** |
 
@@ -379,10 +380,12 @@ Only measured numbers appear here.
 | **Cross-implementation** | **P4 did not fire.** TensorStore (C++, no shared code with `zarr-python`) read all **97** structured header fields byte-identically. The same reader **refused** `segy_file_header`'s dtype — extension support is per-implementation — D-0035 |
 | **Licence scan** | **51** runtime distributions, **zero GPL/AGPL**, one allowlisted with cited evidence — D-0005 / D-0006 |
 | **Reproducibility** | A fresh clone syncs, passes `doctor` 8/8, and runs the suite with no local state |
-| **Real-survey validation** | Full chain — **including G7** — against a real 3D poststack survey: **116,532 traces, 494,565,408 bytes**. G1, G2, G3, G4, G7 all `PASS`; verdict **`EQUIVALENT`**. **One flipped bit in one sample, out of 116,648,532, failed G2d and nothing else** — D-0030 |
+| **Survey-scale validation** | **Probe P3: 11 files, 1,281,852 traces, 5.07 GiB.** Every gate `PASS` on every file, **G3 byte-identical 11 of 11**, **1,283,133,852 samples compared exhaustively and exactly**, **zero ceiling breaches** against limits declared *before* the run — D-0042 |
+| **Memory behaviour** | Peak RSS **2.87 GiB of 8.0 declared**. Varied by **0.06 GiB** across files of identical size — memory tracks the chunk working set, not the file. That flatness *is* "no unbounded growth" |
+| **Single-bit detection** | **One flipped bit in one sample, out of 116,648,532, fails G2d and nothing else** — D-0030 |
 | **G7 cost** | Was 370 s / 2.83 GB — **87 % of the chain**. Now copies only what a control touches, hard-links the rest, and hashes the original before and after. **D18 closed** — D-0038 |
 | **Header cost, measured on real data** | Full 240-byte preservation compressed to **2.0 B/trace (121:1)** — **0.06 % of the store**. ≈10× cheaper than §5.4's synthetic pessimistic figure |
-| **Gates enforcing** | **6 of 7** — G1, G2, G3, G4, G6, G7. See [The Gates](#-the-gates). |
+| **Gates enforcing** | **7 of 7** — measured at survey scale. See [The Gates](#-the-gates). |
 | **Certificates issued** | `EQUIVALENT` demonstrated on a real survey; none committed (restricted source) |
 
 ### Two defects the tests caught, recorded rather than quietly fixed
