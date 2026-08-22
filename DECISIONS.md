@@ -1015,3 +1015,55 @@ it still requires a pre-registration merged before the run (**SP9**).
 
 **`OPEN_DEBTS.md` D11 closes.** It said *"a gate a corrupted store passes is not a gate;
 no negative control exists yet, because no gate exists yet."* Both halves are now false.
+
+---
+
+## D-0030 — 2026-08-22 — `EQUIVALENT` issued on a real survey; D18 measured
+
+**Measured.** The full certify chain, **including G7**, run against the real 3D poststack
+survey of D-0026 — 116,532 traces, 494,565,408 bytes.
+
+**Verdict: `EQUIVALENT`.** G1, G2 (all five planes), G3, G4 and **G7** all `PASS`;
+G5 and G6 `NOT_RUN`.
+
+**Every G7 control behaved on real data exactly as on the 30-trace article**, including
+the two multi-gate ones. **One flipped bit in one sample — out of 116,648,532 samples —
+failed G2d and nothing else.**
+
+That last sentence is the project's claim, demonstrated rather than asserted: the engine
+detects a single-bit defect in a half-gigabyte file, attributes it to exactly one plane,
+and has been shown on that same store that every other gate is capable of failing too.
+
+### D18 measured — and the number is bad
+
+| Quantity | Value |
+|---|---|
+| Store | 362 MB |
+| Controls | 8 |
+| **Bytes copied by G7** | **2.83 GB** |
+| **G7 wall clock** | **370.4 s — 46.3 s per control** |
+| Ingest | 8.8 s · G3 export 1.3 s |
+| **Total chain** | **423.4 s — G7 is 87 %** |
+
+**G7 costs eight times the entire rest of the pipeline.** At 362 MB that is tolerable. At
+a 20 GB survey it is ~160 GB of copying and hours of wall clock — and that is the point
+at which an operator switches it off. **A gate that gets switched off is worse than one
+that was never written** (**SP11**), so this is a correctness risk wearing a performance
+costume, and D18 stays open with a measured number attached.
+
+Candidate fixes are recorded on the debt; the cheapest correct one is to copy only the
+array a control actually touches — most touch one — which would cut 2.83 GB to a few
+hundred MB without weakening a single assertion.
+
+### What this does **not** establish
+
+- **Not probe P3, and D2 stays open.** No pre-registered memory or wall-clock ceiling, no
+  pre-registered trace sample, one run. **SP9**: running a large file is not measuring
+  scale behaviour, and a threshold chosen after seeing the result is not a threshold.
+- **Not G6.** Determinism needs two runs.
+- **One file, one vintage, one geometry, one revision**, with a perfectly regular grid and
+  zero dead traces — **D5 is untouched**.
+
+**The data is not in this repository and never will be** (D-0025). Everything derived —
+store, export, report, and the certificate, which carries a source path and a source hash
+— went to the firewalled `local/`.

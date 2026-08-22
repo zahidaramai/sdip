@@ -84,8 +84,8 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Source** | 5,314 lines across 35 modules |
 | **Tests** | 307 passing · mypy strict clean · ruff clean |
 | **Gates enforcing** | **5 of 7** — G1, G2 (five planes), G3, G4, **G7**. G5 and G6 not built |
-| **Certificates issued** | **0** |
-| **Decision record** | 29 entries, append-only |
+| **Certificates issued** | `EQUIVALENT` reachable and demonstrated; none committed |
+| **Decision record** | 30 entries, append-only |
 | **Open debts** | 23 entries, append-only — scheduled, never cancelled |
 
 > **Read the two rows in bold before using anything here.** Zero gates enforce today. What has actually been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md). Where a property is unmeasured this project says so and names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
@@ -310,10 +310,11 @@ Only measured numbers appear here.
 | **Header coverage** | Measured for **every** SEG-Y revision: rev 0 → 131 gap-free fields, rev 1 → 97, rev 2 / 2.1 → 90 (already gap-free). Zero `ibm32` header fields in all four — D-0003 |
 | **Licence scan** | **51** runtime distributions, **zero GPL/AGPL**, one allowlisted with cited evidence — D-0005 / D-0006 |
 | **Reproducibility** | A fresh clone syncs, passes `doctor` 8/8, and runs the suite with no local state |
-| **Real-survey validation** | Full chain run against a **real 3D poststack survey — 116,532 traces, 494,565,408 bytes**, 3,884× the synthetic article. Every implemented gate passed, including a **byte-identical G3 round trip**. Verdict still `PROVISIONAL` because G7 has not run — D-0026 |
+| **Real-survey validation** | Full chain — **including G7** — against a real 3D poststack survey: **116,532 traces, 494,565,408 bytes**. G1, G2, G3, G4, G7 all `PASS`; verdict **`EQUIVALENT`**. **One flipped bit in one sample, out of 116,648,532, failed G2d and nothing else** — D-0030 |
+| **G7 cost, measured** | **370 s and 2.83 GB copied** for 8 controls on a 362 MB store — **87 % of the whole chain**. Bad, measured, and open as **D18**: a gate that gets switched off is worse than one never written |
 | **Header cost, measured on real data** | Full 240-byte preservation compressed to **2.0 B/trace (121:1)** — **0.06 % of the store**. ≈10× cheaper than §5.4's synthetic pessimistic figure |
 | **Gates enforcing** | **5 of 7** — G1, G2, G3, G4, **G7**. See [The Gates](#-the-gates). |
-| **Certificates issued** | **0** |
+| **Certificates issued** | `EQUIVALENT` reachable and demonstrated; none committed |
 
 ### Two defects the tests caught, recorded rather than quietly fixed
 

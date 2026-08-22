@@ -409,7 +409,28 @@ survey the store is hundreds of megabytes and there are eight controls, so a nai
 copies the store eight times — a cost nobody has measured, and one that could make G7
 impractical exactly where it matters most.
 
-**Closure:** measure it, and if the copy cost is prohibitive, replace whole-store copies
-with a targeted approach that corrupts and restores in place — recording that the
-restore is verified, because an audit that leaves the store modified is worse than none.
+**MEASURED 2026-08-22** (`DECISIONS.md` D-0030), on a 362 MB store from a real survey:
+
+| Quantity | Value |
+|---|---|
+| Bytes copied | **2.83 GB** (8 controls × 362 MB) |
+| G7 wall clock | **370.4 s — 46.3 s per control** |
+| Rest of the chain | 53 s |
+| **G7 share of total** | **87 %** |
+
+**G7 costs eight times the entire rest of the pipeline.** At 362 MB that is a slow
+coffee. At a 20 GB survey it is ~160 GB of copying and hours of wall clock — the point at
+which an operator switches it off. **A gate that gets switched off is worse than one that
+was never written** (**SP11**), so this is a correctness risk wearing a performance
+costume.
+
+**Closure, cheapest correct option first:**
+
+1. **Copy only the array a control touches.** `flipped_textual_byte` needs one attribute,
+   not 362 MB; most controls touch a single array. Cuts 2.83 GB to a few hundred MB
+   without weakening one assertion.
+2. **Corrupt and restore in place**, verifying the restore by hash. Removes copying
+   entirely, but a crash mid-audit would leave the store modified — needs a sentinel
+   written first and a refusal to certify while it exists.
+3. **Parallelise the controls.** Cuts wall clock, not bytes; disk is the ceiling.
 
