@@ -355,6 +355,7 @@ def certify_cmd(
 
     from sdip.equivalence import g4, issue
     from sdip.equivalence.closure import roundtrip_closure
+    from sdip.equivalence.determinism import g6
     from sdip.equivalence.nonvacuity import g3_control, g7
     from sdip.export import export as run_export
     from sdip.ingest import ingest as run_ingest
@@ -384,6 +385,12 @@ def certify_cmd(
         closure = roundtrip_closure(exported, output, spec, workdir=Path(scratch) / "closure")
         closure_status, closure_summary = closure.status, closure.summary()
 
+        # G6: two INDEPENDENT ingests of the same source, compared on chunk bytes and on
+        # array values. Determinism cannot be shown by one run, so this is the only
+        # place it can be established.
+        determinism = g6(source, number, template=template, workdir=Path(scratch) / "g6")
+        g6_status, g6_summary = determinism.status, determinism.summary()
+
         issued_at = _dt.datetime.now(tz=_dt.UTC).isoformat(timespec="seconds")
         certificate = issue(
             result,
@@ -392,6 +399,7 @@ def certify_cmd(
             portability=portability,
             nonvacuity=nonvacuity,
             closure=closure,
+            determinism=determinism,
             issued_at=issued_at,
             issued_by=f"sdip {__version__}",
         )
@@ -406,9 +414,18 @@ def certify_cmd(
     click.echo(f"[{roundtrip.status}] G3        whole-file SHA-256")
     click.echo(f"[{portability.status}] G4        stock zarr+xarray without mdio")
     click.echo(f"[{g7_status}] G7        {g7_summary}")
+    click.echo(f"[{g6_status}] G6        {g6_summary}")
     click.echo(f"[{closure_status}] closure   {closure_summary}")
     click.echo("")
+    readiness = certificate.payload["release_readiness"]
+    click.echo("")
     click.echo(f"verdict:     {certificate.verdict}")
+    click.echo(
+        f"release:     {'READY' if readiness['release_ready'] else 'NOT READY'}"
+        + ("" if readiness["release_ready"] else f" - {len(readiness['blocking'])} blocking")
+    )
+    for item in readiness["blocking"][:6]:
+        click.echo(f"               - {item}")
     click.echo(f"reason:      {certificate.payload['verdict_reason']}")
     click.echo(f"certificate: {path}")
 

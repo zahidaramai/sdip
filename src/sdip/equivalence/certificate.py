@@ -27,9 +27,11 @@ from typing import Any
 from sdip import __version__
 from sdip._pins import CERTIFICATE_SCHEMA_VERSION, LOSSY_CODECS, SPEC_VERSION
 from sdip.equivalence.closure import ClosureResult
+from sdip.equivalence.determinism import G6Result
 from sdip.equivalence.nonvacuity import G7Result
 from sdip.equivalence.planes import PlaneResult
 from sdip.equivalence.portability import PortabilityResult
+from sdip.equivalence.scale import G5Result
 from sdip.errors import DirtyTreeError
 from sdip.export.roundtrip import RoundTripResult
 from sdip.guard.pins import check_pins
@@ -134,6 +136,8 @@ def issue(
     portability: PortabilityResult | None = None,
     nonvacuity: G7Result | None = None,
     closure: ClosureResult | None = None,
+    determinism: G6Result | None = None,
+    scale: G5Result | None = None,
     root: str | Path = ".",
     require_clean_tree: bool = True,
     issued_at: str,
@@ -151,6 +155,10 @@ def issue(
         closure: Round-trip closure result — the exported SEG-Y re-ingested and checked
             as an artifact in its own right (`DECISIONS.md` D-0031 arrow 3). Absent means
             ``NOT_RUN``.
+        determinism: G6 result — two independent ingests compared on chunk bytes and
+            array values. Absent means ``NOT_RUN``.
+        scale: G5 result — a completed survey-scale run judged against ceilings declared
+            **before** it (SP9). Absent means ``NOT_RUN``.
         nonvacuity: G7 result. **Absent means ``NOT_RUN``, and the verdict cannot reach
             ``EQUIVALENT``** - a store whose planes pass against an engine never shown
             capable of failing has not been checked.
@@ -214,6 +222,10 @@ def issue(
         gate_block["G3"] = roundtrip.status
     if portability is not None:
         gate_block["G4"] = portability.status
+    if scale is not None:
+        gate_block["G5"] = scale.status
+    if determinism is not None:
+        gate_block["G6"] = determinism.status
     if nonvacuity is not None:
         gate_block["G7"] = nonvacuity.status
 
@@ -259,6 +271,8 @@ def issue(
         "portability": portability.to_json() if portability is not None else None,
         "nonvacuity": nonvacuity.to_json() if nonvacuity is not None else None,
         "roundtrip_closure": closure.to_json() if closure is not None else None,
+        "determinism": determinism.to_json() if determinism is not None else None,
+        "scale": scale.to_json() if scale is not None else None,
         "transforms_declared": [exposure.to_json()] if exposure.present else [],
         "transform_scope_blocks_equivalence": transform_blocked,
         "transform_scope_reason": transform_reason or None,
@@ -279,7 +293,70 @@ def issue(
         "issued_at": issued_at,
         "issued_by": issued_by,
     }
+    payload["release_readiness"] = release_readiness(payload)
     return Certificate(payload=payload)
+
+
+def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
+    """Evaluate a certificate against the **release** acceptance criterion (D-0031).
+
+    **This is stricter than ``verdict``, deliberately, and the difference is the point.**
+
+    ``verdict == "EQUIVALENT"`` requires all five planes and G7. It **tolerates G5 and G6
+    being ``NOT_RUN``**, which is honest today — they are recorded ``NOT_RUN`` on the
+    face of the certificate, and a reader can see exactly what did not run.
+
+    At release that tolerance stops being honest, because the reader stops looking.
+    **An unrun gate is not a passing one**, and a certificate with holes in it is the
+    untrusted artifact §0 describes. So the release criterion is: **every gate ``PASS``,
+    no gate ``NOT_RUN``, both outputs validated** — the MDIO store *and* the exported
+    SEG-Y (arrow ③, round-trip closure).
+
+    Reported alongside the verdict rather than replacing it, so that tightening the bar
+    later is a change of *policy* and not a change of *measurement*: a certificate issued
+    today already carries the answer to the stricter question.
+
+    Args:
+        payload: A certificate document.
+
+    Returns:
+        ``{"release_ready": bool, "blocking": [...], "criterion": ...}``.
+    """
+    gates = payload.get("gates", {})
+    planes = payload.get("planes", {})
+    blocking: list[str] = []
+
+    for gate in GATES:
+        status = gates.get(gate, NOT_RUN)
+        if status != "PASS":
+            blocking.append(f"gate {gate} is {status}")
+    for key in PLANE_KEYS:
+        status = planes.get(key, {}).get("status", NOT_RUN)
+        if status != "PASS":
+            blocking.append(f"{key} is {status}")
+
+    closure = payload.get("roundtrip_closure")
+    if closure is None:
+        blocking.append("round-trip closure NOT_RUN - the exported SEG-Y is unvalidated")
+    elif closure.get("status") != "PASS":
+        blocking.append(f"round-trip closure is {closure.get('status')}")
+
+    if payload.get("lossy_codec_present"):
+        blocking.append("a lossy codec is present")
+    if payload.get("transform_scope_blocks_equivalence"):
+        blocking.append("a declared transform is not provably invertible on this data")
+    if payload.get("git", {}).get("dirty"):
+        blocking.append("issued from a dirty working tree")
+
+    return {
+        "release_ready": not blocking,
+        "blocking": blocking,
+        "criterion": (
+            "Both outputs fully validated: every gate PASS with none NOT_RUN, all five "
+            "planes PASS, and the exported SEG-Y validated as an artifact in its own "
+            "right by round-trip closure. See DECISIONS.md D-0031."
+        ),
+    }
 
 
 def _verdict_reason(

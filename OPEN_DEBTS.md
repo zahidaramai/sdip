@@ -625,3 +625,39 @@ is a defect."* Nothing demonstrates that a killed cloud run leaves a resumable c
 or an unambiguously incomplete store. A partial store that validates as complete is a
 **security-class** finding — it produces a false `EQUIVALENT`.
 
+---
+
+## D23 — G7's cost is the plane re-runs, not the copying. D18's fix was half the problem
+
+- **Status:** `OPEN` (raised 2026-08-22, correcting `DECISIONS.md` D-0038)
+
+D18 measured G7 at 370 s and 2.83 GB copied on a 362 MB store and blamed the copying.
+D-0038 fixed the copying — selective materialisation, hard links, verified-intact
+original. **The wall clock barely moved.**
+
+Measured on the first P3 file, 116,532 traces, with the fix in place:
+
+| Quantity | Value |
+|---|---|
+| G7 | **388.1 s** for 8 controls |
+| Per control | **48.5 s** |
+| Plane 3 alone, on this data | ~25 s |
+| Plane 4 alone | ~13 s |
+| Whole rest of the chain | ~79 s |
+
+**48.5 s per control is almost exactly the cost of running the five planes once.** The
+copying is now negligible; **the audit is dominated by re-running the gates**, which is
+inherent — G7 cannot know a gate fires without running it.
+
+**D-0038's claim that D18 was closed is therefore too strong**, and this entry corrects
+it (**SP10**: a wrong entry is corrected by a new one, never edited). The bytes problem is
+closed. The wall-clock problem is not, and it is the one that gets a gate switched off.
+
+**Closure:** run the controls **in parallel**. They are independent by construction — each
+has its own working copy and touches nothing shared — so 8 controls across 8 workers is
+roughly one control's wall clock. The disk is no longer the ceiling now that copying is
+selective, which is precisely what makes parallelism available.
+
+Note this does **not** breach P3's declared 900 s ceiling — the first file completed the
+full chain in 467 s. It is a cost that scales badly, not a failure.
+
