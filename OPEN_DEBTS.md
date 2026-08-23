@@ -1167,7 +1167,7 @@ these are geometry verdicts needing a full trace-header pass, and **probe P5 pin
 exact types as the defence SDIP relies on** (`DECISIONS.md` D-0036) — `GridTraceCountError`
 is raised unconditionally and is therefore not suppressible by `MDIO_IGNORE_CHECKS`.
 Re-typing them would overturn a recorded measurement for a presentation preference, which
-is a maintainer's call (`CLAUDE.md` §9). **Candidate closure:** handle the named upstream
+is a maintainer's call (the operating contract §9). **Candidate closure:** handle the named upstream
 types at the CLI boundary only, so the library keeps raising what P5 measured while the
 operator stops getting a stack trace.
 
@@ -1489,7 +1489,7 @@ everything else green.
 G3's control as much as to closure's.
 
 **Left open deliberately, not overlooked.** `release_readiness` is the release gate.
-Changing what it blocks on is a change to the gates, and `CLAUDE.md` §9 makes that a
+Changing what it blocks on is a change to the gates, and the operating contract §9 makes that a
 maintainer decision rather than a side effect of closing a debt. The fix is small — treat
 a non-PASS `nonvacuity.g3_control` or `nonvacuity.closure_control` as blocking, in
 `src/sdip/equivalence/certificate.py` — and it belongs to whoever owns that file.

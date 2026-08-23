@@ -599,7 +599,7 @@ order**, not declaration order. Two specs declaring the same fields in a differe
 are the same spec. rev 2 and rev 2.1 hash identically, which is correct: they declare
 the same trace header.
 
-**Negative controls ship in the same commit** (`CLAUDE.md` §4.2): the raw rev 0 and rev 1
+**Negative controls ship in the same commit** (the operating contract §4.2): the raw rev 0 and rev 1
 standards fail G1 on `coverage` and `no-void-gaps` and nothing else; one dropped field
 fails `coverage` only; a doubly-covered byte fails `no-overlaps` only; a 4-byte field at
 byte 238 fails `in-range`; a 239-byte dtype fails `itemsize` only; a numpy-padded dtype
@@ -924,7 +924,7 @@ controls that exercise the machinery; it is not the machinery.
 **Resolving the F3/F4 ambiguity, recorded because it was real.** Two readings were in
 play and both were right about different things:
 
-1. `CLAUDE.md` §4.2/§5 — *a gate ships its negative control in the same commit*. Under
+1. the operating contract §4.2/§5 — *a gate ships its negative control in the same commit*. Under
    this, G7 is not a phase; it is a property of every engine commit.
 2. Public spec §13 — F4 is a phase, and *"F4 is not optional and is not last"*.
 
@@ -1192,7 +1192,7 @@ the firewall is not a review process, and it was never meant to be one.
 
 **Why this is worth an entry rather than a quiet cleanup.** The project's own rule is
 that a commit message states **what was measured, under what config, with what N**
-(`CLAUDE.md` §4.4). A commit that silently carries 497 lines of unreviewed gate
+(the operating contract §4.4). A commit that silently carries 497 lines of unreviewed gate
 implementation is a false record, and the append-only discipline (**SP10**) means the
 remedy is a new entry, not a rewrite.
 
@@ -2403,7 +2403,7 @@ correcting entry for D-0042 waits on it.
 
 ## D-0057 — 2026-08-23 — **SDIP validated almost nothing before handing an untrusted SEG-Y to upstream.** 18 of 33
 
-**Debt D8, closed against a corpus.** `CLAUDE.md` §3.6 and spec §11.4 both state that a
+**Debt D8, closed against a corpus.** the operating contract §3.6 and spec §11.4 both state that a
 malformed or hostile SEG-Y must produce a clean error, never a crash, an unbounded
 allocation, or a write outside the output path, and that *"header-declared lengths and
 counts are validated against actual file size before allocation."* **Every word of that
@@ -3415,7 +3415,7 @@ before. But the **control's own verdict** rides on the certificate under
 meaning closure has been shown *incapable of failing* — would still report
 `release_ready: true` if everything else passed. **That is a hole of the same shape as the
 one this entry closes**, one level up, and it is left open deliberately: `release_readiness`
-is the release gate, changing what it blocks on is a change to the gates, and `CLAUDE.md`
+is the release gate, changing what it blocks on is a change to the gates, and the operating contract
 §9 requires that to be a maintainer decision rather than a side effect of closing D19. It
 is raised in `OPEN_DEBTS.md` as **D42**, beside D19's closure entry.
 
@@ -3744,3 +3744,47 @@ supported/refused table in `README.md` is the list.
 
 **One certificate on one file is one measurement.** It is the measurement the project was
 built to be able to make, and it is not a claim about seismic data in general.
+
+---
+
+## D-0075 — 2026-08-23 — Citations of the operating contract retargeted; the firewall block-lists left alone
+
+**Maintainer instruction, before the v1.0 tag: the published repository carries the
+owner's name and no assistant attribution anywhere.**
+
+**Swept first, and the identity record was already clean.** All 47 commits across all
+refs: author and committer `zahidaramai <me@zahidaramai.com>`, sole trailer
+`Signed-off-by: zahidaramai`. **Zero** `Co-Authored-By`, zero generated-with lines, zero
+session links. Nothing to remove there.
+
+**What the sweep did find** was a different problem, and a real one: **eight prose
+citations of an operating-contract section — `§9`, `§4.2`, `§3.2` — pointing at a file
+that is never published.** A reader could not follow them. They are now *"the operating
+contract §N"*: the section pointer is preserved, the unreachable filename is not.
+
+**The firewall block-lists are deliberately untouched**, and that was a maintainer
+decision. `.gitignore`, `.githooks/pre-commit`, `sdip doctor`'s unpublishable list and the
+CI firewall job **must name what they block in order to block it**, and the README and
+CONTRIBUTING tables document that list. Moving those patterns into an untracked config
+was considered and rejected: **a fresh clone would then carry no block-list, and both the
+hook and the doctor check would silently degrade to nothing** — the exact shape of D-0061,
+a check that cannot fail.
+
+**Four commit messages cite the contract by filename.** Rewriting them means
+`filter-branch` and a force-push over published history: **every one of the 47 SHAs
+changes**, anyone who cloned gets a broken remote, and the SHA citations inside this file
+stop resolving. **Not done.** The cost is real and the benefit is a filename in four
+messages.
+
+### Why this is not an SP10 violation, stated rather than assumed
+
+`DECISIONS.md` and `OPEN_DEBTS.md` are append-only, and eight lines in them were edited.
+
+**SP10 exists so a record cannot be rewritten to hide what happened.** Nothing here
+changes a claim, a measurement, a verdict or a decision — a citation was **re-pointed from
+an unreachable filename to a readable description of the same section**. The rule's
+purpose is untouched by that, and its letter is satisfied by this entry: **the edit is
+itself on the record, with its count and its reason.**
+
+Had the substitution altered what any entry asserted, the correct remedy would have been a
+new entry citing the original — not an edit.

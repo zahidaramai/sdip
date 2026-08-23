@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sdip"
-version = "0.1.0.dev0"
+version = "1.0.0"
 description = "SEG-Y to MDIO/Zarr v3 seismic conversion with a machine-checkable proof of lossless 1-1 equivalence and a validation certificate."
 readme = "README.md"
 license = "Apache-2.0"

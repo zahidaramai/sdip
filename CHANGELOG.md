@@ -5,10 +5,61 @@ All notable changes to SDIP are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-**An upstream pin bump is a minor release with a migration note**, because it
-invalidates every certificate issued under the previous pin (spec §12.4).
+**An upstream pin bump is a MAJOR release**, because it **invalidates every certificate
+issued under the previous pin** (spec §12.4, the operating contract §3.2). That is a breaking change
+to the only thing this project promises, so it takes a major version and a migration note.
 
-## [Unreleased]
+*Corrected at 1.0.0.* This line previously read "a minor release with a migration note",
+which was written at `0.x` where the distinction does not bite. Under SemVer a minor must
+be backward-compatible, and a release that voids every existing certificate is not.
+Shipping 1.0 with the old wording would have published a versioning policy that
+contradicts the pin policy.
+
+## [1.0.0] — 2026-08-23
+
+**The first release, and the first Equivalence Certificate this project has issued.**
+
+`release_ready: true`, `blocking: []`, at commit `2f33f3e` on a clean tree, against a real
+survey: **494,565,408 bytes, 116,532 traces, SEG-Y rev 1, big-endian, poststack 3-D,
+`ibm32`.** All seven gates `PASS`. Recorded as `EQUIVALENCE_LEDGER.md` **row 1**.
+
+| | |
+|---|---|
+| G5 | 1,115.3 s of a declared 1,500 s · 3.64 GiB of a declared 8.0 GiB |
+| G7 | 15 corruptions, each failing **exactly** the gates it declares and no others |
+| Round-trip closure | `PASS`, and its own control caught by the file-headers leg **and no other** |
+| Pre-registration | `prereg/P10-scale-recalibration.md@2f33f3e`, committed **before** the run |
+
+### What 1.0 means here, and what it does not
+
+**It means the guarantee is stable, not that the coverage is complete.** The version
+number is about the promise: a certificate from this engine means what it says, and the
+engine has been shown capable of failing on 15 distinct corruptions.
+
+**The supported surface is deliberately narrow and every refusal carries a stable reason
+code** — see the supported/refused table in `README.md`. SEG-Y **rev 2/2.1**,
+**little-endian**, five of the six lossy sample formats, prestack beyond CDP-offset,
+files above the 1.0 GiB verification envelope and every cloud backend are **refused, not
+attempted**. That list is the release, as much as the supported one is.
+
+**One certificate on one file is one measurement.** It is the measurement this project
+was built to be able to make. It is not a claim about seismic data in general.
+
+### Known, recorded, and not fixed
+
+`OPEN_DEBTS.md` carries every one. The ones a reader should know before depending on this:
+
+- **D38** — the verification path fully materialises; peak RSS is **linear in file size**
+  (`R² = 0.99997`). `sdip verify` **refuses** above 1.0 GiB rather than being OOM-killed.
+- **D43** — the wall-clock ceiling is a bare constant and went stale once already.
+- **D41** — the lossy-decode generalisation is half done: five formats are detected and
+  declared but get no raw parallel view, so they certify **`NON-EQUIVALENT` with a named
+  cause** rather than silently.
+- **D36** — for an `ibm32` source the store is **larger than the source**, because the
+  undecoded parallel view is the only recoverable copy of the bits.
+- **D14** — CI is parked in `ci/`; the badges describe enforcement that is not running.
+
+
 
 ### Added — roadmap phase F0
 
@@ -177,4 +228,4 @@ regression-tested. See D-0018.
   thirty lines below the entry announcing the full command surface was live, and carried
   a near-duplicate copy of its own F3–F7 block. Both corrected here.
 
-[Unreleased]: https://github.com/zahidaramai/sdip/commits/main
+[1.0.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.0.0
