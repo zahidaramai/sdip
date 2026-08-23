@@ -278,6 +278,7 @@ def ingest(
     template: str = "PostStack3DTime",
     overwrite: bool = False,
     override: SurveyOverride | None = None,
+    grid_overrides: dict[str, Any] | None = None,
 ) -> IngestResult:
     """Convert a SEG-Y file to an MDIO store against a gap-free spec.
 
@@ -346,6 +347,11 @@ def ingest(
         output: Output MDIO store path.
         revision: SEG-Y revision for the base spec.
         template: Registered MDIO template name.
+        grid_overrides: Passed straight through to ``segy_to_mdio``. Required by the
+            geometries whose grid is sized along a dimension MDIO **calculates** rather
+            than reads, such as ``shot_index``. **There is no default**: an override
+            changes what the store contains, and one this tool chose is not one anybody
+            declared.
         overwrite: Overwrite an existing store.
         override: A validated survey override (§6.4), applied over the gap-free base.
             It renames and retypes bytes the base spec already covered — it supplies the
@@ -399,15 +405,23 @@ def ingest(
         recording_log_records(ledger),
         persistence,
     ):
-        from mdio import segy_to_mdio
+        from mdio import GridOverrides, segy_to_mdio
         from mdio.builder.template_registry import get_template
 
+        # `grid_overrides` is FORWARDED, never invented. Upstream needs one for the
+        # geometries whose grid is sized along a dimension it CALCULATES rather than
+        # reads - `shot_index` - and without a way to pass it, three geometries were
+        # unreachable through SDIP's API while converting fine through upstream's
+        # (OPEN_DEBTS D25). SDIP supplies no default: an override changes what the store
+        # CONTAINS, not merely whether it can be written, and a grid this tool chose is
+        # not one anybody declared (SP9, the same reasoning as G5's ceilings).
         segy_to_mdio(
             segy_spec=built.segy_spec,
             mdio_template=get_template(template),
             input_path=source_path,
             output_path=output_path,
             overwrite=overwrite,
+            grid_overrides=GridOverrides(**grid_overrides) if grid_overrides else None,
         )
 
     # SDIP's own authoritative copy. Upstream's parsed view is kept alongside it;

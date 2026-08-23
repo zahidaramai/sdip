@@ -1,0 +1,46 @@
+# SDIP survey spec override — specification §6.4.
+#
+# Two pure renames over two existing rev 1 fields. Same bytes, same widths, same
+# meanings, different labels. Changes no byte content, which Plane 3 (G2c) re-verifies.
+
+name = "rev1-cdp-offset-alias"
+version = "1"
+
+evidence = """
+This override combines the two single-field aliases, because the 2-D CDP-offset template
+binds BOTH names and an override supplies a complete declaration rather than a partial
+one. Neither name is new information; both are labels for bytes the rev 1 standard
+already defines.
+
+byte 21: SEG-Y rev 1 defines trace-header bytes 21-24 as the "Ensemble number (i.e. CDP,
+CMP, CRP, etc.)", a 4-byte signed integer. The standard names the concept CDP in the
+field's own definition text. The pinned segy 0.6.0 carries it as ensemble_num at byte 21,
+format int32. Every CDP-indexed MDIO template binds it by the name cdp, which is not a
+SEG-Y rev 1 field NAME even though it is the standard's own word for the quantity.
+
+byte 37: SEG-Y rev 1 defines trace-header bytes 37-40 as "Distance from center of the
+source point to the center of the receiver group", a 4-byte signed integer, negative if
+opposite to the direction of shooting. That quantity is the source-receiver offset; the
+standard spells it out rather than naming it. The pinned segy 0.6.0 carries it as
+source_to_receiver_distance at byte 37, format int32.
+
+Measured in DECISIONS.md D-0039 (probe P7): cdp_offset_2d is refused before a single
+trace is read, first for offset and then for cdp. The same probe asserted both
+identities directly — the declared (byte, format) of each template name equals the
+standard's (byte, format) for the field it aliases, and neither offset nor cdp appears
+anywhere in the rev 1 field set.
+
+So the blocker is a pair of names, not any byte. This override supplies the names. G1 is
+re-asserted after it is applied, so a declaration narrower than what it displaces would
+uncover a byte and fail rather than pass quietly.
+"""
+
+[[field]]
+name = "cdp"
+byte = 21
+format = "int32"
+
+[[field]]
+name = "offset"
+byte = 37
+format = "int32"

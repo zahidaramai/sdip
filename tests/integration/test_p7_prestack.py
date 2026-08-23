@@ -65,6 +65,7 @@ from sdip.ingest import (
     ingest,
     read_raw_file_headers,
 )
+from sdip.spec import build_gap_free_spec
 from sdip.spec.gate import G1Result, g1
 from tests.fixtures.generators.prestack import (
     GEOMETRY_NAMES,
@@ -996,3 +997,82 @@ def test_the_latency_leg_of_the_pre_registration_was_not_run(probe):
     """
     assert set(CHUNK_SHAPES) == set(PREREGISTERED)
     assert all(run.ingested for run in probe.values())
+
+
+# ---------------------------------------------------------------------------
+# D24 + D25 — prestack through `sdip ingest` itself
+# ---------------------------------------------------------------------------
+
+SDIP_REACHABLE: tuple[str, ...] = ("cdp_offset_3d", "cdp_offset_2d")
+"""Geometries `sdip.ingest.ingest` can now reach. Measured 2026-08-23, D-0065.
+
+**Two of seven, and the boundary is a fact about SEG-Y rev 1, not a limitation of the
+mechanism.** `offset` and `cdp` are labels for bytes the standard already defines — 37
+and 21 — so an alias override supplies a name and nothing else. `cable`, `channel`,
+`gun`, `sail_line`, `receiver` and `shot_line` are not rev 1 fields under any name: there
+is no byte to alias, so no override can conjure them. Those five need a real survey whose
+own spec declares them, and per **D-0063 ruling 7** none is built until such a file
+exists.
+"""
+
+
+@pytest.mark.parametrize("name", SDIP_REACHABLE)
+def test_sdip_ingest_reaches_prestack_and_every_plane_passes(tmp_path, name):
+    """**D24 and D25 closed.** Both blockers were self-inflicted: a name and a kwarg.
+
+    Before this, seven geometries produced seven refusals from SDIP's own API while
+    upstream converted all seven — so the format was never the obstacle (probe P7 leg 2).
+    `ingest()` now forwards `grid_overrides`, and a §6.4 alias override supplies the
+    template's field names.
+
+    **Plane 4 PASSES here where it FAILS in :data:`PLANE_OUTCOMES`, and the difference is
+    the point.** Those stores are built by upstream `segy_to_mdio` and carry no undecoded
+    parallel view, so an `ibm32` source has unrecoverable bits (D-0061). A store SDIP
+    ingested carries the view, because `ingest` attaches it — so reaching prestack through
+    SDIP's own API is what makes prestack *certifiable*, not merely convertible.
+    """
+    from sdip.spec import load_override
+
+    article = build_fixture(name, tmp_path / f"{name}.sgy")
+    override = load_override(
+        Path("overrides/rev1-cdp-offset-alias.toml")
+        if name == "cdp_offset_2d"
+        else Path("overrides/rev1-offset-alias.toml")
+    )
+    store = tmp_path / f"{name}.mdio"
+    result = ingest(
+        article.path,
+        store,
+        template=article.template,
+        override=override,
+        grid_overrides=GRID_OVERRIDES.get(name),
+        overwrite=True,
+    )
+
+    spec = result.spec.segy_spec
+    passed = g1(spec.trace.header.fields, dtype=spec.trace.header.dtype).passed
+    statuses = [
+        plane_1(article.path, store).status,
+        plane_2(article.path, store).status,
+        plane_3(article.path, store, spec, g1_passed=passed).status,
+        plane_4(article.path, store, spec).status,
+        plane_5_checker(article.path, store, spec).status,
+    ]
+    assert statuses == ["PASS"] * 5, statuses
+
+
+def test_the_five_unreachable_geometries_need_names_no_rev1_byte_carries(tmp_path):
+    """The boundary is measured, not assumed, and it is a property of the standard.
+
+    Each refusal names fields that are **not rev 1 trace-header fields under any name**.
+    An alias override cannot supply them because there is no byte to alias — unlike
+    `offset` and `cdp`, which are the standard's own words for bytes 37 and 21.
+    """
+    unreachable = [n for n in GEOMETRY_NAMES if n not in SDIP_REACHABLE]
+    assert len(unreachable) == 5
+
+    rev1_fields = {
+        str(f.name) for f in build_gap_free_spec(revision=1).segy_spec.trace.header.fields
+    }
+    for wanted in ("cable", "channel", "gun", "sail_line", "receiver", "shot_line"):
+        assert wanted not in rev1_fields, f"{wanted} IS a rev 1 field; the boundary moved"

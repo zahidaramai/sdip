@@ -3075,3 +3075,47 @@ pass"* and asserted `plane.status == "PASS"` — after
 states a principle in its name and contradicts it in its body passes forever and protects
 the bug.** It now asserts both halves — marked fails, unmarked passes — because only the
 pair shows the check is conditional rather than merely strict.
+
+---
+
+## D-0065 — 2026-08-23 — **D24 and D25 closed.** Prestack is reachable through SDIP's own API
+
+**Both blockers were self-inflicted, exactly as D-0063 ruling 4 says: a name and a
+kwarg.** Seven geometries produced seven refusals from SDIP's API while upstream
+converted all seven — probe P7 leg 2 proved the format was never the obstacle.
+
+**D25:** `ingest()` now forwards `grid_overrides` to `segy_to_mdio`. **No default is
+supplied**, deliberately: an override changes what the store *contains*, not merely
+whether it can be written, and a grid this tool chose is not one anybody declared — the
+same reasoning as G5's ceilings (**SP9**).
+
+**D24:** a §6.4 alias override supplies the template's field names. A new
+`rev1-cdp-offset-alias.toml` declares both, because the 2-D template binds both and an
+override should be a complete declaration rather than a partial one.
+
+**Measured, through `sdip ingest` itself:**
+
+| geometry | ingest | P1 | P2 | P3 | P4 | P5 |
+|---|---|---|---|---|---|---|
+| `cdp_offset_3d` | **OK** | PASS | PASS | PASS | PASS | PASS |
+| `cdp_offset_2d` | **OK** | PASS | PASS | PASS | PASS | PASS |
+| the other five | refused | — | — | — | — | — |
+
+**Plane 4 PASSES here where it FAILS in `PLANE_OUTCOMES`, and that difference is the
+whole value of closing these.** The probe's stores are built by upstream `segy_to_mdio`
+and carry no undecoded parallel view, so an `ibm32` source has unrecoverable bits
+(D-0061). A store **SDIP ingested** carries the view because `ingest` attaches it.
+**Reaching prestack through SDIP's own API is what makes prestack certifiable rather than
+merely convertible.**
+
+### Two of seven, and the boundary is a fact about the standard
+
+`offset` and `cdp` are the standard's own words for bytes **37** and **21** — an alias
+supplies a label and nothing else, and G1 is re-asserted after it applies, so a
+declaration narrower than what it displaces would uncover a byte and fail.
+
+`cable`, `channel`, `gun`, `sail_line`, `receiver` and `shot_line` are **not rev 1 fields
+under any name**. There is no byte to alias, so no override can conjure them; they need a
+real survey whose own spec declares them. **Per ruling 7, none is built until such a file
+exists.** The boundary is asserted as a test, not assumed: if any of those six ever
+becomes a rev 1 field, it fails.
