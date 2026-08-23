@@ -427,6 +427,98 @@ def _declared_coordinates(group: Any, variable: str) -> tuple[str, ...]:
     return tuple(n for n in names if n in COORD_ARRAYS)
 
 
+PADDING_NOTE = (
+    "Padding is VERIFIED as padding, not merely excluded from comparison. SP12: a value "
+    "in an output that did not come from the source is a defect, and a grid cell no "
+    "source trace maps to must therefore hold the declared fill and nothing else. "
+    "Float arrays fill with NaN, which is unambiguous. INTEGER arrays fill with 0, which "
+    "is indistinguishable BY VALUE from a measured 0 - so `trace_mask` is the "
+    "authoritative liveness signal and a reader that ignores it can misread padding as "
+    "data (OPEN_DEBTS D29). SDIP cannot give an integer dtype a NaN; what it can do is "
+    "prove no padding cell was written with anything else, and say so here."
+)
+
+
+def _padding_evidence(group: Any, mask: Any, dimensions: tuple[str, ...]) -> dict[str, Any]:
+    """Verify every padding cell holds the declared fill, per array.
+
+    **This is not a comparison against the source** - padding has no source to compare
+    against, which is why the planes exclude it. It asserts the weaker, checkable thing:
+    that nothing was FABRICATED there (**SP12**).
+    """
+    dead = ~np.asarray(mask, dtype=bool)
+    fills: dict[str, Any] = {}
+    violations: list[dict[str, Any]] = []
+    ambiguous: list[str] = []
+
+    if not dead.any():
+        return {
+            "padding_cells": 0,
+            "padding_verified": True,
+            "padding_fills": {},
+            "padding_ambiguous_by_value": [],
+            "padding_violations": [],
+            "padding_note": PADDING_NOTE,
+        }
+
+    for name in sorted(group.array_keys()):
+        if name in dimensions:
+            continue
+        node = group[name]
+        # Rank is checked from METADATA before reading. `segy_file_header` is a
+        # 0-dimensional array and `node[:]` raises on it - reading first to find that out
+        # would make this leg fall over on a store shape the rest of the engine handles.
+        if len(getattr(node, "shape", ())) < dead.ndim:
+            continue
+        values = np.asarray(node[...])
+        if values.shape[: dead.ndim] != dead.shape:
+            continue
+        cells = values[dead]
+        if cells.dtype.names:
+            for field in cells.dtype.names:
+                column = np.asarray(cells[field])
+                _check_fill(f"{name}.{field}", column, fills, violations, ambiguous)
+        else:
+            _check_fill(name, cells, fills, violations, ambiguous)
+
+    return {
+        "padding_cells": int(dead.sum()),
+        "padding_verified": not violations,
+        "padding_fills": fills,
+        "padding_ambiguous_by_value": ambiguous,
+        "padding_violations": violations[:20],
+        "padding_note": PADDING_NOTE,
+    }
+
+
+def _check_fill(
+    label: str,
+    cells: Any,
+    fills: dict[str, Any],
+    violations: list[dict[str, Any]],
+    ambiguous: list[str],
+) -> None:
+    """Record one array's padding fill, and any cell that is not it."""
+    if cells.size == 0:
+        return
+    if cells.dtype.kind == "f":
+        fills[label] = "NaN"
+        bad = int(np.count_nonzero(~np.isnan(cells)))
+        if bad:
+            violations.append({"array": label, "expected": "NaN", "non_fill_cells": bad})
+        return
+    # Integer and byte arrays: 0, and 0 is a legal measured value, so it is ambiguous
+    # BY VALUE. The mask is what disambiguates, and this records that it must be used.
+    fills[label] = 0
+    ambiguous.append(label)
+    bad = int(np.count_nonzero(cells != 0))
+    if bad:
+        first = np.asarray(cells)[np.asarray(cells) != 0].ravel()[0]
+        violations.append(
+            {"array": label, "expected": 0, "non_fill_cells": bad, "first_value": int(first)}
+        )
+
+
 def _project_cell(cell: tuple[int, ...], grid: tuple[str, ...], dims: tuple[str, ...]) -> Any:
     """Project a full-grid cell onto the dimensions one array actually declares.
 
@@ -1127,6 +1219,13 @@ def plane_5(source: str | Path, store: str | Path, spec: Any) -> PlaneResult:
     missing_arrays = _missing_required(group, required)
 
     checks["no_required_array_missing"] = not missing_arrays
+
+    # SP12. Padding is not data, and this plane is where that is asserted rather than
+    # assumed: every cell no source trace maps to must hold the DECLARED FILL and nothing
+    # else. A value in a padding cell came from nowhere, which is fabrication.
+    padding = _padding_evidence(group, mask, dimensions)
+    checks["padding_is_only_fill"] = bool(padding["padding_verified"])
+
     ok = all(checks.values())
 
     return PlaneResult(
@@ -1143,6 +1242,7 @@ def plane_5(source: str | Path, store: str | Path, spec: Any) -> PlaneResult:
             "padding_cells": int(mask.size - mask.sum()),
             "checks": checks,
             "failed_checks": [k for k, v in checks.items() if not v],
+            **padding,
             "missing_required_arrays": missing_arrays,
             "required_array_note": REQUIRED_ARRAY_NOTE,
             "trace_map": trace_map.to_json(),

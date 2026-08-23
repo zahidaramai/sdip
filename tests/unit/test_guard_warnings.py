@@ -16,9 +16,12 @@ import pytest
 from sdip.guard.warn import (
     KNOWN_UPSTREAM_SUPPRESSIONS,
     LEDGER_SCOPE,
+    MAX_STDERR_RECORDS,
+    WARNING_TEXT_LINE,
     WarningLedger,
     recording_log_records,
     recording_warnings,
+    recovering_worker_stderr,
 )
 
 
@@ -312,25 +315,62 @@ def test_a_plain_handler_really_does_silence_a_bare_root_logger(repo_root):
 
 
 # --------------------------------------------------------------------------------------
-# Blind spot 1 — the ledger declares what it did not watch. OPEN_DEBTS D26.
+# Blind spot 1 — narrowed. Text is recovered; the warning object is still gone.
+# OPEN_DEBTS D35.
 # --------------------------------------------------------------------------------------
 
 
 def test_the_ledger_declares_its_own_scope():
     """An empty `observed` must stop reading as evidence of a quiet run.
 
-    **These strings are the claim.** A change that genuinely captures worker warnings
-    has to edit this assertion, which is deliberate: the capability and the claim land
-    in the same commit or neither does.
+    **These strings are the claim.** A change that genuinely captures worker warnings as
+    *objects* has to edit this assertion, which is deliberate: the capability and the
+    claim land in the same commit or neither does.
     """
     scope = WarningLedger().to_json()["scope"]
 
-    covers = "parent-process Python warnings and parent-process log records only"
+    covers = (
+        "parent-process Python warnings, parent-process log records, and warning-shaped "
+        "text recovered from file descriptor 2 during the guarded call"
+    )
     assert scope["covers"] == covers
-    assert scope["worker_process_warnings"] == "NOT CAPTURED - see OPEN_DEBTS D26"
-    assert scope["worker_process_log_records"] == "NOT CAPTURED - see OPEN_DEBTS D26"
+    assert "NOT CAPTURED AS WARNING OBJECTS" in scope["worker_process_warnings"]
+    assert scope["worker_process_log_records"] == "NOT CAPTURED - see OPEN_DEBTS D35"
     assert "spawn pool" in scope["empty_observed_means"]
     assert "monkeypatching" in scope["why_workers_are_not_captured"]
+
+
+def test_the_scope_is_machine_checkable_not_only_prose():
+    """D35's narrowing. A consumer must be able to TEST for the gap, not read for it.
+
+    Prose on a certificate is read by whoever thought to read it. These booleans are the
+    part a downstream validator can assert on, and each has exactly one meaning:
+    ``worker_warnings_captured`` is what SP6 would need and does not have;
+    ``worker_stderr_text_recovered`` is the weaker thing that was actually built.
+    """
+    scope = WarningLedger().to_json()["scope"]
+
+    assert scope["worker_warnings_captured"] is False
+    assert scope["worker_log_records_captured"] is False
+    assert scope["log_records_below_effective_level_captured"] is False
+    # A fresh ledger watched nothing, and says so rather than implying a quiet run.
+    assert scope["worker_stderr_text_recovered"] is False
+    assert scope["worker_stderr_bytes_scanned"] == 0
+    assert scope["worker_stderr_recovery_truncated"] is False
+
+
+def test_worker_warnings_captured_is_a_literal_false():
+    """The flag must not be inferrable from the recovery that DOES work.
+
+    Text recovery is strictly weaker than warning capture, and the failure mode this
+    guards against is a later change wiring ``worker_warnings_captured`` to
+    ``stderr_watched`` and thereby claiming SP6 coverage the project does not have.
+    """
+    ledger = WarningLedger(stderr_watched=True, stderr_bytes_scanned=4096)
+    scope = ledger.to_json()["scope"]
+
+    assert scope["worker_stderr_text_recovered"] is True
+    assert scope["worker_warnings_captured"] is False
 
 
 def test_the_scope_names_the_sites_that_were_searched():
@@ -343,3 +383,211 @@ def test_the_scope_names_the_sites_that_were_searched():
     for site in ("mdio/segy/blocked_io.py:104", "mdio/segy/parsers.py:61"):
         assert site in why
     assert "spec 3.3" in why
+    # Every MDIOSettings field, so "there is no worker callback" is checkable rather
+    # than asserted. Two of the eight are barred by spec 9.1 and named as such.
+    for setting in ("cloud_native", "export_cpus", "import_cpus", "save_segy_file_header"):
+        assert setting in why
+
+
+def test_a_warning_printed_by_a_child_process_is_recovered(tmp_path):
+    """MEASURED, and the point of the whole exercise.
+
+    A subprocess is the honest stand-in for an MDIO ``spawn`` worker: a different
+    interpreter whose ``warnings`` machinery this process cannot reach, sharing only the
+    inherited file descriptor. The recovered record proves the text is reachable when
+    the object is not.
+    """
+    ledger = WarningLedger()
+    with recovering_worker_stderr(ledger):
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import warnings\n"
+                "warnings.warn('from another interpreter', RuntimeWarning, stacklevel=1)\n",
+            ],
+            check=True,
+        )
+
+    assert ledger.stderr_watched is True
+    recovered = [r for r in ledger.stderr_recovered if "another interpreter" in r.message]
+    assert len(recovered) == 1, [r.message for r in ledger.stderr_recovered]
+    assert recovered[0].category == "RuntimeWarning"
+    assert recovered[0].lineno == 2
+
+
+def test_the_tee_does_not_swallow_what_it_reads(tmp_path, capfd):
+    """SP6's own discipline: a recorder must not leave the process quieter.
+
+    The bytes must reach the real descriptor unchanged. If they did not, SDIP would be
+    silencing the run it is measuring — exactly what it criticises upstream for.
+    """
+    ledger = WarningLedger()
+    with recovering_worker_stderr(ledger):
+        subprocess.run(
+            [sys.executable, "-c", "import sys; sys.stderr.write('SENTINEL-VISIBLE\\n')"],
+            check=True,
+        )
+
+    assert "SENTINEL-VISIBLE" in capfd.readouterr().err
+    assert ledger.stderr_bytes_scanned >= len("SENTINEL-VISIBLE\n")
+
+
+def test_ordinary_stderr_text_is_not_recorded_as_a_warning():
+    """NEGATIVE CONTROL for the recovery above.
+
+    The stream carries progress bars, tracebacks and log lines. A recogniser that
+    accepted any of those would fill the certificate with noise, and a certificate full
+    of noise is read by nobody — which is how a real warning gets missed.
+    """
+    ledger = WarningLedger()
+    with recovering_worker_stderr(ledger):
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import sys\n"
+                "sys.stderr.write('Ingesting traces: 100%|####| 1/1 [00:00<00:00]\\r')\n"
+                "sys.stderr.write('Ingestion grid is sparse. Sparsity ratio: 3.00\\n')\n"
+                "sys.stderr.write('Traceback (most recent call last):\\n')\n"
+                "sys.stderr.write('some/file.py:12: not a warning line\\n')\n",
+            ],
+            check=True,
+        )
+
+    assert ledger.stderr_bytes_scanned > 0
+    assert ledger.stderr_recovered == []
+
+
+def test_a_warning_glued_to_a_progress_bar_frame_is_still_found():
+    r"""``tqdm`` ends its frames with ``\r``, not ``\n``.
+
+    Splitting on newlines alone would leave the next warning welded to the tail of a
+    progress bar and unrecognisable. Measured on a real ingest, where exactly this
+    interleaving occurs.
+    """
+    ledger = WarningLedger()
+    with recovering_worker_stderr(ledger):
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import sys\n"
+                "sys.stderr.write('Ingesting: 50%|##  | 1/2\\r')\n"
+                "sys.stderr.write('w.py:7: UserWarning: welded to the bar\\n')\n",
+            ],
+            check=True,
+        )
+
+    assert [r.message for r in ledger.stderr_recovered] == ["welded to the bar"]
+
+
+def test_recovery_is_reported_in_its_own_channel_never_merged():
+    """Three mechanisms, three lists. Merging would misreport which one was involved.
+
+    ``observed`` is an object the warnings machinery handed over; ``logged`` is a
+    ``LogRecord``; ``stderr_recovered`` is four fields parsed out of a printed line. Only
+    the first is suppressible by a filter, and only the first two carry a category the
+    emitter actually raised.
+    """
+    ledger = WarningLedger()
+    with recovering_worker_stderr(ledger), recording_warnings(ledger, reemit=False):
+        warnings.warn("in this process", UserWarning, stacklevel=1)
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import warnings; warnings.warn('in another', UserWarning, stacklevel=1)",
+            ],
+            check=True,
+        )
+
+    payload = ledger.to_json()
+    assert [w["message"] for w in payload["observed"]] == ["in this process"]
+    assert [r["message"] for r in payload["stderr_recovered"]] == ["in another"]
+    assert payload["stderr_recovered_count"] == 1
+    assert payload["stderr_recovered"][0]["channel"] == "stderr-text"
+
+
+def test_the_parent_s_own_warning_is_not_double_counted():
+    """The attribution claim, tested rather than asserted in prose.
+
+    ``recording_warnings`` records instead of emitting, so a parent warning never
+    reaches the descriptor and cannot appear in both lists. That is the entire basis for
+    ``scope.worker_stderr_attribution``; if it stopped holding, every recovered line
+    would become ambiguous.
+    """
+    ledger = WarningLedger()
+    with recovering_worker_stderr(ledger), recording_warnings(ledger, reemit=False):
+        warnings.warn("parent only", UserWarning, stacklevel=1)
+
+    assert [w.message for w in ledger.observed] == ["parent only"]
+    assert ledger.stderr_recovered == []
+
+
+def test_descriptor_two_is_restored_even_when_the_block_raises():
+    """This module must not leak global state, which is what it criticises upstream for.
+
+    A leaked descriptor here is worse than a leaked warnings filter: every later write to
+    stderr in the process would go into a pipe nobody drains.
+    """
+    import os
+
+    before = os.fstat(2)
+    with pytest.raises(RuntimeError, match="from inside the block"):
+        with recovering_worker_stderr():
+            raise RuntimeError("from inside the block")
+
+    after = os.fstat(2)
+    assert (after.st_dev, after.st_ino) == (before.st_dev, before.st_ino)
+
+
+def test_recovery_is_bounded_on_untrusted_text():
+    """Spec 3.6. Warning text can embed content from a file SDIP did not create.
+
+    An unbounded recogniser would let a hostile source grow the certificate without
+    limit. The ceiling is declared on the certificate rather than silently applied.
+    """
+    ledger = WarningLedger()
+    with recovering_worker_stderr(ledger):
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import sys\n"
+                f"for i in range({MAX_STDERR_RECORDS + 50}):\n"
+                "    sys.stderr.write(f'f.py:{i}: UserWarning: flood\\n')\n",
+            ],
+            check=True,
+        )
+
+    assert len(ledger.stderr_recovered) == MAX_STDERR_RECORDS
+    assert ledger.stderr_recovery_truncated is True
+    assert ledger.to_json()["scope"]["worker_stderr_recovery_truncated"] is True
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "/a/b.py:303: RuntimeWarning: overflow encountered in ibm2ieee",
+        "/a/b.py:1: Warning: the bare base category",
+        "C:\\a\\b.py:9: UserWarning: a windows path",
+    ],
+)
+def test_the_recogniser_accepts_the_default_warning_format(line):
+    """The shape ``warnings.formatwarning`` prints, including the bare ``Warning``."""
+    assert WARNING_TEXT_LINE.match(line) is not None
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "Traceback (most recent call last):",
+        "Ingestion grid is sparse. Sparsity ratio: 3.00",
+        "/a/b.py:12: not a warning at all",
+        "/a/b.py:12: RuntimeError: an exception is not a warning",
+    ],
+)
+def test_the_recogniser_rejects_everything_else(line):
+    """NEGATIVE CONTROL. Each of these appears on stderr during a real ingest."""
+    assert WARNING_TEXT_LINE.match(line) is None

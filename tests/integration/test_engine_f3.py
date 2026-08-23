@@ -129,6 +129,9 @@ def test_plane_5_reports_an_invertible_map(article):
         # D-0061: this plane's claim is about which cells are live, which is
         # unanswerable if the mask or a grid coordinate array is simply absent.
         "no_required_array_missing": True,
+        # D29 / SP12: padding is VERIFIED as padding - every cell no source trace maps
+        # to holds the declared fill and nothing else. A value there came from nowhere.
+        "padding_is_only_fill": True,
     }
     assert plane.evidence["padding_cells"] == 0
 

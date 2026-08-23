@@ -3119,3 +3119,362 @@ under any name**. There is no byte to alias, so no override can conjure them; th
 real survey whose own spec declares them. **Per ruling 7, none is built until such a file
 exists.** The boundary is asserted as a test, not assumed: if any of those six ever
 becomes a rev 1 field, it fails.
+
+---
+
+## D-0066 — 2026-08-23 — **D35 narrowed, not closed.** The worker's warning is now text on the certificate; the object is still gone
+
+**Decision.** `recovering_worker_stderr()` duplicates file descriptor 2 into a pipe for
+the duration of an ingest and runs a drain thread that copies every byte straight back to
+the real descriptor, scanning the stream for lines in `warnings.formatwarning`'s shape.
+Recovered lines land in a **third list**, `stderr_recovered[]`, never merged with
+`observed[]` or `logged[]`. The ledger's scope block gains **booleans** so a consumer can
+test for the remaining gap instead of reading for it.
+
+### What was measured, before deciding anything
+
+Probe: `local/d26_worker_warning_probe.py`, three legs, one fixture. Fixture is the
+30-trace poststack article (5 × 6 × 32) with **all 960 sample words** overwritten with
+`0x61800000` — 0.5 × 16³³ ≈ 2.7e39, past float32's 3.4e38 ceiling. N = 1 fixture, 960
+words, 3 ingests. Binding pins, `multidimio` 1.2.1 / `segy` 0.6.0, Python 3.12.
+
+**Leg 1 — baseline, the gap reproduced end to end:**
+
+```
+planted overflow words   : 960
+inf on disk              : 960      finite on disk: 0
+ledger.observed          : 0        ledger.observed matching "ibm2ieee": 0
+ledger.logged            : 1        (coordinate-unit notice, mdio.ingestion.segy.coordinates)
+```
+
+Every sample in the store was destroyed and the SP6 evidence for it was an empty list.
+Two warnings reached the terminal and nothing else — `RuntimeWarning: overflow
+encountered in ibm2ieee` out of `numba/np/ufunc/dufunc.py:303`, and `UserWarning:
+Warning: converting a masked element to nan` out of `pydantic/main.py:263`. **Two
+libraries, one empty ledger** — the gap is structural, not a property of `ibm2ieee`.
+
+**Leg 2 — file descriptor 2, teed:**
+
+```
+stderr bytes teed        : 1129
+warning-shaped lines     : 2
+    x1 [RuntimeWarning] overflow encountered in ibm2ieee
+    x1 [UserWarning] Warning: converting a masked element to nan.
+progress-bar bytes still present : True
+```
+
+**Leg 3 — the seam search, re-run against the installed source rather than inherited
+from D-0046.** `mdio/segy/blocked_io.py:104` hardcodes `initializer=trace_worker_init`;
+`mdio/segy/parsers.py:61` passes no initializer; `segy_to_mdio` takes
+`(segy_spec, mdio_template, input_path, output_path, overwrite, grid_overrides,
+segy_header_overrides)` and none of them reaches a worker; `MDIOSettings` exposes
+**exactly eight** fields — `cloud_native`, `export_cpus`, `grid_sparsity_ratio_limit`,
+`grid_sparsity_ratio_warn`, `ignore_checks`, `import_cpus`, `raw_headers`,
+`save_segy_file_header` — two barred by §9.1 and **none a worker callback**. The workers
+return `HeaderArray` and `SummaryStatistics | None`, with nowhere to carry a warning
+back. **The D-0046 conclusion is confirmed: there is no public seam that makes a worker
+warning into a warning object here.** A hook installed anyway is monkeypatching, §3.3.
+
+### Why the tee is permissible where the alternatives were not
+
+`PYTHONWARNINGS` and `sys.warnoptions` **are** inherited by a spawned child, and both were
+rejected again for the same reason D-0046 gave: they change the child's *filters*, not the
+*destination*. The warning still goes to the child's stderr. `PYTHONWARNINGS=error` would
+additionally kill a worker on any unrelated warning — a behaviour change, not a
+measurement.
+
+Descriptor capture was rejected in D-0046 on the grounds that it "swallows the live
+display for the duration of the ingest". **That objection was to a redirect. This is a
+tee** — the drain thread writes every byte back to the saved descriptor before parsing it,
+and leg 2 measured the progress bar still rendering. It is the same rule
+`recording_log_records` already follows for `logging.lastResort`: SDIP does not leave the
+process quieter than it found it. Nothing upstream is touched, nothing is monkeypatched,
+no new dependency, and no barred variable.
+
+### The four ways this is weaker than capture, recorded rather than glossed
+
+1. **No `Warning` object** — no arguments, no `__cause__`, no stack. Four fields parsed
+   out of a printed line, and the `category` is a *name*, never a class.
+2. **The originating process is not recoverable from the text.** What is known is that a
+   recovered line did not come from *this* process's `warnings.warn`, because
+   `recording_warnings` is recording rather than emitting for the duration.
+3. **It counts lines, not events.** Python's per-process `__warningregistry__` prints a
+   given (message, category, module, lineno) once per worker under the default action.
+   **960 overflowing words produced one line.** The line proves the loss happened; it
+   does not measure it.
+4. **Worker log records are still not captured.** A worker's `logger.warning` reaches the
+   same descriptor via `logging.lastResort` but arrives as a bare message with no
+   `file:lineno: Category:` prefix, indistinguishable from any other stderr text.
+
+### The declaration is now machine-checkable, which was the second half of the ask
+
+`scope` carries booleans beside the prose:
+
+```
+worker_warnings_captured                    : false   <- hardcoded, never computed
+worker_stderr_text_recovered                : true
+worker_stderr_bytes_scanned                 : 1129
+worker_stderr_recovery_truncated            : false
+worker_log_records_captured                 : false
+log_records_below_effective_level_captured  : false
+```
+
+`worker_warnings_captured` is a **literal `False`**, not derived from `stderr_watched`,
+and there is a unit test asserting exactly that. The failure mode being guarded against
+is a later change wiring the two together and thereby claiming SP6 coverage the project
+does not have. The claim and the capability ship in one commit or neither does.
+
+`worker_stderr_text_recovered` distinguishes *nothing was printed* from *nobody was
+listening* — the same distinction `LEDGER_SCOPE` exists to draw for `observed`.
+
+### Bounded on untrusted input (§3.6)
+
+Warning text can embed content derived from a SEG-Y SDIP did not create. Lines over
+`MAX_STDERR_LINE_BYTES` (8 KiB) are copied through but not scanned, and the recovered
+list stops at `MAX_STDERR_RECORDS` (1024) and sets `worker_stderr_recovery_truncated`.
+The realistic ceiling is workers × distinct sites, so the cap is never reached in
+practice — it exists so a hostile source cannot grow a certificate without bound.
+
+### Verification
+
+`uv run ruff check src tests`, `uv run ruff format --check src tests` (95 files) and
+`uv run mypy src` (46 files) clean. `tests/unit/test_guard_warnings.py` **37 passed**,
+12 new test functions; `tests/integration/test_sp6_blindspots.py` **8 passed**, running a
+real ingest per fixture. Full suite **1099 passed, 3 failed** — all three failures in
+other agents' concurrent uncommitted work (`planes.py`'s new `padding_is_only_fill`,
+`nonvacuity.py`'s new `fabricated_value_in_padding` control, and a new
+`overrides/rev1-cdp-offset-alias.toml`), none touching `guard/`, warnings, or stderr.
+
+**No engine check and no gate was added or changed**, so `nonvacuity.py` is untouched and
+the one-control-per-gate property is undisturbed. The recovery is evidence recorded on a
+certificate, not a condition anything passes or fails — deliberately. A gate on
+`stderr_recovered` would be a gate on text whose originating process is unknown.
+
+**Schema.** `stderr_recovered` and `stderr_recovered_count` added to
+`sdip-certificate-v0.schema.json` (`warnings` has `additionalProperties: false`), and the
+six scope booleans are declared with `worker_warnings_captured`,
+`worker_stderr_text_recovered` and `worker_log_records_captured` **required**.
+
+**D35 stays open.** The warning object still does not cross the process boundary and no
+pinned upstream seam can make it. What changed is that the ingest whose every sample
+became `inf` now says so on its certificate instead of in terminal scrollback.
+
+---
+
+## D-0067 — 2026-08-23 — **D19 was not closed by `roundtrip_closure` existing.** Arrow ③ passed a corrupted export
+
+**Decision.** `roundtrip_closure` gains a fourth leg: SDIP's two authoritative raw
+file-header attributes are compared between the original store and the closure store by
+**byte equality**, and the result is ANDed into `ClosureResult.passed`. A new G7-style
+negative control, `closure_control`, ships in the same change and is required to fail
+closure **through that leg and no other**.
+
+### What was actually open
+
+`OPEN_DEBTS.md` **D19** asked for the exported SEG-Y to be validated *as an artifact in
+its own right*, and named the closure: re-ingest the export and verify (a) the five
+planes against the resulting store and (b) that its arrays match the original store's.
+`roundtrip_closure` did exactly that, `sdip certify` called it, and `release_readiness`
+already treated a missing or non-PASS result as blocking. On the face of it the debt was
+built.
+
+It was not. **The check passed a corrupted export.**
+
+### The measurement
+
+30-trace synthetic poststack fixture (`tests/fixtures/generators/poststack3d.py`,
+seed 20260822), rev 1, `PostStack3DTime`, 11 arrays, ingest → export byte-identical
+(G3 PASS). One bit flipped in the exported file, one variant per run — **N = 7 corrupted
+variants plus the clean baseline**:
+
+| Flipped byte (0-based file offset) | What it is | Closure verdict *before* | Detected by |
+|---|---|---|---|
+| — (clean) | — | **PASS** | — |
+| 64 | textual header | FAIL | missing-array rule, *incidentally* |
+| 3199 | textual header, last card byte | FAIL | missing-array rule, *incidentally* |
+| 3221 | binary header byte 22 (`samples_per_trace`) | FAIL | re-ingest refused, `UntrustedInputError` |
+| **3300** | **binary header byte 101 — unassigned** | **PASS** | **nothing** |
+| **3450** | **binary header byte 251 — unassigned** | **PASS** | **nothing** |
+| 3600 | first trace-header byte | FAIL | arrays `headers`, `headers_raw_uint8` |
+| 3840 | first sample byte | FAIL | array `amplitude_raw_ibm32` |
+
+Two exports whose **400-byte binary file header differed from the store's** closed
+cleanly. §4.3 makes those raw bytes *authoritative on conflict*. They were not compared.
+
+### Why, and why it is structural rather than a slip
+
+Two facts compose into the hole.
+
+**The five planes in closure are a self-consistency leg.** They run *export* against the
+store built *from that export*. Whatever the export says, the closure store faithfully
+carries — so Plane 1 and Plane 2 report `PASS` on a corrupted header exactly as readily
+as on a clean one. That leg cannot, by construction, disagree with the export about
+anything. It establishes that the file parses gap-free and survives an ingest, which is
+worth having and is not what D19 asked for.
+
+**The only cross-check against the original walked `group.arrays()`.** SDIP's raw file
+headers are **not arrays**. MDIO writes the raw binary header only behind
+`MDIO__IMPORT__RAW_HEADERS`, which §9.1 bars, so SDIP captures the 3600 bytes itself and
+stores them as base64 **attributes** (D-0021). `zarr`'s `Group.arrays()` does not yield
+attributes, so nothing read them.
+
+The consequence, stated plainly: **in the `ROUNDTRIP-SCOPED` regime arrow ③ exists for,
+two of the five planes were checking nothing at all.** The textual half looked covered
+only by luck — a flip breaks the EBCDIC decode, the ingest falls back to the header-less
+shape (D-0055), and the missing-array rule fires on the vanished variable. Detection by
+luck is not detection; byte 3300 has no such side effect and sailed through.
+
+### Why a function existing is not a debt discharged
+
+This is the second time on this project that reading code has agreed with a debt while
+running it disagreed. The general form is worth recording: **a check is closed by the
+corruption it rejects, never by the code it contains.** `roundtrip_closure` mentioned
+every noun D19 used — re-ingest, five planes, every array — and still let the artifact
+through. Nothing short of running a corrupted export past it would have said so, which is
+exactly what §5 requires and exactly what had not been done: **closure had no negative
+control.**
+
+To be precise about the scope of that, since the tempting overstatement is wrong: G4, G5
+and G6 have no negative controls either. That is not the same omission. §7 G7 names
+exactly G2a–G2e and G3 as the gates it audits, so those three sit outside G7's declared
+remit by specification. Closure did not — it is an **equivalence check that decides
+whether a measured artifact is sound**, which is precisely the category §5's rule covers,
+and it was the only one of those with nothing corrupted at it. Whether G4/G5/G6 should
+acquire controls is a separate question and is not settled here.
+
+### What was built
+
+1. **`_compare_file_headers`** in `src/sdip/equivalence/closure.py`. Byte equality on
+   `sdipRawTextHeader` and `sdipRawBinaryHeader`, one reader per attribute — never a
+   reader that loads both, for D-0028's reason: a shared reader made a textual defect
+   fail Plane 2, and a check that fires on someone else's corruption cannot localise a
+   fault. An attribute present in one store and absent from the other is a **failure**;
+   "could not read it" must never resolve to "skipped, therefore matched".
+2. **`ClosureResult.passed`** requires `len(file_headers) == len(FILE_HEADER_ATTRS)` — a
+   count, not a truthiness test, so a leg that quietly stopped comparing one of the two
+   headers cannot pass for one that compared both (**SP11**).
+3. **`closure_control`** in `src/sdip/equivalence/nonvacuity.py`, appended beside
+   `g3_control` and following it: closure judges a *file* against a store, so its control
+   corrupts a file. It flips byte **3300** of a **copy** under `workdir` and leaves the
+   export untouched — verified by hash rather than asserted.
+4. **`tests/negative/test_closure_control.py`** — 14 permanent controls, including
+   `test_closure_passed_the_corruption_before_the_file_header_leg`, which keeps the
+   pre-fix verdict as an executable record.
+
+### The offset is chosen so that only the leg under test can fire
+
+Byte 3300 is **binary-header byte 101**. Measured against the pinned `segy` 0.6.0, not
+read off a standards document: byte 101 falls in no declared field of the revision **0**,
+**1** or **2** binary-header specification (27, 30 and 44 fields, last ending at bytes 60,
+306 and 332; byte 101 sits in a gap in all three). It moves no parsed field, no sample
+format and no trace length. So the corrupted export still re-ingests, G1 still passes,
+all five planes still hold, and every array still matches — and the control asserts all
+of that, then asserts that `differing_file_headers == ["sdipRawBinaryHeader"]`.
+
+**That is §7 G7's "and ONLY that gate", transposed from gates to closure's legs**, and it
+is the assertion that stops the control going vacuous. A control that asserted only
+*"closure FAILed"* would keep passing if the file-header leg were deleted and some
+unrelated leg happened to catch the flip. This one starts failing the moment the leg it
+targets stops carrying the verdict. The textual attribute is asserted **unchanged** in
+the same breath, for D-0028's reason.
+
+### On the overlap with G3, which is real and is not a defect
+
+A flipped export byte also changes the whole-file hash, so **G3 fails on this corruption
+too** whenever the round trip was byte-identical. The control declares `must_fail:
+["roundtrip_closure"]` and records the overlap on
+`g3_also_fires_when_byte_identical` rather than hiding it.
+
+The overlap is not a reason to call closure redundant, and the direction matters. In the
+regime closure exists for — a non-conforming source where byte-identity was never
+possible — **G3 is already `ROUNDTRIP-SCOPED` before anyone corrupts anything.** It
+returns the same verdict for a clean scoped export and a mangled one, so it discriminates
+nothing at all. That is the whole of D19's argument and the reason arrow ③ is a separate
+arrow in D-0031.
+
+### Cost
+
+One additional re-ingest of the export per `certify`. Measured on the 30-trace fixture:
+closure 2.19 s, `closure_control` **2.14 s**, against 12.78 s for the source ingest and
+1.77 s for all 16 G7 controls. The clean closure run is **passed in** as the control's
+baseline rather than recomputed — `g7` refuses to interpret controls against a dirty
+baseline and this does the same, but re-running a check to learn an answer already on
+hand is exactly the waste D18 was about. That halves the addition: one extra ingest, not
+two.
+
+Scaling is one ingest of the export, so it tracks survey size linearly and will need the
+same scrutiny D18 gave G7 when P3 sets a scale ceiling. Recorded rather than pre-empted.
+
+### What this does NOT do
+
+**It does not gate.** `release_readiness` blocks on `roundtrip_closure.status`, so the
+new leg gates automatically — a corrupted export now blocks release, which it did not
+before. But the **control's own verdict** rides on the certificate under
+`nonvacuity.closure_control` and is not consulted by `release_readiness`, exactly as
+`nonvacuity.g3_control` is not. A `certify` run whose closure control came back `FAIL` —
+meaning closure has been shown *incapable of failing* — would still report
+`release_ready: true` if everything else passed. **That is a hole of the same shape as the
+one this entry closes**, one level up, and it is left open deliberately: `release_readiness`
+is the release gate, changing what it blocks on is a change to the gates, and `CLAUDE.md`
+§9 requires that to be a maintainer decision rather than a side effect of closing D19. It
+is raised in `OPEN_DEBTS.md` as **D42**, beside D19's closure entry.
+
+It also does not touch `verdict_for`. An `EQUIVALENT` verdict has never depended on
+closure and still does not.
+
+---
+
+## D-0069 — 2026-08-23 — **D29 closed.** Padding is now verified as padding
+
+**Measured first**, on a ragged grid with 18 real padding cells:
+
+| array | padding fill | ambiguous by value? |
+|---|---|---|
+| `amplitude` | `NaN` | no |
+| `cdp_x`, `cdp_y` | `NaN` | no |
+| `headers.*` (structured int) | **`0`** | **yes** |
+| `headers_raw_uint8` | **`0`** | **yes** |
+
+**SDIP cannot give an integer dtype a `NaN`.** There is no such value, so the ambiguity
+between a padding zero and a measured zero is not fixable in the store's dtype. What was
+fixable is the thing **SP12 actually asks for**:
+
+> *any value in an output that did not come from the source is a defect. Grid padding is
+> not data and must be excluded by the live mask.*
+
+Padding was **excluded** from every comparison — correctly, it has nothing to compare
+against — and therefore **nothing could catch data appearing there.** Plane 5 now asserts
+that every cell no source trace maps to holds the **declared fill and nothing else**. Not
+a comparison against the source; the weaker checkable claim that nothing was
+**fabricated**.
+
+The certificate records, per array, the fill and whether it is ambiguous by value, so a
+downstream reader can see that `trace_mask` is the authoritative liveness signal rather
+than infer it.
+
+### The control, and why it needed a new outcome
+
+`fabricated_value_in_padding` writes a real-looking sample into a dead cell. **It is
+invisible to Planes 3 and 4 by construction** — both iterate the trace map, and a padding
+cell is not in it.
+
+**It cannot run on a full grid**, and neither can `flipped_raw_ibm32_word` on a store from
+an exact sample format. Both previously raised, which G7 scored as a control that *failed
+to apply* — so G7 would have failed on any full-grid store. That was a latent defect in
+the existing `ibm32` control too, hidden only because every fixture happened to be
+`ibm32`.
+
+Added `ControlNotApplicableError`: **not a pass, not a failure, and always counted.** The
+G7 result carries `controls_applied` and `controls_not_applicable` **with names and
+reasons**, and the summary line names them. *A control that is never applicable anywhere
+would otherwise be indistinguishable from one that passes* — which is the vacuity SP11
+exists to catch, one level up again.
+
+**Non-vacuity proven on both halves**, because only the pair shows the control is real:
+
+| fixture | outcome |
+|---|---|
+| ragged grid (has padding) | **fires**, declared `{G2e}`, observed `{G2e}` |
+| full grid (no padding) | **not applicable**, named, reason recorded |
+
+**16 controls. Suite: 1118 passed.**

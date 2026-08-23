@@ -57,9 +57,24 @@ def test_g7_passes(audited):
 
 @pytest.mark.parametrize("control", CONTROLS, ids=lambda c: c.name)
 def test_each_control_fails_exactly_its_declared_gates(audited, control):
-    """The core G7 assertion, reported per control so a failure names itself."""
+    """The core G7 assertion, reported per control so a failure names itself.
+
+    A control that is **not applicable** to this fixture is asserted to be so explicitly
+    and by name, rather than skipped: `fabricate_in_padding` has no padding cell in a
+    full grid, and `flip_raw_ibm32_word` has nothing to flip in a store from an exact
+    sample format. Neither is a pass. Both are covered where they DO apply by
+    `test_the_padding_control_fires_where_padding_exists_and_is_skipped_where_it_cannot`,
+    which is what keeps this branch from becoming a way for a control to disappear.
+    """
     *_, audit = audited
     outcome = next(o for o in audit.outcomes if o.corruption.name == control.name)
+    if outcome.not_applicable is not None:
+        assert control.name in {"fabricated_value_in_padding", "flipped_raw_ibm32_word"}, (
+            f"{control.name} declared itself not applicable to the standard fixture; "
+            "only the two conditional controls may, and each is covered elsewhere"
+        )
+        assert outcome.failed_gates == frozenset()
+        return
     assert outcome.error is None, outcome.error
     assert outcome.missed == [], (
         f"{control.name} PASSED {outcome.missed} - a gate a corrupted store passes is not a gate"
@@ -136,3 +151,50 @@ def test_g7_fails_loudly_when_a_checker_goes_blind(audited, monkeypatch):
     assert not audit.passed, "G7 passed while Plane 4 was blind - G7 is itself vacuous"
     blinded = next(o for o in audit.outcomes if o.corruption.name == "flipped_sample_bit")
     assert "G2d" in blinded.missed
+
+
+def test_the_padding_control_fires_where_padding_exists_and_is_skipped_where_it_cannot(
+    tmp_path,
+):
+    """**SP12 / D29.** Both halves, because only the pair shows the control is real.
+
+    A control that is "not applicable" everywhere is indistinguishable from one that
+    passes, so this asserts it actually FIRES on a store that has padding — and is
+    recorded as **not applicable, by name**, on a store whose grid is full.
+
+    Padding is excluded from every plane comparison, correctly: it has nothing to compare
+    against. That is precisely why a fabricated value there was invisible until this
+    control existed — Planes 3 and 4 iterate the trace map, and a padding cell is not in
+    it.
+    """
+    from sdip.equivalence.nonvacuity import g7
+    from sdip.ingest import ingest
+    from tests.fixtures.generators.irregular import make_ragged_lines
+
+    # (a) a ragged grid HAS padding: the control fires, and on G2e alone.
+    ragged = make_ragged_lines(tmp_path / "ragged.sgy")
+    ragged_store = tmp_path / "ragged.mdio"
+    result = ingest(ragged.path, ragged_store)
+    fired = g7(ragged.path, ragged_store, result.spec.segy_spec, workdir=tmp_path / "g7a")
+    assert fired.status == "PASS"
+    outcome = next(o for o in fired.outcomes if o.corruption.name == "fabricated_value_in_padding")
+    assert outcome.not_applicable is None, "a ragged grid has padding; it must fire"
+    assert outcome.failed_gates == frozenset({"G2e"})
+
+    # (b) a full grid has none: recorded as not applicable, NAMED, never silently passed.
+    full = make_poststack3d(tmp_path / "full.sgy")
+    full_store = tmp_path / "full.mdio"
+    full_result = ingest(full.path, full_store)
+    skipped = g7(full.path, full_store, full_result.spec.segy_spec, workdir=tmp_path / "g7b")
+    assert skipped.status == "PASS"
+    payload = skipped.to_json()
+    names = [entry["name"] for entry in payload["controls_not_applicable"]]
+    assert "fabricated_value_in_padding" in names
+    assert payload["controls_applied"] == payload["control_count"] - len(names)
+    # the reason is on the record, not inferred
+    reason = next(
+        e["reason"]
+        for e in payload["controls_not_applicable"]
+        if e["name"] == "fabricated_value_in_padding"
+    )
+    assert "grid is full" in reason

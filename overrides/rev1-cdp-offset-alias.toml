@@ -33,6 +33,24 @@ anywhere in the rev 1 field set.
 So the blocker is a pair of names, not any byte. This override supplies the names. G1 is
 re-asserted after it is applied, so a declaration narrower than what it displaces would
 uncover a byte and fail rather than pass quietly.
+
+SCOPE — where this mapping stops being correct. It is an alias, and an alias asserts that
+a byte range MEANS what the standard says it means. That is true of a conforming rev 1
+file and is NOT guaranteed of every file calling itself rev 1:
+
+  - A survey that reuses bytes 21-24 or 37-40 for a contractor-specific quantity is
+    misdeclared by this override, and neither G1 nor Plane 3 can detect it: both check
+    that the bytes are COVERED and PRESERVED, not that the label is true. Byte content
+    round-trips identically either way, so the store is faithful and the NAME is wrong.
+  - A survey that is not CDP-indexed has no meaningful ensemble number at byte 21, so
+    binding a CDP template to it produces a grid whose axis is not a CDP axis.
+  - Rev 0 files are out of scope: rev 0 does not define byte 37 as source-receiver
+    distance, and the rev 0 override is a separate declaration for that reason.
+
+This override is therefore appropriate for a file whose bytes 21-24 and 37-40 carry the
+rev 1 meanings, and applying it to a file where they do not is a declaration error that
+SDIP cannot catch for you. That limit is why §6.4 requires cited evidence per override
+rather than a global rename switch.
 """
 
 [[field]]

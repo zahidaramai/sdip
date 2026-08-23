@@ -54,7 +54,7 @@ import shutil
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
 
@@ -66,6 +66,9 @@ from sdip.ingest.file_headers import (
 )
 from sdip.ingest.header_plane import ARRAY_NAME as RAW_HEADER_PLANE_ARRAY
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from sdip.equivalence.closure import ClosureResult
 
 ALL_GATES: tuple[str, ...] = ("G2a", "G2b", "G2c", "G2d", "G2e", "G3")
 """Every gate G7 audits. §7 G7 names exactly these."""
@@ -84,6 +87,21 @@ It is also what keeps the three file-header controls honest on a store that has 
 group**, so the corruption lands in the root ``zarr.json`` - a path no ``touches`` set
 names, and one this rule has already made a real copy.
 """
+
+
+class ControlNotApplicableError(Exception):
+    """This control has nothing to corrupt in THIS store.
+
+    **Distinct from a control that failed to apply, and the difference is load-bearing.**
+    `flip_raw_ibm32_word` has nothing to flip in a store built from a ``float32`` source;
+    `fabricate_in_padding` has no padding cell in a store whose grid is full. Neither is
+    a defect in the store or in the control - but neither is a PASS either, because
+    nothing was demonstrated.
+
+    G7 records these separately and **counts them on the result**, so a control that is
+    never applicable anywhere is visible rather than silently absent. That visibility is
+    the whole reason this is an explicit outcome instead of a quiet skip (**SP11**).
+    """
 
 
 def _group(store: Path) -> Any:
@@ -196,8 +214,8 @@ def _flip_raw_ibm32_word(store: Path) -> None:
 
     group = _group(store)
     if RAW_IBM32_ARRAY not in group:
-        msg = f"{RAW_IBM32_ARRAY} absent; this control applies only to an ibm32 source"
-        raise KeyError(msg)
+        msg = f"{RAW_IBM32_ARRAY} absent; this control applies only to a lossy-decode source"
+        raise ControlNotApplicableError(msg)
     words = group[RAW_IBM32_ARRAY][:]
     cell = (*tuple(0 for _ in words.shape[:-1]), 0)
     words[cell] = np.uint32(int(words[cell]) ^ 1)
@@ -290,6 +308,32 @@ def _delete_raw_header_plane(store: Path) -> None:
 def _delete_derived_coordinate(store: Path) -> None:
     """Delete the entire ``cdp_x`` array — the declared transform's output (D-0040)."""
     _delete_array(store, DERIVED_COORD_ARRAY)
+
+
+def _fabricate_in_padding(store: Path) -> None:
+    """Write a plausible value into a grid cell no source trace maps to.
+
+    **SP12's own sentence, as a control:** *a value in an output that did not come from
+    the source is a defect.* Padding is excluded from every comparison — correctly, it
+    has nothing to compare against — so before this control nothing could catch data
+    appearing there. The corruption is invisible to Planes 3 and 4 by construction,
+    because both iterate the trace map and a padding cell is not in it.
+
+    Raises:
+        KeyError: If the store's grid is full and has no padding cell to write into.
+    """
+    import numpy as np
+
+    group = _group(store)
+    mask = np.asarray(group["trace_mask"][:]).astype(bool)
+    dead = np.flatnonzero(~mask.ravel())
+    if dead.size == 0:
+        msg = "the store's grid is full; there is no padding cell to fabricate into"
+        raise ControlNotApplicableError(msg)
+    cell = np.unravel_index(int(dead[0]), mask.shape)
+    volume = group["amplitude"][:]
+    volume[cell] = np.float32(1.0)  # a real-looking sample where no trace exists
+    group["amplitude"][:] = volume
 
 
 RAW_HEADER_PLANE_BYTE: Final[int] = 232
@@ -476,6 +520,14 @@ CONTROLS: tuple[Corruption, ...] = (
         clause="DECISIONS D-0063 ruling 3 - returned, now conditioned on the marker",
     ),
     Corruption(
+        name="fabricated_value_in_padding",
+        description="A real-looking sample written into a cell no source trace maps to",
+        must_fail=frozenset({"G2e"}),
+        apply=_fabricate_in_padding,
+        touches=frozenset({"amplitude"}),
+        clause="SP12 / OPEN_DEBTS D29 - padding is not data, and now it is checked",
+    ),
+    Corruption(
         name="deleted_derived_coordinate",
         description="The whole cdp_x array removed",
         must_fail=frozenset({"G2c"}),
@@ -627,6 +679,9 @@ class ControlOutcome:
     corruption: Corruption
     failed_gates: frozenset[str]
     error: str | None = None
+    not_applicable: str | None = None
+    """Set when this control had nothing to corrupt in this store. See
+    :class:`ControlNotApplicableError` — not a pass, not a failure, and always counted."""
     bytes_copied: int = 0
     """Bytes really copied to build this control's working copy."""
     bytes_hardlinked: int = 0
@@ -635,6 +690,12 @@ class ControlOutcome:
     @property
     def passed(self) -> bool:
         """True when the observed failure set is exactly the declared one."""
+        if self.not_applicable is not None:
+            # Not a pass and not a failure: nothing was demonstrated either way. It does
+            # not fail G7, because a store with no padding cell has no padding defect to
+            # find - but it is COUNTED, so a control that is never applicable anywhere
+            # cannot hide.
+            return True
         return self.error is None and self.failed_gates == self.corruption.must_fail
 
     @property
@@ -655,6 +716,7 @@ class ControlOutcome:
             "unexpected_failures": self.unexpected,
             "missed_failures": self.missed,
             "error": self.error,
+            "not_applicable": self.not_applicable,
             "status": "PASS" if self.passed else "FAIL",
             "bytes_copied": self.bytes_copied,
             "bytes_hardlinked": self.bytes_hardlinked,
@@ -730,9 +792,20 @@ class G7Result:
         if not self.baseline_clean:
             return f"G7 FAIL: baseline is not clean - {self.baseline_detail}"
         if self.passed:
+            skipped = [o for o in self.outcomes if o.not_applicable is not None]
+            ran = len(self.outcomes) - len(skipped)
+            tail = ""
+            if skipped:
+                # Named, never merely counted: a control that is never applicable
+                # anywhere would otherwise be indistinguishable from one that passes.
+                tail = (
+                    f"; {len(skipped)} not applicable to this store ("
+                    + ", ".join(o.corruption.name for o in skipped)
+                    + ")"
+                )
             return (
-                f"G7 PASS: {len(self.outcomes)} corruptions, each failing exactly the "
-                "gates it must and no others"
+                f"G7 PASS: {ran} corruptions, each failing exactly the gates it must "
+                f"and no others{tail}"
             )
         parts = []
         for outcome in self.failed:
@@ -756,6 +829,12 @@ class G7Result:
             "original_store_intact": self.original_store_intact,
             "original_store_detail": self.original_store_detail,
             "control_count": len(self.outcomes),
+            "controls_applied": sum(1 for o in self.outcomes if o.not_applicable is None),
+            "controls_not_applicable": [
+                {"name": o.corruption.name, "reason": o.not_applicable}
+                for o in self.outcomes
+                if o.not_applicable is not None
+            ],
             "bytes_copied": self.bytes_copied,
             "bytes_hardlinked": self.bytes_hardlinked,
             "bytes_if_whole_store_copied_per_control": self.whole_store_copy_bytes,
@@ -879,6 +958,8 @@ def g7(source: str | Path, store: str | Path, spec: Any, *, workdir: str | Path)
         )
         try:
             control.apply(copy)
+        except ControlNotApplicableError as exc:
+            outcome.not_applicable = str(exc)
         except Exception as exc:
             outcome.error = f"could not apply: {type(exc).__name__}: {exc}"
         else:
@@ -932,4 +1013,186 @@ def g3_control(export_path: str | Path, offset: int = 3700) -> dict[str, Any]:
         "offset": offset,
         "status": "PASS" if before != after and restored == before else "FAIL",
         "clause": "§7 G3",
+    }
+
+
+CLOSURE_CONTROL_OFFSET: Final[int] = 3300
+"""File offset flipped by :func:`closure_control`. 0-based, so **binary header byte 101**.
+
+Chosen so that the corruption is invisible to everything *except* the leg under test.
+Measured against the pinned ``segy`` 0.6.0 rather than read off a standards document:
+binary-header byte 101 falls in no declared field of the rev **0**, **1** or **2**
+binary-header specifications (27, 30 and 44 fields, ending at bytes 60, 306 and 332
+respectively, with byte 101 inside a gap in all three). It therefore moves no parsed
+field, no sample format and no trace length - so the export still re-ingests, all five
+planes still hold against it, and every array still matches. The **only** thing that
+changes is the 400 authoritative raw bytes §4.3 makes decisive on conflict.
+
+That is the whole point: a control whose corruption trips several legs at once would
+still pass if the leg it targets were deleted.
+"""
+
+CLOSURE_CONTROL_NAME: Final[str] = "closure_binary_header_byte"
+"""Name this control reports under. Stable - it is cited from ``OPEN_DEBTS.md`` D19."""
+
+
+def closure_control(
+    export_path: str | Path,
+    original_store: str | Path,
+    spec: Any,
+    *,
+    baseline: ClosureResult,
+    workdir: str | Path,
+    offset: int = CLOSURE_CONTROL_OFFSET,
+) -> dict[str, Any]:
+    """G7's control for **round-trip closure**: corrupt the export's binary file header.
+
+    Separate from :data:`CONTROLS` for the same reason :func:`g3_control` is: closure
+    judges an *export file* against a store, so its control corrupts a file rather than a
+    store. It follows that pattern and tightens it in three ways.
+
+    **It carries a baseline.** ``g7`` refuses to interpret its controls when the clean
+    store already fails a gate, because *"the corrupted one failed"* then proves nothing.
+    The same holds here, and the baseline is **passed in** rather than recomputed: the
+    caller has just run closure on the clean export, and a second re-ingest of the same
+    file to learn the same answer is exactly the cost that made G7 unaffordable before
+    D18. One extra ingest, not two.
+
+    **It never touches the export.** ``g3_control`` corrupts in place and restores,
+    because G3's semantics are about a specific path. Closure has no such requirement, so
+    the corruption is applied to a copy under ``workdir`` and the export is left alone -
+    then measured to be untouched, by hash, rather than assumed so.
+
+    **It asserts which leg fired, not merely that something did.** ``must_fail`` for a
+    store control is a *set* of gates and the observed set must equal it (§7 G7). The
+    transposition to closure is that the observed set of failing **legs** must equal
+    ``{file headers}``: G1 passes, the export re-ingests, all five planes hold, every
+    array matches, and the textual header matches. A control asserting only *"closure
+    FAILed"* would keep passing if the file-header leg were deleted and something else
+    happened to catch the flip - which is the vacuity §7 G7 exists to prevent, one level
+    up.
+
+    **On G3.** A flipped export byte also changes the whole-file hash, so G3 fails too
+    whenever the round trip was byte-identical. That is not a second gate this control
+    targets and it is not a defect: in the ``ROUNDTRIP-SCOPED`` regime closure exists for,
+    **G3 is already FAIL before the corruption** and discriminates nothing, which is
+    precisely why closure is not redundant with it (``OPEN_DEBTS.md`` D19, D-0031 arrow
+    ③). The reported ``must_fail`` is closure alone, and ``g3_also_fires_when_byte_identical``
+    records the overlap rather than hiding it.
+
+    Args:
+        export_path: The exported SEG-Y. **Read, copied, never written.**
+        original_store: The store the export came from. Opened read-only by closure;
+            checked afterwards with the same stat tripwire ``g7`` uses.
+        spec: The gap-free ``SegySpec`` used for the original ingest.
+        baseline: Closure's verdict on the **clean** export. Must be ``PASS`` for the
+            control's result to mean anything.
+        workdir: Directory for the corrupted copy and its closure store. Temporary.
+        offset: Byte to flip. See :data:`CLOSURE_CONTROL_OFFSET`.
+
+    Returns:
+        ``{"detected": bool, "status": "PASS"|"FAIL", ...}``. ``status`` is ``PASS`` only
+        when the baseline passed, the corrupted export failed closure, the file-header
+        leg is the *only* leg that fired, and the export came through unmodified.
+    """
+    from sdip.equivalence.closure import roundtrip_closure
+    from sdip.ingest.file_headers import ATTR_RAW_BINARY, ATTR_RAW_TEXT
+    from sdip.provenance.hashing import sha256_file
+
+    export, store, work = Path(export_path), Path(original_store), Path(workdir)
+    work.mkdir(parents=True, exist_ok=True)
+
+    export_before = sha256_file(export)
+    # A content-free tripwire, not a fingerprint. Closure opens the store through
+    # `zarr.open_group(..., mode="r")` and writes only under `workdir`, so unlike G7 -
+    # whose working copies share inodes with the store by hard link - there is no
+    # mechanism here by which a write could reach it. The cheap check is proportionate to
+    # that; SHA-256 over a survey-scale store to re-answer a question with no mechanism
+    # behind it is the cost D18 was about.
+    store_before = _stat_tripwire(store)
+
+    corrupted = work / f"corrupted_{export.name}"
+    payload = bytearray(export.read_bytes())
+    if offset >= len(payload):
+        msg = f"offset {offset} is past the end of a {len(payload)}-byte export"
+        raise IndexError(msg)
+    payload[offset] ^= 0x01
+    corrupted.write_bytes(bytes(payload))
+
+    result = roundtrip_closure(corrupted, store, spec, workdir=work / "run")
+
+    export_after = sha256_file(export)
+    store_touched = _differences(store_before, _stat_tripwire(store))
+
+    # The observed set of failing legs, in the same declared-set form §7 G7 uses.
+    legs: dict[str, bool] = {
+        "re_ingest": result.error is not None,
+        "G1": result.g1 is None or not result.g1.passed,
+        "planes": bool(result.failed_planes),
+        "file_headers": bool(result.differing_headers),
+        "arrays": bool(
+            result.differing_arrays or result.only_in_original or result.only_in_closure
+        ),
+    }
+    observed = sorted(name for name, fired in legs.items() if fired)
+    detected = not result.passed
+    leg_exact = observed == ["file_headers"] and result.differing_headers == [ATTR_RAW_BINARY]
+    export_intact = export_after == export_before
+
+    reasons: list[str] = []
+    if not baseline.passed:
+        reasons.append(f"baseline is not clean - {baseline.summary()}")
+    if not detected:
+        reasons.append(
+            "closure PASSED an export whose binary file header differs from the store's "
+            "- a check a corrupted artifact passes is not a check (SP11)"
+        )
+    elif not leg_exact:
+        reasons.append(
+            f"detected, but by legs {observed} rather than the file-header leg alone "
+            f"(differing headers: {result.differing_headers}); the leg under test is "
+            "not the one that fired, so deleting it would not fail this control"
+        )
+    if not export_intact:
+        reasons.append("the control modified the export it was given")
+    if store_touched:
+        reasons.append(
+            f"the store under test changed on disk - {len(store_touched)} file(s), "
+            f"first: {', '.join(store_touched[:5])}"
+        )
+
+    return {
+        "name": CLOSURE_CONTROL_NAME,
+        "description": (
+            f"One bit flipped at byte {offset} of the exported SEG-Y - binary file "
+            f"header byte {offset - 3200 + 1}, unassigned in SEG-Y revisions 0, 1 and 2"
+        ),
+        "must_fail": ["roundtrip_closure"],
+        "must_fire_leg": "file_headers",
+        "baseline_clean": baseline.passed,
+        "baseline_detail": baseline.summary(),
+        "detected": detected,
+        "observed_legs": observed,
+        "differing_file_headers": result.differing_headers,
+        "leg_exact": leg_exact,
+        "export_unmodified": export_intact,
+        "store_unmodified": not store_touched,
+        "offset": offset,
+        "corrupted_closure_summary": result.summary(),
+        "status": (
+            "PASS"
+            if baseline.passed and detected and leg_exact and export_intact and not store_touched
+            else "FAIL"
+        ),
+        "failure_reasons": reasons,
+        "clause": "§7 G7 applied to arrow 3 - OPEN_DEBTS D19, DECISIONS D-0031 / D-0067",
+        "note": (
+            "The textual header attribute is asserted to be UNCHANGED here "
+            f"({ATTR_RAW_TEXT}): a leg that reported both headers moving when one byte "
+            "of one of them was flipped could not localise a fault, which is §7 G7's "
+            "other killer. G3 also fails on this corruption whenever the round trip was "
+            "byte-identical; in the ROUNDTRIP-SCOPED regime closure exists for, G3 is "
+            "already FAIL and discriminates nothing."
+        ),
+        "g3_also_fires_when_byte_identical": True,
     }

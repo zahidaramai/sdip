@@ -49,7 +49,12 @@ from sdip.spec.overrides import ENDIANNESS_INFER, SurveyOverrideError, apply_ove
 OVERRIDES_DIR = Path(__file__).resolve().parents[2] / "overrides"
 """The committed registry. §6.4 makes it a shared asset, so it is checked as one."""
 
-COMMITTED = ("segy-rev0-poststack3d", "rev1-offset-alias", "rev1-cdp-alias")
+COMMITTED = (
+    "segy-rev0-poststack3d",
+    "rev1-offset-alias",
+    "rev1-cdp-alias",
+    "rev1-cdp-offset-alias",
+)
 """Every override this repository ships. Named, so a deletion is a test failure."""
 
 REV0_GEOMETRY = {"cdp_x": 181, "cdp_y": 185, "inline": 189, "crossline": 193}

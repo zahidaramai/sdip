@@ -89,9 +89,21 @@ def test_the_store_under_audit_was_not_modified(audited):
 
 @pytest.mark.parametrize("control", CONTROLS, ids=lambda c: c.name)
 def test_each_control_fails_exactly_its_declared_gates(audited, control):
-    """The core G7 assertion, reported per control so a failure names itself."""
+    """The core G7 assertion, reported per control so a failure names itself.
+
+    A control not applicable to this fixture is asserted as such by name rather than
+    skipped — see the sibling in ``test_g7_controls.py``. Only the two conditional
+    controls may declare it, and each is covered where it does apply.
+    """
     *_, audit = audited
     outcome = next(o for o in audit.outcomes if o.corruption.name == control.name)
+    if outcome.not_applicable is not None:
+        assert control.name in {"fabricated_value_in_padding", "flipped_raw_ibm32_word"}, (
+            f"{control.name} declared itself not applicable; only the two conditional "
+            "controls may, and each is covered where it does apply"
+        )
+        assert outcome.failed_gates == frozenset()
+        return
     assert outcome.error is None, (
         f"{control.name} could not be applied to the fallback store: {outcome.error}. "
         "A control that errors has audited nothing."

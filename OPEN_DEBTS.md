@@ -1347,3 +1347,154 @@ first.
 integer representability, and it says nothing about a format the pinned `segy` adds
 later — such a format belongs to neither set and is visible as unclassified, which is
 the intended behaviour.
+
+---
+
+## D35 — NARROWED 2026-08-23 — worker warning **text** captured; the object still is not
+
+- **Status:** `OPEN` (narrowed, not closed) · **Decision:** `DECISIONS.md` D-0066
+- Leaves D26 and the original D35 entry above unedited (SP10).
+
+**What changed.** A spawned worker inherits file descriptor 2 even though it cannot share
+the parent's `warnings` machinery. `recovering_worker_stderr()` tees that descriptor —
+copying every byte back to the real one, so nothing is swallowed and the progress bar
+still renders — and recovers lines in `warnings.formatwarning`'s shape into a third
+ledger list, `stderr_recovered[]`.
+
+**Measured on the case that made this serious.** 30-trace fixture, all **960** sample
+words set to `0x61800000`, real ingest under the binding pins:
+
+| | before | after |
+|---|---|---|
+| samples `inf` on disk | 960 / 960 | 960 / 960 |
+| `observed` | `[]` | `[]` |
+| `stderr_recovered` | *did not exist* | **2** — `RuntimeWarning: overflow encountered in ibm2ieee`, `UserWarning: converting a masked element to nan` |
+| stderr bytes scanned | — | 1129 |
+
+**What is still open, precisely.** No `Warning` object crosses the process boundary, and
+the seam search was re-run against the installed source rather than inherited: nothing in
+`blocked_io.py:104`, `parsers.py:61`, `segy_to_mdio`'s seven parameters, or `MDIOSettings`'
+eight fields reaches a worker. Text recovery is weaker in four stated ways — no object, no
+process attribution, **one line per process rather than one per event** (960 words → 1
+line), and worker *log records* remain uncaptured because they arrive without a
+`file:lineno: Category:` prefix.
+
+**The declaration is now testable rather than readable.** `scope` carries
+`worker_warnings_captured: false` (a hardcoded literal, with a unit test forbidding it
+from being wired to the recovery that does work), `worker_stderr_text_recovered`,
+`worker_stderr_bytes_scanned`, `worker_stderr_recovery_truncated`,
+`worker_log_records_captured: false` and
+`log_records_below_effective_level_captured: false`. Three of the six are `required` in
+the published schema.
+
+**Closure, unchanged in kind:** an upstream pool initialiser or worker callback that lets
+a caller install a recorder in the child. §3.3 bars monkeypatching, so if that never
+arrives, the permanent end state is a recovered line plus a boolean saying it is not the
+object.
+
+---
+
+## D19 — CLOSED 2026-08-23 — arrow ③ was passing a corrupted export
+
+- **Status:** `CLOSED`. The original entry above is unedited (**SP10**).
+- **Decision:** `DECISIONS.md` **D-0067** · **Criterion:** D-0031 arrow ③ · **Spec:** §7 G3
+
+**D19 asked for the exported SEG-Y to be validated as an artifact in its own right, and
+named the closure: re-ingest it, run the five planes against the resulting store, and
+check that store's arrays against the original's.** `roundtrip_closure` did all three,
+`sdip certify` called it, and `release_readiness` already treated a missing or non-PASS
+result as blocking. The debt looked built.
+
+**It was not, and the way it failed is the finding.** The check returned **PASS** on an
+export whose 400-byte binary file header differed from the store's.
+
+### What was measured
+
+30-trace synthetic poststack fixture (seed 20260822), rev 1, `PostStack3DTime`, 11
+arrays, G3 byte-identical. One bit flipped per run in the exported file; N = 7 corrupted
+variants plus a clean baseline. **Five were caught. Two were not:**
+
+| Flipped byte | What it is | Before | After |
+|---|---|---|---|
+| 64, 3199 | textual header | FAIL — *incidentally* | FAIL, by the header leg, naming the byte |
+| 3221 | binary byte 22, `samples_per_trace` | FAIL — re-ingest refused | unchanged |
+| **3300** | **binary byte 101, unassigned** | **PASS** | **FAIL** |
+| **3450** | **binary byte 251, unassigned** | **PASS** | **FAIL** |
+| 3600 | first trace-header byte | FAIL — arrays | unchanged |
+| 3840 | first sample byte | FAIL — arrays | unchanged |
+
+Two causes composing, both structural. The **five planes in closure run export against
+the store built from that export**, so they are a self-consistency leg and cannot
+disagree with the export about anything — Plane 1 and Plane 2 reported PASS on a
+corrupted header as readily as on a clean one. And the one leg that did compare against
+the original walked `group.arrays()`, while SDIP's authoritative raw file headers are
+base64 **attributes** (D-0021), because §4.3's raw bytes are unreachable through MDIO
+without a barred variable. In the `ROUNDTRIP-SCOPED` regime arrow ③ exists for, **two of
+the five planes were checking nothing.**
+
+The textual half only looked covered: a flip breaks the EBCDIC decode, the ingest falls
+back to the header-less shape (D-0055) and the missing-array rule fires on the vanished
+variable. **Detection by luck is not detection**, and byte 3300 has no such side effect.
+
+### What closed it
+
+1. A **file-header leg** in `roundtrip_closure` — byte equality on `sdipRawTextHeader`
+   and `sdipRawBinaryHeader` between the two stores, one reader per attribute (D-0028),
+   absence counted as failure, ANDed into `ClosureResult.passed`.
+2. `closure_control` in `src/sdip/equivalence/nonvacuity.py` — closure's **first negative
+   control**, appended beside `g3_control` and following its pattern because closure
+   judges a *file* against a store. Flips byte 3300 of a copy under `workdir`; the export
+   is left untouched and verified so by hash.
+3. `tests/negative/test_closure_control.py` — **14 permanent controls**, including
+   `test_closure_passed_the_corruption_before_the_file_header_leg`, which holds the
+   pre-fix verdict as an executable record.
+
+The control asserts the corruption is caught **by the file-header leg and no other**:
+G1 passes, the export re-ingests, all five planes hold, every array matches, the textual
+attribute is unchanged, and `differing_file_headers == ["sdipRawBinaryHeader"]`. That is
+§7 G7's *"and ONLY that gate"* transposed to closure's legs, and it is what stops the
+control going vacuous if the leg is later deleted.
+
+**Cost:** one extra re-ingest of the export per `certify` — 2.14 s on the 30-trace
+fixture, against 2.19 s for closure itself, 1.77 s for all 16 G7 controls and 12.78 s for
+the source ingest. The clean closure run is passed in as the baseline rather than
+recomputed (D18's lesson), so it is one extra ingest and not two. It scales linearly with
+survey size and will want the same scrutiny D18 gave G7 once P3 sets a ceiling.
+
+**Verified:** `ruff check`, `ruff format --check`, `mypy src` clean; 1115 passed. Three
+failures in the same run belong to other in-flight work (`planes.py` Plane 5 padding
+check, the `fabricated_value_in_padding` control, and a spec-override citation) and touch
+nothing in this change.
+
+---
+
+## D42 — the closure control's own verdict is on the certificate but gates nothing
+
+- **Status:** `OPEN` (raised 2026-08-23, at D19's closure)
+- **Decision:** `DECISIONS.md` **D-0067**, final section
+- **Blocks:** nothing today. **Blocks the D-0031 release criterion** if left at F8.
+
+`release_readiness` blocks on `roundtrip_closure.status`, so **the new file-header leg
+gates automatically** — a corrupted export now blocks release, which is the substance of
+D19 and is done.
+
+The **control's** verdict does not. It rides on the certificate under
+`nonvacuity.closure_control`, and `release_readiness` never reads it — exactly as it never
+reads `nonvacuity.g3_control`. So a `certify` run whose closure control came back `FAIL`
+— meaning closure has been demonstrated **incapable of failing**, the precise definition
+of a vacuous check under **SP11** — would still report `release_ready: true` with
+everything else green.
+
+**That is the same shape as the hole D19 just closed, one level up**, and it applies to
+G3's control as much as to closure's.
+
+**Left open deliberately, not overlooked.** `release_readiness` is the release gate.
+Changing what it blocks on is a change to the gates, and `CLAUDE.md` §9 makes that a
+maintainer decision rather than a side effect of closing a debt. The fix is small — treat
+a non-PASS `nonvacuity.g3_control` or `nonvacuity.closure_control` as blocking, in
+`src/sdip/equivalence/certificate.py` — and it belongs to whoever owns that file.
+
+**Scope note, so this is not read as wider than it is:** G4, G5 and G6 have no negative
+controls at all. That is a different question — §7 G7's declared remit is G2a–G2e and G3,
+so those three sit outside it by specification. This debt is only about controls that
+exist, run, and are then not consulted.

@@ -30,7 +30,12 @@ from typing import Any
 
 from sdip.errors import PhaseNotAuthorisedError, SdipError, UntrustedInputError
 from sdip.guard.env import check_barred_env_vars
-from sdip.guard.warn import WarningLedger, recording_log_records, recording_warnings
+from sdip.guard.warn import (
+    WarningLedger,
+    recording_log_records,
+    recording_warnings,
+    recovering_worker_stderr,
+)
 from sdip.ingest.file_headers import (
     RawFileHeaders,
     TextualHeaderDecode,
@@ -401,6 +406,12 @@ def ingest(
 
     ledger = WarningLedger()
     with (
+        # Outermost, so the tee is watching before the pool exists and is still watching
+        # while it shuts down. It must also enclose `recording_warnings`, whose
+        # record-don't-emit behaviour is what makes a recovered line attributable: while
+        # it holds, a warning-shaped line on descriptor 2 did not come from this process
+        # (OPEN_DEBTS D35).
+        recovering_worker_stderr(ledger),
         recording_warnings(ledger, reemit=False),
         recording_log_records(ledger),
         persistence,

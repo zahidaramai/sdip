@@ -12,14 +12,19 @@ upstream sends through ``logging``, which ``warnings.catch_warnings`` cannot see
 construction. The sparse-grid fixture is the case P5 measured as ``observed: []``, and it
 now produces a record naming the ratio and the trace counts.
 
-**Blind spot 1 is open, and these tests say so out loud.** A warning raised inside a
-spawned worker never reaches the parent's ledger, and no upstream hook under the binding
-pins can change that (:data:`sdip.guard.warn.LEDGER_SCOPE` names every site searched).
-So the assertions below pin the *gap*: an ingest that destroys every sample it was given
-produces an empty ``observed``, and the ledger says which processes it watched. If the
-worker assertions ever fail, the gap has closed — read the failure message before
-"fixing" anything, because the honest response is to rewrite ``LEDGER_SCOPE``, not the
-test.
+**Blind spot 1 is narrowed, not closed, and these tests hold both halves apart.** A
+warning raised inside a spawned worker still never reaches the parent's ledger as a
+``Warning`` **object**, and no upstream hook under the binding pins can change that
+(:data:`sdip.guard.warn.LEDGER_SCOPE` names every site searched). What the child does
+share is file descriptor 2, so the **text** is recovered:
+:func:`sdip.guard.warn.recovering_worker_stderr` tees that descriptor and scrapes lines
+in ``warnings.formatwarning``'s shape.
+
+So the assertions below pin two different things about the same ingest — an ingest that
+destroys every sample it was given produces an empty ``observed`` *and* a recovered
+``RuntimeWarning`` line. If the ``observed`` assertion ever fails, the remaining gap has
+closed — read the failure message before "fixing" anything, because the honest response
+is to rewrite ``LEDGER_SCOPE`` and flip ``worker_warnings_captured``, not the test.
 """
 
 from __future__ import annotations
@@ -157,35 +162,80 @@ def test_every_sample_was_destroyed(overflowed):
     assert int(np.isfinite(amplitude).sum()) == 0
 
 
-def test_the_worker_warning_does_not_reach_the_ledger(overflowed):
-    """MEASURED, D26 blind spot 1. This asserts a **gap**, deliberately.
+def test_the_worker_warning_does_not_reach_the_ledger_as_an_object(overflowed):
+    """MEASURED, D35. This asserts a **gap**, deliberately, and it is still open.
 
     ``numpy`` raises ``RuntimeWarning: overflow encountered in ibm2ieee`` while decoding
-    those words, inside a ``spawn`` worker. The text reaches the terminal because the
-    child inherits the parent's stderr; it reaches nothing else.
+    those words, inside a ``spawn`` worker. No ``Warning`` object crosses the process
+    boundary, and no public upstream seam under the binding pins can make one — see
+    :data:`sdip.guard.warn.LEDGER_SCOPE`, which names every site searched.
 
-    If this fails, worker warnings are being captured and D26 blind spot 1 has closed.
-    The response is to rewrite ``LEDGER_SCOPE`` and this test together — not to relax
-    either one.
+    The *text* is recovered now (below). This is the stronger thing that is still
+    missing. If this fails, worker warnings are being captured as objects and D35 has
+    closed outright: rewrite ``LEDGER_SCOPE``, flip ``worker_warnings_captured``, and
+    fix this test in the same commit — do not relax any one of the three.
     """
     result, _ = overflowed
     assert [w for w in result.warnings.observed if "ibm2ieee" in w.message] == [], (
-        "a worker warning reached the parent ledger — D26 blind spot 1 has closed; "
-        "LEDGER_SCOPE now overstates the gap and must be rewritten"
+        "a worker warning reached the parent ledger as an object — D35 has closed; "
+        "LEDGER_SCOPE and worker_warnings_captured now understate the coverage"
     )
 
 
-def test_the_certificate_declares_what_was_not_watched(overflowed):
-    """The whole value of the open half: the gap is stated on the artifact.
+def test_the_worker_warning_text_is_recovered_from_the_descriptor(overflowed):
+    """MEASURED, D35's narrowing. The loss now leaves evidence on the certificate.
 
-    A reader of this certificate sees an empty ``observed`` **and**, beside it, the
-    sentence saying which processes were watched. That is not capture. It is the
-    difference between an unknown and an unknown nobody was told about.
+    This is the exact case that made the debt serious: 960 of 960 samples destroyed, and
+    the SP6 evidence for it was an empty list. The recovered line is text a child
+    printed, not a warning object — but it is on the artifact, where before there was
+    nothing.
+
+    Both libraries are asserted on purpose. The gap was never a property of
+    ``ibm2ieee``; a second warning escaped the same run out of ``pydantic``, and a
+    recovery that only found the one everybody knew about would prove less than it looks.
     """
     result, _ = overflowed
-    scope = result.to_json()["warnings"]["scope"]
+    ledger = result.warnings
 
-    covers = "parent-process Python warnings and parent-process log records only"
-    assert scope["covers"] == covers
-    assert scope["worker_process_warnings"] == "NOT CAPTURED - see OPEN_DEBTS D26"
+    assert ledger.stderr_watched is True
+    assert ledger.stderr_bytes_scanned > 0
+
+    messages = [r.message for r in ledger.stderr_recovered]
+    overflow = [r for r in ledger.stderr_recovered if "ibm2ieee" in r.message]
+    assert len(overflow) == 1, messages
+    assert overflow[0].category == "RuntimeWarning"
+    assert [r for r in ledger.stderr_recovered if "masked element to nan" in r.message], messages
+
+
+def test_a_recovered_line_never_lands_in_the_warnings_list(overflowed, sparse):
+    """Three channels, three lists. The mechanism is what a reader is establishing.
+
+    A recovered line is weaker evidence than an observed warning — no object, no
+    process attribution, one line per process rather than one per event. Folding it into
+    ``observed`` would launder text into something it is not.
+    """
+    result, _ = overflowed
+    for ledger in (result.warnings, sparse.warnings):
+        recovered = {r.message for r in ledger.stderr_recovered}
+        assert recovered.isdisjoint({w.message for w in ledger.observed})
+        assert recovered.isdisjoint({r.message for r in ledger.logged})
+
+
+def test_the_certificate_declares_the_gap_in_booleans(overflowed):
+    """D35's narrowing, on the artifact: the gap is machine-checkable, not prose.
+
+    A consumer must be able to **test** for what was not watched instead of reading for
+    it. ``worker_warnings_captured`` is what SP6 would need; ``worker_stderr_text_``
+    ``recovered`` is the weaker thing that was actually built. Both sit beside the count.
+    """
+    result, _ = overflowed
+    payload = result.to_json()["warnings"]
+    scope = payload["scope"]
+
+    assert scope["worker_warnings_captured"] is False
+    assert scope["worker_stderr_text_recovered"] is True
+    assert scope["worker_stderr_bytes_scanned"] > 0
+    assert scope["worker_log_records_captured"] is False
+    assert payload["stderr_recovered_count"] == len(result.warnings.stderr_recovered)
+    assert "file descriptor 2" in scope["covers"]
     assert "P2" in scope["empty_observed_means"]
