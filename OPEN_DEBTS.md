@@ -1650,3 +1650,30 @@ mean the gates pass.
 control that perturbs one store and requires G6 to catch it. Then point the gate at it.
 Per **ruling 7** this is not capability work and needs no external file, but it is new
 test surface and belongs to whoever picks up D14's remainder.
+
+---
+
+## D14 — NARROWED 2026-08-24 — four of five gates now arm and pass; the warning stands
+
+- **Narrows:** D14 above, left unedited (**SP10**) · **Decision:** `DECISIONS.md` D-0080
+
+**"Green with zero gates enforced" is no longer true.** CI executes, and the gate jobs
+report:
+
+| gate | state |
+|---|---|
+| integration (G2) | **armed, passing** |
+| negative (G7) | **armed, passing** |
+| portability (G4) | **armed, passing** — its subject had never matched a file until 2026-08-24 |
+| spawn-guard | **armed, passing** |
+| determinism (G6) | **`NOT_RUN`, and accurately** — see **D44** |
+
+**What does not change is the warning itself, and it is the part worth keeping.** A green
+build still means *everything that exists passes*. It does not mean the Equivalence
+Contract holds on your data: the gates that matter run against **committed fixtures**, and
+a certificate is issued against **a specific store from a specific source**. **CI cannot
+certify anything.** A reader who checks only the badge still learns nothing about
+equivalence — that is what `EQUIVALENCE_LEDGER.md` is for.
+
+**Remaining to close:** D44, the one gate whose `NOT_RUN` is honest rather than
+misconfigured.

@@ -3971,3 +3971,54 @@ dirty mid-edit, and CI checks out clean. Verified by committing and re-running.
 **What this cannot catch, stated rather than implied:** it runs on **macOS**, CI runs on
 **ubuntu-latest**; it uses the existing checkout rather than a fresh clone; and
 `actions/*` steps are skipped entirely. **A green local sweep is evidence, not proof.**
+
+---
+
+## D-0080 — 2026-08-24 — CI is green for the first time, and running it found what it was built to find
+
+**15/15, conclusion `success`.** The first fully green run, and the first to execute a
+single step, in this repository's history.
+
+### The billing story, since it corrected me twice
+
+`gh` reported *"your account is locked due to a billing issue"* while the billing pages
+read clean. **Both were true, at different times.** Payment history: **19 Aug, $6.32,
+Declined** → locked; **24 Aug, $6.32, Success** → today. This repository was created on
+the 22nd, so **every run it ever had fell inside the lock.**
+
+Two things I got wrong on the way. I described the historical red X's as *"failing CI"*
+when nothing had executed — inferring failure from a red badge without checking whether
+anything ran. And I pointed at `github.com/settings/billing`, which **404s**; the live
+paths are `/settings/billing/summary` and `/account/billing/history`.
+
+### What running locally found first — three defects invisible since F0
+
+1. **A guard that failed on the correct value.** `publication-readiness` grepped for
+   `zahidaramai/sdip` as an unresolved placeholder. It *was* one when written, before the
+   repository existed; the repository was then created at exactly that name.
+2. **G4's gate had never been able to arm** — subject `test_portability*.py` matches no
+   file, while G4 was covered by 21 tests under other names.
+3. **G6's gate also never armed, and there `NOT_RUN` is correct** — nothing tests it
+   directly (**D44**).
+
+**Two gates, identical from the CI summary, entirely different problems.**
+
+### What only the real environment could find
+
+**A green local sweep is evidence, not proof** — D-0079 said so, and CI proved it twice:
+
+- **`test_doctor_environment_checks_pass_here`** allowed only `working-tree` to fail. It
+  passed on every developer machine because a developer has run
+  `git config core.hooksPath .githooks`; a fresh checkout has not. **The check was right
+  and the test was wrong.**
+- **The hostile-corpus RSS comparison** failed at **374.4 MB vs 371.8 MB — 0.7 % apart**,
+  allocator noise. **Second measurement in this project compared without a declared
+  margin**, after D39. Margin now **1.25×**, chosen far from the 1.007 that failed,
+  because a margin fitted to the number it was meant to judge is not one.
+
+### The order that worked, worth keeping
+
+**Run it locally first, then pay for it.** The local sweep cost minutes and found three
+defects; the real run then found two more that only ubuntu and a fresh clone could show.
+**Neither pass was redundant, and doing them the other way round would have spent
+Actions minutes discovering the cheap findings.**
