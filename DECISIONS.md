@@ -2923,3 +2923,97 @@ its raw view already fails today. **The rest of the generalisation is not done**
 **Coverage gap, confirmed:** `DataSampleFormatCode` has **no code 4** (fixed-point with
 gain), **7** (24-bit int) or **15** (24-bit unsigned). Those fail at spec construction
 rather than corrupting — P6's coverage claim should say so rather than imply it.
+
+---
+
+## D-0063 — 2026-08-23 — **Scope ruling for public release: fail-safe honesty over full coverage**
+
+Maintainer ruling, received after independent verification at HEAD `e1bf7cb`. **The
+organizing principle: fail-safe honesty is release-blocking; coverage is demand-driven.
+Nothing gets built for a file that does not exist yet.**
+
+### Independent verification, banked
+
+The steward re-ran the deletion and corruption tables rather than accepting the report:
+
+| check | P1 | P2 | P3 | P4 | P5 |
+|---|---|---|---|---|---|
+| `cdp_x` value corrupted | PASS | PASS | **FAIL** | PASS | PASS |
+| `time` value corrupted | PASS | PASS | FAIL | **FAIL** | PASS |
+| `cdp_x` array deleted | PASS | PASS | **FAIL** | PASS | PASS |
+| `time` array deleted | PASS | PASS | PASS | **FAIL** | PASS |
+| `headers_raw_uint8` deleted | PASS | PASS | PASS | PASS | PASS |
+
+Tier-1 confirmed closed. The **D40** asymmetry reproduces exactly as described.
+
+**Test-count discrepancy resolved:** 1,075 here against 1,056 in the audit environment.
+The difference is **exactly 19**, the whole of `tests/integration/test_p4_crossimpl.py`,
+which is `pytest.importorskip("tensorstore")`-gated. `tensorstore` is a **dev-only**
+dependency — the runtime tree is licence-scanned and must not grow — so a checkout
+without the dev group collects 1,056. Nothing is environment-dependent about the
+gates themselves.
+
+### The rulings
+
+**1. D41 is split.** Release-blocking are legs **1 and 3** only: `detect_lossy_decode`
+returning format plus loss class for all six lossy formats, a `transforms_declared` entry
+for **every** decode including exact ones (**SP1(a)**), and
+`lossy_decode_blocks_equivalence` generalising the escape-hatch block. Certificate-side
+and cheap.
+
+**Leg 2 — format-parameterised raw views beyond `ibm32` — is NOT release-blocking.**
+Current behaviour is already **fail-safe**: a lossy non-`ibm32` source fails Plane 4 and
+nothing can make it pass. After leg 1 it fails **with a diagnosis**.
+**`NON-EQUIVALENT`-with-named-cause is the supported outcome** for
+`int32`/`uint32`/`int64`/`uint64`/`float64` at v0.1. Raw views for them are built only
+when a real file arrives, each with its G7 control in the same commit. *Every raw view is
+permanent maintenance for formats rare in the wild; `ibm32` is the one that matters and
+it is done.*
+
+**2. The P2 extension is pre-registered and run now** — a pure-numpy six-format sweep.
+**Measurement is cheap; machinery is not.** Its result backs leg 1's diagnosis text, and
+**no claim is made about any format without its sweep row.**
+
+**3. D40 is ratified**, closing via a **group-level provenance attribute written
+unconditionally by `sdip ingest`**. A store bearing the marker and missing
+`headers_raw_uint8` **FAILS**; a foreign MDIO store without it keeps absence as
+`NOT CHECKED`, verdict unchanged, and the certificate records `portable_headers: false`.
+The deleted G7 control returns, conditioned on the marker. **The attribute earns its
+store-format change twice**: it is also the provenance discriminator the retroactive-audit
+case needs.
+
+**4. D24 and D25 are in scope for v0.1.** Both blockers are self-inflicted — a name and a
+kwarg — and prestack through `sdip ingest` is what makes the project usable beyond
+poststack. Once ingest reaches prestack, view attachment comes free and P7's Plane 4
+failures resolve on `ibm32` prestack sources.
+
+**5. Declared-scope release. v0.1.0 as a GitHub tag; no PyPI** until external demand or
+F8 — **PyPI is a support commitment, not a checkbox.** The README gains a
+supported/refused table, each refusal carrying a **stable reason code and no build**:
+little-endian (D28), rev 2/2.1 (D6), sparsity ratio > 10 (D30), coordinate scalar 0
+(D27), cloud backends (D7), and single files above a declared verification-memory
+envelope. `sdip verify` **refuses above the envelope** citing the measured multiplier,
+instead of the streaming refactor, which stays deferred with **D23**.
+
+**6. Category-B closes before the tag:** D29, D26, D19. **D31 stays locked as its test.**
+Category-A beyond ruling 4 does not block and is not built.
+
+**7. Standing anti-overengineering rule, binding from here:** no new format, geometry,
+endianness or backend without a real file demanding it; every admitted capability ships
+its G7 control **and its refusal path** in the same change; anything unsupported
+**refuses with a reason code rather than degrading**. *Coverage is earned by demand;
+honesty is not optional at any coverage.*
+
+### The lesson kept verbatim, at the steward's instruction
+
+> **A claim that outlives its content.**
+
+Keying completeness on the **store's own** `coordinates` attribute rather than on the
+source header is the correct general shape for **every completeness check this project
+will ever write**. The attribute survives the deletion of the array it names; the source
+header does not know what the store chose to build.
+
+### The tag is not an implementer step
+
+`v0.1.0` is a **principal decision**. The STOP is after Category-B: full suite, the
+real-survey chain in `local/`, then a release-readiness report — and then a ruling.
