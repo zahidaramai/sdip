@@ -3528,3 +3528,29 @@ That row is the shape of every future gap: a capability is admitted **when a rea
 demands it**, and every admitted capability ships **its G7 control and its refusal path
 in the same change** (ruling 7). Until then the honest outcome is a **named** failure,
 not a plausible one.
+
+---
+
+## D-0071 — 2026-08-23 — Process slip: a directory-scoped `git add` swept in an unreviewed agent file
+
+**Recorded because D-0033 already recorded its sibling and this is the same failure in a
+milder dress.**
+
+D-0033 was `git add -A` sweeping 497 unreviewed lines into a public commit. The remedy
+adopted then was *stage explicitly, never `-A`*. Commit `681de32` staged
+`git add -- ... tests/` — a **directory**, not `-A` — and swept in
+`tests/negative/test_closure_control.py`, written by a running agent, which I had not
+read at the time.
+
+**No harm resulted**: the file is sound, its 14 tests pass, and the finding behind it
+(D-0067) is strong and has since been reviewed. **That is luck, not process.** The
+content was not checked before it was published to a public repository, which is the
+whole thing D-0033 exists to prevent.
+
+**The lesson is narrower than "stage explicitly" and worth stating exactly:** a
+directory-scoped `git add` is not explicit staging when agents are writing into that
+directory concurrently. *Explicit means named paths, or a `git status` read immediately
+before staging.* The rule as written passed while its purpose failed.
+
+Not corrected by a revert — the content belongs in the tree and reverting would lose a
+real test. Recorded so the next reader sees that the discipline slipped and how.

@@ -504,15 +504,80 @@
         "scope": {
           "type": "object",
           "additionalProperties": true,
-          "description": "What this ledger does and does not cover. REQUIRED, because an empty `observed` list must not be readable as evidence of a quiet run: warnings raised inside MDIO's spawn workers never reach the parent process at all (OPEN_DEBTS D26).",
+          "description": "What this ledger does and does not cover. REQUIRED, because an empty `observed` list must not be readable as evidence of a quiet run: warnings raised inside MDIO's spawn workers never reach the parent process as objects (OPEN_DEBTS D35). The boolean members are the machine-checkable part - assert on those rather than parsing the prose.",
           "properties": {
             "covers": {
               "type": "string"
+            },
+            "worker_warnings_captured": {
+              "type": "boolean",
+              "description": "False under the binding pins, always. warnings.catch_warnings is process-local and no public upstream seam reaches an MDIO worker (mdio/segy/blocked_io.py:104 hardcodes its initializer; mdio/segy/parsers.py:61 passes none; segy_to_mdio's parameters do not reach a worker; MDIOSettings has no worker callback). A true here means the capability was actually built - see scope.why_workers_are_not_captured."
+            },
+            "worker_stderr_text_recovered": {
+              "type": "boolean",
+              "description": "True when the file-descriptor-2 tee was installed for this call, so stderr_recovered[] is a measurement. False means nobody was listening, which is NOT the same as nothing having been printed."
+            },
+            "worker_stderr_bytes_scanned": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "worker_stderr_recovery_truncated": {
+              "type": "boolean",
+              "description": "True when the recovered list hit its ceiling and stopped appending."
+            },
+            "worker_log_records_captured": {
+              "type": "boolean",
+              "description": "False. A worker's logger.warning reaches descriptor 2 through logging.lastResort as a bare message with no file:lineno: Category: prefix, so it is indistinguishable from any other stderr text."
+            },
+            "log_records_below_effective_level_captured": {
+              "type": "boolean",
+              "description": "False. A record the process's logging configuration discards is never constructed, and a recorder cannot record what was never made."
             }
           },
           "required": [
-            "covers"
+            "covers",
+            "worker_warnings_captured",
+            "worker_stderr_text_recovered",
+            "worker_log_records_captured"
           ]
+        },
+        "stderr_recovered": {
+          "type": "array",
+          "description": "Warning-shaped TEXT recovered from file descriptor 2 while the guarded call ran (OPEN_DEBTS D35). A THIRD CHANNEL, never merged with `observed`: these are four fields parsed out of a printed line, not Warning objects the emitting library handed over. A warning raised inside one of MDIO's spawn workers cannot reach the parent as an object, so before this the certificate's only evidence of such a warning was an empty `observed`. The originating process is not recoverable from the text, and Python prints a given warning once per process, so a record is one printed LINE and not one event. Read `scope.worker_stderr_text_recovered` to know whether anything was watching at all.",
+          "items": {
+            "type": "object",
+            "required": [
+              "category",
+              "message",
+              "channel"
+            ],
+            "properties": {
+              "category": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "filename": {
+                "type": "string"
+              },
+              "lineno": {
+                "type": "integer"
+              },
+              "channel": {
+                "enum": [
+                  "stderr-text"
+                ]
+              },
+              "process": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "stderr_recovered_count": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },

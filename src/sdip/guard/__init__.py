@@ -14,17 +14,20 @@ from sdip.guard.warn import (
     KNOWN_UPSTREAM_SUPPRESSIONS,
     LEDGER_SCOPE,
     LoggedRecord,
+    StderrWarningRecord,
     SuppressionRecord,
     WarningLedger,
     WarningRecord,
     recording_log_records,
     recording_warnings,
+    recovering_worker_stderr,
 )
 
 __all__ = [
     "KNOWN_UPSTREAM_SUPPRESSIONS",
     "LEDGER_SCOPE",
     "LoggedRecord",
+    "StderrWarningRecord",
     "SuppressionRecord",
     "WarningLedger",
     "WarningRecord",
@@ -34,6 +37,7 @@ __all__ = [
     "check_runtime_licences",
     "recording_log_records",
     "recording_warnings",
+    "recovering_worker_stderr",
     "scan_source_for_barred_assignments",
     "scrub_barred_env_vars",
 ]
