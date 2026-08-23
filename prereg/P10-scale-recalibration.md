@@ -260,3 +260,86 @@ in advance** — a max-of-N, or a mean plus a stated multiple of the spread.
 **This is the probe working.** It established the model's shape, and it caught the
 method's insufficiency **before** a number derived from it became a gate. A ceiling set
 from this data would have failed the next legitimate run and looked like a regression.
+
+---
+
+## Amendment B — every stage, N=3, and the variance statistic declared first
+
+- **Registered:** 2026-08-23, **before the run it governs**, per **SP9**
+- **Supersedes the method of:** Amendment A, whose derivation was **invalid** — the
+  harness omitted two stages and `N = 1` could not set a cross-run coefficient
+- **Status at registration:** NOT RUN
+
+### What Amendment A got right, and is not re-asked here
+
+**Controls are interchangeable.** 15 applied controls spanned 38.95–42.38 s, **±4 %**,
+`max / median = 1.04` against a 3× falsifier. **That question is closed** — a single
+coefficient is the right shape, and Amendment B does not re-litigate it.
+
+### The two defects being fixed
+
+1. **Every stage is instrumented.** Amendment A left **G6** and **`g3_control`**
+   untimed — 271.22 s of the chain, recoverable only by anchoring on a different run's
+   total, which was not the declared method.
+2. **N = 3, not 1.** One chain cannot set a bound that must hold across runs. Measured
+   run-to-run variance is **4.6 %** (1,115.27 s and 1,168.55 s on the same code path),
+   and Amendment A's derivation left less headroom than that.
+
+### The variance statistic, declared BEFORE the data exists
+
+**Per-stage maximum across the N runs, summed.**
+
+```
+ceiling = Σ  max_over_runs( stage_i )        for every stage, G7 counted as
+          i                                   per_control_max × len(CONTROLS)
+```
+
+**Max-of-N rather than mean-plus-k-sigma, and the reason is N.** With three samples a
+standard deviation is not a reliable estimate of spread, and a ceiling built on an
+unreliable estimate is a guess with a decimal point. **The per-stage maximum is a bound,
+not an estimate**, and summing bounds is conservative by construction: the result is
+≥ any single run's total, because no run can be worst at every stage simultaneously.
+
+### Rounding, and it is UP this time — with the reason stated
+
+Amendment A rounded **down**, correctly: it was scaling a prior ceiling and rounding down
+refused slack. **Amendment B rounds UP to the next 50 s**, because it sums measured
+maxima rather than scaling a guess, and rounding a bound *down* would put the ceiling
+below the very worst case it was built from. **The direction follows the derivation's
+nature, not a preference.**
+
+### Pre-registered floor constraint — the check Amendment A lacked
+
+**The computed ceiling MUST be ≥ 1,168.55 s**, the largest full-chain total ever observed
+(D-0073). **If it is not, the derivation is INVALID and is discarded**, exactly as
+Amendment A's was — a ceiling that fails a run which legitimately happened is not a
+ceiling, it is a regression waiting to be misread.
+
+### Pre-registered parameters
+
+| Parameter | Value |
+|---|---|
+| Data | `06p07ful.sgy`, 494,565,408 B, 116,532 traces |
+| **N** | **3 full chains**, every stage timed |
+| Stages timed | ingest · G1 · 5 planes · G4 · export+G3 · **each control** · **`g3_control`** · closure · **G6** |
+| Statistic | **per-stage maximum across the 3 runs** |
+| `per_control` | maximum single-control time across **all runs and all controls** |
+| Rounding | **up**, to the next 50 s |
+| Floor | **≥ 1,168.55 s** or the derivation is discarded |
+| Memory ceiling | **8.0 GiB, unchanged.** Never breached |
+
+### Falsifier
+
+**Fires if any stage's `max / min` across the three runs exceeds 1.5.**
+
+That would mean stage costs are not reproducible enough to bound by measurement, and the
+honest response is **not** a bigger multiplier — it is to report the ceiling as
+unmodellable on this hardware and leave the flat 1500 s in place with that finding
+attached.
+
+### Adoption rule
+
+If the computed ceiling clears the floor and the falsifier does not fire, **it is adopted
+whether it is higher or lower than 1500 s.** The flat 1500 s is superseded **by citation,
+never by edit** — it governed the v1.0.0 certificate, and a ceiling that silently changes
+value makes every certificate issued under it unauditable.
