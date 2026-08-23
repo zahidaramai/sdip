@@ -343,3 +343,70 @@ If the computed ceiling clears the floor and the falsifier does not fire, **it i
 whether it is higher or lower than 1500 s.** The flat 1500 s is superseded **by citation,
 never by edit** — it governed the v1.0.0 certificate, and a ceiling that silently changes
 value makes every certificate issued under it unauditable.
+
+---
+
+## Amendment B — results, 2026-08-23. **Floor constraint FAILED. Derivation discarded**
+
+Run after Amendment B was committed and pushed (`504b308`), per **SP9**. Three chains,
+every stage timed including the G6 and `g3_control` that Amendment A omitted.
+
+### The falsifier did NOT fire. Stage costs are reproducible
+
+| stage | run 1 | run 2 | run 3 | max | max/min |
+|---|---|---|---|---|---|
+| ingest | 76.05 | 65.81 | 66.32 | 76.05 | **1.16** |
+| five planes | 42.21 | 40.19 | 41.42 | 42.21 | 1.05 |
+| G4 | 0.84 | 0.85 | 0.81 | 0.85 | 1.05 |
+| export + G3 | 0.90 | 0.88 | 0.88 | 0.90 | 1.03 |
+| **G7 (16 controls)** | 617.92 | 639.88 | 609.40 | 639.88 | 1.05 |
+| `g3_control` | 0.80 | 0.82 | 0.82 | 0.82 | 1.03 |
+| closure | 108.81 | 109.85 | 107.34 | 109.85 | 1.02 |
+| **G6** | 134.73 | 133.88 | 133.00 | 134.73 | 1.01 |
+| **chain total** | 982.32 | 992.21 | 960.04 | 992.21 | 1.03 |
+
+Worst ratio **1.16** (ingest) against a 1.5 falsifier — **does not fire**. `per_control`
+max across all runs and all controls: **44.92 s** (`flipped_sample_bit`).
+
+### The derivation, and the floor it failed
+
+```
+Σ per-stage maxima (excl. G7)   365.41 s
+G7 modelled  44.92 × 16     =   718.67 s
+raw                             1084.09 s   → round up → 1100 s
+
+FLOOR: must be ≥ 1168.55 s      →  1100 < 1168.55  →  FAILED
+```
+
+**Discarded, per the rule Amendment B declared before seeing any of this.** 1100 s would
+breach **both** certified runs — 1,115.27 s and 1,168.55 s.
+
+### What the floor check caught, and it is not a rounding problem
+
+**The three probe chains took 960–992 s. `sdip certify` takes 1,115–1,169 s. A 12–22 %
+gap that is not in any stage.**
+
+**The harness measures the engine; the gate measures the command.** These chains run
+back-to-back in **one process** — warm imports, hot page cache on a 494 MB source.
+`sdip certify` starts cold, captures git state twice, reads the codec manifest, builds
+the array manifest, computes `portable_headers`, assembles the payload and writes the
+certificate. **None of that is a stage, so summing stages cannot reach it.**
+
+**A ceiling built from summed stages will always under-predict the command it governs.**
+That is a defect in the *method*, not in the measurement — and the floor constraint is the
+only reason it was caught rather than shipped.
+
+### **The flat 1500 s stands. D43 remains open**
+
+**Twice now a derivation has been discarded rather than adopted**, and both times the
+guard that caught it was pre-registered before the data existed. That is the
+pre-registration mechanism doing precisely its job: **A** lacked a floor check and would
+have shipped 1,150 s; **B** had one and stopped 1,100 s.
+
+**What Amendment B did establish, and it is not nothing:**
+
+- **Stage costs are reproducible** — worst spread 1.16 across three chains.
+- **Controls are uniform**, confirmed at N=3: `per_control` max **44.92 s**.
+- **G6 costs 134.73 s and `g3_control` 0.82 s** — the two stages Amendment A could not
+  account for, now measured.
+- **The parametric shape is sound.** What is wrong is the *anchor*, not the *slope*.
