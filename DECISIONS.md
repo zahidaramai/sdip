@@ -2144,3 +2144,51 @@ claim is worse than no code.
 asserted `"PROVISIONAL" in output`, which was right at F3 and wrong from F4 — the suite
 was *enforcing* the stale claim. It now asserts the current bar and that `PROVISIONAL` is
 **absent**. Worth noting: a green suite protected a false statement for four phases.
+
+---
+
+## D-0054 — 2026-08-23 — The published schema identified itself by a URL that does not exist
+
+**Found by installing the wheel and using it as a consumer would**, not by any test in
+the repository.
+
+`README.md` makes a specific promise: *"`pip install sdip` gives a validator to a
+consumer who never clones."* Verified in a clean venv from the built wheel — the schema
+is readable via `importlib.resources`, and reading it **does not import `mdio`**, which
+is the whole point. Both hold.
+
+**But the schema's `$id` was:**
+
+```
+https://github.com/OWNER/sdip/blob/main/docs/certificate-schema/sdip-certificate-v0.schema.json
+```
+
+**Two independent defects in one line.** A literal **`OWNER`** placeholder; and a path
+under **`docs/`**, which the publication firewall means is **never committed** — so even
+with the owner corrected the URL would 404 forever.
+
+`$id` is a JSON Schema's canonical identifier. **A published schema that names itself by
+an unreachable address is the documentation-not-a-contract failure D-0033 already
+recorded once**, in a different place. D-0015 moved the schema out of `docs/` into
+`src/sdip/schema/`; **the `$id` did not move with it, and nothing checked.**
+
+Now `https://raw.githubusercontent.com/zahidaramai/sdip/main/src/sdip/schema/sdip-certificate-v0.schema.json`
+— a raw URL that resolves to the bytes, rather than a `blob` page that resolves to HTML.
+
+**The test is the point, not the fix.** It asserts no `OWNER`, no `/docs/`, and that the
+id's tail names the path the file actually occupies — checked for **every** version in
+`SCHEMA_FILENAMES`, so a v1 schema is covered the day it is added. **Non-vacuity
+verified** (**SP11**): restoring the old `$id` fails it, restoring the new one passes.
+
+### What the build check found and did not find
+
+The wheel and sdist were also scanned for firewall leaks. **Both clean** — no `docs/`,
+no `local/`, no `CLAUDE*`. The sdist ships the four append-only records, `LICENSE` and
+`NOTICE`; the wheel ships `py.typed`, the schema, `LICENSE` and `NOTICE`.
+
+**One note on method.** My first leak scan reported `!!! LEAK !!!` on both artifacts and
+was **wrong both times**: the pattern `_[a-z]*\.py$` matched every `__init__.py`, and the
+wheel scan matched the string `claude` **in my own scratchpad path**, not in the archive.
+A false positive that had been believed would have produced a fabricated security
+finding. **SP8 cuts both ways — a scary number is a measurement too, and it gets checked
+before it gets reported.**

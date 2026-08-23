@@ -33,7 +33,7 @@ from sdip.equivalence.nonvacuity import g7
 from sdip.equivalence.scale import g5
 from sdip.export import export
 from sdip.ingest import ingest
-from sdip.schema import available_versions, load_schema
+from sdip.schema import SCHEMA_FILENAMES, available_versions, load_schema
 from tests.fixtures.generators import make_poststack3d
 
 pytestmark = pytest.mark.integration
@@ -162,3 +162,30 @@ def test_certificates_on_disk_validate(repo_root: Path):
     for path in sorted((repo_root / "certificates").glob("*.json")):
         errors = list(validator.iter_errors(json.loads(path.read_text())))
         assert errors == [], f"{path.name}: {[e.message for e in errors]}"
+
+
+def test_schema_id_resolves_to_a_path_that_is_actually_published():
+    """`$id` is the schema's canonical identifier for consumers who never clone.
+
+    It shipped as `https://github.com/OWNER/sdip/blob/main/docs/certificate-schema/...`:
+    a literal `OWNER`, and a path under `docs/`, which the publication firewall means is
+    **never committed**. Both halves of that URL were unreachable — the schema published
+    to consumers identified itself by an address that does not exist and never will.
+
+    D-0015 moved the schema to `src/sdip/schema/`; the `$id` did not move with it. This
+    test pins the two properties that made it wrong, so the next move updates the id or
+    fails here — the same class of gap that let the schema stay invalid for a whole
+    phase (D-0048).
+    """
+    for version, filename in SCHEMA_FILENAMES.items():
+        schema_id = load_schema(version)["$id"]
+
+        assert "OWNER" not in schema_id, f"v{version}: placeholder owner in {schema_id!r}"
+        assert "/docs/" not in schema_id, f"v{version}: docs/ is never published"
+        assert schema_id.endswith(filename), f"v{version}: {schema_id!r} does not end in {filename}"
+
+        tracked = Path("src/sdip/schema") / filename
+        assert tracked.is_file(), f"{tracked} is where the schema actually lives"
+        assert schema_id.endswith(str(tracked).replace("\\", "/")), (
+            f"v{version}: $id {schema_id!r} does not name {tracked}"
+        )

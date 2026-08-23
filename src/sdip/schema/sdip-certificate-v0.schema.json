@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OWNER/sdip/blob/main/docs/certificate-schema/sdip-certificate-v0.schema.json",
+  "$id": "https://raw.githubusercontent.com/zahidaramai/sdip/main/src/sdip/schema/sdip-certificate-v0.schema.json",
   "title": "SDIP Equivalence Certificate v0",
   "description": "Machine-readable proof that a SEG-Y to MDIO/Zarr conversion was an identity map on every measured value. Emitted per ingestion, written to certificates/, indexed in EQUIVALENCE_LEDGER.md. Published independently of the software so a third party can validate SDIP output without running SDIP. Schema version 0 tracks specification v1.0 section 4.7 and is NOT stable until the software reaches v1.0.0.",
   "type": "object",
