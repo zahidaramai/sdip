@@ -67,6 +67,13 @@ dev = [
     # the runtime dependency tree is licence-scanned and must not grow.
     "tensorstore>=0.1.85",
     "jsonschema>=4.26.0",
+    # Probe P8 only. The S3 filesystem driver, needed to point a probe harness at a
+    # local MinIO server so the object-store write path can be exercised for real
+    # rather than mocked. TEST-ONLY: `s3fs` reaches the runtime tree solely through
+    # the `cloud` extra, which is optional and unmeasured (debt D7). Nothing in
+    # `src/sdip` may import it; the runtime dependency tree is licence-scanned and
+    # must not grow.
+    "s3fs>=2025.9.0",
 ]
 
 [tool.hatch.build.targets.wheel]

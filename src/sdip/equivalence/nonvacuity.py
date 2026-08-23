@@ -59,6 +59,7 @@ from typing import Any, Final
 import numpy as np
 
 from sdip.ingest.file_headers import ATTR_RAW_BINARY, ATTR_RAW_TEXT
+from sdip.ingest.header_plane import ARRAY_NAME as RAW_HEADER_PLANE_ARRAY
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY
 
 ALL_GATES: tuple[str, ...] = ("G2a", "G2b", "G2c", "G2d", "G2e", "G3")
@@ -184,6 +185,37 @@ def _flip_raw_ibm32_word(store: Path) -> None:
     group[RAW_IBM32_ARRAY][:] = words
 
 
+RAW_HEADER_PLANE_BYTE: Final[int] = 232
+"""Byte offset flipped by :func:`_flip_raw_header_byte`. 0-based, so header byte **233**.
+
+Deliberately inside the tail the rev 1 standard leaves unnamed — the bytes **SP4/SP5**
+exist to cover and the ones a sparse spec drops silently. The existing
+``flipped_header_byte`` control mutates ``pad_240`` in the *structured* array, so the two
+controls touch different bytes in different arrays and neither can stand in for the other.
+"""
+
+
+def _flip_raw_header_byte(store: Path) -> None:
+    """Flip one bit of one raw header byte in ``headers_raw_uint8``.
+
+    The ``uint8`` plane is the copy of the trace headers a non-Python consumer can
+    actually read: probe **P4** measured zarr-java refusing the structured array's
+    ``struct`` ``data_type`` outright, and ``struct`` has no Zarr v3 specification, so
+    that refusal is conformant (`DECISIONS.md` D-0047). A defect in the plane is silent
+    by construction — the structured ``headers`` array is untouched and every field-wise
+    comparison still passes. Without this control, SDIP could write a corrupted plane and
+    no gate would notice.
+    """
+    group = _group(store)
+    if RAW_HEADER_PLANE_ARRAY not in group:
+        msg = f"{RAW_HEADER_PLANE_ARRAY} absent; the store carries no uint8 header plane"
+        raise KeyError(msg)
+    plane = group[RAW_HEADER_PLANE_ARRAY][:]
+    cell = (*tuple(0 for _ in plane.shape[:-1]), RAW_HEADER_PLANE_BYTE)
+    plane[cell] = np.uint8(int(plane[cell]) ^ 1)
+    group[RAW_HEADER_PLANE_ARRAY][:] = plane
+
+
 @dataclass(frozen=True, slots=True)
 class Corruption:
     """One deliberate defect and the exact set of gates it must fail."""
@@ -279,6 +311,14 @@ CONTROLS: tuple[Corruption, ...] = (
         clause="§7 G7 minimum set",
         # Zeroes headers and samples and clears the mask bit: three arrays, all written.
         touches=frozenset({"trace_mask", "headers", "amplitude"}),
+    ),
+    Corruption(
+        name="flipped_raw_header_byte",
+        description="One bit flipped in the undecoded uint8 header plane (byte 233)",
+        must_fail=frozenset({"G2c"}),
+        apply=_flip_raw_header_byte,
+        touches=frozenset({RAW_HEADER_PLANE_ARRAY}),
+        clause="probe P4 / DECISIONS D-0047 - the portable copy of the trace headers",
     ),
     Corruption(
         name="flipped_raw_ibm32_word",

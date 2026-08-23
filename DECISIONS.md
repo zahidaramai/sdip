@@ -1993,3 +1993,84 @@ warnings      0 python warning(s), 2 log record(s), 2 suppression(s), 0 UNDECLAR
 **Printing counts without the scope is how a zero gets misread as quiet.** The
 certificate has carried the scope since D-0046; the terminal an operator actually watches
 did not.
+
+---
+
+## D-0051 — 2026-08-23 — The `uint8` header plane is written. Measured cheaper than promised
+
+**Decision.** `headers_raw_uint8` — shape `(*grid, 240)`, `uint8`, the raw trace-header
+bytes read from the source by offset — is written **unconditionally**, with stock `zarr`.
+
+**Why unconditionally**, unlike the `ibm32` raw view: every store has headers, and the
+portability problem is not conditional. P4 measured **three readers giving three different
+answers** about the structured array's `struct` dtype — TensorStore accepts, zarr-java
+refuses, `zarr-python` warns — and `struct` has **no Zarr v3 specification**, so a reader
+that declines it is conformant and still right. A 2-D `uint8` array is as portable as
+Zarr gets.
+
+**Plane 3 gains a byte leg with no spec dependency at all.** Its field-wise comparison
+equals byte equality *only because G1 proved the spec covers all 240 bytes*; this leg
+compares the 240 raw bytes directly. It is **ANDed into G2c**, following D-0049: **a
+portable copy nothing checks is not evidence.** A G7 control ships with it —
+`flipped_raw_header_byte`, declaring `{G2c}`. **10 controls now**, each failing exactly
+its declared set.
+
+**Measured on 116,532 real traces — cheaper than the pre-registration promised:**
+
+| Array | Compressed | Per trace |
+|---|---|---|
+| `headers` (structured) | 230,658 B | **1.98 B** |
+| `headers_raw_uint8` | 1,078,722 B | **9.26 B** |
+
+The pre-registration estimated **≈19 B/trace**. The measured figure is **less than half
+that**. At N=30 the same measurement reads 164 B/trace — Blosc block overhead swamps the
+signal — which is why the 30-trace article cannot produce an honest per-trace number and
+this one was taken on real data.
+
+**Known limitation, stated rather than solved.** This does **not** fix zarr-java's
+`Group.list()`, which fails on `segy_file_header`'s `fixed_length_utf32` (debt **D32**).
+The plane makes header *data* portable; it does not make the group *enumerable*.
+
+---
+
+## D-0052 — 2026-08-23 — **The store is now larger than the source.** The raw sample view costs 97 %
+
+**Measured, and it changes a headline number this project has quoted repeatedly.**
+
+| | Before the raw views | Now |
+|---|---|---|
+| Source | 494,565,408 B | 494,565,408 B |
+| Store | 379,983,485 B | **747,817,814 B** |
+| Ratio | **0.77×** — smaller than source | **1.51×** — larger than source |
+
+The cause is almost entirely one array:
+
+| Array | Per trace | Share |
+|---|---|---|
+| `amplitude` | 3,258.47 B | — |
+| **`amplitude_raw_ibm32`** | **3,147.25 B** | **97 % of `amplitude` itself** |
+| `headers_raw_uint8` | 9.26 B | negligible |
+| `headers` | 1.98 B | negligible |
+
+**The raw sample view nearly doubles the store.** That is unsurprising in hindsight —
+it is the same samples, undecoded — but it was never measured, and every prior statement
+about SDIP's storage cost was made before it existed.
+
+**It is not being made optional, and the reasoning matters.** The obvious response is a
+flag defaulting off. That is precisely the shape §0.1 warns about: *"lossy codecs get
+enabled for a size win and never get disclosed downstream."* A convenience flag that
+silently trades recoverability for disk is how the guarantee erodes — and P2 measured
+**1,939 words in 4,103 losing the value**, unrecoverable from the decode alone.
+
+**When it is genuinely redundant:** if G3 is byte-identical, nothing was lost, and the
+source is itself the recovery path. But that is known only *after* export, and only while
+the source still exists — which for an archive-rescue project is exactly the assumption
+that fails.
+
+**Recorded as a debt (D36) rather than acted on**, because it is a real trade-off and the
+right resolution is a maintainer's, not an implementer's. **What must not happen is the
+cost going unstated**, which until this measurement it was.
+
+**Also corrected:** the frequently-quoted *"full 240-byte header preservation costs 0.06 %
+of the store"* is unchanged in substance — headers are still 1.98 B/trace, and the plane
+adds 9.26. **Headers were never the cost.** The samples are.

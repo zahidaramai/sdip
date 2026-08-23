@@ -987,3 +987,36 @@ empty, and the loss it fails to record is real.
 caller install a filter in the child. §3.3 bars monkeypatching, so if no hook exists the
 honest end state is the declaration, permanently.
 
+---
+
+## D36 — The raw sample view nearly doubles the store, and that is unresolved
+
+- **Status:** `OPEN` (raised 2026-08-23) · **Decision:** `DECISIONS.md` D-0052
+
+Measured on 116,532 real traces: `amplitude_raw_ibm32` costs **3,147 B/trace — 97 % of
+`amplitude` itself**, taking the store from **0.77× the source to 1.51×**. SDIP output is
+now **larger than its input**.
+
+The header plane is not the problem: **9.26 B/trace**, less than half what the
+pre-registration estimated. **Headers were never the cost. The samples are.**
+
+**Deliberately not made optional.** A flag defaulting off is exactly the shape §0.1 warns
+about — *"lossy codecs get enabled for a size win and never get disclosed downstream"* —
+and P2 measured 1,939 words in 4,103 losing the value, unrecoverable from the decode.
+
+**Closure candidates, none free:**
+
+1. **Write it, then drop it when G3 proves byte-identity.** Sound in principle: if the
+   round trip is byte-identical nothing was lost. Fragile in practice — it makes store
+   contents depend on a later step, and a crash between the two leaves the expensive
+   state.
+2. **Store only the words that do not round-trip.** P2 measured the failing regimes
+   exactly (exponent codes outside 33–96, zero fractions, unnormalised mantissas). A
+   sparse view of only the at-risk words would be a fraction of the size. Needs a
+   per-word check at ingest, and a sparse layout a consumer can read.
+3. **Accept 1.51× and say so prominently.** Honest, and possibly correct for an
+   archive-rescue tool where the source may not survive.
+
+Option 2 is the interesting one: it is the only candidate that keeps full recoverability
+*and* the size win, and P2 already supplies the predicate.
+

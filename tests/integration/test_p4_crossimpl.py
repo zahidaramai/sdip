@@ -85,6 +85,7 @@ ts = pytest.importorskip(
 CORE_SPEC_ARRAYS: tuple[str, ...] = (
     "amplitude",
     "amplitude_raw_ibm32",
+    "headers_raw_uint8",
     "inline",
     "crossline",
     "time",
@@ -105,6 +106,15 @@ listed here rather than special-cased because its ``data_type`` is the plain str
 ``uint32`` — core-spec, so it changes the count and nothing else. If the fixture's sample
 format ever changes, the array disappears and
 :func:`test_the_store_is_the_one_the_probe_registered` is what says so.
+
+``headers_raw_uint8`` is **this probe's own mitigation**, adopted after leg 2 measured
+zarr-java refusing the structured ``headers`` array (``DECISIONS.md`` D-0047). It is
+written for **every** store, and its ``data_type`` is the plain string ``uint8`` — the
+most portable thing Zarr has. It is listed here rather than special-cased for the same
+reason: the pre-registered criterion is that every core-spec array crosses the
+implementation boundary byte-identically, and this array is now one of them. The leg-1
+and leg-2 result tables in ``prereg/P4-portability.md`` describe the store **as it was on
+those run dates** and are never edited; this list describes the store today.
 """
 
 EXTENSION_ARRAYS: tuple[str, ...] = ("headers", "segy_file_header")

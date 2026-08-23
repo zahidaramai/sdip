@@ -223,12 +223,116 @@ def grid_coordinates(group: Any, dimensions: tuple[str, ...]) -> dict[str, Any]:
     return {d: group[d][:] for d in dimensions}
 
 
+RAW_HEADER_NOTE = (
+    "Second leg, ANDed into G2c's verdict. The field-wise comparison above equals byte "
+    "equality only because G1 proved the gap-free spec covers all 240 bytes; this leg "
+    "compares the 240 raw bytes in headers_raw_uint8 against the same bytes read from "
+    "the source by raw byte offset, and has NO spec dependency at all. It exists "
+    "because probe P4 measured three Zarr readers giving three different answers about "
+    "the structured array's `struct` data_type - TensorStore accepts it, zarr-java "
+    "refuses it, zarr-python warns - and `struct` has no Zarr v3 specification, so a "
+    "reader that declines it is conformant (DECISIONS.md D-0047). The plane is the "
+    "portable copy, and a portable copy nothing checks is not evidence."
+)
+
+
+def _raw_header_evidence(
+    source: str | Path, handle: Any, group: Any, spec: Any, trace_map: Any
+) -> dict[str, Any]:
+    """Compare the stored ``uint8`` header plane against the source, as bytes.
+
+    Absent array means **not checked**, never checked-and-passed: a store written before
+    the plane existed carries none, and ``raw_header_bytes_verified`` says which of those
+    a reader is looking at.
+
+    Live cells only. Padding is not data (**SP12**), and the fill byte ``0x00`` is a
+    valid header byte, so comparing it against anything would be comparing against a
+    number nobody measured.
+    """
+    from sdip.ingest.header_plane import (
+        ARRAY_NAME,
+        read_source_header_bytes,
+        sample_bytes,
+        trace_data_offset,
+    )
+
+    if ARRAY_NAME not in group:
+        return {
+            "raw_header_plane_present": False,
+            "raw_header_bytes_verified": False,
+            "raw_header_bytes_identical": None,
+            "raw_header_first_difference": None,
+            "raw_header_note": (
+                f"store carries no {ARRAY_NAME} array. Its absence is NOT evidence that "
+                "the header bytes match; it means this leg did not run."
+            ),
+        }
+
+    stored = np.asarray(group[ARRAY_NAME][:])
+    try:
+        expected_all = read_source_header_bytes(
+            source,
+            samples_per_trace=int(handle.samples_per_trace),
+            bytes_per_sample=sample_bytes(spec),
+            data_offset=trace_data_offset(handle),
+        )
+    except UntrustedInputError as exc:
+        # Recorded rather than raised: this leg must never be able to convert the
+        # field-wise comparison's verdict into an exception. A plane defect masking a
+        # field finding is the exact inversion of what this evidence is for.
+        return {
+            "raw_header_plane_present": True,
+            "raw_header_bytes_verified": False,
+            "raw_header_bytes_identical": None,
+            "raw_header_first_difference": None,
+            "raw_header_error": f"{type(exc).__name__}: {exc}",
+            "raw_header_note": RAW_HEADER_NOTE,
+        }
+
+    mismatches: list[dict[str, Any]] = []
+    compared = 0
+    for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
+        compared += 1
+        expected = np.asarray(expected_all[ordinal], dtype=np.uint8)
+        observed = np.asarray(stored[cell])
+        if not np.array_equal(expected, observed):
+            differing = np.flatnonzero(expected != observed)
+            first = int(differing[0]) if differing.size else None
+            mismatches.append(
+                {
+                    "source_ordinal": ordinal,
+                    "cell": list(cell),
+                    "byte_offset": first,
+                    "expected": None if first is None else int(expected[first]),
+                    "observed": None if first is None else int(observed[first]),
+                    "differing_bytes": int(differing.size),
+                }
+            )
+            if len(mismatches) >= 20:
+                break
+
+    return {
+        "raw_header_plane_present": True,
+        "raw_header_bytes_verified": True,
+        "raw_header_bytes_identical": not mismatches,
+        "raw_header_compared": "np.array_equal on uint8 bytes, source vs store - EXACT",
+        "raw_header_n": compared,
+        "raw_header_bytes_per_trace": int(stored.shape[-1]),
+        "raw_header_sampling": "exhaustive over live traces",
+        "raw_header_first_difference": mismatches[0] if mismatches else None,
+        "raw_header_mismatch_count": len(mismatches),
+        "raw_header_note": RAW_HEADER_NOTE,
+    }
+
+
 def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool) -> PlaneResult:
     """**Plane 3 — trace header.** Gate G2c. Spec §4.4.
 
     For every trace, **all 240 header bytes are recoverable from the store, bit-exact.**
 
-    The comparison is field-wise over the gap-free spec, in both directions, with
+    Two legs, both binding.
+
+    **Leg 1 — field-wise, over the gap-free spec**, in both directions, with
     ``array_equal``. **That is equivalent to byte equality only because the spec is
     gap-free** — every one of the 240 bytes is covered by exactly one field, so no byte
     can differ without some field differing.
@@ -241,6 +345,17 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
     Field *naming* is metadata; byte *content* is the contract (§4.4). A byte at 233
     stored as ``pad_233`` satisfies this plane. A byte lost because no field covered it
     does not — which is exactly what G1 exists to prevent.
+
+    **Leg 2 — byte-wise, over the ``uint8`` header plane**, with **no spec dependency at
+    all**: the 240 bytes in ``headers_raw_uint8`` against the same bytes read from the
+    source by raw offset. Reported separately as ``raw_header_bytes_verified`` /
+    ``raw_header_bytes_identical`` / ``raw_header_first_difference``, and **ANDed into
+    the verdict** exactly as the raw-sample leg is ANDed into Plane 4 (D-0049). That
+    array is the portable copy of the headers — probe P4 measured a reader refusing the
+    structured one — and **evidence nothing can fail is not a check** (**SP11**).
+
+    ``None`` (array absent, correct for a store written before the plane existed) is
+    **not** a failure; only an explicit ``False`` fails.
 
     Args:
         source: The source SEG-Y.
@@ -304,7 +419,20 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
         if len(mismatches) >= 20:
             break
 
-    ok = not mismatches and not missing_fields and trace_map.invertible
+    # The byte leg is ANDed into the verdict, not merely reported - the same ruling
+    # D-0049 made for Plane 4's raw-word leg. `headers_raw_uint8` is the copy of the
+    # headers a non-Python consumer can actually read (probe P4 measured zarr-java
+    # refusing the structured one), so a store that silently corrupted it while the
+    # field-wise comparison passed would be certifiable with its portable copy already
+    # gone. Evidence nothing can fail is not a check; it is a comment (SP11).
+    #
+    # `None` means the array is absent, which is what a store written before the plane
+    # existed carries, and is NOT a failure. Only an explicit False fails.
+    raw_evidence = _raw_header_evidence(source, handle, group, spec, trace_map)
+    raw_identical = raw_evidence.get("raw_header_bytes_identical")
+    raw_ok = raw_identical is not False
+
+    ok = not mismatches and not missing_fields and trace_map.invertible and raw_ok
     return PlaneResult(
         plane=3,
         gate="G2c",
@@ -323,9 +451,11 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
             "note": (
                 "Field naming is metadata; byte content is the contract. Field-wise "
                 "equality equals byte equality here only because G1 proved the spec "
-                "covers all 240 bytes with no gaps and no overlaps."
+                "covers all 240 bytes with no gaps and no overlaps - which is why the "
+                "byte leg, which needs no spec, is ANDed in beside it."
             ),
-        },
+        }
+        | raw_evidence,
     )
 
 

@@ -1892,6 +1892,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "s3fs" },
     { name = "tensorstore" },
 ]
 
@@ -1912,6 +1913,7 @@ dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-cov", specifier = ">=6.0" },
     { name = "ruff", specifier = ">=0.9" },
+    { name = "s3fs", specifier = ">=2025.9.0" },
     { name = "tensorstore", specifier = ">=0.1.85" },
 ]
 

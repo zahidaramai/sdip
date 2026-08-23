@@ -316,3 +316,218 @@ unusable for its access pattern is indistinguishable from one that is not.
 - **G4 portability, G5, G6 and G7 on a prestack store.** Not run. In particular there is
   **no negative control for the new prestack plane behaviour** — under §5 that is owed
   before the generalised planes can be treated as trustworthy on this geometry.
+
+---
+
+## Results — latency leg, run 2026-08-23
+
+This is the leg the first run reported **NOT RUN**. It is run here against Amendment A
+verbatim: nothing in the parameter table was changed, no geometry was dropped, and no
+figure is reported for a store whose planes did not pass.
+
+| Field | Value |
+|---|---|
+| Run date | 2026-08-23 |
+| Outcome | **Falsifier does not fire** on the two geometries that clear the correctness precondition. **Not evaluable** on the other two — blocked by clause 1, which fired in the first run and is not closed |
+| Runner | `tests/integration/test_p7_latency.py` — 63 tests, all passing; marked `integration` and `slow` |
+| Fixtures | `tests/fixtures/generators/prestack.py`, seed `20260822`, synthetic only, unchanged |
+| Environment | CPython 3.12.13, macOS 26.5.2 arm64, Apple M3 Max, 14 cores, 36 GiB |
+| Pins | `multidimio==1.2.1`, `segy==0.6.0`, `zarr==3.3.0`, `numpy==2.5.2` |
+| Barred variables | absent, asserted before anything was built |
+| Comparison | exact throughout. No tolerance anywhere in the runner |
+| N | 4 geometries × 3 chunk shapes × 4 read patterns × 5 repetitions; 24–144 traces per fixture, all inside the 500-trace budget |
+| Host load | **1-minute load average 9.4 on 14 cores.** Other work was running on the machine. Absolute figures are inflated by it; see "What the numbers are worth" |
+
+### The declared parameters, and what was done with each
+
+| Declared | Honoured as |
+|---|---|
+| Geometries: streamer shot, streamer field record, OBN receiver, CDP gather | `streamer_shot_3d`, `streamer_field_3d`, `obn_receiver_3d`, `cdp_offset_3d` — one fixture per family, the 3-D member in each case |
+| 3 chunk shapes per geometry: MDIO's default, gather-contiguous, time-slice-contiguous | Exactly three. Default is the template's own shape, untouched; gather-contiguous pins every gather-separating axis to 1 and takes the within-gather axis and the samples whole; time-slice-contiguous takes every spatial axis whole and pins the sample axis to 1 |
+| Read patterns: single gather · offset slice · time slice · full inline | Index expressions derived from **the store's own axis order**, read from Zarr metadata, never assumed. For a CDP-offset store the four are literal. For a streamer store, `offset slice` fixes the channel — the streamer's offset axis — and `full inline` fixes the outermost spatial axis, the sail-line direction |
+| Latency target ≤ 2.0 s per read pattern | Applied to the **larger** of the two quantities measured: store-open plus slice |
+| 5 repetitions, median reported | Exactly 5. A test asserts the reported figure is `statistics.median` of 5 samples |
+| Cache state: cold, dropped between measurements | See below. **It was not fully achievable and the shortfall is stated rather than glossed** |
+| Correctness precondition: all five planes PASS first | Enforced mechanically, not by discipline. The code path that produces a figure is unreachable for a store whose planes did not all pass, and a test asserts no figure exists for one |
+
+### What "cold" meant in this run — the honest version
+
+`purge` needs `sudo` on macOS and was not available, so **the OS unified buffer cache was
+not dropped.** What was dropped, per repetition: the Zarr group is re-opened from the
+path, the array handle is re-acquired, and no array, buffer or decoded chunk is carried
+from one repetition into the next. Nothing else.
+
+Every figure below is therefore a **lower bound** on a genuinely cold read, which makes
+the comparison against the target **one-sided**: a shape that exceeds 2.0 s with a warm
+page cache would exceed it cold, so an exceedance would be real; a figure under 2.0 s
+does **not** establish that the same read is under 2.0 s from cold storage. The amendment
+declared this leg to catch a pathological shape rather than to rank good ones, and a
+lenient one-sided test is sufficient for that and insufficient for anything else.
+
+### Could the chunk shape be varied at all through the public API?
+
+**Yes upstream, no through SDIP, and both halves are results.**
+
+`AbstractDatasetTemplate.full_chunk_shape` is a documented public property with a public
+setter, and `get_template` documents that each call returns an independent copy that can
+be modified without affecting the registry. Setting it on that copy is enough: three
+declared shapes produced three distinct chunk grids on all four geometries, with no
+private attribute touched, no subclassing and no patching — §3.3 bars all three, and had
+the shape been reachable only that way the correct outcome would have been to measure the
+default alone and say so.
+
+`sdip ingest` cannot reach it. `ingest()` takes a template **name** and resolves it
+internally, so there is no object on which a caller could set the shape and no parameter
+that would carry one. **Every SDIP store today ships whatever shape the template chose,
+and nothing on the certificate records which shape that was.** Asserted by
+`test_sdip_ingest_offers_no_way_to_choose_a_chunk_shape`.
+
+For the same reason this leg is **not** a run of `sdip ingest` and no figure below is
+reported as one. The stores are built exactly as leg 2 of the first run built them — the
+geometry's index fields declared, the pinned public `segy_to_mdio`, a grid override where
+the template needs one — with the chunk shape set on the template beforehand. That is
+what makes the comparison *between shapes* admissible. The §6.4 override mechanism
+(`src/sdip/spec/overrides.py`, D-0044) now supplies `offset` and `cdp`, which would carry
+the two CDP geometries through `ingest()`; it does not supply the streamer names, and it
+cannot supply a `grid_overrides` value at all, so leg 2's construction was still needed
+for three of the four and was used for all four to keep them comparable.
+
+### Per-geometry, per-shape, per-pattern
+
+Median of 5 repetitions, milliseconds, **two independent runs reported as `A / B`** so the
+run-to-run spread is visible rather than asserted away. `overhang` is chunk-buffer
+elements per array element — a structural property of the store, not a latency figure.
+
+| Geometry | Chunk shape | `amplitude` chunks | chunks | store bytes | overhang | planes | single gather | offset slice | time slice | full inline |
+|---|---|---|---:|---:|---:|---|---:|---:|---:|---:|
+| `streamer_shot_3d` | default (MDIO) | `(8, 1, 128, 2048)` | 2 | 37,851 | 1,024x | 5/5 PASS | 6.5 / 13.7 | 6.5 / 13.5 | 6.6 / 13.6 | 6.4 / 11.5 |
+| `streamer_shot_3d` | gather-contiguous | `(1, 1, 16, 32)` | 8 | 35,019 | 1x | 5/5 PASS | **1.1 / 1.3** | 2.2 / 2.7 | 2.0 / 2.3 | 1.1 / 1.3 |
+| `streamer_shot_3d` | time-slice-contiguous | `(4, 2, 16, 1)` | 32 | 38,179 | 1x | 5/5 PASS | 6.1 / 7.3 | 6.7 / 7.1 | **1.1 / 1.3** | 7.2 / 6.6 |
+| `streamer_field_3d` | default (MDIO) | `(1, 1, 16, 1, 32, 1024)` | 4 | 39,049 | 512x | **blocked** | — *no figure* | — *no figure* | — *no figure* | — *no figure* |
+| `streamer_field_3d` | gather-contiguous | `(1, 1, 1, 1, 8, 32)` | 16 | 38,670 | 1x | **blocked** | — *no figure* | — *no figure* | — *no figure* | — *no figure* |
+| `streamer_field_3d` | time-slice-contiguous | `(1, 2, 4, 2, 8, 1)` | 32 | 40,312 | 1x | **blocked** | — *no figure* | — *no figure* | — *no figure* | — *no figure* |
+| `obn_receiver_3d` | default (MDIO) | `(1, 1, 1, 1, 512, 4096)` | 16 | 62,033 | **16,384x** | **blocked** | — *no figure* | — *no figure* | — *no figure* | — *no figure* |
+| `obn_receiver_3d` | gather-contiguous | `(1, 1, 1, 1, 4, 32)` | 16 | 38,238 | 1x | **blocked** | — *no figure* | — *no figure* | — *no figure* | — *no figure* |
+| `obn_receiver_3d` | time-slice-contiguous | `(1, 8, 1, 2, 4, 1)` | 32 | 37,458 | 1x | **blocked** | — *no figure* | — *no figure* | — *no figure* | — *no figure* |
+| `cdp_offset_3d` | default (MDIO) | `(8, 8, 32, 512)` | 1 | 33,216 | 228x | 5/5 PASS | 6.4 / 5.7 | 6.1 / 4.8 | 5.0 / 4.9 | 4.7 / 5.0 |
+| `cdp_offset_3d` | gather-contiguous | `(1, 1, 6, 32)` | 24 | 34,995 | 1x | 5/5 PASS | **3.6 / 1.6** | 14.6 / 7.1 | 8.0 / 6.6 | 2.6 / 2.8 |
+| `cdp_offset_3d` | time-slice-contiguous | `(4, 6, 6, 1)` | 32 | 36,327 | 1x | 5/5 PASS | 8.0 / 7.7 | 7.6 / 7.7 | **1.4 / 1.4** | 7.7 / 7.4 |
+
+`blocked` is the declared correctness precondition, not an omission: **all five planes must
+PASS before a latency figure means anything, and on these two geometries Planes 3, 4 and 5
+raise `UntrustedInputError`.** That is F7 from the first run, unchanged and not a chunking
+problem — `streamer_field_3d` and `obn_receiver_3d` size their grid along `shot_index`, a
+dimension MDIO calculates and writes **no coordinate array for**, so a per-trace plane has
+nothing to resolve an index-header value against. No chunk shape reaches it. The stores
+were still built at all three shapes, and their planes still run, so the block is shown to
+be shape-independent rather than assumed to be.
+
+The store-open cost sits under every figure as a floor of roughly 0.6–0.9 ms and does not
+vary with the chunk shape; it is included in the reported figure because the target is
+better applied to the larger quantity. Slice-only medians for run A, in milliseconds:
+
+| Geometry | Chunk shape | single gather | offset slice | time slice | full inline |
+|---|---|---:|---:|---:|---:|
+| `streamer_shot_3d` | default | 5.69 | 5.72 | 5.81 | 5.66 |
+| `streamer_shot_3d` | gather-contiguous | 0.49 | 1.55 | 1.41 | 0.55 |
+| `streamer_shot_3d` | time-slice-contiguous | 5.46 | 6.01 | 0.49 | 6.50 |
+| `cdp_offset_3d` | default | 4.67 | 4.35 | 3.77 | 3.56 |
+| `cdp_offset_3d` | gather-contiguous | 2.08 | 11.40 | 6.56 | 1.70 |
+| `cdp_offset_3d` | time-slice-contiguous | 7.06 | 6.78 | 0.62 | 6.88 |
+
+### Verdict against the declared falsifier
+
+> **Falsifier for this leg:** no chunk shape meeting the declared target for a geometry.
+
+**`streamer_shot_3d` — DOES NOT FIRE.** All three candidate shapes meet ≤ 2.0 s on all
+four patterns. Worst median across both runs: 13.7 ms, which is 146x inside the target.
+
+**`cdp_offset_3d` — DOES NOT FIRE.** All three candidate shapes meet ≤ 2.0 s on all four
+patterns. Worst median across both runs: 14.6 ms, 137x inside the target.
+
+**`streamer_field_3d` and `obn_receiver_3d` — NOT EVALUABLE.** No shape has a figure,
+because the declared correctness precondition forbids one, because clause 1 of the
+original falsifier fired on both in the first run and is not closed. Reading this as the
+latency falsifier firing would credit a chunking finding to a coordinate-array finding;
+reading it as a pass would claim a measurement that does not exist. **Neither is claimed.**
+The leg is therefore **partially run**: two geometries of four measured, two blocked
+upstream of measurement, and the block is stated rather than routed around. The route
+around it exists and was not taken — `MDIO_IGNORE_CHECKS` is barred (§9.1), and so is
+inventing an ordering for a dimension that declares none.
+
+**The worst overhang in the run belongs to a geometry that can carry no figure.**
+`obn_receiver_3d`'s default chunk is 16,384x the data it holds, it is the only store in
+this probe larger than its own SEG-Y, and it is precisely the geometry the precondition
+bars from publishing a latency number. That is the precondition working as declared: the
+fix there is a coordinate array, not a benchmark.
+
+### Findings
+
+**F9 — the pre-registered gate is silent, and the ordering underneath it is not.** Every
+figure in the run is between 137x and 1,800x inside the declared 2.0 s, so the target
+separates nothing. What separates cleanly is the ordering: **each purpose-built shape
+beats MDIO's default on the pattern it was built for, on both measurable geometries, in
+every run, by 1.8x to 10.9x.** The amendment predicted this in advance — 2.0 s was
+declared "deliberately generous … meant to catch a *pathological* shape, not to rank good
+ones" — and that is exactly how it behaved. **The target was not the useful instrument;
+the comparison was.** A future prestack chunking gate should be registered as a
+*relative* criterion, and it must be registered before it is measured.
+
+**F10 — MDIO's default prestack chunk overhangs every one of these fixtures, by 228x to
+16,384x.** A chunk is decoded whole: when the declared chunk is larger than the array, the
+reader allocates and decompresses the entire buffer to return the corner of it that holds
+data. `StreamerShotGathers3D` declares `(8, 1, 128, 2048)` over a `(4, 2, 16, 32)` array —
+an 8 MiB buffer decoded to return 512 values. This is a property of the shape against the
+grid, not of the disk, which is why it survives a warm page cache and shows up as the
+5.7 ms floor under every default-shape read in the table. It is also the mechanism behind
+the first run's observation that `obn_receiver_3d`'s store is larger than its SEG-Y.
+
+**F11 — the shape that wins one pattern loses another, and the loss is measurable.**
+Gather-contiguous is the fastest shape for a single gather on both geometries and the
+*slowest* for an offset slice on `cdp_offset_3d` (14.6 ms against 6.1 ms for the default —
+a constant-offset section touches every gather chunk in the survey). Time-slice-contiguous
+inverts it. There is no shape here that wins everything, so **prestack chunking is a
+declared trade against a stated access pattern, and it is a trade SDIP currently makes
+silently on the user's behalf and records nowhere.**
+
+**F12 — nothing records which shape a store was written with.** Repeated from the first
+run because this leg strengthens it from an observation to a consequence: the certificate
+carries no chunk manifest, `sdip ingest` accepts no chunk parameter, and two stores that
+differ by a factor of ten in read cost are indistinguishable in the record. A store that
+is unusable for its access pattern still certifies as equivalent — correctly, because it
+*is* equivalent. Equivalence and usability are different claims and the certificate only
+makes one of them.
+
+### What the numbers are worth
+
+The host was running other work: 1-minute load average 9.4 on 14 cores. That inflates the
+absolute figures and is visible in the run-to-run spread — `streamer_shot_3d`'s default
+shape reads 6.5 ms in run A and 13.7 ms in run B, a factor of two on the same store and
+the same code. **No absolute figure here should be quoted as a latency of anything.** The
+ordering is treated as the finding because it is measured within a single process against
+the same load, and it reproduced in every run: three exploratory and two reported.
+
+Restating the scope limit the amendment set in advance, because the result does not
+weaken it: this is **relative behaviour on small synthetic fixtures.** It is not a
+production latency claim; a shape that wins here is not thereby validated at survey scale;
+and cold-cache behaviour on real storage is not measured at all. That would need P3-class
+compute and its own pre-registration.
+
+### What this leg did not measure
+
+- **A genuinely cold read.** The OS page cache was not dropped. Stated above; it is the
+  single largest gap in this leg.
+- **Two of the four declared geometries.** `streamer_field_3d` and `obn_receiver_3d`
+  cannot clear the correctness precondition, so the falsifier is not evaluable for them.
+  The leg is partially run and is reported as such.
+- **The 2-D fixtures and `streamer_shot_3d_wrapped`.** The amendment declares four
+  geometries and they are four *families*; one 3-D fixture stands for each.
+  `streamer_shot_3d_wrapped` is a measured G2 failure (F6) and could carry no figure under
+  the precondition regardless.
+- **Any shape other than the declared three.** No search, no tuning, no best-of. Three
+  candidates were declared and three were measured.
+- **Store-open cost at scale, and metadata cost with many chunks.** The 0.6–0.9 ms floor
+  observed here is a constant of these fixtures, not of the format.
+- **Whether `sdip ingest` should expose a chunk parameter.** F12 states the gap. Closing
+  it is a design decision with a certificate consequence — a chunk manifest is a new
+  certificate field — and belongs in `DECISIONS.md`, not in a probe.

@@ -36,6 +36,7 @@ from sdip.ingest.file_headers import (
     file_headers_persisted,
     read_raw_file_headers,
 )
+from sdip.ingest.header_plane import HeaderPlane, attach_header_plane
 from sdip.ingest.raw_samples import RawSampleView, attach_raw_sample_view
 from sdip.provenance.hashing import sha256_file
 from sdip.spec.gate import G1Result, g1_for_spec
@@ -118,6 +119,11 @@ class IngestResult:
     raw_samples: RawSampleView | None = None
     """The parallel raw ``uint32`` view, or ``None`` when the source is not ``ibm32``
     and the source bits are therefore recoverable from the decode itself."""
+    header_plane: HeaderPlane | None = None
+    """The parallel ``uint8`` trace-header plane. Written for **every** store — probe P4
+    measured three Zarr readers disagreeing about the structured array's extension dtype,
+    and the portability problem is not conditional on anything about the source.
+    ``None`` only for a result built without one, never for a completed ingest."""
 
     @property
     def read_path_intact(self) -> bool:
@@ -142,6 +148,9 @@ class IngestResult:
                 "raw_file_headers": self.raw_headers.to_json(),
                 "raw_sample_view": (
                     self.raw_samples.to_json() if self.raw_samples is not None else None
+                ),
+                "header_plane": (
+                    self.header_plane.to_json() if self.header_plane is not None else None
                 ),
                 "warnings": self.warnings.to_json(),
             }
@@ -177,7 +186,10 @@ def ingest(
     9. Store the undecoded ``uint32`` sample view in parallel when — and only when — the
        source's sample format is ``ibm32``, whose decode probe **P2** measured as not
        exactly invertible (``OPEN_DEBTS`` D1).
-    10. Hash the source again, to detect read-path corruption (§11.3).
+    10. Store the parallel ``uint8`` trace-header plane, **unconditionally** — probe
+        **P4** measured three Zarr readers giving three different answers about the
+        structured array's extension dtype (``DECISIONS.md`` D-0047).
+    11. Hash the source again, to detect read-path corruption (§11.3).
 
     Args:
         source: Input SEG-Y.
@@ -247,6 +259,14 @@ def ingest(
     # (OPEN_DEBTS D1). Returns None for any other sample format, and writes nothing.
     raw_samples = attach_raw_sample_view(output_path, source_path, built.segy_spec)
 
+    # Probe P4 measured TensorStore accepting the structured `headers` array's `struct`
+    # data_type, zarr-java refusing it, and zarr-python accepting it with a warning -
+    # three readers, three answers, one store (D-0047). `struct` has no Zarr v3
+    # specification, so a reader that declines it is conformant. The uint8 plane makes
+    # the header bytes readable by any v3 reader. Written for EVERY store: every store
+    # has headers, and the portability problem is not conditional.
+    header_plane = attach_header_plane(output_path, source_path, built.segy_spec)
+
     after = sha256_file(source_path)
     return IngestResult(
         source_path=str(source_path),
@@ -260,6 +280,7 @@ def ingest(
         raw_headers=raw_headers,
         warnings=ledger,
         raw_samples=raw_samples,
+        header_plane=header_plane,
     )
 
 
