@@ -352,6 +352,7 @@ def issue(
                 else []
             )
         ),
+        "portable_headers": _portable_headers(result.output_path),
         "transform_scope_blocks_equivalence": transform_blocked,
         "transform_scope_reason": transform_reason or None,
         "warnings": result.warnings.to_json(),
@@ -469,6 +470,24 @@ def _verdict_reason(
         "it is recorded NOT_RUN here rather than assumed, and release_readiness treats "
         "every NOT_RUN as blocking (D-0031)."
     )
+
+
+def _portable_headers(store: str | Path) -> bool:
+    """Whether the store carries the ``uint8`` header plane a stock v3 reader can use.
+
+    Recorded on every certificate, **including when it is False** (D-0063 ruling 3). A
+    store SDIP did not write may legitimately carry none; that is not a failure, and a
+    reader should be able to see it on the face of the certificate rather than infer it
+    from an absent field.
+    """
+    try:
+        import zarr
+
+        from sdip.ingest.header_plane import ARRAY_NAME
+
+        return ARRAY_NAME in zarr.open_group(str(store), mode="r")
+    except (KeyError, ValueError, OSError):  # pragma: no cover - unreadable store
+        return False
 
 
 def _array_manifest(store: str | Path) -> list[dict[str, Any]]:

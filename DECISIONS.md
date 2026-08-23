@@ -3017,3 +3017,61 @@ header does not know what the store chose to build.
 
 `v0.1.0` is a **principal decision**. The STOP is after Category-B: full suite, the
 real-survey chain in `local/`, then a release-readiness report — and then a ruling.
+
+---
+
+## D-0064 — 2026-08-23 — **D40 closed.** A store now says who wrote it
+
+Closes **D40** by the mechanism ruled in **D-0063 ruling 3**: a group-level provenance
+marker written unconditionally by `sdip ingest`.
+
+**What absence means depends on who wrote the store.** That is the whole of it. A missing
+`headers_raw_uint8` in a store SDIP wrote is a **partially written store** — probe P8
+reached exactly that state through a real credential expiry. The same absence in a
+foreign MDIO store is **nothing at all**; it was never going to have one. Requiring the
+array unconditionally was the obvious fix and it was measured wrong: **seven prestack
+geometries that were entirely correct failed**, because SDIP's ingest cannot express
+those geometries (**D25**) and their stores come from upstream `segy_to_mdio`.
+
+**The marker declares what the writer ALWAYS attaches, not what is present.** A list of
+what is present would be a tautology — it could never disagree with the store. The
+completeness check compares the *declaration* against what is on disk, and a difference
+is a partial write.
+
+**On the root group, and that is load-bearing.** The attributes describing the header
+plane live on the header plane, so they are deleted with it: a marker that vanishes with
+the thing it vouches for cannot detect the thing's absence. This one survives the
+deletion of every array beneath it — **the same shape as the `coordinates` attribute
+Plane 3 keys on, and for the same reason. A claim that outlives its content.**
+
+**Written last in the ingest, deliberately.** An ingest that dies midway therefore leaves
+**no marker at all** rather than a marker promising arrays that were never written — P8's
+failure mode, inverted.
+
+**It earns the store-format change twice**, as the ruling notes. The second job is
+retroactive audit: a store found on disk years from now names the SDIP that wrote it and
+the upstream pins in force. A pin bump invalidates every certificate issued under the
+previous pin (§3.3), and without this there is no way to tell from the artifact alone
+which side of a bump it came from.
+
+**Measured:**
+
+| store | P3 | why |
+|---|---|---|
+| marked, plane deleted | **FAIL** | the writer declared it always attaches this |
+| **same store, marker removed** | **PASS** | foreign store, absence is `NOT CHECKED` |
+
+The G7 control returns as `deleted_raw_header_plane` → `{G2c}`. **15 controls**, each
+failing exactly its declared set. `portable_headers` is recorded on every certificate
+**including when false**, so a reader sees it rather than inferring it from an absent
+field.
+
+### The third test found asserting the defect it was named for
+
+`test_an_absent_plane_is_reported_as_unchecked_not_as_a_pass` read *"`NOT_RUN` is not a
+pass"* and asserted `plane.status == "PASS"` — after
+`test_an_absent_view_is_reported_as_unchecked_not_as_a_pass` and
+`test_certify_still_documents_the_g7_ceiling`. **The pattern is worth naming: a test that
+states a principle in its name and contradicts it in its body passes forever and protects
+the bug.** It now asserts both halves — marked fails, unmarked passes — because only the
+pair shows the check is conditional rather than merely strict.

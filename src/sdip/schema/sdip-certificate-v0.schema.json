@@ -745,6 +745,10 @@
         "string",
         "null"
       ]
+    },
+    "portable_headers": {
+      "type": "boolean",
+      "description": "Whether the store carries the uint8 header plane a stock Zarr v3 reader can use without MDIO. Recorded even when false: a store SDIP did not write may legitimately carry none, which is not a failure, and a reader should see it rather than infer it from an absent field. See DECISIONS.md D-0063 ruling 3."
     }
   },
   "allOf": [

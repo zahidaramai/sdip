@@ -468,6 +468,14 @@ CONTROLS: tuple[Corruption, ...] = (
         clause="DECISIONS D-0061 - one chunk failed, the whole array passed",
     ),
     Corruption(
+        name="deleted_raw_header_plane",
+        description="The whole headers_raw_uint8 array removed from a marked SDIP store",
+        must_fail=frozenset({"G2c"}),
+        apply=_delete_raw_header_plane,
+        touches=frozenset({RAW_HEADER_PLANE_ARRAY}),
+        clause="DECISIONS D-0063 ruling 3 - returned, now conditioned on the marker",
+    ),
+    Corruption(
         name="deleted_derived_coordinate",
         description="The whole cdp_x array removed",
         must_fail=frozenset({"G2c"}),

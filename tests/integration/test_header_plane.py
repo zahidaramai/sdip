@@ -280,23 +280,50 @@ def test_a_corrupted_plane_byte_fails_g2c_without_touching_the_field_leg(ingeste
     assert plane.evidence["mismatch_count"] == 0
 
 
-def test_an_absent_plane_is_reported_as_unchecked_not_as_a_pass(ingested, tmp_path):
-    """`NOT_RUN` is not a pass. A store with no plane must not read as one that matched.
+def test_an_absent_plane_fails_a_marked_store_and_not_an_unmarked_one(ingested, tmp_path):
+    """CORRECTED 2026-08-23 — the THIRD test found asserting the defect it was named for.
 
-    ``None`` is correct for a store written before this array existed, and it does **not**
-    fail the gate — only an explicit ``False`` does.
+    It read *"`NOT_RUN` is not a pass"* and then asserted ``plane.status == "PASS"``, like
+    its two siblings in ``test_ibm32_rawview`` and the certify help text. The pattern is
+    worth naming: **a test that states a principle in its name and contradicts it in its
+    body passes forever and protects the bug.**
+
+    What absence MEANS depends on who wrote the store (D-0063 ruling 3). A store whose
+    root group carries SDIP's provenance marker declares that ``sdip ingest`` wrote it and
+    **always** attaches this plane — so absence is a **partially written store** and fails.
+    A store without the marker was never going to carry one, so absence stays
+    ``NOT CHECKED`` and the verdict is unchanged.
+
+    Both halves are asserted here, because only the pair shows the check is conditional
+    rather than merely strict.
     """
+    from sdip.ingest.provenance_marker import ATTR_WRITER
+
     article, store, result = ingested
     copy = tmp_path / "no-plane.mdio"
     shutil.copytree(store, copy)
     shutil.rmtree(copy / ARRAY_NAME)
 
+    # (a) marked store: absence is a partial write, and fails.
     plane = plane_3(article.path, copy, result.spec.segy_spec, g1_passed=True)
-    assert plane.status == "PASS"
+    assert plane.status == "FAIL"
+    assert [m["array"] for m in plane.evidence["missing_required_arrays"]] == [ARRAY_NAME]
+    assert "provenance marker" in plane.evidence["missing_required_arrays"][0]["required_because"]
+    # the byte leg still reports honestly, and the failure is not a byte mismatch
     assert plane.evidence["raw_header_plane_present"] is False
-    assert plane.evidence["raw_header_bytes_verified"] is False
     assert plane.evidence["raw_header_bytes_identical"] is None
-    assert plane.evidence["raw_header_first_difference"] is None
+    assert plane.evidence["mismatch_count"] == 0
+
+    # (b) same store, marker removed: a foreign MDIO store, and absence is NOT CHECKED.
+    foreign = tmp_path / "foreign.mdio"
+    shutil.copytree(copy, foreign)
+    group = zarr.open_group(str(foreign), mode="r+")
+    del group.attrs[ATTR_WRITER]
+
+    plane = plane_3(article.path, foreign, result.spec.segy_spec, g1_passed=True)
+    assert plane.status == "PASS"
+    assert plane.evidence["missing_required_arrays"] == []
+    assert plane.evidence["raw_header_bytes_identical"] is None
 
 
 def test_the_round_trip_stays_byte_identical_with_the_plane_present(ingested, tmp_path):

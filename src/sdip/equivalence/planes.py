@@ -30,6 +30,7 @@ from sdip.ingest.file_headers import (
     read_raw_file_headers,
     read_raw_textual_from_store,
 )
+from sdip.ingest.provenance_marker import declared_mitigations
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY
 from sdip.provenance.hashing import sha256_bytes
 from sdip.spec.transforms import COORD_ARRAYS, LOSSY_DECODE_FORMATS, _format_name
@@ -782,17 +783,23 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
     # NOT CHECKED. Deleting one CHUNK of a raw array failed this plane while deleting the
     # WHOLE ARRAY passed it, and a partially written store certified EQUIVALENT while
     # missing the D1 and D-0047 mitigations outright (D-0061).
+    # `headers_raw_uint8` is required only when the store's own provenance marker says
+    # `sdip ingest` wrote it AND declared that mitigation (D-0063 ruling 3, closing D40).
     #
-    # `headers_raw_uint8` is deliberately NOT required here. Plane 3's claim is that the
-    # 240 header bytes are RECOVERABLE, and G1 guarantees the structured array covers all
-    # 240 with no gaps - so the claim holds whether or not the portable copy exists. The
-    # raw plane is a PORTABILITY mitigation (D-0051), not a recoverability one, and a
-    # store built by upstream `segy_to_mdio` legitimately carries none. Requiring it here
-    # failed seven prestack geometries that were entirely correct. Its absence stays
-    # recorded as evidence (`raw_header_bytes_identical: null`) and is tracked as D40.
+    # Unconditional was wrong and measured so: it failed seven prestack geometries that
+    # were entirely correct, because SDIP's ingest cannot express those geometries at all
+    # (D25) and their stores come from upstream `segy_to_mdio`. What absence MEANS depends
+    # on who wrote the store - a partially written SDIP store, or a foreign store that was
+    # never going to carry one. The marker is what tells them apart, and it lives on the
+    # ROOT GROUP so it survives the deletion of every array beneath it.
     required = {
         "headers": "every store has trace headers, and this plane compares them",
     }
+    for mitigation in declared_mitigations(group):
+        required[mitigation] = (
+            "the store's provenance marker declares sdip.ingest wrote it and always "
+            f"attaches {mitigation}, so its absence means a partially written store"
+        )
     # The predicate is the STORE's own declaration, not the source's. Every rev-1 header
     # declares cdp_x, but a shot-indexed template creates no CDP arrays at all - keying
     # off the source failed four prestack geometries that were correct. The data

@@ -42,6 +42,7 @@ from sdip.ingest.file_headers import (
 )
 from sdip.ingest.header_plane import HeaderPlane, attach_header_plane
 from sdip.ingest.preflight import SourceLayout, validate_segy_structure
+from sdip.ingest.provenance_marker import attach_provenance_marker
 from sdip.ingest.raw_samples import RawSampleView, attach_raw_sample_view
 from sdip.provenance.hashing import sha256_file
 from sdip.spec.gate import G1Result, g1_for_spec
@@ -426,6 +427,14 @@ def ingest(
     # the header bytes readable by any v3 reader. Written for EVERY store: every store
     # has headers, and the portability problem is not conditional.
     header_plane = attach_header_plane(output_path, source_path, built.segy_spec)
+
+    # LAST, and that ordering is the point. The marker declares which mitigations this
+    # writer always attaches, so the Equivalence Engine can tell a partially written SDIP
+    # store from a foreign MDIO store it is merely inspecting (D-0063 ruling 3). Written
+    # after the mitigations it vouches for, so an ingest that dies midway leaves NO
+    # marker rather than a marker promising arrays that were never written - the failure
+    # mode probe P8 measured, inverted.
+    attach_provenance_marker(output_path)
 
     after = sha256_file(source_path)
     return IngestResult(
