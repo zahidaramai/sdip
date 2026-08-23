@@ -3853,3 +3853,60 @@ D6 remain **declared refusals with reason codes**, and each refuses rather than 
 **After v1.0.1 the queue is empty by design.** An empty queue is not a gap to fill. The
 refused list is the more valuable half of what shipped, and adding to the supported half
 without demand is how a narrow guarantee becomes a broad claim nobody measured.
+
+---
+
+## D-0078 — 2026-08-23 — **D43 closed.** Three amendments, two discarded, and the discards were the point
+
+`ceiling(n) = 1350 + 44.92 × (n − 16)`, in `sdip.equivalence.scale`. **Tightens the
+standing ceiling by 150 s.**
+
+### Why it took three attempts, and why that is not waste
+
+| | method | outcome |
+|---|---|---|
+| **A** | scale the prior ceiling by control-count growth | **discarded** — no floor check; would have shipped **1,150 s** |
+| **B** | sum per-stage maxima, N=3, every stage timed | **discarded** — floor check caught **1,100 s** |
+| **C** | measure `sdip certify` end to end, N=5 | **adopted** — **1,350 s** |
+
+**1,150 s and 1,100 s both sit below 1,168.55 s, a run that actually happened.** Either
+would have failed the next legitimate chain and been read as a performance regression in
+code that had not changed. **Both were caught by guards declared before the data
+existed** — A's absence of one is precisely why B added it.
+
+### What B found that C depended on
+
+B's floor failure was not a rounding problem. **Its three chains took 960–992 s while
+`sdip certify` takes 1,115–1,169 s — a 12–22 % gap living in no stage at all.** The
+harness measured the *engine*; the gate measures the *command*: cold start, git state
+captured twice, codec manifest, array manifest, `portable_headers`, payload assembly,
+certificate write. **Summing stages cannot reach that, however many stages you add.**
+C exists because B failed informatively.
+
+### The margin, and the SP9 line it had to stay on
+
+**1.15, declared from D-0074** — a *published, prior* measurement of 4.6 % run-to-run
+variance — **not from the runs it would judge**. Using experience to set a threshold is
+how any threshold is set; using the result the threshold judges is what SP9 forbids. The
+dates are checkable: D-0074 predates Amendment C.
+
+**Confirmed afterwards rather than assumed:** spread across all five runs is
+`max/min = 1.051`, against the 4.6 % the margin was built on.
+
+### It accounts for the failure that started it
+
+At **10 controls** the model computes **1,080.5 s**; P3 declared **900 s**. **That ceiling
+was already under-provisioned when it was written** — which is why control growth broke
+it rather than merely tightening it. A model that only fit today's numbers would not
+have said that.
+
+### Not a default, and there is a test that keeps it so
+
+`sdip certify` still requires `--wall-ceiling-s`. **A ceiling this tool applies on its own
+behalf is not one anybody declared**, the same reasoning that keeps G5 `NOT_RUN` without
+an explicit ceiling. A test asserts `parametric_wall_ceiling` appears nowhere in the CLI,
+so adopting it as a default becomes a deliberate act someone has to justify.
+
+**Scope, so it is not over-read:** one command, one file, one machine. It is **not** a
+model of a different file; D38's 1.0 GiB verification envelope is a separate limit and is
+untouched.

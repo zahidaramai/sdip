@@ -27,7 +27,7 @@ claiming a sample it did not draw.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Final
 
 GIB = 1024**3
 
@@ -167,3 +167,62 @@ def g5(
         unbounded_growth_observed=unbounded_growth_observed,
         findings=list(findings or []),
     )
+
+
+# --- The parametric wall-clock ceiling — OPEN_DEBTS D43, prereg P10 Amendment C -------
+
+WALL_CEILING_BASE_S: Final[float] = 1350.0
+"""Measured wall-clock bound for the full ``sdip certify`` chain at **16 controls**.
+
+`max(N=5 runs) x 1.15`, rounded up to 50 s. The margin is **1.15**, taken from
+``DECISIONS.md`` **D-0074**'s published 4.6 % run-to-run variance **before** the runs
+that set this number — using experience to set a threshold is how any threshold is set;
+using the result it judges is what **SP9** forbids.
+"""
+
+WALL_CEILING_REFERENCE_CONTROLS: Final[int] = 16
+"""Control count the base was measured at. The parametric term corrects away from it."""
+
+WALL_CEILING_PER_CONTROL_S: Final[float] = 44.92
+"""Cost of one G7 control at survey scale.
+
+Maximum across 3 chains and 45 applied control runs (**P10 Amendment B**), where controls
+proved interchangeable at `max/min = 1.05`. The **maximum**, not the mean: a ceiling built
+on the mean is breached by an unlucky ordering.
+"""
+
+
+def parametric_wall_ceiling(n_controls: int) -> float:
+    """Wall-clock ceiling in seconds for a chain running ``n_controls`` G7 controls.
+
+    **The debt this closes.** The ceiling was a bare constant. 900 s was correct at 10
+    controls and wrong at 16, and the staleness surfaced as a **failed gate** rather than
+    a warning (``OPEN_DEBTS`` D43, ``DECISIONS.md`` D-0073). Adding a control now adjusts
+    the budget it consumes, so the number cannot rot while nobody is looking.
+
+    **It does NOT become a default, and that is deliberate.** ``sdip certify`` still
+    requires ``--wall-ceiling-s`` on the command line, because a ceiling this tool applied
+    on its own behalf is not one anybody committed to (**SP9** — the same reasoning that
+    keeps G5 ``NOT_RUN`` without an explicit ceiling). This is a **calculator an operator
+    uses to declare a number**, not a number that declares itself.
+
+    **It bounds one command, on one file, on one machine.** 494,565,408 bytes, 116,532
+    traces, on the hardware P10 was measured on. It is **not** a model of a different
+    file — the verification-memory envelope (``D38``) is a separate limit and is
+    untouched by this.
+
+    Args:
+        n_controls: How many G7 controls the chain will run, normally
+            ``len(sdip.equivalence.nonvacuity.CONTROLS)``.
+
+    Returns:
+        The ceiling in seconds.
+
+    Raises:
+        ValueError: If ``n_controls`` is negative.
+    """
+    if n_controls < 0:
+        msg = f"n_controls must be non-negative, got {n_controls}"
+        raise ValueError(msg)
+    delta = n_controls - WALL_CEILING_REFERENCE_CONTROLS
+    return WALL_CEILING_BASE_S + WALL_CEILING_PER_CONTROL_S * delta

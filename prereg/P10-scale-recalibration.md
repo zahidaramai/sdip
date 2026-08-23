@@ -486,3 +486,75 @@ different file, and it must not be read as doing so** — the 1.0 GiB verificati
 falsifier, **D43 closes as "flat ceiling, and here is why parametric is harder than it
 looks"** rather than a fourth amendment. Three discarded derivations is a finding; four is
 sunk cost.
+
+---
+
+## Amendment C — results, 2026-08-23. **ADOPTED**
+
+Run after Amendment C was committed and pushed (`0c2ac4a`), per **SP9**. Three cold
+`sdip certify` invocations, each on a clean tree, each timed process-start to exit.
+
+| run | wall clock | verdict | `release_ready` |
+|---|---|---|---|
+| C 1 | 1,111.72 s | EQUIVALENT | `true` |
+| C 2 | 1,116.15 s | EQUIVALENT | `true` |
+| C 3 | 1,119.15 s | EQUIVALENT | `true` |
+
+**All three certified.** The measurement did not require a degraded run.
+
+### Falsifier: did NOT fire
+
+Threshold `1,168.55 × 1.15 = 1,343.8 s`. Highest of the three: **1,119.15 s**. The
+command's cost **is** bounded by the variance D-0074 recorded.
+
+### Derivation
+
+```
+N = 5   (the 3 above + the v1.0.0 certificate + the D-0073 run)
+max                       1,168.55 s
+x 1.15  (D-0074's 4.6 %)  1,343.83 s
+round up to 50 s          1,350 s
+
+ceiling(n) = 1350 + 44.92 x (n - 16)
+```
+
+**Floor: `1350 ≥ 1168.55` — PASS.** Holds against **every** run ever recorded, with the
+tightest margin **15.5 %** on the D-0073 run.
+
+**Spread across all five: `max/min = 1.051`** — consistent with the 4.6 % D-0074 published
+before any of this, which is why 1.15 was defensible to declare in advance.
+
+### The ceiling TIGHTENS by 150 s, and that direction matters
+
+**1500 s → 1350 s.** A recalibration that could only ever loosen would not be one, and
+this one did not. The flat 1500 s is **superseded by citation, never edited** — it
+governed the v1.0.0 certificate, and a ceiling that silently changes value makes every
+certificate issued under it unauditable.
+
+### It retro-explains the failure that started this
+
+At **10 controls** the model computes **1,080.5 s**. P3 declared **900 s**. So that ceiling
+was **already under-provisioned when it was written**, which is why a modest growth in
+control count *broke* it rather than merely tightening it. **The model accounts for the
+failure that motivated it**, which is a stronger result than fitting today's numbers.
+
+### What was adopted, and what deliberately was not
+
+**Adopted:** `parametric_wall_ceiling(n)` in `sdip.equivalence.scale`, with the base, the
+reference count and the per-control cost as named constants carrying their provenance.
+
+**NOT adopted: it is not a default.** `sdip certify` still requires `--wall-ceiling-s`.
+**A ceiling this tool applies on its own behalf is not one anybody declared** (**SP9** —
+the same reasoning that keeps G5 `NOT_RUN` without an explicit ceiling). The function is a
+**calculator an operator uses to choose a number**, and a test asserts the CLI does not
+reference it, so wiring it in as a default becomes a deliberate act rather than a drift.
+
+### Scope, stated so it is not over-read
+
+**One command, one file, one machine.** 494,565,408 bytes, 116,532 traces, this hardware.
+**Not a model of a different file** — the 1.0 GiB verification-memory envelope (**D38**)
+is a separate limit and is untouched.
+
+**Three amendments, two discarded.** A had no floor check and would have shipped 1,150 s;
+B had one and stopped 1,100 s; C measures the command rather than summing its parts. Each
+discard was caught by a guard declared **before** the data existed.

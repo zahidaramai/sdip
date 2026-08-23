@@ -1589,3 +1589,36 @@ to P10.
 
 **Until then, P10 is explicit that it does not license a third rescale.** A ceiling raised
 twice is not a ceiling.
+
+---
+
+## D43 — CLOSED 2026-08-23 — the ceiling is a function of the work
+
+- **Closes:** D43 above, left unedited (**SP10**)
+- **Decision:** `prereg/P10-scale-recalibration.md` Amendment C · `DECISIONS.md` D-0078
+
+```
+ceiling(n) = 1350 + 44.92 x (n - 16)        sdip.equivalence.scale
+```
+
+**1,350 s** = `max(N=5 certify runs) × 1.15`, rounded up to 50 s. **44.92 s** = the
+maximum single-control cost across 3 chains and 45 applied control runs, where controls
+proved interchangeable at `max/min = 1.05`.
+
+**The ceiling TIGHTENED, 1500 s → 1350 s.** A recalibration that could only ever loosen
+would not be one.
+
+**It is not a default.** `sdip certify` still requires `--wall-ceiling-s`, because a
+ceiling this tool applies on its own behalf is not one anybody declared (**SP9**). A test
+asserts the CLI does not reference the calculator, so wiring it in becomes a deliberate
+act rather than a drift.
+
+**Three amendments, two discarded**, each by a guard declared before the data existed:
+**A** had no floor check and would have shipped 1,150 s; **B** had one and stopped
+1,100 s; **C** measured the command instead of summing its parts. **1,150 and 1,100 both
+sit under a run that actually happened** — either would have failed the next legitimate
+chain and read as a regression.
+
+**It retro-explains the original failure.** At 10 controls the model computes **1,080.5 s**
+where P3 declared **900 s** — that ceiling was already under-provisioned when written,
+which is why control growth broke it rather than merely tightening it.
