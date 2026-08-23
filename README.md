@@ -25,8 +25,8 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 [![NumPy](https://img.shields.io/badge/NumPy-2.5-013243?style=for-the-badge&logo=numpy&logoColor=white)](https://numpy.org)
 [![uv](https://img.shields.io/badge/uv-managed-DE5FE9?style=for-the-badge&logo=astral&logoColor=white)](https://docs.astral.sh/uv/)
 
-[![ci](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml)
-[![dco](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml)
+[![ci](https://img.shields.io/badge/ci-deferred_%C2%B7_workflows_in_%2Fci-lightgrey?style=flat-square)](ci/README.md)
+[![dco](https://img.shields.io/badge/dco-required_on_every_commit-informational?style=flat-square)](CONTRIBUTING.md)
 
 ![Phase](https://img.shields.io/badge/roadmap_phase-F5–F7-orange?style=flat-square)
 ![Tests](https://img.shields.io/badge/tests-627_passing-success?style=flat-square)
@@ -271,7 +271,7 @@ sdip certify      # full chain + round trip + certificate       [F3 — live, F4
 ```
 sdip/
 ├── .githooks/pre-commit          # publication firewall — the only layer that PREVENTS
-├── .github/workflows/
+├── ci/                           # workflow definitions — NOT executed; see ci/README.md
 │   ├── ci.yml                    # doctor, lint, unit, forbid-list, licence,
 │   │                             # firewall, fixture-policy, gates, roadmap
 │   └── dco.yml                   # every commit carries Signed-off-by
@@ -462,7 +462,13 @@ SDIP holds no secrets and requires no credentials. Cloud object-store access, wh
 
 ## ☁️ CI/CD
 
-Every job on every PR. Any failure blocks merge.
+> **These workflows are not currently executed.** They live in [`ci/`](ci/README.md), not
+> `.github/workflows/`, so GitHub Actions never picks them up — CI is deferred until the
+> project is complete. The table below is still the binding statement of what CI enforces
+> (spec §7.8): a contributor is held to every row of it, and the jobs are one
+> `git mv ci/*.yml .github/workflows/` away from running. See [`ci/README.md`](ci/README.md).
+
+Every job on every PR, once enabled. Any failure blocks merge.
 
 | Job | Asserts | Gated on `doctor` |
 |---|---|---|

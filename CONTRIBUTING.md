@@ -56,6 +56,33 @@ flag — see [`DECISIONS.md`](DECISIONS.md) D-0007.
 
 ---
 
+## Continuous integration — defined, not yet executed
+
+The workflow definitions live in [`ci/`](ci/README.md), **not** in `.github/workflows/`.
+GitHub only executes workflows under `.github/workflows/`, so **no job in `ci/ci.yml` or
+`ci/dco.yml` currently runs on a push or a pull request.** CI is deferred until the
+project is complete; nothing was deleted, and re-enabling it is one command:
+
+```bash
+git mv ci/*.yml .github/workflows/
+```
+
+**The checks those files encode are still binding on you.** They are the reviewable
+statement of the §7.8 job table — the forbid-list `ast` scans, the publication-firewall
+history scan, the licence scan, the self-arming gate jobs, the DCO check. A PR is
+reviewed against them whether or not a runner has executed them. Until the workflows are
+back under `.github/workflows/`, run the equivalent locally before you open a PR:
+
+```bash
+uv run sdip doctor
+uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
+```
+
+`tests/unit/test_repository_contract.py` asserts on the contents of `ci/ci.yml`
+directly, so the job definitions stay under test while unexecuted.
+
+---
+
 ## Publication firewall
 
 This repository is public, and some paths are **never committed** — not with
@@ -74,7 +101,7 @@ Four layers enforce it, and only the first one *prevents* anything:
 | 1 | `.githooks/pre-commit` | staged paths | **before the commit exists** |
 | 2 | `.gitignore` | an accidental `git add -A` | at `git add` |
 | 3 | `sdip doctor` → `publication-firewall` | index **and** `HEAD` | on demand |
-| 4 | CI `firewall` job | **any commit, any ref** | every PR and push |
+| 4 | CI `firewall` job (`ci/ci.yml`) | **any commit, any ref** | every PR and push — *see [Continuous integration](#continuous-integration--defined-not-yet-executed): not currently executed* |
 
 Layers 2–4 only *detect*. Once a path is in a commit the remedy is a history rewrite,
 because a clone receives history — `git rm --cached` removes a file from the index and
@@ -132,7 +159,7 @@ in `tests/negative/`. A failed configuration becomes the permanent negative cont
 its fix.
 
 **A gate a corrupted store passes is not a gate.** A PR that adds an engine check
-without its negative control fails the `negative` CI job, by design.
+without its negative control fails the `negative` CI job (`ci/ci.yml`), by design.
 
 ---
 
@@ -187,7 +214,7 @@ MDIO's header parser uses a **`spawn`** multiprocessing context. **Every entry p
 that can trigger ingestion must be guarded by `if __name__ == "__main__":`.** Without
 it the child process re-executes the ingest and dies with `BrokenProcessPool`. This is
 measured (Appendix A.5), not theoretical. There is a regression test and a
-`spawn-guard` CI job; do not delete either.
+`spawn-guard` CI job (`ci/ci.yml`); do not delete either.
 
 ---
 
