@@ -1020,3 +1020,45 @@ and P2 measured 1,939 words in 4,103 losing the value, unrecoverable from the de
 Option 2 is the interesting one: it is the only candidate that keeps full recoverability
 *and* the size win, and P2 already supplies the predicate.
 
+
+---
+
+## D37 — `sdip doctor` reports FAIL to a consumer whose environment is fine
+
+- **Status:** `OPEN` (raised 2026-08-23) · observed, not yet ruled on
+
+Measured by installing the built wheel into a clean venv and running `sdip doctor` from
+a directory that is not a git repository — a consumer's ordinary situation:
+
+```
+[PASS] python-version        Python 3.12.13 is inside the supported window
+[PASS] barred-env-vars       none of 2 barred variables are set
+[PASS] barred-packages       none of 1 barred modules are importable
+[PASS] upstream-pins         all 2 binding pins match; 145 files verified against RECORD
+[PASS] runtime-licences      51 distributions scanned, no GPL/AGPL entry
+[FAIL] working-tree          ... is not a git repository; provenance cannot be captured
+[ -- ] publication-firewall  not a git repository; nothing is tracked
+[FAIL] git-hooks             .githooks/pre-commit is missing
+
+doctor: FAIL (2 of 8 checks)
+```
+
+**Nothing crashed and every message is accurate** — the degradation is clean, which is
+the half that matters most. But **the two failures are about SDIP's own development
+discipline, not the consumer's environment.** `git-hooks` checks the publication
+firewall's prevention layer, which exists to stop `docs/` reaching *this* repository and
+is meaningless in someone else's project. `working-tree` matters only for `sdip certify`.
+
+The documented contract is *"if doctor fails, nothing else runs."* A consumer who installs
+the wheel to ingest one SEG-Y therefore reads **FAIL** and reasonably concludes their
+installation is broken. It is not.
+
+**Deliberately not fixed here.** `sdip doctor` has **no override flag** and eight
+FAIL-severity checks by design, and changing which checks are severe — or adding a
+`--consumer` mode — is a change to documented behaviour that §9 says to raise rather than
+decide alone. Options a maintainer might weigh: scope the two repository-discipline
+checks to runs inside the SDIP repository; or keep them severe and say so in the README,
+so the output is expected rather than alarming.
+
+Recorded now because the release ships this behaviour to every consumer, and an unrecorded
+surprise is worse than a declared one.
