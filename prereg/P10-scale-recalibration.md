@@ -118,3 +118,70 @@ ceiling = base + per_control x len(CONTROLS)
 nobody is looking. Deriving `base` and `per_control` honestly needs a component
 measurement of one control's cost at survey scale, which is **its own probe and its own
 pre-registration**. Raised as debt **D43** rather than smuggled into this one.
+
+---
+
+## Amendment A — single-control cost, to make the ceiling parametric (D43)
+
+- **Registered:** 2026-08-23, **before the run it governs**, per **SP9**
+- **Authorised by:** the post-v1.0.0 ruling, D43
+- **Status at registration:** NOT RUN
+
+### Why
+
+The body of this document declared a **flat 1500 s** and said in its own closing section
+that a bare constant *"will go stale while nobody is looking"*. **It already did once** —
+900 s was correct for 10 controls and wrong for 16, and the staleness surfaced as a
+failed gate rather than as a warning.
+
+**A second flat number would be the same defect with a bigger value.**
+
+### Question
+
+**What does one G7 control cost at survey scale**, so the ceiling can be written as a
+function of the work rather than as a constant?
+
+```
+ceiling = T_base + per_control x len(CONTROLS) + t_closure
+```
+
+### Method
+
+1. Run the full chain on `06p07ful.sgy` (494,565,408 B, 116,532 traces) instrumented to
+   record **per-stage wall clock**: ingest, five planes, G4, export+G3, **each G7 control
+   individually**, `g3_control`, closure, G6.
+2. `T_base` := everything that is not G7 and not closure.
+3. `per_control` := the **maximum** single-control time, not the mean. A ceiling built on
+   the mean is breached by an unlucky ordering; the max is the bound the gate needs.
+4. `t_closure` := the measured closure stage, whole.
+5. Apply the **same margin discipline the body used**: derive, then round **down**.
+
+### Pre-registered parameters
+
+| Parameter | Value |
+|---|---|
+| Data | `06p07ful.sgy` — the file both prior runs used |
+| N | 1 full chain, **16 individually timed controls** |
+| Timing | `time.monotonic()` around each stage, recorded to JSON |
+| `per_control` statistic | **maximum**, not mean |
+| Memory ceiling | **8.0 GiB, unchanged.** It has never breached |
+| Margin | derive, round **down**, as the body did |
+
+### Falsifier
+
+**The falsifier fires if the per-control times are not comparable** — specifically if
+`max(control) > 3 × median(control)`.
+
+If it fires, controls are **not** interchangeable units of work, a linear model in
+`len(CONTROLS)` is the wrong shape, and the honest answer is a **per-control table**
+rather than a single coefficient. **The response is not to average harder.**
+
+### What this does NOT license
+
+**It does not license raising the ceiling.** If the parametric form computes a number
+below 1500 s, the lower number is adopted — a recalibration that can only ever loosen is
+not a recalibration.
+
+**It does not retire the flat 1500 s by edit.** That number governed the v1.0.0
+certificate. It is superseded **by citation**, with both values readable, because a
+ceiling that quietly changes value makes every certificate issued under it unauditable.
