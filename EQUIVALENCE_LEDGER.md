@@ -63,3 +63,56 @@ eligible for a row and are named here only so that their existence is on the rec
 rather than discovered later.**
 
 The first row will be added when `sdip certify` issues from a clean tree.
+
+---
+
+## Correction to the correction — 2026-08-23 — and a policy for firewalled certificates
+
+**Appended, never edited (SP10).** The correction above is itself partly wrong, and an
+external audit surfaced it. Recorded here rather than fixed in place, because that is the
+rule.
+
+### What the entry above got wrong
+
+It said *"Every run so far has been either a harness run or a run whose tree was dirty at
+issue time."* **The second half is false.** The `EQUIVALENT` payload of D-0030 was issued
+from a **clean** tree — `dirty: false`, zero dirty paths, at commit `3573e87`. The tree
+check passed legitimately.
+
+What actually disqualifies it is narrower: `issued_at` is the literal string
+`"LOCAL-RUN"` and `issued_by` is `"local validation"`. A harness supplied both in place of
+a timestamp. **The reason was right; the stated reason was not.**
+
+### Policy — certificates issued against firewalled data
+
+D-0025 registers real survey data for local use only. A store built from it, and any
+certificate issued against it, **must not be published**. That creates a standing
+question this ledger had left implicit, and implicit is not good enough for the record
+that carries the project's central claim.
+
+**The rule, from here:**
+
+1. A certificate issued by `sdip certify` against firewalled data **gets a row**. The row
+   carries the verdict, the gate string, the source **SHA-256**, the byte count and the
+   commit — none of which is restricted — and the `source_path` column reads
+   `LOCAL-ONLY (D-0025)` instead of a path. **A digest is not data.** Withholding the row
+   entirely would let the public record understate what the engine has actually been
+   shown to do.
+2. A **harness payload is not a certificate and gets no row**, whatever its verdict. The
+   test is `issued_at`: a real ISO-8601 timestamp from `sdip certify`, or nothing.
+3. Rule 2 is what excludes D-0030's `EQUIVALENT`. **It is excluded on provenance, not on
+   secrecy** — and that distinction is the whole point of writing this down.
+
+### Standing disposition of the two known payloads
+
+| Payload | Verdict | `issued_at` | Tree | Row? | Why |
+|---|---|---|---|---|---|
+| `local/sleipner/certificate.json` | `PROVISIONAL` | `LOCAL-RUN` | clean | **no** | rule 2 — harness provenance |
+| `local/sleipner/certificate_g7.json` | `EQUIVALENT` | `LOCAL-RUN` | clean | **no** | rule 2 — harness provenance |
+
+Both are named so their existence is on the record. **The measurements behind D-0030 are
+real and stand**; what they lack is a certificate's provenance, and this ledger indexes
+certificates.
+
+**Neither carries the false `raw_ibm32_note`** described in D-0056 — both predate the raw
+view. Checked, not assumed, so neither needs superseding.

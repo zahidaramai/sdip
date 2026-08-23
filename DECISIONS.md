@@ -2192,3 +2192,209 @@ wheel scan matched the string `claude` **in my own scratchpad path**, not in the
 A false positive that had been believed would have produced a fabricated security
 finding. **SP8 cuts both ways — a scary number is a measurement too, and it gets checked
 before it gets reported.**
+
+---
+
+## D-0055 — 2026-08-23 — **D17 closed for ingest.** An undecodable textual header no longer refuses
+
+**Decision.** A source whose 3200-byte textual header cannot be decoded is **ingested**,
+not refused. The converter runs with `MDIO__IMPORT__SAVE_SEGY_FILE_HEADER=0`, SDIP's own
+authoritative raw bytes are stored as always, and the certificate records
+`detected_encoding.decode_status = raw_preserved_decode_failed`. §4.2 is now satisfied on
+the ingest path: *"decode failure is not an ingestion failure; silent substitution is."*
+
+**Measured, against the pinned `multidimio` 1.2.1 / `segy` 0.6.0**, on a synthetic N=1
+fixture of 12 traces with 8 planted non-conforming bytes
+(`tests/fixtures/generators/undecodable.py`, deterministic, no RNG, no clock).
+
+### What upstream actually does — all three modes, run
+
+**Mode 1 (STRICT).** Raises. Real traceback, public entry point to raise site:
+
+```
+  File ".../mdio/converters/segy.py", line 72, in segy_to_mdio
+    return _ingest_segy_to_mdio(
+  File ".../mdio/ingestion/segy/pipeline.py", line 187, in segy_to_mdio
+    serialize_to_mdio(
+  File ".../mdio/ingestion/segy/serializer.py", line 74, in serialize_to_mdio
+    xr_dataset = add_segy_file_headers(xr_dataset, file_info)
+  File ".../mdio/ingestion/segy/file_headers.py", line 42, in add_segy_file_headers
+    validate_text_header(text_header)
+  File ".../mdio/segy/text_header.py", line 65, in validate_text_header
+    raise ValueError(err)
+ValueError: Invalid text header characters: non-ASCII or non-printable at row 0:
+positions [0, 1, 2, 79], row 1: positions [0], row 2: positions [0], row 20:
+positions [0], row 39: positions [79]
+```
+
+A plain `ValueError`, out of the public `mdio.segy_to_mdio`. **No store is written** —
+measured, `output.exists()` is `False` — because the validation sits at serializer step 4
+and `to_mdio` initialises the store at step 6. So the refusal is clean and leaves nothing
+to clean up.
+
+**Mode 2 (LENIENT).** Completes, and rewrites. Measured on the same fixture: the stored
+`textHeader` begins `"    SDIP SYNTHETIC FIXTURE"` where the source's first card begins
+`"C 1 SDIP SYNTHETIC FIXTURE"` — the offending characters replaced by spaces and the card
+identifier destroyed with them. This is the silent substitution §4.2 bars, and **D-0020
+stands unchanged**.
+
+**Mode 0 (OFF).** Completes. Writes **no** `segy_file_header` variable, validates nothing,
+and never touches the header bytes.
+
+### Why mode 0 is the answer and not a loophole
+
+Neither mode 1 nor mode 2 delivers §4.2. Mode 0 does, because SDIP does not need
+upstream to preserve the textual header — **it already holds those bytes itself**
+(D-0021) and writes them to the store. Plane 1 is checked against the source's own bytes
+on either path. What mode 0 removes is upstream's *parsed* view, which §4.2 never asked
+for and which mode 2 would only have supplied in corrupted form.
+
+### The mode is chosen up front, not by catching the exception
+
+`classify_textual_header` decodes the raw bytes with the **same `TextHeaderSpec` object**
+handed to `segy_to_mdio` — the same call `SegyFile.text_header` makes — and applies §4.2's
+contract to the result. Deciding before the call costs no second geometry scan and
+couples to no upstream exception type or message (§3.3).
+
+It is SDIP's predicate, so it can disagree with upstream's. **Both directions are safe
+rather than silent**: stricter, and the ingest completes with the loss recorded on the
+certificate; looser, and mode 1 raises exactly as it does today. Agreement is **measured,
+not assumed** — on the non-conforming fixture SDIP names the offending cells
+`[(0,0),(0,1),(0,2),(0,79),(1,0),(2,0),(20,0),(39,79)]` and upstream's own `ValueError`
+names the same eight, and on the conforming fixture both accept. N=2 fixtures, 8 cells.
+
+### `detected_encoding` was a claim; it is now a measurement
+
+Before this entry `certificate.py` hard-coded `{"encoding": "ebcdic", "decode_status":
+"decoded"}` on **every** certificate. That is a fidelity claim with no number behind it
+(**SP8**), and it would have been false for exactly the legacy vintage §4.2 exists to
+rescue. Both fields now come from the ingest's measurement of the file's own 3200 bytes.
+A result carrying no measurement reports `unknown` / `raw_preserved_decode_failed` rather
+than defaulting to `decoded`: an unmeasured decode must not read as a passing one.
+
+### What it costs, recorded rather than hidden
+
+- **§4.3's *parsed mapping* half is unmet** for such a store. Plane 2 still PASSes — the
+  raw bytes are authoritative and they are intact — and its evidence carries
+  `parsed_mapping_present: false`, which is where a reader finds this out.
+- **G3 is unreachable.** `mdio_to_segy` raises `MDIOMissingVariableError` without a
+  `segy_file_header` variable. `sdip.export.roundtrip.export` now refuses first, with a
+  typed `RoundTripUnavailableError` that names the cause, so the operator gets a clean
+  error and not an upstream traceback (§11.4). **This is not a limitation of the
+  fallback**: upstream's exporter re-encodes the *decoded* text and runs
+  `sanitize_text_header` over anything that will not encode, so byte identity is
+  impossible for a non-conforming header under **any** mode. Mode 2 would merely have
+  produced a plausible-looking wrong file instead of a refusal.
+- **`sdip certify` therefore cannot complete on such a source.** It calls `export`
+  unconditionally and now stops there, cleanly. Deciding what G3 should *say* about a
+  source that can never round-trip — `FAIL`, or `ROUNDTRIP-SCOPED` with a written
+  justification (§7 G3) — is a change to a gate, which §9 says to raise rather than
+  decide alone. **Left open and narrowed in `OPEN_DEBTS.md` rather than guessed at.**
+
+### A second store shape means a second place to be vacuous
+
+The fallback store has no `segy_file_header`, so SDIP's raw attributes live on the **root
+group**. Three pieces of code resolve that location independently — the writer, Plane 1's
+reader, and G7's textual controls — and they now share one resolver, `raw_header_node`. A
+control that resolved it differently would have *raised* instead of corrupting, and G7
+would have reported a control error over an audit that never ran: D-0028's defect reached
+by a different route.
+
+**G7 re-run in full on the fallback store**: baseline clean, **10 of 10 controls each
+failing exactly the declared gate set and no other**, store byte-identical before and
+after. The two textual controls fail **G2a alone** on this shape, as on any other.
+
+**No tolerance, no suppressed warning, no barred variable, no new dependency, no pin
+bump, no fork, and no upstream internal imported.** `mdio.segy.text_header` is *not*
+imported; §4.2's contract is restated in SDIP's own code, which is what §3.3 requires.
+
+**What overturns it.** An upstream mode that persists the parsed headers *without*
+rewriting the text would make mode 0 unnecessary and should be adopted; the drift tests in
+`tests/integration/test_undecodable_textheader.py` fail the day upstream's behaviour moves.
+
+---
+
+## D-0056 — 2026-08-23 — External steward audit: four findings. **Two confirmed by my own measurement, and one of them is Tier-1**
+
+An external audit was performed at HEAD `de08bc7`. **Every finding below was re-derived
+here before being accepted** — an audit is a claim until checked, the same standard this
+project applies to its own reports (§4.4).
+
+### Finding 1 — TIER-1, CONFIRMED. The derived arrays are outside the audit surface
+
+Reproduced independently on the 30-trace article, with `crossline` added:
+
+| Corruption | P1 | P2 | P3 | P4 | P5 |
+|---|---|---|---|---|---|
+| baseline | PASS | PASS | PASS | PASS | PASS |
+| **`cdp_x[0,0]` 1005000.0 → 1005001.0** | PASS | PASS | PASS | PASS | **PASS** |
+| **`cdp_y[0,0]` 2002500.0 → 2002501.0** | PASS | PASS | PASS | PASS | **PASS** |
+| **`time[0]` 0 → 1** | PASS | PASS | PASS | PASS | **PASS** |
+| `inline[0]` 100 → 101 | PASS | PASS | FAIL | FAIL | FAIL |
+| `crossline[0]` 200 → 201 | PASS | PASS | FAIL | FAIL | FAIL |
+
+`inline`/`crossline` are audited **implicitly**, because the trace map is built from them.
+**`cdp_x`, `cdp_y` and `time` are audited by nothing.** Confirmed structurally as well:
+no plane names them, and none of the ten G7 controls has them in its `touches` set.
+
+**Why this is Tier-1 on this project's own terms, not the auditor's:**
+
+- **G4 and §10.3 promote precisely these arrays as what a consumer reads.** A store can
+  carry corrupted world coordinates under an **`EQUIVALENT`** verdict.
+- **`cdp_x`/`cdp_y` are the *output* of the declared coordinate-scalar transform**
+  (D-0040). **SP1 requires a declared transform to be verified; a declared transform
+  with an unverified output is half-declared.** A scalar sign error — `-100` meaning
+  divide, the classic geometry bug — is exactly the deterministic defect that passes
+  every gate today.
+- **This is the third instance of a vacuity class already fixed twice**: D-0049 ANDed
+  the raw sample words, and the raw header byte leg was ANDed for the same reason.
+  *Evidence nothing can fail is not a check.* The derived coordinates are the same shape,
+  unfixed.
+
+**G6 does not cover it**: it compares two fresh ingests, so it catches nondeterminism, not
+a deterministic derivation bug — and it does not run at all in the verify-an-existing-store
+flow, which is the archival re-audit case.
+
+### Finding 3 — CONFIRMED. A certificate-facing string contradicts the code
+
+`RAW_IBM32_NOTE` (`planes.py:462`) tells a certificate reader the raw leg is *"reported
+separately and **NOT** part of G2d's verdict"*. The `plane_4` docstring says the same. The
+implementation ANDs it:
+
+```python
+ok = not mismatches and trace_map.invertible and raw_ok
+```
+
+D-0049 made that change deliberately and the note was never updated. **The false sentence
+ships inside issued certificates** — `"raw_ibm32_note": RAW_IBM32_NOTE` is written into
+the payload. In a project whose product is trust, **a certificate carrying a false
+statement about its own semantics is not a typo.** Third staleness bug of the D-0050
+shape.
+
+**Measured, so no certificate needs superseding:** both payloads under `local/` predate
+the raw view and carry no `raw_ibm32_note` at all. Checked, not assumed.
+
+### Finding 4 — ALREADY FIXED, before the audit was received
+
+The ledger staleness was corrected in `baa1002`. **But my correction contained its own
+error**, which finding 4 has now surfaced — see the ledger's own appended correction.
+
+### Finding 2 — mechanism CONFIRMED; the *number* is not yet honestly measured
+
+The strongest observation in the audit: **P3's "flat 2.81–2.87 GiB across eleven files"
+measured one file size eleven times.** Verified — all twelve Sleipner files are
+**byte-identical in size at 494,565,408**. That is *replication*, not *scaling*: the
+independent variable never varied, so the flatness is a constant, not evidence of
+scale-invariance. **D2 was closed on that basis and the closure does not support the
+generalisation.**
+
+The mechanism claim is confirmed by inspection: **ten `[:]` sites in `planes.py`**, and
+`plane_4` holds `handle.sample[:]` **and** `group[variable][:]` simultaneously.
+
+**I am not adopting the ~5.8× multiplier or the ~1.4 GB breach point yet.** My first
+attempt to measure it used files of 0.9–21.8 MB, where a ~0.4 GB interpreter baseline
+dominates; the resulting fit **over-predicted the one real data point by 65 %**. An
+extrapolation that cannot reproduce the measurement it is extrapolating from is not
+evidence, and importing the auditor's number because it sounds right would be exactly
+the assumption SP8 forbids. A measurement in the real size regime is running; the
+correcting entry for D-0042 waits on it.
