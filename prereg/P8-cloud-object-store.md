@@ -63,6 +63,54 @@ a false `EQUIVALENT` verdict.
 
 ---
 
+## Amendment A — a local object-store leg, declared 2026-08-23
+
+**Registered before this leg is run.** The original method names S3, GCS and Azure, none
+of which is available, and the first result recorded P8 `NOT RUN` — deliberately, because
+a mock would have produced a green result answering a different question.
+
+**This amendment adds a leg that is not a mock.** MinIO is a real S3 server: real HTTP,
+real multipart uploads, real authentication, real partial writes on a real filesystem. It
+is not one of the three named backends and this amendment does **not** claim it is.
+
+**What it can honestly answer** — and these are the parts §11.2 calls out by name:
+
+| Question | Answerable locally? |
+|---|---|
+| Does the object-store write path execute end to end? | **yes** |
+| Does a store written to an object store read back byte-identically against a local-filesystem ingest of the same source? | **yes** |
+| Does a **killed** run leave a resumable checkpoint, or an unambiguously incomplete store? | **yes** |
+| **Can a partially written store validate as complete?** | **yes** — and this is the security-class question |
+| Auth expiry mid-run | **partially** — MinIO issues expiring STS credentials |
+| Real cloud throttling, 5xx, eventual consistency | **no** |
+| GCS, Azure | **no** |
+
+**Declared parameters, fixed now:**
+
+| Parameter | Value |
+|---|---|
+| Backend | MinIO, local, S3 API |
+| Fixture | The Appendix A.1 30-trace article, plus one larger store if time allows |
+| Comparison | **Byte equality against a local-filesystem ingest of the same source.** Not "valid", not "opens" — identical. |
+| Fault injections | process kill mid-ingest; credential expiry mid-ingest |
+| Repetitions | 3 per fault |
+
+**Falsifier for this leg**, narrowed from the original to what this backend can decide:
+
+> **A partially written store that validates as complete**, or a byte difference between
+> the object-store ingest and the local-filesystem ingest of the same source, or an
+> interruption that leaves neither a resumable checkpoint nor an unambiguously incomplete
+> store.
+
+**What this leg does NOT discharge.** The original falsifier — *"a run that can return
+nothing after hours"* — is about **real cloud** behaviour over long durations: throttling,
+transient 5xx, eventual consistency, credential lifetimes measured in hours. **None of
+that is measurable here, and D7 stays open regardless of this leg's outcome.** A pass here
+means the code path and the interruption semantics are sound, not that the project is
+cloud-ready.
+
+---
+
 ## Results — appended 2026-08-22, never edited into the sections above
 
 | Field | Value |
