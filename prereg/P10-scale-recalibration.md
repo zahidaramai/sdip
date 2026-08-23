@@ -410,3 +410,79 @@ have shipped 1,150 s; **B** had one and stopped 1,100 s.
 - **G6 costs 134.73 s and `g3_control` 0.82 s** — the two stages Amendment A could not
   account for, now measured.
 - **The parametric shape is sound.** What is wrong is the *anchor*, not the *slope*.
+
+---
+
+## Amendment C — anchor on the command, not on summed stages
+
+- **Registered:** 2026-08-23, **before the run it governs**, per **SP9**
+- **Supersedes the method of:** Amendments A and B, both discarded by their own guards
+- **Status at registration:** NOT RUN
+
+### The single change
+
+**A and B both modelled the ceiling as a sum of instrumented stages. Both under-predicted
+the command by 12–22 %**, because `sdip certify` does work that is in no stage: cold
+process start, git state captured twice, codec manifest, array manifest,
+`portable_headers`, payload assembly, certificate write. **Summing stages cannot reach
+it, however many stages you add.**
+
+**Amendment C measures `sdip certify` end to end** — process start to exit — and keeps the
+parametric term for the one thing it is genuinely needed for: **adjusting when the control
+count changes.**
+
+```
+ceiling(n) = round_up_50( max_observed_certify × 1.15 )  +  44.92 × (n − 16)
+```
+
+### The margin is 1.15, and it is declared from PRIOR knowledge
+
+**Not from the run about to happen.** `DECISIONS.md` **D-0074**, already published,
+records run-to-run variance of **4.6 %** on identical code — 1,115.27 s and 1,168.55 s.
+**1.15 is that spread with headroom for a busier machine**, chosen before this run's
+numbers exist and citable to an entry that predates it.
+
+**This is the distinction Amendment A failed.** Using experience to set a threshold is how
+any threshold is set; using *the result the threshold judges* is what **SP9** forbids.
+The margin here rests on a published prior measurement, not on the forthcoming one.
+
+### `per_control = 44.92 s`, carried from Amendment B
+
+Measured across 3 chains and 45 applied control runs, `max/min` **1.05**. **Not
+re-measured** — B established it, the falsifier did not fire, and re-deriving a settled
+number invites fitting it.
+
+### Pre-registered parameters
+
+| Parameter | Value |
+|---|---|
+| Measurement | **`sdip certify` wall clock, process start to exit** |
+| Data | `06p07ful.sgy`, 494,565,408 B, 116,532 traces |
+| **N** | **3 runs**, each from a cold process on a clean tree |
+| Statistic | **maximum**, over these 3 **and** the two already-recorded certified runs (N=5 total) |
+| Margin | **× 1.15**, from D-0074's published 4.6 % |
+| Parametric term | `+ 44.92 × (n − 16)`, from Amendment B |
+| Rounding | **up**, to the next 50 s |
+| Floor | **≥ 1,168.55 s** or discarded, as in B |
+| Memory ceiling | **8.0 GiB, unchanged** |
+
+### Falsifier
+
+**Fires if any of the three runs exceeds `max_previously_observed × 1.15` = 1,343.8 s.**
+
+That would mean the command's cost is not bounded by the variance D-0074 recorded, and the
+honest response is **not** a larger margin — it is to report the wall clock as
+**unbounded on this hardware** and leave the flat 1500 s standing with that finding
+attached. **A margin enlarged to fit the data it failed to bound is not a margin.**
+
+### What this still will NOT be
+
+**It will not be a first-principles model.** It is a measured bound on one command, on one
+file, on one machine, with a coefficient for control count. **It does not predict a
+different file, and it must not be read as doing so** — the 1.0 GiB verification envelope
+(**D38**) is a separate limit and is untouched.
+
+**Third attempt, and stated plainly:** if this derivation also fails its floor or its
+falsifier, **D43 closes as "flat ceiling, and here is why parametric is harder than it
+looks"** rather than a fourth amendment. Three discarded derivations is a finding; four is
+sunk cost.
