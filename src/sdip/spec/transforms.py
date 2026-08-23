@@ -93,9 +93,7 @@ Codes the pinned ``segy`` cannot express at all — **4** (fixed-point with gain
 and fail at spec construction rather than corrupting anything.
 """
 
-EXACT_DECODE_FORMATS: frozenset[str] = frozenset(
-    {"int8", "int16", "uint8", "uint16", "float32"}
-)
+EXACT_DECODE_FORMATS: frozenset[str] = frozenset({"int8", "int16", "uint8", "uint16", "float32"})
 """Source sample formats that survive the ``float32`` decode exactly. See above.
 
 Kept as an explicit set rather than "not lossy" so that a format the pinned ``segy``
@@ -193,6 +191,171 @@ def detect_ibm32(segy_spec: Any) -> Ibm32Exposure:
         sample_format = None
 
     return Ibm32Exposure(header_fields=tuple(fields), sample_format=sample_format)
+
+
+P9_SWEEP: dict[str, tuple[str, str]] = {
+    "ibm32": ("range_and_precision", "P2: 1,939 of 4,103 words lose the value"),
+    "int32": ("range_overflow", "-16777217 -> -16777216"),
+    "int64": ("range_overflow", "-16777217 -> -16777216"),
+    "uint32": ("range_overflow", "16777217 -> 16777216"),
+    "uint64": ("range_overflow", "16777217 -> 16777216"),
+    "float64": ("precision_truncation", "0.1 -> 0.10000000149011612"),
+    "int8": ("exact", ""),
+    "int16": ("exact", ""),
+    "uint8": ("exact", ""),
+    "uint16": ("exact", ""),
+    "float32": ("exact", "identity"),
+}
+"""Probe **P9**, run 2026-08-23 against ``prereg/P9-sample-format-sweep.md``.
+
+Loss class and the **first differing pair** per format. **No loss ratio is recorded**, by
+the pre-registration's own terms: a ratio is an artifact of the probe vector, since a
+file of small integers loses nothing in any format. The threshold — ``2**24`` — is the
+fact.
+
+A format absent from this mapping is **unclassified**, which is deliberate and visible:
+neither silently exact nor silently lossy.
+"""
+
+
+@dataclass(frozen=True, slots=True)
+class LossyDecodeExposure:
+    """What the source's sample format does under MDIO's unconditional ``float32`` decode.
+
+    **Generalises :class:`Ibm32Exposure` from one format to all of them.** ``ibm32`` was
+    detected and scoped; the other five lossy formats ran undeclared, which is an
+    **SP1(a)** violation of the same class as the coordinate scalar (D-0040): a transform
+    altered values and the certificate named none.
+    """
+
+    sample_format: str
+    loss_class: str
+    first_loss: str
+    header_fields: tuple[str, ...] = ()
+
+    @property
+    def lossy(self) -> bool:
+        """True when this decode can alter the value."""
+        return self.loss_class != "exact"
+
+    @property
+    def classified(self) -> bool:
+        """True when P9 has a row for this format. Absent is neither exact nor lossy."""
+        return self.loss_class != "unclassified"
+
+    def to_json(self, *, raw_view_stored: bool = False) -> dict[str, Any]:
+        """Certificate-shaped ``transforms_declared`` entry.
+
+        **Emitted for every decode, including the exact ones**, per D-0063 ruling 1: an
+        exact transform declared is what makes an undeclared one detectable. A
+        certificate whose ``transforms_declared`` is empty then means *no decode ran*,
+        rather than *nobody looked*.
+        """
+        entry: dict[str, Any] = {
+            "from": self.sample_format,
+            "to": "float32",
+            "applies_to": "samples",
+            "field_names": list(self.header_fields),
+            "sample_format": self.sample_format,
+            "loss_class": self.loss_class,
+            "invertibility": "VERIFIED" if not self.lossy else "SCOPED",
+            "mechanism": (
+                "MDIO writes the data variable as ScalarType.FLOAT32 unconditionally "
+                "(mdio/builder/templates/base.py:449), so the decode is always "
+                "<source format> -> float32. float32 carries a 24-bit significand: every "
+                "integer to 2**24 = 16,777,216 exactly, none beyond."
+            ),
+            "measured_by": "probe P9, prereg/P9-sample-format-sweep.md",
+        }
+        if self.lossy:
+            entry["first_loss"] = self.first_loss
+            entry["raw_view_stored"] = raw_view_stored
+            entry["scope_note"] = (
+                P2_SCOPE_NOTE
+                if self.sample_format in IBM32_NAMES
+                else (
+                    f"The {self.sample_format} -> float32 decode can alter the value "
+                    "(P9). Per DECISIONS.md D-0063 ruling 1, NON-EQUIVALENT with a named "
+                    "cause is the supported outcome for this format at v0.1: no "
+                    "undecoded parallel view is written for it, so a store built from "
+                    "such a source cannot be made equivalent. A view is built when a "
+                    "real file demands one, with its G7 control in the same commit."
+                )
+            )
+        else:
+            entry["scope_note"] = (
+                f"The {self.sample_format} -> float32 decode is EXACT: every value of "
+                "this format is representable in float32 (P9). Declared rather than "
+                "omitted, because an exact transform declared is what makes an "
+                "undeclared one detectable (SP1(a))."
+            )
+        return entry
+
+
+def detect_lossy_decode(segy_spec: Any) -> LossyDecodeExposure | None:
+    """Classify the source's sample-format decode. Generalises :func:`detect_ibm32`.
+
+    Args:
+        segy_spec: The ``SegySpec`` an ingest will run against.
+
+    Returns:
+        The exposure, or ``None`` when the spec declares no sample format at all.
+    """
+    try:
+        name = _format_name(segy_spec.trace.data.format)
+    except AttributeError:  # pragma: no cover - a spec without trace data is unusable
+        return None
+    if not name:
+        return None
+
+    fields: list[str] = []
+    try:
+        for field in segy_spec.trace.header.fields:
+            if _format_name(field.format) in IBM32_NAMES:
+                fields.append(str(field.name))
+    except AttributeError:  # pragma: no cover - a spec without a header is not usable
+        pass
+
+    loss_class, first_loss = P9_SWEEP.get(name, ("unclassified", ""))
+    return LossyDecodeExposure(
+        sample_format=name,
+        loss_class=loss_class,
+        first_loss=first_loss,
+        header_fields=tuple(fields),
+    )
+
+
+def lossy_decode_blocks_equivalence(
+    segy_spec: Any, *, roundtrip_byte_identical: bool
+) -> tuple[bool, str]:
+    """Return ``(blocked, reason)`` for an ``EQUIVALENT`` verdict, for any lossy format.
+
+    Generalises :func:`ibm32_blocks_equivalence` from ``ibm32`` to all six.
+
+    **The conditional-on-G3 logic is unchanged**, deliberately. A byte-identical round
+    trip proves the source bits survived whatever the decode did to the values in memory,
+    which is the only thing that can rescue a non-invertible decode. What changes is the
+    **trigger**: five more formats reach it.
+
+    An **unclassified** format blocks too. A format P9 has no row for is not known to be
+    exact, and treating unknown as safe is the assumption **SP8** forbids.
+    """
+    exposure = detect_lossy_decode(segy_spec)
+    if exposure is None or (not exposure.lossy and exposure.classified):
+        return False, ""
+    if roundtrip_byte_identical:
+        return False, ""
+    if not exposure.classified:
+        return True, (
+            f"sample format {exposure.sample_format!r} is not classified by probe P9, so "
+            "its decode to float32 is not known to preserve the value, and the round "
+            "trip was not byte-identical. Unknown is not exact (SP8)."
+        )
+    return True, (
+        f"the {exposure.sample_format} -> float32 decode can alter the value "
+        f"({exposure.loss_class}; first loss {exposure.first_loss}) and the round trip "
+        "was NOT byte-identical, so nothing demonstrates the source bits survived."
+    )
 
 
 def ibm32_blocks_equivalence(segy_spec: Any, *, roundtrip_byte_identical: bool) -> tuple[bool, str]:

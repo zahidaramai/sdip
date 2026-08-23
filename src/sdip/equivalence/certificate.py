@@ -41,8 +41,8 @@ from sdip.provenance.environment import capture_environment
 from sdip.provenance.git import GitState, capture_git_state
 from sdip.spec.transforms import (
     detect_coordinate_scalar,
-    detect_ibm32,
-    ibm32_blocks_equivalence,
+    detect_lossy_decode,
+    lossy_decode_blocks_equivalence,
 )
 
 GATES = ("G1", "G2", "G3", "G4", "G5", "G6", "G7")
@@ -249,9 +249,11 @@ def issue(
     codecs = read_codec_manifest(result.output_path)
     lossy = bool(set(codecs) & LOSSY_CODECS)
 
-    # SP1 / probe P2. The exposure is declared whether or not it blocks: the transform
-    # is not invertible in general, even where it happened to be invertible here.
-    exposure = detect_ibm32(result.spec.segy_spec)
+    # SP1(a) / probes P2 and P9. The exposure is declared whether or not it blocks, and
+    # now for EVERY sample format rather than ibm32 alone - including the exact ones.
+    # An exact transform declared is what makes an undeclared one detectable: an empty
+    # `transforms_declared` then means no decode ran, not that nobody looked (D-0063).
+    exposure = detect_lossy_decode(result.spec.segy_spec)
 
     # Read from the store, not assumed: a constant here went stale the moment the raw
     # view was built, and put a false statement on every ibm32 certificate.
@@ -276,7 +278,7 @@ def issue(
     except Exception:
         coord_transform = None
     byte_identical = bool(roundtrip is not None and roundtrip.byte_identical)
-    transform_blocked, transform_reason = ibm32_blocks_equivalence(
+    transform_blocked, transform_reason = lossy_decode_blocks_equivalence(
         result.spec.segy_spec, roundtrip_byte_identical=byte_identical
     )
 
@@ -343,7 +345,7 @@ def issue(
         "determinism": determinism.to_json() if determinism is not None else None,
         "scale": scale.to_json() if scale is not None else None,
         "transforms_declared": (
-            ([exposure.to_json(raw_view_stored=raw_view_present)] if exposure.present else [])
+            ([exposure.to_json(raw_view_stored=raw_view_present)] if exposure is not None else [])
             + (
                 [coord_transform.to_json()]
                 if coord_transform is not None and not coord_transform.is_identity

@@ -289,7 +289,7 @@
     },
     "transforms_declared": {
       "type": "array",
-      "description": "SP1: the only permitted transform at v1.0 is the declared SEG-Y sample-format decode. Every entry must be exactly invertible and verified by round trip.",
+      "description": "SP1(a): every sample-format decode is declared here, INCLUDING the exact ones. MDIO writes the data variable as float32 unconditionally, so a decode always runs; declaring the exact cases is what makes an undeclared one detectable, and an empty array therefore means no decode ran rather than that nobody looked. Probes P2 (ibm32) and P9 (every expressible format). See DECISIONS.md D-0062/D-0063.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -368,6 +368,29 @@
           },
           "traces_checked": {
             "type": "integer"
+          },
+          "loss_class": {
+            "enum": [
+              "exact",
+              "range_overflow",
+              "precision_truncation",
+              "range_and_precision",
+              "unclassified"
+            ],
+            "description": "Measured by probe P9. 'unclassified' is a format P9 has no row for - neither silently exact nor silently lossy, and it blocks EQUIVALENT because unknown is not exact (SP8)."
+          },
+          "first_loss": {
+            "type": "string",
+            "description": "The FIRST differing pair for this format, e.g. '-16777217 -> -16777216'. A loss RATIO is deliberately not recorded: it is an artifact of the probe vector, since a file of small integers loses nothing in any format. The 2**24 threshold is the fact."
+          },
+          "mechanism": {
+            "type": "string"
+          },
+          "measured_by": {
+            "type": "string"
+          },
+          "raw_view_stored": {
+            "type": "boolean"
           }
         }
       }

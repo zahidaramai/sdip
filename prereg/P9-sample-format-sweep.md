@@ -72,3 +72,61 @@ artifact of the probe vector — a file of small integers loses nothing in any f
 Per **D-0063 ruling 1**, a firing falsifier does **not** oblige a raw parallel view for
 every format that fires. It obliges **detection and declaration** — leg 1 — so the
 failure carries a named cause. Views are demand-driven (**ruling 7**).
+
+---
+
+## Results — run 2026-08-23
+
+**Run after this file was committed and pushed** (SP9). Commit of registration:
+`8f2e1c0`-lineage, immediately preceding this append.
+
+| code | format | verdict | loss class | first loss |
+|---|---|---|---|---|
+| 1 | `ibm32` | **LOSSY** | `range_and_precision` | P2: 1,939 of 4,103 words lose the value |
+| 2 | `int32` | **LOSSY** | `range_overflow` | `-16777217 → -16777216` |
+| 3 | `int16` | exact | `exact` | — |
+| 5 | `float32` | exact | `exact` | identity |
+| 6 | `float64` | **LOSSY** | `precision_truncation` | `0.1 → 0.10000000149011612` |
+| 8 | `int8` | exact | `exact` | — |
+| 9 | `int64` | **LOSSY** | `range_overflow` | `-16777217 → -16777216` |
+| 10 | `uint32` | **LOSSY** | `range_overflow` | `16777217 → 16777216` |
+| 11 | `uint16` | exact | `exact` | — |
+| 12 | `uint64` | **LOSSY** | `range_overflow` | `16777217 → 16777216` |
+| 16 | `uint8` | exact | `exact` | — |
+
+**Six lossy, five exact.**
+
+## Verdict
+
+| | |
+|---|---|
+| **Falsifier** | **FIRED.** Five formats outside `{ibm32}` alter values: `int32`, `int64`, `uint32`, `uint64`, `float64` |
+| N | the full probe vector per format, exhaustive over it |
+| Environment | Python 3.12.13 · `segy` 0.6.0 · `multidimio` 1.2.1 · numpy 2.5.2 · macOS arm64 |
+
+**`detect_ibm32` was too narrow by exactly five formats.** Every claim keyed to `ibm32`
+alone was under-scoped by that set: detection, declaration, and the equivalence block.
+
+## Coverage the pinned `segy` does not have
+
+`DataSampleFormatCode` has **no code 4** (fixed-point with gain), **no code 7** (24-bit
+integer) and **no code 15** (24-bit unsigned). Those SEG-Y formats **cannot be expressed
+at all**, so a file declaring one fails at spec construction rather than corrupting
+anything. **P6's revision-coverage claim should state this rather than leave it implied.**
+
+## What was done with the result, and what was not
+
+Per **D-0063 ruling 1**, and recorded here so the gap between measurement and remedy is
+on the face of the probe rather than inferred:
+
+- **Done:** `detect_lossy_decode` classifies all eleven; `transforms_declared` now emits
+  an entry for **every** decode including the exact ones;
+  `lossy_decode_blocks_equivalence` blocks on all six lossy formats and on any
+  **unclassified** one, because unknown is not exact (**SP8**).
+- **Deliberately not done:** no undecoded parallel view is written for the five
+  non-`ibm32` lossy formats. Such a source therefore **fails Plane 4 and cannot be made
+  to pass** — which is fail-safe, and after this change it fails **with a named cause**.
+  `NON-EQUIVALENT`-with-diagnosis is the supported outcome at v0.1. A view is built when
+  a real file demands one, with its G7 control in the same commit (**ruling 7**).
+
+**No loss ratio is reported**, per this probe's own pre-registered terms.

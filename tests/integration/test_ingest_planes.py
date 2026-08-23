@@ -231,7 +231,15 @@ def test_certificate_is_provisional_at_f2(ingested):
     # At F2 there is no round trip, so P2's ibm32 scope has no byte-identity proof to
     # rest on and it is the binding reason. See D-0034.
     assert payload["transform_scope_blocks_equivalence"] is True
-    assert "NOT exactly invertible" in payload["verdict_reason"]
+    # The reason names the format, its measured loss class, its first differing pair,
+    # and why G3 could not rescue it. It said "NOT exactly invertible" until D-0062
+    # generalised the block from ibm32 to all six lossy formats; the substance is
+    # unchanged and the text now identifies WHICH decode and by how much.
+    reason = payload["verdict_reason"]
+    assert "ibm32 -> float32" in reason
+    assert "can alter the value" in reason
+    assert "range_and_precision" in reason
+    assert "NOT byte-identical" in reason
 
 
 def test_unrun_planes_are_never_assumed_to_pass(ingested):
