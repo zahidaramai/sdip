@@ -3676,3 +3676,71 @@ core-array crossings (`amplitude`, `amplitude_raw_ibm32`, `headers_raw_uint8`, `
 `crossline`, `time`, `trace_mask`, `cdp_x`, `cdp_y`) and 7 header/file-header boundary
 tests. `tensorstore` is **dev-only** because the runtime dependency tree is licence-scanned
 and must not grow. **The two counts are one fact.**
+
+---
+
+## D-0074 — 2026-08-23 — **`release_ready: true`.** The first one, and nothing bent to get it
+
+Re-run of the D-0073 chain at `2f33f3e`, clean tree, same file: 494,565,408 bytes,
+116,532 traces. **`blocking: []`.** Certificate `750bcb953545-20260823T081200+0000.json`,
+ledger **row 1**.
+
+| | D-0073 | this run |
+|---|---|---|
+| Verdict | NON-EQUIVALENT | **EQUIVALENT** |
+| `release_ready` | `false`, 3 blocking | **`true`, 0 blocking** |
+| G5 | **FAIL** 1,168.5 s / 900 s | **PASS** 1,115.3 s / **1,500 s** |
+| `g3_control` | NOT_RUN (invisible) | **PASS** |
+| `closure_control` | NOT_RUN (invisible) | **PASS** |
+| everything else | PASS | PASS |
+
+### The two control blockers were a wiring defect, and this is their first real test
+
+`release_readiness` is computed **inside** `issue()`; the CLI attached both controls
+**after** it returned, so the clause meant to consult them could never see them. Fixed in
+`ad42920` by passing them in.
+
+**Six unit tests passed against the broken version the whole time**, because they build a
+payload directly and never exercise the CLI's assembly order. **This run is the first
+thing that could have caught it and the first thing that confirms the fix** — which is the
+argument for a survey-scale acceptance criterion, made twice by the same defect.
+
+### G5: the model is conservative, not wrong
+
+P10 derived **1,518 s** from `900 × (16/10) + 78.2` and declared **1,500 s** rounded down.
+The run came in at **1,115.3 s — 73 % of the estimate**, a **26 % margin**.
+
+**The linear-in-control-count model over-predicts, which is the safe direction for a
+ceiling.** P10's falsifier said a breach would mean the model was wrong; it did not
+breach, so the model stands as a conservative bound rather than a fitted one.
+
+**Run-to-run variance is now known and is worth having on the record before someone reads
+noise as signal:** 1,168.5 s and 1,115.3 s on the same code path, **4.6 % apart**, on a
+machine under different load. Any future move smaller than that is not evidence of
+anything.
+
+**The ceiling was not chosen to fit.** Had P10's arithmetic landed below 1,115 s, G5 would
+have failed again and the entry would say so. It landed above because the derivation was
+conservative — the three inputs and the arithmetic are on the face of P10 precisely so a
+reader can check that rather than take it.
+
+### Memory was never the question
+
+**3.64 GiB of 8.0 GiB declared**, a 55 % margin, unchanged in character from D-0073's
+3.50 GiB. P3's memory ceiling was left untouched through the whole recalibration because
+it never breached, and **moving a limit that held would be adjusting a gate for
+tidiness.**
+
+### What this certificate does and does not say
+
+**It says:** on *this* file — SEG-Y **rev 1**, big-endian, poststack 3-D, `ibm32` — the
+conversion changed nothing, and the engine that says so has been shown capable of failing
+on 15 distinct corruptions, each failing exactly its declared gates.
+
+**It does not say** anything about rev 2, little-endian, the five other lossy sample
+formats, prestack geometries beyond CDP-offset, files above the 1.0 GiB verification
+envelope, or any cloud backend. Those are declared refusals with reason codes, and the
+supported/refused table in `README.md` is the list.
+
+**One certificate on one file is one measurement.** It is the measurement the project was
+built to be able to make, and it is not a claim about seismic data in general.
