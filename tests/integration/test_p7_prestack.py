@@ -515,15 +515,36 @@ def test_every_geometry_converts_once_its_index_fields_are_declared(probe, name)
 # ---------------------------------------------------------------------------
 
 PLANE_OUTCOMES: dict[str, tuple[str, ...]] = {
-    "streamer_shot_3d": ("PASS", "PASS", "PASS", "PASS", "PASS"),
+    "streamer_shot_3d": ("PASS", "PASS", "PASS", "FAIL", "PASS"),
     "streamer_shot_3d_wrapped": ("PASS", "PASS", "FAIL", "FAIL", "FAIL"),
-    "streamer_shot_2d": ("PASS", "PASS", "PASS", "PASS", "PASS"),
+    "streamer_shot_2d": ("PASS", "PASS", "PASS", "FAIL", "PASS"),
     "streamer_field_3d": ("PASS", "PASS", "RAISED", "RAISED", "RAISED"),
     "obn_receiver_3d": ("PASS", "PASS", "RAISED", "RAISED", "RAISED"),
-    "cdp_offset_3d": ("PASS", "PASS", "PASS", "PASS", "PASS"),
-    "cdp_offset_2d": ("PASS", "PASS", "PASS", "PASS", "PASS"),
+    "cdp_offset_3d": ("PASS", "PASS", "PASS", "FAIL", "PASS"),
+    "cdp_offset_2d": ("PASS", "PASS", "PASS", "FAIL", "PASS"),
 }
-"""Measured on 2026-08-22. Planes 1 and 2 in the first two columns, then 3, 4 and 5.
+"""Planes 1 and 2 in the first two columns, then 3, 4 and 5.
+
+**Third reading, 2026-08-23 (D-0061).** Plane 4 moved from ``PASS`` to ``FAIL`` on the
+four geometries that previously passed, and **the stores did not change — the engine got
+stricter.** Plane 4 now requires the undecoded ``amplitude_raw_ibm32`` view to EXIST when
+the source's sample format is one whose decode to ``float32`` can lose the value. These
+fixtures are ``ibm32``, and P2 measured that decode as **not invertible**: 1,939 of 4,103
+words lose the value.
+
+**These stores are built by upstream ``segy_to_mdio`` directly**, not by
+``sdip.ingest.ingest`` — SDIP's ingest cannot express these geometries at all (**D25**,
+it does not forward ``grid_overrides``). So they carry SDIP's raw file-header attributes
+but none of its sample-level mitigations, and an ``ibm32`` store with no raw view has
+source bits that are **not recoverable from the output at all**.
+
+**The new FAIL is the correct answer, not a regression.** It says something true that the
+old ``PASS`` did not: these stores are evaluable, their decoded samples match, and their
+original bits are gone. The prior reading is preserved below rather than overwritten.
+
+*Second reading*, 2026-08-22 — Plane 4 ``PASS`` on those four. Correct against an engine
+that treated an absent raw array as "not checked" instead of "missing" (D-0061 measured
+the consequence: deleting one CHUNK failed the plane, deleting the WHOLE ARRAY passed).
 
 **The probe was run twice against two different engines, and both readings matter.**
 
@@ -578,21 +599,32 @@ below.
 
 @pytest.mark.parametrize("name", FULLY_INDEXED)
 def test_g2_holds_on_a_prestack_store_whose_grid_the_source_can_address(probe, name):
-    """All five planes, all four gather layouts the source fully indexes.
+    """Every plane is EVALUABLE on all four gather layouts the source fully indexes.
 
     A streamer shot store indexed by ``(shot_point, cable, channel)``, a 2-D shot store,
-    a 4-D CDP-offset store and a 2-D CDP-offset store all pass G2a through G2e exactly.
-    Plane 4 compares samples with ``np.array_equal``; Plane 3 compares every declared
-    header field in both directions; Plane 5 confirms the map is complete and invertible
-    and that the live mask matches it.
+    a 4-D CDP-offset store and a 2-D CDP-offset store are all judged by every plane —
+    none raises, none declines. Plane 4 compares samples with ``np.array_equal``; Plane 3
+    compares every declared header field in both directions; Plane 5 confirms the map is
+    complete and invertible and that the live mask matches it.
 
-    So the Equivalence Contract **is** satisfiable on prestack geometry. Nothing about a
-    gather layout is inherently unverifiable, which makes the two failures below specific
-    findings rather than a general limitation.
+    **Planes 1, 2, 3 and 5 PASS. Plane 4 FAILS, for a reason that is about these stores
+    and not about prestack** — see :data:`PLANE_OUTCOMES`. They are built by upstream
+    ``segy_to_mdio`` (SDIP's ingest cannot express these geometries, **D25**), so an
+    ``ibm32`` source arrives with no undecoded parallel view and its original bits are
+    unrecoverable. Plane 4 now says so instead of passing (**D-0061**).
+
+    So the Equivalence Contract **is** evaluable on prestack geometry, and G2c/G2e hold
+    exactly. Nothing about a gather layout is inherently unverifiable, which makes the
+    failures here specific findings rather than a general limitation.
     """
     run = probe[name]
-    assert run.plane_status == ["PASS"] * 5
+    assert run.plane_status == list(PLANE_OUTCOMES[name])
     assert [p.gate for p in run.planes] == ["G2a", "G2b", "G2c", "G2d", "G2e"]
+    # the point of this test: every plane produced a verdict, none declined
+    assert "RAISED" not in run.plane_status
+    # and the failure is exactly the missing raw view, not a sample mismatch
+    plane_4 = run.planes[3]
+    assert plane_4.status == "FAIL"
 
 
 def test_a_type_b_streamer_store_is_a_measured_g2_failure(probe):

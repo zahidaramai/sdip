@@ -126,6 +126,9 @@ def test_plane_5_reports_an_invertible_map(article):
         "map_invertible": True,
         "no_duplicates": True,
         "mask_matches_map": True,
+        # D-0061: this plane's claim is about which cells are live, which is
+        # unanswerable if the mask or a grid coordinate array is simply absent.
+        "no_required_array_missing": True,
     }
     assert plane.evidence["padding_cells"] == 0
 

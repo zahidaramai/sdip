@@ -1288,3 +1288,62 @@ first time a runner is busy, and a flaky gate teaches people to re-run rather th
 medians, compare a ratio with a declared margin, or mark it as a benchmark excluded from
 the gating suite. Each changes what the probe asserts, and P7's pre-registration is
 committed.
+
+---
+
+## D40 — `headers_raw_uint8` can be deleted whole without failing any gate
+
+- **Status:** `OPEN` (raised 2026-08-23) · **Decision:** `DECISIONS.md` D-0061
+
+Corrupting one byte of the raw header plane fails **G2c**; deleting the whole array
+fails nothing. The asymmetry is **deliberate for now** and the reasoning is on the
+record: Plane 3's claim is that the 240 header bytes are **recoverable**, and G1
+guarantees the structured array covers all 240 with zero gaps, so the claim holds with or
+without the portable copy. The plane is a **portability** mitigation (D-0051), not a
+recoverability one.
+
+Requiring it unconditionally **failed seven prestack geometries that were correct** —
+stores built by upstream `segy_to_mdio` legitimately carry none, and SDIP's own ingest
+cannot express those geometries at all (**D25**).
+
+**What would close it:** a marker that says *this store was written by `sdip ingest`, which
+writes the header plane unconditionally*. The array's own attributes cannot serve —
+they are deleted with it. A group-level provenance attribute written at ingest would, and
+would also let `sdip verify` tell a partially-written SDIP store from a foreign MDIO store
+it is merely inspecting. That is a store-format change and wants a maintainer ruling.
+
+**Its G7 control was deleted rather than kept passing vacuously.** A control that fails
+nothing is not a control (**SP11**).
+
+---
+
+## D41 — The lossy-decode generalisation is half done
+
+- **Status:** `OPEN` (raised 2026-08-23) · **Decision:** `DECISIONS.md` D-0062
+
+**Six of the eleven sample formats the pinned `segy` can express lose values through
+MDIO's unconditional `float32` decode.** `LOSSY_DECODE_FORMATS` now records all six, and
+**Plane 4's raw-view requirement is keyed to that set**, so an `int32` store missing its
+raw view fails today.
+
+**Still keyed to `ibm32` alone:**
+
+1. **`detect_ibm32`** — should be `detect_lossy_decode(spec)`, returning the format and
+   its loss class. An `int32` source emits **no `transforms_declared` entry** for a
+   transform that altered values: an **SP1(a)** violation, same class as D-0040.
+2. **`attach_raw_sample_view`** — writes `amplitude_raw_ibm32` only for `ibm32`. A lossy
+   `int32`/`uint32`/`int64`/`uint64`/`float64` source gets **no undecoded copy at all**,
+   so Plane 4 now correctly fails it and *nothing can make it pass* — the store cannot be
+   made equivalent. Needs a format-parameterised view.
+3. **`ibm32_blocks_equivalence`** — the `ROUNDTRIP-SCOPED` reasoning applies identically
+   to the other five and is unenforced for them.
+4. **One G7 control per raw view**, single-gate, in the same commit as each view (**SP11**).
+
+**Pre-register before running (SP9):** P2 covered one format and its title claims the
+transform generally. Extending it to the other five needs a merged pre-registration
+first.
+
+**Do not read `EXACT_DECODE_FORMATS` as a whitelist of safety.** It is a measurement of
+integer representability, and it says nothing about a format the pinned `segy` adds
+later — such a format belongs to neither set and is visible as unclassified, which is
+the intended behaviour.

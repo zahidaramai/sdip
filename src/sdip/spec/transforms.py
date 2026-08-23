@@ -51,6 +51,58 @@ from typing import Any
 
 IBM32_NAMES: frozenset[str] = frozenset({"ibm32", "ibm"})
 
+LOSSY_DECODE_FORMATS: frozenset[str] = frozenset(
+    {"ibm32", "ibm", "int32", "int64", "uint32", "uint64", "float64"}
+)
+"""Source sample formats a decode to ``float32`` can silently alter. **Measured.**
+
+**MDIO writes the data variable as ``ScalarType.FLOAT32`` unconditionally** —
+``mdio/builder/templates/base.py:449``, in the base template every other one inherits —
+and ``segy``'s ``SegyFile._update_spec`` sets the source format from the file's own
+``data_sample_format`` byte. So the decode is always ``<file format> -> float32``, and
+whether it is lossless depends **only** on whether the source fits a 24-bit significand:
+``float32`` represents every integer exactly to ``2**24 = 16,777,216`` and none beyond.
+
+Swept 2026-08-23 over every code the pinned ``segy`` can express (``D-0062``):
+
+===== ========= ======= ==================================================
+code  format    verdict first loss
+===== ========= ======= ==================================================
+1     ibm32     LOSSY   P2: 1,939 of 4,103 words lose the value
+2     int32     LOSSY   ``-16777217 -> -16777216``
+3     int16     exact   —
+5     float32   exact   identity
+6     float64   LOSSY   ``0.1 -> 0.10000000149011612``
+8     int8      exact   —
+9     int64     LOSSY   ``-16777217 -> -16777216``
+10    uint32    LOSSY   ``16777217 -> 16777216``
+11    uint16    exact   —
+12    uint64    LOSSY   ``16777217 -> 16777216``
+16    uint8     exact   —
+===== ========= ======= ==================================================
+
+**Six lossy, five exact — and SDIP originally detected exactly one of the six.**
+
+**The threshold is the fact; a loss ratio is not.** How many values a given file loses
+depends entirely on the values in it, so this set records *which formats can lose* and
+the 2**24 boundary, never a ratio. ``ibm32`` keeps its own measured regime because P2
+established it against the real transform, not against a cast.
+
+Codes the pinned ``segy`` cannot express at all — **4** (fixed-point with gain), **7**
+(24-bit integer) and **15** (24-bit unsigned) — are absent from ``DataSampleFormatCode``
+and fail at spec construction rather than corrupting anything.
+"""
+
+EXACT_DECODE_FORMATS: frozenset[str] = frozenset(
+    {"int8", "int16", "uint8", "uint16", "float32"}
+)
+"""Source sample formats that survive the ``float32`` decode exactly. See above.
+
+Kept as an explicit set rather than "not lossy" so that a format the pinned ``segy``
+adds later is neither silently exact nor silently lossy: it belongs to neither set and
+is visible as unclassified.
+"""
+
 BIT_IDENTICAL_EXPONENT_CODES: tuple[int, int] = (33, 96)
 """Inclusive IBM exponent-code range where P2 found bit-identity, with caveats.
 

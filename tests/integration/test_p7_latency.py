@@ -68,6 +68,7 @@ import zarr
 from sdip.equivalence import PlaneResult, plane_1, plane_2, plane_3, plane_4
 from sdip.equivalence import plane_5 as plane_5_checker
 from sdip.equivalence.planes import store_dimensions
+from sdip.errors import UntrustedInputError
 from sdip.guard.env import check_barred_env_vars
 from sdip.guard.warn import WarningLedger, recording_warnings
 from sdip.ingest import (
@@ -76,6 +77,8 @@ from sdip.ingest import (
     ingest,
     read_raw_file_headers,
 )
+from sdip.ingest.header_plane import attach_header_plane
+from sdip.ingest.raw_samples import attach_raw_sample_view
 from sdip.spec.gate import g1
 from tests.fixtures.generators.prestack import PrestackSegy, build_fixture
 
@@ -338,6 +341,26 @@ def _convert(article: PrestackSegy, store: Path, shape: str) -> tuple[int, ...] 
             grid_overrides=GridOverrides(**overrides) if overrides else None,
         )
     attach_raw_file_headers(store, raw)
+    # The store must be COMPLETE, not merely converted. Plane 4 requires the undecoded
+    # parallel view to exist when the source's sample format has a lossy decode to
+    # float32 (D-0061), and these fixtures are ibm32. Without this the precondition
+    # `planes_all_passed` is False on every geometry and the latency leg produces no
+    # figures at all - not because chunking is wrong, but because the fixture was a
+    # partial store. Attaching what `sdip.ingest.ingest` attaches is what makes this
+    # benchmark run against the artefact SDIP actually ships.
+    #
+    # Best-effort, and the exception is not swallowed carelessly: `streamer_field_3d` and
+    # `obn_receiver_3d` size their grid along `shot_index`, which MDIO CALCULATES and
+    # writes no coordinate array for, so the header plane cannot be addressed at all.
+    # That is F7 from the first P7 run and is exactly why both already carry
+    # PRECONDITION False - they carry no latency figure either way. Any OTHER failure
+    # would be new and must not be hidden, so only UntrustedInputError is caught.
+    try:
+        attach_raw_sample_view(store, article.path, article.spec())
+        attach_header_plane(store, article.path, article.spec())
+    except UntrustedInputError as exc:
+        if "no coordinate array" not in str(exc):
+            raise
     return requested
 
 

@@ -2764,3 +2764,162 @@ corroborated, but I am not adopting it as a single figure** — the honest state
 lock, not a patch: chunked comparison changes how every plane reads, and landing it
 beside the Tier-1 fix would make both unreviewable. Raised as debt **D38** with the
 measured falsifier.
+
+---
+
+## D-0061 — 2026-08-23 — **A partially written store certified `EQUIVALENT`.** Absence was read as "not checked"
+
+Found by probe **P8** against a real MinIO object store, reproduced by me on the local
+filesystem — **it is a property of the Equivalence Engine, not of S3.** The object store
+is how it was found, not where it lives.
+
+### The asymmetry, in one line
+
+**Deleting one CHUNK of `amplitude_raw_ibm32` failed Plane 4. Deleting the WHOLE ARRAY
+passed it.**
+
+An ingest that dies after `attach_raw_file_headers` and before the sample-level writes —
+reached by **2 of 3 real credential expiries**, not contrived — leaves a store missing
+the **D1** and **D-0047** mitigations entirely. Measured, before the fix:
+
+| store | P1 | P2 | P3 | P4 | P5 | verdict |
+|---|---|---|---|---|---|---|
+| baseline | PASS | PASS | PASS | PASS | PASS | EQUIVALENT |
+| `amplitude_raw_ibm32` deleted | PASS | PASS | PASS | PASS | PASS | **EQUIVALENT** |
+| `headers_raw_uint8` deleted | PASS | PASS | PASS | PASS | PASS | **EQUIVALENT** |
+| **`cdp_x` deleted** | PASS | PASS | PASS | PASS | PASS | **EQUIVALENT** |
+| **`time` deleted** | PASS | PASS | PASS | PASS | PASS | **EQUIVALENT** |
+
+### I wrote two of those rows this morning
+
+**The last two are mine**, introduced hours earlier in D-0059, the fix for the *previous*
+audit. That entry says, approvingly:
+
+> *"Absent or underivable is NOT CHECKED, never checked-and-passed — the discipline the
+> raw legs already use."*
+
+**That sentence is the defect.** `NOT CHECKED` is only honest if something downstream
+refuses to certify on it. Recording it in evidence while the verdict still reads
+`EQUIVALENT` **is** checked-and-passed, wearing an honest label. I inherited the pattern
+from the raw legs, reproduced it faithfully, and reproduced the hole with it — the fourth
+instance of the **D-0049** vacuity class, and I authored the third and fourth.
+
+### The rule now, and where each requirement lives
+
+Ruled by the maintainer: **extend the planes**, no sixth plane, no new gate.
+
+| plane | requires | predicate |
+|---|---|---|
+| 3 (G2c) | `headers`, `cdp_x`/`cdp_y` | the **store's own** `coordinates` attribute |
+| 4 (G2d) | the sample axis, `amplitude_raw_ibm32` | axis from `dimension_names`; raw view **iff the decode is lossy** |
+| 5 (G2e) | `trace_mask`, every grid dimension array | `dimension_names` |
+
+**`headers_raw_uint8` is deliberately NOT required.** Plane 3's claim is that the 240
+bytes are **recoverable**, and G1 guarantees the structured array covers all 240 with no
+gaps — so the claim holds with or without the portable copy. It is a **portability**
+mitigation, not a recoverability one. Requiring it failed seven prestack geometries that
+were entirely correct. Its control was **deleted rather than kept**: a control that fails
+nothing is not a control. Tracked as **D40**.
+
+### Three predicates I got wrong first, each caught by running it
+
+1. **Required `headers_raw_uint8` unconditionally** — broke seven prestack geometries
+   built by upstream `segy_to_mdio`, which legitimately carry none.
+2. **Keyed coordinate arrays off the SOURCE header** — every rev-1 header declares
+   `cdp_x`, but a shot-indexed template creates no CDP arrays, so four more geometries
+   failed. The right predicate is the **store's** `coordinates` attribute, which
+   **survives the deletion of the array it names** — exactly the property a completeness
+   check needs: *a claim that outlives its content.*
+3. **Attached the mitigations unconditionally in the latency probe** — `attach_header_plane`
+   raises on the two geometries whose grid is sized along `shot_index`, a dimension MDIO
+   calculates and writes no coordinate array for. That is F7, already known, and both
+   already carry `PRECONDITION: False`.
+
+### After
+
+| store | P1 | P2 | P3 | P4 | P5 | verdict |
+|---|---|---|---|---|---|---|
+| baseline | PASS | PASS | PASS | PASS | PASS | EQUIVALENT |
+| `amplitude_raw_ibm32` deleted | PASS | PASS | PASS | **FAIL** | PASS | NON-EQUIVALENT |
+| `cdp_x` deleted | PASS | PASS | **FAIL** | PASS | PASS | NON-EQUIVALENT |
+| `time` deleted | PASS | PASS | PASS | **FAIL** | PASS | NON-EQUIVALENT |
+
+**G7 is 14 controls**, each failing exactly its declared set, zero extra, zero missed.
+Two are new: `deleted_raw_ibm32_array` → `{G2d}`, `deleted_derived_coordinate` → `{G2c}`.
+
+### A test was asserting the defect
+
+`test_an_absent_view_is_reported_as_unchecked_not_as_a_pass` — **its own name said
+`NOT_RUN` is not a pass, and the assertion underneath made it one.** `assert
+plane.status == "PASS"`. Renamed and corrected. That is the second test found this week
+pinning a claim that had become false, after `test_certify_still_documents_the_g7_ceiling`.
+
+### Two pre-registered readings moved, and both are kept
+
+**P7 prestack**: Plane 4 moved `PASS` → `FAIL` on four geometries. **The stores did not
+change; the engine got stricter.** They are built by upstream `segy_to_mdio` because
+SDIP's ingest cannot express these geometries (**D25**), so an `ibm32` store arrives with
+no raw view and its original bits are **unrecoverable**. The new `FAIL` says something
+true the old `PASS` did not. Both readings are recorded; neither overwritten (**SP10**).
+
+**P7 latency**: its precondition is `planes_all_passed`, so it went un-runnable. **Fixed
+by completing the fixture, not by weakening the precondition** — the probe now attaches
+what `sdip.ingest.ingest` attaches, so the benchmark runs against the artefact SDIP
+actually ships. All 63 latency tests pass and the figures stand.
+
+**Suite: 1075 passed.** ruff and mypy clean on 45 modules.
+
+---
+
+## D-0062 — 2026-08-23 — **`ibm32` is one lossy format of six.** MDIO decodes everything to `float32`
+
+Second external audit, verified here before acceptance.
+
+**Root cause, read directly:** `mdio/builder/templates/base.py:449` sets
+`data_type=ScalarType.FLOAT32` **unconditionally**, in the base template every other one
+inherits; and `segy/file.py:235-239` sets `trace.data.format` from the file's own
+`data_sample_format` byte. So the decode is always `<file format> → float32`, and
+losslessness turns **only** on the 24-bit significand: every integer to `2**24` exactly,
+none beyond.
+
+**Swept over every code the pinned `segy` can express:**
+
+| code | format | verdict | first loss |
+|---|---|---|---|
+| 1 | ibm32 | **LOSSY** | P2: 1,939 of 4,103 |
+| 2 | int32 | **LOSSY** | `-16777217 → -16777216` |
+| 3 | int16 | exact | |
+| 5 | float32 | exact | identity |
+| 6 | float64 | **LOSSY** | `0.1 → 0.10000000149011612` |
+| 8 | int8 | exact | |
+| 9 | int64 | **LOSSY** | `-16777217 → -16777216` |
+| 10 | uint32 | **LOSSY** | `16777217 → 16777216` |
+| 11 | uint16 | exact | |
+| 12 | uint64 | **LOSSY** | `16777217 → 16777216` |
+| 16 | uint8 | exact | |
+
+**Six lossy, five exact.** The audit tabulated eight formats and four lossy; there are
+**eleven**, and **`uint64` (code 12) is a sixth** it did not list, with `uint16`/`uint8`
+exact.
+
+**The threshold is the fact; a loss ratio is not.** How many values a file loses depends
+entirely on the values in it — the audit measured int32 at 4/8 with a sign inversion to
+`-2147483648`, I measured 3/8 with a clamp. Both are artifacts of the chosen vector.
+`LOSSY_DECODE_FORMATS` therefore records **which formats can lose and the `2**24`
+boundary**, never a ratio.
+
+**Measured end to end** on a real int32 SEG-Y through SDIP: `detect_ibm32 →
+sample_format=None`, no `amplitude_raw_int32`, values altered, and **`plane_4` FAIL with
+20 mismatches**. *The engine detects the loss but does not diagnose, declare, or preserve
+it* — `transforms_declared` would be empty for a transform that altered values, the same
+**SP1(a)** class as D-0040.
+
+**Landed here:** `LOSSY_DECODE_FORMATS` and `EXACT_DECODE_FORMATS`, and Plane 4's raw-view
+requirement keyed to the **lossy set**, not to `ibm32` alone — so an int32 store missing
+its raw view already fails today. **The rest of the generalisation is not done**:
+`detect_ibm32` still detects only ibm32, no format-parameterised raw view is written, and
+`ibm32_blocks_equivalence` still triggers on ibm32 alone. Raised as **D41**.
+
+**Coverage gap, confirmed:** `DataSampleFormatCode` has **no code 4** (fixed-point with
+gain), **7** (24-bit int) or **15** (24-bit unsigned). Those fail at spec construction
+rather than corrupting — P6's coverage claim should say so rather than imply it.

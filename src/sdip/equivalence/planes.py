@@ -30,7 +30,9 @@ from sdip.ingest.file_headers import (
     read_raw_file_headers,
     read_raw_textual_from_store,
 )
+from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY
 from sdip.provenance.hashing import sha256_bytes
+from sdip.spec.transforms import COORD_ARRAYS, LOSSY_DECODE_FORMATS, _format_name
 
 
 def first_difference(left: bytes, right: bytes) -> dict[str, Any] | None:
@@ -360,6 +362,68 @@ def _scale_coordinate(raw: Any, scalar: int) -> Any:
     if scalar < -1:
         return values / float(-scalar)
     return values
+
+
+REQUIRED_ARRAY_NOTE = (
+    "Presence leg. An array the source implies MUST exist and does not is a FAILURE, "
+    "not a NOT CHECKED. Measured 2026-08-23 (D-0061): deleting one CHUNK of "
+    "amplitude_raw_ibm32 failed this plane, while deleting the WHOLE ARRAY passed it - "
+    "and a partially written store, reached by a real credential expiry mid-ingest, "
+    "certified EQUIVALENT while missing the D1 and D-0047 mitigations entirely. "
+    "Recording NOT CHECKED in evidence while the verdict still reads EQUIVALENT is "
+    "checked-and-passed wearing an honest label (SP11)."
+)
+
+
+def _missing_required(group: Any, required: dict[str, str]) -> list[dict[str, str]]:
+    """Which of the arrays this plane requires are absent from the store.
+
+    Args:
+        group: An open Zarr group.
+        required: Array name -> why the source implies it must exist.
+
+    Returns:
+        One entry per absent array, naming it and the reason it was required. Empty
+        when every required array is present.
+    """
+    return [
+        {"array": name, "required_because": why}
+        for name, why in sorted(required.items())
+        if name not in group
+    ]
+
+
+def _lossy_decode_expected(spec: Any) -> str | None:
+    """The source sample format when decoding it to ``float32`` can lose the value.
+
+    MDIO writes the data variable as ``ScalarType.FLOAT32`` unconditionally
+    (``mdio/builder/templates/base.py:449``), so the decode is always
+    ``<source format> -> float32`` and ``float32`` carries a 24-bit significand: every
+    integer to 2**24 exactly and none beyond.
+
+    Returns the format name when a raw parallel view is therefore owed, else ``None``.
+    """
+    try:
+        name = _format_name(spec.trace.data.format)
+    except AttributeError:  # pragma: no cover - a spec without trace data is unusable
+        return None
+    return name if name in LOSSY_DECODE_FORMATS else None
+
+
+def _declared_coordinates(group: Any, variable: str) -> tuple[str, ...]:
+    """Coordinate arrays the store's data variable declares it carries.
+
+    Read from the variable's ``coordinates`` attribute, which **survives the deletion of
+    the arrays it names** - the property that makes it usable as a completeness check.
+    Returns ``()`` when the variable or the attribute is absent, which is NOT CHECKED.
+    """
+    if variable not in group:
+        return ()
+    declared = dict(group[variable].attrs).get("coordinates")
+    if not declared:
+        return ()
+    names = declared.split() if isinstance(declared, str) else list(declared)
+    return tuple(n for n in names if n in COORD_ARRAYS)
 
 
 def _project_cell(cell: tuple[int, ...], grid: tuple[str, ...], dims: tuple[str, ...]) -> Any:
@@ -714,7 +778,42 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
     coord_evidence = _derived_coordinate_evidence(source_headers, group, trace_map, dimensions)
     coord_ok = coord_evidence.get("derived_coords_identical") is not False
 
-    ok = not mismatches and not missing_fields and trace_map.invertible and raw_ok and coord_ok
+    # PRESENCE. An array the source implies must exist and does not is a FAILURE, not a
+    # NOT CHECKED. Deleting one CHUNK of a raw array failed this plane while deleting the
+    # WHOLE ARRAY passed it, and a partially written store certified EQUIVALENT while
+    # missing the D1 and D-0047 mitigations outright (D-0061).
+    #
+    # `headers_raw_uint8` is deliberately NOT required here. Plane 3's claim is that the
+    # 240 header bytes are RECOVERABLE, and G1 guarantees the structured array covers all
+    # 240 with no gaps - so the claim holds whether or not the portable copy exists. The
+    # raw plane is a PORTABILITY mitigation (D-0051), not a recoverability one, and a
+    # store built by upstream `segy_to_mdio` legitimately carries none. Requiring it here
+    # failed seven prestack geometries that were entirely correct. Its absence stays
+    # recorded as evidence (`raw_header_bytes_identical: null`) and is tracked as D40.
+    required = {
+        "headers": "every store has trace headers, and this plane compares them",
+    }
+    # The predicate is the STORE's own declaration, not the source's. Every rev-1 header
+    # declares cdp_x, but a shot-indexed template creates no CDP arrays at all - keying
+    # off the source failed four prestack geometries that were correct. The data
+    # variable's `coordinates` attribute names what this store says it carries, and it
+    # SURVIVES the deletion of the array it names, which is exactly what a completeness
+    # check needs: a claim that outlives its content.
+    for coord in _declared_coordinates(group, "amplitude"):
+        required[coord] = (
+            f"the store's data variable declares {coord} as one of its coordinates, and "
+            "it is the declared coordinate-scalar transform's output (D-0040)"
+        )
+    missing_arrays = _missing_required(group, required)
+
+    ok = (
+        not mismatches
+        and not missing_fields
+        and trace_map.invertible
+        and raw_ok
+        and coord_ok
+        and not missing_arrays
+    )
     return PlaneResult(
         plane=3,
         gate="G2c",
@@ -738,7 +837,11 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
             ),
         }
         | raw_evidence
-        | coord_evidence,
+        | coord_evidence
+        | {
+            "missing_required_arrays": missing_arrays,
+            "required_array_note": REQUIRED_ARRAY_NOTE,
+        },
     )
 
 
@@ -929,7 +1032,23 @@ def plane_4(
     )
     axis_ok = axis_evidence.get("derived_axis_identical") is not False
 
-    ok = not mismatches and trace_map.invertible and raw_ok and axis_ok
+    # PRESENCE - see plane 3. The raw sample view is owed exactly when the decode to
+    # float32 can lose the value, which is six of the eleven formats the pinned segy can
+    # express, not ibm32 alone (D-0062).
+    required: dict[str, str] = {}
+    axis_name = _sample_axis_name(group, variable, dimensions)
+    if axis_name is not None:
+        required[axis_name] = "the store declares it as the data variable's sample axis"
+    lossy_format = _lossy_decode_expected(spec)
+    if lossy_format is not None:
+        required[RAW_IBM32_ARRAY] = (
+            f"the source sample format is {lossy_format}, whose decode to float32 can "
+            "lose the value, so the undecoded parallel view is the only recoverable "
+            "copy of the source bits (D1, D-0062)"
+        )
+    missing_arrays = _missing_required(group, required)
+
+    ok = not mismatches and trace_map.invertible and raw_ok and axis_ok and not missing_arrays
     return PlaneResult(
         plane=4,
         gate="G2d",
@@ -950,7 +1069,11 @@ def plane_4(
             ),
         }
         | raw_evidence
-        | axis_evidence,
+        | axis_evidence
+        | {
+            "missing_required_arrays": missing_arrays,
+            "required_array_note": REQUIRED_ARRAY_NOTE,
+        },
     )
 
 
@@ -989,6 +1112,14 @@ def plane_5(source: str | Path, store: str | Path, spec: Any) -> PlaneResult:
         "no_duplicates": not trace_map.duplicates,
         "mask_matches_map": live_cells == mapped_cells,
     }
+    # PRESENCE - see plane 3. This plane's whole claim is about which cells are live,
+    # which is unanswerable if the mask or a grid coordinate array is missing.
+    required = {"trace_mask": "this plane's claim is about which cells are live"}
+    for dim in dimensions:
+        required[dim] = "the store declares it as a grid dimension of the data variable"
+    missing_arrays = _missing_required(group, required)
+
+    checks["no_required_array_missing"] = not missing_arrays
     ok = all(checks.values())
 
     return PlaneResult(
@@ -1005,6 +1136,8 @@ def plane_5(source: str | Path, store: str | Path, spec: Any) -> PlaneResult:
             "padding_cells": int(mask.size - mask.sum()),
             "checks": checks,
             "failed_checks": [k for k, v in checks.items() if not v],
+            "missing_required_arrays": missing_arrays,
+            "required_array_note": REQUIRED_ARRAY_NOTE,
             "trace_map": trace_map.to_json(),
             "note": (
                 "A duplicate index tuple is data loss, not a labelling problem: one "

@@ -261,6 +261,37 @@ def _corrupt_sample_axis(store: Path) -> None:
     group[axis][:] = values
 
 
+def _delete_array(store: Path, name: str) -> None:
+    """Remove a whole array from the store, the way a died-midway ingest leaves it."""
+    target = store / name
+    if not target.exists():
+        msg = f"{name} absent; nothing to delete"
+        raise KeyError(msg)
+    shutil.rmtree(target)
+
+
+def _delete_raw_ibm32_array(store: Path) -> None:
+    """Delete the entire ``amplitude_raw_ibm32`` array.
+
+    **This is the control for D-0061, and the asymmetry is the whole point.** Deleting
+    one *chunk* of this array already failed G2d; deleting the *whole array* passed,
+    because an absent array was read as "not checked" rather than "missing". A store
+    left this way by an ingest that died between writes certified **EQUIVALENT** while
+    missing the only recoverable copy of the source bits (D1).
+    """
+    _delete_array(store, RAW_IBM32_ARRAY)
+
+
+def _delete_raw_header_plane(store: Path) -> None:
+    """Delete the entire ``headers_raw_uint8`` array. See :func:`_delete_raw_ibm32_array`."""
+    _delete_array(store, RAW_HEADER_PLANE_ARRAY)
+
+
+def _delete_derived_coordinate(store: Path) -> None:
+    """Delete the entire ``cdp_x`` array — the declared transform's output (D-0040)."""
+    _delete_array(store, DERIVED_COORD_ARRAY)
+
+
 RAW_HEADER_PLANE_BYTE: Final[int] = 232
 """Byte offset flipped by :func:`_flip_raw_header_byte`. 0-based, so header byte **233**.
 
@@ -427,6 +458,22 @@ CONTROLS: tuple[Corruption, ...] = (
         apply=_corrupt_sample_axis,
         touches=frozenset({"time"}),
         clause="DECISIONS D-0056 - samples are meaningless without their axis",
+    ),
+    Corruption(
+        name="deleted_raw_ibm32_array",
+        description="The whole amplitude_raw_ibm32 array removed, as a died ingest leaves it",
+        must_fail=frozenset({"G2d"}),
+        apply=_delete_raw_ibm32_array,
+        touches=frozenset({RAW_IBM32_ARRAY}),
+        clause="DECISIONS D-0061 - one chunk failed, the whole array passed",
+    ),
+    Corruption(
+        name="deleted_derived_coordinate",
+        description="The whole cdp_x array removed",
+        must_fail=frozenset({"G2c"}),
+        apply=_delete_derived_coordinate,
+        touches=frozenset({DERIVED_COORD_ARRAY}),
+        clause="DECISIONS D-0061 - the declared transform's output must exist",
     ),
 )
 """The permanent control set. Covers every gate in :data:`ALL_GATES` except G3.

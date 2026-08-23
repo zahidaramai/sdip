@@ -169,18 +169,42 @@ def test_plane_4_reports_the_raw_leg_as_separate_evidence(ingested):
     assert plane.evidence["mismatch_count"] == 0
 
 
-def test_an_absent_view_is_reported_as_unchecked_not_as_a_pass(ingested, tmp_path):
-    """`NOT_RUN` is not a pass. A store with no view must not read as one that matched."""
+def test_an_absent_view_on_a_lossy_source_fails_rather_than_reading_as_unchecked(
+    ingested, tmp_path
+):
+    """CORRECTED 2026-08-23. This test asserted ``plane.status == "PASS"``.
+
+    Its own name said *"`NOT_RUN` is not a pass"* — and the assertion underneath it made
+    NOT_RUN a pass anyway, because nothing downstream consulted the evidence it checked.
+    **The test was encoding the defect it was named after.**
+
+    Probe P8 measured the consequence: an ingest that died between writes left a store
+    missing this array entirely, and it certified **EQUIVALENT**. The asymmetry in one
+    line — *deleting one CHUNK of the array failed this plane; deleting the WHOLE ARRAY
+    passed it.*
+
+    Absence is now a **FAILURE when the source's sample format is one whose decode to
+    ``float32`` can lose the value** — six of the eleven formats the pinned ``segy`` can
+    express (D-0062). For those, this array is the only recoverable copy of the source
+    bits (D1), so a store without it has lost them. For an exact format none is owed and
+    none is required. See ``DECISIONS.md`` D-0061.
+    """
     article, store, result = ingested
     copy = tmp_path / "no-view.mdio"
     shutil.copytree(store, copy)
     shutil.rmtree(copy / ARRAY_NAME)
 
     plane = plane_4(article.path, copy, result.spec.segy_spec)
-    assert plane.status == "PASS"
+    assert plane.status == "FAIL"
     assert plane.evidence["raw_ibm32_view_present"] is False
     assert plane.evidence["raw_ibm32_words_verified"] is False
     assert plane.evidence["raw_ibm32_identical"] is None
+    # the failure names the array and why it was owed, rather than just failing
+    missing = plane.evidence["missing_required_arrays"]
+    assert [m["array"] for m in missing] == [ARRAY_NAME]
+    assert "ibm32" in missing[0]["required_because"]
+    # and it is NOT a decoded-sample mismatch - the two legs stay independent
+    assert plane.evidence["mismatch_count"] == 0
 
 
 def test_a_corrupted_raw_word_fails_g2d_without_touching_the_decoded_leg(ingested, tmp_path):

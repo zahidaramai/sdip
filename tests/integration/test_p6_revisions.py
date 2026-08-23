@@ -370,7 +370,15 @@ def test_diagnosis_rev0_is_blocked_only_by_the_undeclared_geometry(tmp_path):
         plane_4(fixture.path, store, built.segy_spec),
         plane_5(fixture.path, store, built.segy_spec),
     )
-    assert [p.status for p in planes] == ["PASS"] * 5
+    # See the note at the other diagnosis site: `_diagnostic_ingest` bypasses the
+    # orchestrator, so plane 4 fails only on the raw view that path never writes
+    # (D-0061). The decoded samples matched.
+    assert [p.status for p in planes[:3]] == ["PASS"] * 3
+    assert planes[4].status == "PASS"
+    assert planes[3].evidence["mismatch_count"] == 0
+    assert [m["array"] for m in planes[3].evidence["missing_required_arrays"]] == [
+        "amplitude_raw_ibm32"
+    ]
 
     roundtrip = export(store, tmp_path / "rev0_back.sgy", built.segy_spec, source=fixture.path)
     assert roundtrip.byte_identical
@@ -450,7 +458,18 @@ def test_diagnosis_rev2_has_two_blockers_not_one(tmp_path, revision):
         plane_4(fixture.path, store, built.segy_spec),
         plane_5(fixture.path, store, built.segy_spec),
     )
-    assert [p.status for p in planes] == ["PASS"] * 5, "blocker 1 was the only ingest blocker"
+    # Planes 1, 2, 3 and 5 PASS: the spec blocker was the only ingest blocker, which is
+    # what this diagnosis measures. Plane 4 FAILS for a reason that is about the
+    # DIAGNOSTIC PATH, not the revision: `_diagnostic_ingest` bypasses the orchestrator,
+    # so an ibm32 source arrives with no `amplitude_raw_ibm32` view and plane 4 now
+    # requires one (D-0061). Its decoded leg is clean - `mismatch_count == 0` - so the
+    # samples themselves matched, which is the fact this test is after.
+    assert [p.status for p in planes[:3]] == ["PASS"] * 3, "blocker 1 was the only blocker"
+    assert planes[4].status == "PASS", "blocker 1 was the only blocker"
+    assert planes[3].evidence["mismatch_count"] == 0, "the decoded samples still matched"
+    assert [m["array"] for m in planes[3].evidence["missing_required_arrays"]] == [
+        "amplitude_raw_ibm32"
+    ], "the only plane-4 failure is the view the diagnostic path never writes"
 
     with pytest.raises(NonSpecFieldError, match="segy_revision_major"):
         export(store, tmp_path / "back.sgy", built.segy_spec, source=fixture.path)
