@@ -3788,3 +3788,68 @@ itself on the record, with its count and its reason.**
 
 Had the substitution altered what any entry asserted, the correct remedy would have been a
 new entry citing the original — not an edit.
+
+---
+
+## D-0076 — 2026-08-23 — The steward recommended v0.1.0. The principal chose v1.0.0. Recorded, scored, not relitigated
+
+**The steward's position:** tag **v0.1.0** — *"a v0.1.0 that provably never lies about a
+rev-1 poststack big-endian file is worth more than a v1.0 that handles everything and is
+spot-checked."*
+
+**The principal's decision:** **v1.0.0**. Taken, tagged, public.
+
+**Recorded here rather than in `EQUIVALENCE_LEDGER.md`**, despite the ruling saying
+"ledger": that file's own header declares it an *"append-only index of every Equivalence
+Certificate"*. A version decision is not a certificate, and filing it there would break
+the boundary this project defended two entries ago when it refused to enter a probe
+result as a certificate.
+
+### Scored, with a date and a criterion
+
+| | |
+|---|---|
+| Criterion | **no forced breaking change becomes necessary** |
+| Score date | **2026-08-23 + 12 months** |
+| If no break was forced | the principal's call was right; the steward's was overcautious |
+| If a break was forced | v0.1.0 would have absorbed it at no cost to anyone |
+
+**A disagreement with a scoring date is a measurement. One without is an opinion.**
+
+### The consequence, named because it is immediate
+
+**1.0 semantics make D14 urgent.** At `0.x`, parked CI reads as honest immaturity. At
+`1.0`, a version that *claims* maturity, anything a badge implies but does not enforce is
+a **shipped overstatement**. D14 moves to the front of the queue behind D43 for that
+reason alone — the code did not change, the version's meaning did.
+
+---
+
+## D-0077 — 2026-08-23 — v2.0.0 is a cost, not a destination. Ruling 7 reaffirmed
+
+**The framing correction, kept because it inverts how a roadmap is usually written:**
+
+> **A major bump is what you pay when you are forced to break a promise v1.0.0 just made.
+> You never work toward it; you avoid it as long as honesty allows. A project that
+> reaches v1.47.0 without ever needing v2 is a project that made good promises.**
+
+### The actual tag roadmap
+
+| tag | trigger | when |
+|---|---|---|
+| **v1.0.1** | corrections that shipped after the tag are unfetchable | **now** |
+| **v1.1.0** | an external file or user arrives — a real `int32` source (D41 leg 2), little-endian demand (D28), cloud (D7), or additive certificate fields | **unknown, possibly months.** That is the correct answer |
+| **v2.0.0** | a promise breaks: certificate-schema restructure that cannot be additive, or a contract change such as a sixth plane | **not planned, hopefully never** |
+
+**Any proposal to plan toward v2.0.0 is refused by default.** Planning toward a major
+version means planning to break a promise, and there is no promise here worth breaking on
+a schedule.
+
+### Ruling 7, reaffirmed as standing law
+
+**No capability work without an external file or user.** D41 leg 2, D38, D28, D30, D7 and
+D6 remain **declared refusals with reason codes**, and each refuses rather than degrades.
+
+**After v1.0.1 the queue is empty by design.** An empty queue is not a gap to fill. The
+refused list is the more valuable half of what shipped, and adding to the supported half
+without demand is how a narrow guarantee becomes a broad claim nobody measured.
