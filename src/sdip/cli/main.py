@@ -11,7 +11,7 @@ import json
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any
 
 import click
 
@@ -19,7 +19,7 @@ from sdip import __version__
 from sdip._pins import SPEC_VERSION
 from sdip.cli.doctor import environment_block, run_doctor
 from sdip.cli.result import Report, Status
-from sdip.errors import PhaseNotAuthorisedError
+from sdip.errors import DirtyTreeError, PhaseNotAuthorisedError, SdipError
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -54,13 +54,6 @@ def _emit(report: Report, *, as_json: bool, extra: Mapping[str, object] | None =
                 f"-> {', '.join(c.clause for c in report.failed)}"
             )
     return EXIT_OK if report.ok else EXIT_FAIL
-
-
-def _not_yet(command: str, phase: str, what: str) -> NoReturn:
-    raise PhaseNotAuthorisedError(
-        f"`sdip {command}` is roadmap phase {phase} (spec section 13). {what} "
-        "The repository is at F0; nothing is stubbed out to look like it works."
-    )
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -458,7 +451,32 @@ def certify_cmd(
     from sdip.equivalence.nonvacuity import g3_control, g7
     from sdip.export import export as run_export
     from sdip.ingest import ingest as run_ingest
+    from sdip.provenance.git import capture_git_state
     from sdip.spec import g1_for_spec
+
+    # The tree check runs BEFORE any work, not only at issue time. `issue` refuses from
+    # a dirty tree, but it is the last step of a chain that ingests twice for G6, exports,
+    # hashes the whole file for G3 and runs ten G7 controls. Discovering the refusal there
+    # costs the operator the entire run for an outcome that was knowable in the first
+    # second - the same fail-before-you-allocate principle as 3.6.
+    #
+    # The baseline is also carried to `issue`, which re-checks it. That is not redundant:
+    # a clean tree at issue time does not establish the tree was clean while the work was
+    # done, and a run that starts dirty and is committed midway would otherwise issue a
+    # certificate attesting to code that produced none of its measurements.
+    baseline = capture_git_state(".")
+    if not baseline.certifiable:
+        detail = (
+            "not a git repository"
+            if not baseline.is_repository
+            else f"{len(baseline.dirty_paths)} uncommitted path(s): "
+            + ", ".join(baseline.dirty_paths[:5])
+        )
+        raise DirtyTreeError(
+            f"refusing to start: the working tree is not certifiable ({detail}). "
+            "`sdip certify` would run the full chain and then refuse to issue, so it "
+            "refuses now instead (spec 11.3). There is no override."
+        )
 
     number: float | int = float(revision) if "." in revision else int(revision)
     started = time.monotonic()
@@ -517,6 +535,7 @@ def certify_cmd(
         certificate = issue(
             result,
             planes,
+            baseline=baseline,
             roundtrip=roundtrip,
             portability=portability,
             nonvacuity=nonvacuity,
@@ -563,6 +582,16 @@ def main() -> None:
     except PhaseNotAuthorisedError as exc:
         click.echo(f"sdip: {exc}", err=True)
         sys.exit(EXIT_USAGE)
+    except SdipError as exc:
+        # Every error SDIP raises deliberately reaches the operator as a message and a
+        # non-zero status, never as a traceback. This matters most for
+        # `UntrustedInputError`: SDIP parses binary files it did not create, and 3.6
+        # requires a malformed or hostile SEG-Y to produce a **clean error** - a
+        # traceback at the CLI boundary is the crash that clause bars. Catching the base
+        # class rather than a list means a new SdipError subclass is covered the day it
+        # is written, instead of the day someone remembers to add it here.
+        click.echo(f"sdip: {type(exc).__name__}: {exc}", err=True)
+        sys.exit(EXIT_FAIL)
     except click.ClickException as exc:
         exc.show()
         sys.exit(exc.exit_code)

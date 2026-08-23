@@ -2074,3 +2074,73 @@ cost going unstated**, which until this measurement it was.
 **Also corrected:** the frequently-quoted *"full 240-byte header preservation costs 0.06 %
 of the store"* is unchanged in substance — headers are still 1.98 B/trace, and the plane
 adds 9.26. **Headers were never the cost.** The samples are.
+
+---
+
+## D-0053 — 2026-08-23 — A certificate could attest to code that produced none of its measurements
+
+**Found by running the release chain, not by a test.** I dirtied the tree while a
+`sdip certify` run was in flight. It ran the full chain — three ingests, five planes,
+export, a 494 MB SHA-256, ten G7 controls — and *then* refused. Correct refusal,
+**three defects behind it.**
+
+### 1. The soundness hole — a false provenance claim was reachable
+
+`issue()` checked the tree at issue time only. That is not sufficient, and the gap is
+not theoretical:
+
+```
+start on commit A (clean)  ->  measure everything  ->  commit midway  ->  issue on B
+```
+
+The tree is **clean at issue time**, so the check passes. Every measurement came from
+the code at **A**. The certificate names **B**. **A certificate that attests
+measurements to code that did not produce them is exactly the untrusted artifact §0
+describes** — and this project's entire claim is that its output is reproducible from
+the committed record.
+
+**Fix:** git state is captured **before the measurements begin** and passed to `issue()`,
+which now requires the commit to be unchanged. Both ends, not one.
+
+**The negative control is the part that matters** (§5). It asserts the check is
+non-vacuous by showing both sides: with a clean tree at a *moved* HEAD, `issue()` without
+the baseline **succeeds** — and refuses with it. A control that only asserted the refusal
+would pass against a check that refused everything.
+
+### 2. Fail-fast — 30 minutes of compute for a knowable-in-0.4 s answer
+
+The refusal is the last step of the chain. Now checked first as well: **0.4 s instead of
+the full run**, measured. Same principle as §3.6 — validate before you allocate. The
+issue-time check stays; it is the binding one.
+
+### 3. **`main()` caught one of eight `SdipError` types.** The rest were tracebacks
+
+`PhaseNotAuthorisedError` was handled. `DirtyTreeError`, `UntrustedInputError`,
+`SpecCompletenessError`, `EquivalenceError`, `BarredEnvironmentError`,
+`BarredPackageError`, `PinMismatchError`, `BarredLicenceError` all escaped the CLI
+boundary as raw Python tracebacks.
+
+**`UntrustedInputError` is the serious one.** §3.6: *"A malformed or hostile SEG-Y must
+produce a clean error — never a crash."* SDIP parses binary files it did not create, and
+**a traceback at the CLI boundary is the crash that clause bars.** The property was
+asserted in the contract and untrue in the code.
+
+Now catches `SdipError` — the **base class**, deliberately, so a subclass written
+tomorrow is covered the day it is written rather than the day someone remembers this
+list. Verified: exit `1`, message, zero tracebacks.
+
+The test uses `_BoomError`, a subclass `main()` has never heard of, precisely to prove
+the boundary catches the base and not an enumeration.
+
+### What this says about the F0-era text
+
+Three of these sites were stale claims, not logic: `sdip certify --help` still said *"G7
+does not exist"*, `sdip.equivalence`'s docstring said *"G5, G6 and G7 do not exist"*, and
+two dead `not_yet()` helpers still said *"the repository is at F0"* with **no callers at
+all** — every command is built. Deleted rather than reworded; dead code carrying a false
+claim is worse than no code.
+
+**A test was pinning one of them.** `test_certify_still_documents_the_g7_ceiling`
+asserted `"PROVISIONAL" in output`, which was right at F3 and wrong from F4 — the suite
+was *enforcing* the stale claim. It now asserts the current bar and that `PROVISIONAL` is
+**absent**. Worth noting: a green suite protected a false statement for four phases.

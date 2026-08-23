@@ -3,10 +3,16 @@
 Comparisons are array_equal or byte equality. **There is no tolerance anywhere in
 this package** - a tolerance-based comparison is a specification defect (§4.5, §9.5).
 
-Phase F3 implements **all five planes** (G2a-G2e), **G3** round trip, and **G4**
-portability. **G5, G6 and G7 do not exist** and are recorded NOT_RUN - never assumed
-to pass. Until G7 passes, every certificate this engine issues is unvalidated
-(OPEN_DEBTS.md D11).
+**All seven gates exist and run**: the five planes (G2a-G2e), G3 round trip, G4
+portability, G5 declared-ceiling cost, G6 determinism, and G7 non-vacuity.
+
+**G5 is the one gate that stays NOT_RUN by default**, and deliberately: it judges a
+run against a ceiling somebody committed to beforehand, so a default ceiling would be
+a limit this package invented (SP9). Declare one on the command line to arm it.
+
+A gate is **never assumed to pass**. NOT_RUN is recorded as NOT_RUN on the face of the
+certificate, and ``release_readiness`` treats every NOT_RUN as blocking - so an unarmed
+gate cannot be mistaken for a passing one (D-0031, OPEN_DEBTS.md D20).
 """
 
 from __future__ import annotations

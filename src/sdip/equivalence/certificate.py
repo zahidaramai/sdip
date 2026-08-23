@@ -38,7 +38,7 @@ from sdip.guard.pins import check_pins
 from sdip.ingest.orchestrator import IngestResult
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY_NAME
 from sdip.provenance.environment import capture_environment
-from sdip.provenance.git import capture_git_state
+from sdip.provenance.git import GitState, capture_git_state
 from sdip.spec.transforms import (
     detect_coordinate_scalar,
     detect_ibm32,
@@ -145,6 +145,7 @@ def issue(
     scale: G5Result | None = None,
     root: str | Path = ".",
     require_clean_tree: bool = True,
+    baseline: GitState | None = None,
     issued_at: str,
     issued_by: str,
 ) -> Certificate:
@@ -171,6 +172,11 @@ def issue(
         require_clean_tree: Refuse to issue from a dirty tree (§11.3). **There is no
             ``--force``**; this parameter exists so tests can exercise the refusal, and
             the CLI never sets it to ``False``.
+        baseline: Git state captured **before the measurements began**. When given, the
+            commit must still match at issue time. A clean tree at issue time is not
+            sufficient on its own: a run that starts dirty and is committed midway ends
+            clean, and the certificate would then attest to a commit that is **not the
+            code the measurements came from**. Checking both ends closes that.
         issued_at: ISO-8601 UTC timestamp. Passed in rather than read from the clock so
             a certificate is reproducible from the committed record (§11.3, G6).
         issued_by: Who issued it.
@@ -192,6 +198,17 @@ def issue(
             f"refusing to issue a certificate from a dirty working tree ({detail}). "
             "A certificate that cannot be reproduced from the committed record is not "
             "evidence (spec 11.3). There is no override."
+        )
+        raise DirtyTreeError(msg)
+
+    if require_clean_tree and baseline is not None and baseline.commit != git.commit:
+        msg = (
+            f"refusing to issue: HEAD moved during the run, from "
+            f"{baseline.commit or 'no commit'} to {git.commit or 'no commit'}. The "
+            "measurements on this certificate were produced by the code at the first "
+            "commit, so attesting them to the second would be a false provenance claim. "
+            "A clean tree at issue time does not establish that the tree was clean while "
+            "the work was done (spec 11.3). There is no override."
         )
         raise DirtyTreeError(msg)
 
@@ -273,14 +290,11 @@ def issue(
         "source_sha256_post_read": result.source_sha256_post_read,
         "source_bytes": result.source_bytes,
         "segy_revision": str(result.spec.revision),
-        "detected_encoding": {
-            "encoding": "ebcdic",
-            "decode_status": "decoded",
-            "detail": (
-                "SDIP stores the raw 3200 bytes and compares them as bytes; the "
-                "encoding is recorded, never used to normalise (§4.2)."
-            ),
-        },
+        # MEASURED on this file's own 3200 bytes, never asserted. Before D-0053 this
+        # block said `decoded` unconditionally - a fidelity claim with no number behind
+        # it (SP8), and one that would have been false for exactly the non-conforming
+        # legacy vintage §4.2 exists to rescue.
+        "detected_encoding": _detected_encoding(result),
         "spec_id": result.spec.spec_id,
         "spec_field_count": result.spec.field_count,
         "spec_itemsize": result.spec.itemsize,
@@ -422,8 +436,9 @@ def _verdict_reason(
         )
     return (
         f"PROVISIONAL. Not run: planes {', '.join(unrun_planes) or 'none'}; "
-        f"gates {', '.join(unrun_gates) or 'none'}. Until G7 passes, every certificate "
-        "the engine issues is unvalidated (OPEN_DEBTS D11)."
+        f"gates {', '.join(unrun_gates) or 'none'}. An unrun gate is not a passing one - "
+        "it is recorded NOT_RUN here rather than assumed, and release_readiness treats "
+        "every NOT_RUN as blocking (D-0031)."
     )
 
 

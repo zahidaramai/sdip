@@ -9,6 +9,8 @@ written.
 from __future__ import annotations
 
 import base64
+import functools
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -18,6 +20,7 @@ from sdip.equivalence import issue, plane_1, plane_2, read_codec_manifest, verdi
 from sdip.errors import DirtyTreeError, UntrustedInputError
 from sdip.ingest import ingest, read_raw_file_headers, validate_source
 from sdip.ingest.file_headers import ATTR_RAW_BINARY, ATTR_RAW_TEXT
+from sdip.provenance.git import capture_git_state
 from tests.fixtures.generators import PLANTED_BYTES, make_poststack3d
 
 pytestmark = pytest.mark.integration
@@ -308,3 +311,69 @@ def test_a_lossy_codec_voids_the_store():
     planes = {f"plane_{i}": "PASS" for i in range(1, 6)}
     gates = dict.fromkeys(["G1", "G2", "G3", "G4", "G5", "G6", "G7"], "PASS")
     assert verdict_for(planes, gates, lossy=True) == "NON-EQUIVALENT"
+
+
+def _tiny_repo(root: Path) -> str:
+    """Create a real git repository with one commit; return its HEAD sha."""
+    run = functools.partial(subprocess.run, cwd=root, capture_output=True, check=True)
+    run(["git", "init", "-q", "-b", "main"])
+    run(["git", "config", "user.email", "t@example.invalid"])
+    run(["git", "config", "user.name", "t"])
+    run(["git", "config", "commit.gpgsign", "false"])
+    (root / "a.txt").write_text("one")
+    run(["git", "add", "a.txt"])
+    run(["git", "commit", "-q", "-m", "one"])
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True
+    )
+    return head.stdout.strip()
+
+
+def test_certificate_refuses_when_head_moves_during_the_run(ingested, tmp_path):
+    """The negative control for the baseline check (DECISIONS.md D-0053).
+
+    A clean tree at issue time does not establish the tree was clean while the work was
+    done. This is the sequence that would otherwise slip through: start on commit A,
+    commit midway, issue on a clean tree at commit B. Every measurement came from A;
+    the certificate would attest them to B.
+
+    Without the baseline the tree is clean at issue time and the certificate is issued.
+    With it, issuance is refused. That difference is what makes the check non-vacuous.
+    """
+    source, store, result = ingested
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    first = _tiny_repo(repo)
+    baseline = capture_git_state(repo)
+    assert baseline.certifiable
+    assert baseline.commit == first
+
+    # HEAD moves while the measurements are notionally still running.
+    (repo / "b.txt").write_text("two")
+    subprocess.run(["git", "add", "b.txt"], cwd=repo, capture_output=True, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "two"], cwd=repo, capture_output=True, check=True)
+
+    after = capture_git_state(repo)
+    assert after.certifiable, "the tree is CLEAN at issue time - that is the whole point"
+    assert after.commit != first
+
+    # Non-vacuity: without the baseline this issues happily.
+    permissive = issue(
+        result,
+        [plane_1(source, store)],
+        root=repo,
+        issued_at=ISSUED_AT,
+        issued_by="test",
+    )
+    assert permissive.payload["git"]["dirty"] is False
+
+    # With it, refused.
+    with pytest.raises(DirtyTreeError, match="HEAD moved during the run"):
+        issue(
+            result,
+            [plane_1(source, store)],
+            root=repo,
+            baseline=baseline,
+            issued_at=ISSUED_AT,
+            issued_by="test",
+        )

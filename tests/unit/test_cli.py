@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 import json
+from typing import NoReturn
 
 import pytest
 from click.testing import CliRunner
 
 from sdip.cli.doctor import run_doctor
-from sdip.cli.main import cli
+from sdip.cli.main import EXIT_FAIL, cli
+from sdip.cli.main import main as cli_entry
 from sdip.cli.result import Status
+from sdip.errors import (
+    BarredEnvironmentError,
+    DirtyTreeError,
+    SdipError,
+    SpecCompletenessError,
+    UntrustedInputError,
+)
 
 
 @pytest.fixture
@@ -38,11 +47,20 @@ def test_every_command_is_now_built(runner):
         assert "roadmap phase" not in result.output
 
 
-def test_certify_still_documents_the_g7_ceiling(runner):
-    """The strongest claim remains unreachable, and `--help` says so."""
+def test_certify_help_states_the_real_bar_and_offers_no_override(runner):
+    """`--help` must describe the bar as it is now, not as it was at F3.
+
+    This test previously asserted "PROVISIONAL" appears, which was correct while G7 did
+    not exist. G7 has existed since F4 and D11 is closed, so that assertion was pinning
+    a claim that had become false - the help text told operators the tool was weaker than
+    it is. It now pins the current bar: G7 runs, and `release_readiness` is stricter than
+    the verdict.
+    """
     output = runner.invoke(cli, ["certify", "--help"]).output
-    assert "PROVISIONAL" in output
     assert "G7" in output
+    assert "release_readiness" in output
+    assert "NOT_RUN" in output
+    assert "PROVISIONAL" not in output, "G7 exists; certify no longer caps out at PROVISIONAL"
     # The prose SAYS "there is no --force", which is the point - so the assertion
     # has to look at the Options block, not at the whole help text.
     options = output.split("Options:", 1)[1]
@@ -224,3 +242,41 @@ def test_spec_build_is_deterministic(runner):
     first = json.loads(runner.invoke(cli, ["spec", "build", "--json"]).output)
     second = json.loads(runner.invoke(cli, ["spec", "build", "--json"]).output)
     assert first["spec"]["spec_sha256"] == second["spec"]["spec_sha256"]
+
+
+class _BoomError(SdipError):
+    """A deliberately-raised SDIP error that `main()` has never been told about."""
+
+
+def test_every_sdip_error_reaches_the_operator_as_a_message_not_a_traceback(monkeypatch, capsys):
+    """Section 3.6: a deliberate SDIP error is a clean error, never a crash.
+
+    `main()` used to catch only `PhaseNotAuthorisedError`, so the other seven members of
+    the `SdipError` family escaped the CLI boundary as raw tracebacks. That is worst for
+    `UntrustedInputError` - SDIP parses binary files it did not create, and a traceback on
+    a hostile SEG-Y is precisely the crash 3.6 bars.
+
+    `_BoomError` is a subclass `main()` has never heard of, on purpose: the test asserts the
+    boundary catches the **base class**, so a subclass written tomorrow is covered without
+    anyone remembering to update a list.
+    """
+    for exc in (
+        DirtyTreeError("tree is dirty"),
+        UntrustedInputError("declared length exceeds the file"),
+        SpecCompletenessError("byte 41 is uncovered"),
+        BarredEnvironmentError("MDIO_IGNORE_CHECKS is set"),
+        _BoomError("a subclass nobody enumerated"),
+    ):
+
+        def _raise(*_a: object, exc: SdipError = exc, **_k: object) -> NoReturn:
+            raise exc
+
+        monkeypatch.setattr(cli, "main", _raise)
+        with pytest.raises(SystemExit) as caught:
+            cli_entry()
+
+        assert caught.value.code == EXIT_FAIL, f"{type(exc).__name__} must exit non-zero"
+        err = capsys.readouterr().err
+        assert "Traceback" not in err, f"{type(exc).__name__} leaked a traceback"
+        assert type(exc).__name__ in err
+        assert str(exc) in err

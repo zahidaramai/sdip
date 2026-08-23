@@ -197,7 +197,7 @@ A store `Z` is **equivalent** to a source `S` **iff all five planes hold simulta
 
 ## ✨ Features
 
-### Available now — phase F0
+### Available now — the whole chain runs
 
 - **`sdip doctor`** — eight FAIL-severity environment checks with `--json` output and **no override flag**. Runs first in CI and first in every runbook. If doctor fails, nothing else runs.
 - **Forbid-list enforcement** (`sdip.guard`) — barred environment variables, barred packages, binding upstream pins, a runtime dependency-tree licence scan, an SP6 warning ledger, and an `ast` scan proving SDIP never *sets* a barred variable.
@@ -205,18 +205,23 @@ A store `Z` is **equivalent** to a source `S` **iff all five planes hold simulta
 - **Publication firewall** — four layers, one of which prevents rather than detects. See [below](#-publication-firewall).
 - **Published certificate JSON Schema v0** — shipped inside the package, so `pip install sdip` gives a validator to a consumer who never clones. `verdict: EQUIVALENT` is structurally unrepresentable unless all five planes and `G1`/`G2`/`G7` are `PASS` in the same document.
 
-### Built but not yet armed
+- **The Equivalence Engine** (`sdip.equivalence`) — all five planes, `G2`–`G4`, `G6`, and `G7`. Comparisons are `array_equal` or byte equality. There is no tolerance anywhere in the engine, and a CI job greps for one.
+- **`sdip certify`** — the full chain: ingest, five planes, export, whole-file round trip, portability, non-vacuity, certificate. **Refuses to issue from a dirty working tree, and there is no `--force`.**
+- **Survey-scale evidence.** `G5`/`G6`/`P3` ran over **11 files, 5,440,219,488 source bytes (5.07 GiB)**: every gate `PASS`, **every `G3` byte-identical** — eleven whole-file SHA-256 matches — at a peak RSS of **2.87 GiB against a pre-declared 8.0 GiB ceiling** and a worst wall clock of **467 s against 900 s**. The ceilings were committed before the run (**SP9**).
+- **A `uint8` header plane.** The 240 raw trace-header bytes, stored as a plain 2-D `uint8` array, because three readers gave three different answers about the structured `struct` dtype and `struct` has no Zarr v3 specification. Costs **9.26 B/trace**, measured on 116,532 real traces.
 
-Every command exists and **refuses with its roadmap phase**. Nothing is stubbed out to look like it works — a command that returns a plausible result it did not compute is exactly how an untrusted artifact reaches a consumer.
+### Built and deliberately not armed
+
+`sdip certify` reports `G5` as `NOT_RUN` unless you declare a ceiling on the command line. That is not an oversight. **`G5` judges what a run cost against a limit somebody committed to beforehand**, and a default ceiling would be a limit this tool invented — which is exactly what **SP9** forbids.
 
 ```console
-$ sdip certify
-sdip: `sdip certify` is roadmap phase F3-F4. Until G7 passes, every certificate
-      the engine issues is unvalidated. The repository is at F0; nothing is
-      stubbed out to look like it works.
-$ echo $?
-2
+$ sdip certify survey.sgy out.mdio           # G5: NOT_RUN, and the certificate says so
+$ sdip certify survey.sgy out.mdio \
+    --rss-ceiling-gib 8.0 --wall-ceiling-s 900 \
+    --prereg 'prereg/P3-scale.md@9904bec'    # G5 armed against a committed number
 ```
+
+`release_readiness` on the certificate treats every `NOT_RUN` as blocking, so an unarmed gate cannot be mistaken for a passing one.
 
 ---
 
@@ -227,7 +232,7 @@ Gates are **binary**. No warnings-as-passes. Every gate names the number that ki
 | Gate | Asserts | What kills it | Phase | State |
 |---|---|---|---|---|
 | `G1` | Byte coverage `== {1..240}`, itemsize `== 240`, zero overlaps, zero void gaps | Any uncovered or doubly-covered byte | F1 | **enforcing** |
-| `G2` | The five planes, per plane | One differing byte on any plane | F2–F3 | **G2a, G2b enforcing** |
+| `G2` | The five planes, per plane | One differing byte on any plane | F2–F3 | **all five enforcing** |
 | `G3` | `sha256(export) == sha256(source)` for the whole file | Hash mismatch with no scoped justification | F3 | **enforcing** |
 | `G4` | Store opens with stock `zarr` and `xarray` in a process asserting `"mdio" not in sys.modules` | Any array a consumer needs being unreadable without MDIO | F3 | **enforcing** |
 | `G5` | Survey-scale ingest inside a **pre-declared** memory ceiling | OOM, or peak RSS over the ceiling | F6 | **enforcing** |
