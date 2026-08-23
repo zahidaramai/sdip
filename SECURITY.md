@@ -20,7 +20,7 @@ publishing.
 
 | Version | Supported |
 |---|---|
-| `main` (pre-release, phase F0) | ✅ |
+| `main` (pre-release, phases F0–F7 built) | ✅ |
 | Tagged releases | none yet |
 
 Until the first tagged release, `main` is the only supported version.

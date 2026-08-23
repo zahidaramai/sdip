@@ -135,23 +135,33 @@ validation and certification** (`DECISIONS.md` D-0031). Three arrows, each verif
 ```
 
 `sdip certify` reports **`release_readiness`**, which is stricter than `verdict`: it
-requires *every* gate `PASS` with **none `NOT_RUN`**, plus round-trip closure. It
-currently reports **NOT READY** — but no longer on any gate. The remaining blockers are
-coverage, not the engine: **P8** never ran, **P7's latency half** never ran, and **P4**
-ran one implementation rather than two.
+requires *every* gate `PASS` with **none `NOT_RUN`**, plus round-trip closure. **It has
+never yet been demonstrated `True`** — not because a gate fails, but because
+`sdip certify` has not yet completed on a clean working tree, and §11.3 refuses to issue
+from a dirty one. That is why [`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md) has no
+rows: **a probe result is not a certificate.**
 
-### The four things that block a release
+### What still blocks a release
 
-1. **§6.4 survey spec overrides are specified and unbuilt** (D21) — the highest-leverage
-   item. One mechanism unblocks **rev 0**, **four prestack geometries**, and
-   **little-endian**. Three probes independently arrived at it.
-2. **The `ibm32` raw `uint32` parallel view is unbuilt** (D1) — P2's own remedy. Without
-   it, an `ibm32` source whose round trip is not byte-identical has bits that are **not
-   recoverable from the output at all**.
-3. **SP6 has two blind spots** (D26) — `warnings_raised[]` can be empty while 2,441
-   samples are destroyed: worker-process warnings never reach the parent, and
-   `logger.warning` is not a Python warning.
-4. **`NOT_RUN` must become a failure at release** (D20).
+1. **The store is now 1.51× the source, not 0.77×** (D36). `amplitude_raw_ibm32` costs
+   **3,147 B/trace — 97 % of `amplitude` itself**. Headers were never the cost; the
+   samples are. Deliberately **not** solved with a size flag: that is the shape §0.1
+   warns about, and P2 measured **1,939 words in 4,103** losing the value unrecoverably.
+   Three closure candidates are on the debt; the choice is a maintainer's.
+2. **SP6 still has one blind spot** (D35) — worker-process warnings never reach the
+   parent, so `warnings_raised[]` can be empty while data is lost. The `logger.warning`
+   half is closed; this half is **declared on the certificate** rather than papered over.
+3. **The `uint8` header plane does not make the group enumerable** (D32) — it makes
+   header *data* portable, but zarr-java's `Group.list()` still fails on
+   `segy_file_header`'s `fixed_length_utf32`.
+4. **None of the three named cloud backends has been measured** (D7). P8's Amendment A
+   adds a **MinIO** leg — a real S3 server over real HTTP, explicitly **not a mock** —
+   but MinIO is not AWS S3, GCS or Azure, and the amendment does not claim it is. That
+   narrows D7; it does not close it.
+
+**Closed since the last revision of this list:** §6.4 survey overrides (D21), the
+`ibm32` raw `uint32` view (D1), rev 0 support (D22), little-endian declaration (D28),
+and the `logger.warning` half of SP6 (D26).
 
 Full consolidated status: [`DECISIONS.md`](DECISIONS.md) **D-0041**. Live debts:
 [`OPEN_DEBTS.md`](OPEN_DEBTS.md) — debts are scheduled, never cancelled.
