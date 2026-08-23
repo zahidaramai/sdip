@@ -18,12 +18,22 @@ from tests.fixtures.generators.poststack3d import (
     make_poststack3d,
     read_planted,
 )
+from tests.fixtures.generators.undecodable import (
+    EXPECTED_OFFENDING_CELLS,
+    PLANTED,
+    UndecodableSegy,
+    make_undecodable_textual_header,
+)
 
 __all__ = [
     "DETERMINISTIC_TEXT",
+    "EXPECTED_OFFENDING_CELLS",
+    "PLANTED",
     "PLANTED_BYTES",
     "SyntheticSegy",
+    "UndecodableSegy",
     "deterministic_text",
     "make_poststack3d",
+    "make_undecodable_textual_header",
     "read_planted",
 ]

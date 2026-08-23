@@ -58,7 +58,12 @@ from typing import Any, Final
 
 import numpy as np
 
-from sdip.ingest.file_headers import ATTR_RAW_BINARY, ATTR_RAW_TEXT
+from sdip.ingest.file_headers import (
+    ATTR_RAW_BINARY,
+    ATTR_RAW_TEXT,
+    UPSTREAM_FILE_HEADER_VARIABLE,
+    raw_header_node,
+)
 from sdip.ingest.header_plane import ARRAY_NAME as RAW_HEADER_PLANE_ARRAY
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY
 
@@ -73,6 +78,11 @@ can rewrite metadata without touching a single chunk - an attribute update is ex
 that - so metadata is written in more places than any ``touches`` set names. They are
 kilobytes. Copying every one of them costs nothing measurable and takes a whole class of
 paths out of the argument in :func:`_materialise` rather than into it.
+
+It is also what keeps the three file-header controls honest on a store that has no
+``segy_file_header`` variable (D-0055): SDIP's raw attributes then live on the **root
+group**, so the corruption lands in the root ``zarr.json`` - a path no ``touches`` set
+names, and one this rule has already made a real copy.
 """
 
 
@@ -83,7 +93,16 @@ def _group(store: Path) -> Any:
 
 
 def _rewrite_header_attr(store: Path, attr: str, mutate: Callable[[bytearray], None]) -> None:
-    node = _group(store)["segy_file_header"]
+    """Corrupt one of SDIP's authoritative raw-header attributes, wherever it lives.
+
+    Resolved through :func:`~sdip.ingest.file_headers.raw_header_node`, the one resolver
+    the reader and the writer also use. A store ingested from a source whose textual
+    header did not decode carries no ``segy_file_header`` variable at all (D-0055), and a
+    control that assumed one would raise instead of corrupting — G7 would then report a
+    control error on a store it had never actually corrupted, which is a vacuous audit
+    wearing a failure's clothes.
+    """
+    node = raw_header_node(_group(store))
     raw = bytearray(base64.b64decode(str(node.attrs[attr])))
     mutate(raw)
     node.attrs.update({attr: base64.b64encode(bytes(raw)).decode("ascii")})
@@ -97,7 +116,7 @@ def _flip_textual_byte(store: Path) -> None:
 
 
 def _truncate_textual_header(store: Path) -> None:
-    node = _group(store)["segy_file_header"]
+    node = raw_header_node(_group(store))
     raw = base64.b64decode(str(node.attrs[ATTR_RAW_TEXT]))[:3100]
     node.attrs.update({ATTR_RAW_TEXT: base64.b64encode(raw).decode("ascii")})
 
@@ -185,6 +204,63 @@ def _flip_raw_ibm32_word(store: Path) -> None:
     group[RAW_IBM32_ARRAY][:] = words
 
 
+DERIVED_COORD_ARRAY: Final[str] = "cdp_x"
+"""Derived coordinate array corrupted by :func:`_corrupt_cdp_coordinate`.
+
+``cdp_x`` rather than ``cdp_y`` for no deeper reason than that one of the pair suffices
+to prove the leg fires; both are checked by the leg itself.
+"""
+
+
+def _corrupt_cdp_coordinate(store: Path) -> None:
+    """Shift one derived world coordinate by one unit.
+
+    **This is the control for the hole an external audit found (D-0056).** Before the
+    derived-array leg existed, corrupting ``cdp_x`` left **all five planes PASS** - and
+    G4 and §10.3 promote exactly this array as what a consumer reads, so a store could
+    carry corrupted world coordinates under an ``EQUIVALENT`` verdict.
+
+    One unit, not a wild value, on purpose: a coordinate-scalar sign error - ``-100``
+    meaning divide where multiply was intended - is the realistic geometry defect, and it
+    is quiet. A control that only caught absurd values would not catch the real bug.
+    """
+    import numpy as np
+
+    group = _group(store)
+    if DERIVED_COORD_ARRAY not in group:
+        msg = f"{DERIVED_COORD_ARRAY} absent; the store carries no derived coordinates"
+        raise KeyError(msg)
+    values = np.asarray(group[DERIVED_COORD_ARRAY][:])
+    cell = tuple(0 for _ in values.shape)
+    values[cell] = values[cell] + 1
+    group[DERIVED_COORD_ARRAY][:] = values
+
+
+def _corrupt_sample_axis(store: Path) -> None:
+    """Shift the first entry of the sample axis by one unit.
+
+    The samples themselves are untouched, so **every float comparison still passes**:
+    the corruption mislabels where the samples sit in time or depth without altering
+    what they are. That is precisely why the decoded leg cannot see it, and why this
+    control is not redundant with ``flipped_sample_bit``.
+
+    The axis is found from the data variable's Zarr v3 ``dimension_names`` rather than
+    assumed to be ``"time"`` - a depth-domain store names it ``depth`` (D-0039).
+    """
+    import numpy as np
+
+    from sdip.equivalence.planes import _sample_axis_name, store_dimensions
+
+    group = _group(store)
+    axis = _sample_axis_name(group, "amplitude", store_dimensions(group))
+    if axis is None or axis not in group:
+        msg = "store declares no sample axis distinct from its grid dimensions"
+        raise KeyError(msg)
+    values = np.asarray(group[axis][:])
+    values[0] = values[0] + 1
+    group[axis][:] = values
+
+
 RAW_HEADER_PLANE_BYTE: Final[int] = 232
 """Byte offset flipped by :func:`_flip_raw_header_byte`. 0-based, so header byte **233**.
 
@@ -261,7 +337,7 @@ CONTROLS: tuple[Corruption, ...] = (
         apply=_flip_textual_byte,
         clause="§4.2",
         # An attribute rewrite on one node. Kilobytes, not a survey.
-        touches=frozenset({"segy_file_header"}),
+        touches=frozenset({UPSTREAM_FILE_HEADER_VARIABLE}),
     ),
     Corruption(
         name="truncated_textual_header",
@@ -269,7 +345,7 @@ CONTROLS: tuple[Corruption, ...] = (
         must_fail=frozenset({"G2a"}),
         apply=_truncate_textual_header,
         clause="§7 G7 minimum set",
-        touches=frozenset({"segy_file_header"}),
+        touches=frozenset({UPSTREAM_FILE_HEADER_VARIABLE}),
     ),
     Corruption(
         name="flipped_binary_byte",
@@ -277,7 +353,7 @@ CONTROLS: tuple[Corruption, ...] = (
         must_fail=frozenset({"G2b"}),
         apply=_flip_binary_byte,
         clause="§4.3",
-        touches=frozenset({"segy_file_header"}),
+        touches=frozenset({UPSTREAM_FILE_HEADER_VARIABLE}),
     ),
     Corruption(
         name="flipped_header_byte",
@@ -335,6 +411,22 @@ CONTROLS: tuple[Corruption, ...] = (
         apply=_transpose_two_traces,
         clause="§7 G7 minimum set",
         touches=frozenset({"headers", "amplitude"}),
+    ),
+    Corruption(
+        name="corrupted_cdp_coordinate",
+        description="One derived world coordinate shifted by one unit (cdp_x)",
+        must_fail=frozenset({"G2c"}),
+        apply=_corrupt_cdp_coordinate,
+        touches=frozenset({DERIVED_COORD_ARRAY}),
+        clause="DECISIONS D-0056 - the declared coordinate-scalar transform's output",
+    ),
+    Corruption(
+        name="corrupted_sample_axis",
+        description="First entry of the sample axis shifted by one unit",
+        must_fail=frozenset({"G2d"}),
+        apply=_corrupt_sample_axis,
+        touches=frozenset({"time"}),
+        clause="DECISIONS D-0056 - samples are meaningless without their axis",
     ),
 )
 """The permanent control set. Covers every gate in :data:`ALL_GATES` except G3.

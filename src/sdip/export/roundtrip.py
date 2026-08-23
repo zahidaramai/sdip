@@ -20,7 +20,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from sdip.errors import RoundTripUnavailableError
 from sdip.guard.warn import WarningLedger, recording_warnings
+from sdip.ingest.file_headers import UPSTREAM_FILE_HEADER_VARIABLE
 from sdip.provenance.hashing import sha256_file
 
 
@@ -111,6 +113,46 @@ def _region_of(offset: int) -> str:
     return f"trace data, {offset - 3600} bytes past the first trace"
 
 
+def _assert_exportable(store: Path) -> None:
+    """Refuse, cleanly and before any work, a store that cannot produce an export.
+
+    ``mdio_to_segy`` reads the textual and binary headers off the ``segy_file_header``
+    variable and raises ``MDIOMissingVariableError`` when it is absent. SDIP writes a
+    store without that variable on exactly one path: a source whose textual header did
+    not decode, ingested with upstream's file-header persistence off so that the header
+    bytes were never rewritten (§4.2, ``DECISIONS.md`` D-0055).
+
+    Caught here, and turned into an ``SdipError``, so the operator gets a message that
+    names the cause rather than an upstream traceback about a missing variable — §11.4
+    requires a malformed source to produce a clean error, and a non-conforming textual
+    header is exactly such a source.
+
+    **G3 is genuinely unreachable for such a store, not merely awkward.** Upstream's
+    exporter re-encodes the stored *decoded* text back to EBCDIC, and runs
+    ``sanitize_text_header`` over anything that will not encode — so even a store that
+    did carry the sanitised header would export 3200 bytes that are not the source's.
+    Byte identity is impossible either way; refusing says so instead of producing a
+    plausible file that fails the hash.
+
+    Raises:
+        RoundTripUnavailableError: If the store carries no ``segy_file_header`` variable.
+    """
+    import zarr
+
+    if UPSTREAM_FILE_HEADER_VARIABLE in zarr.open_group(str(store), mode="r"):
+        return
+    msg = (
+        f"cannot export {store}: it carries no `{UPSTREAM_FILE_HEADER_VARIABLE}` "
+        "variable, so MDIO's exporter has no textual or binary header to write. SDIP "
+        "writes a store in this shape for a source whose textual header could not be "
+        "decoded - the raw 3200 bytes are preserved and Plane 1 is checked against them "
+        "(§4.2), but upstream's exporter would sanitise the header it wrote, so the "
+        "whole-file byte identity G3 requires is not reachable for this source. G3 is "
+        "therefore NOT_RUN rather than passed or failed on a guess."
+    )
+    raise RoundTripUnavailableError(msg)
+
+
 def export(
     store: str | Path,
     output: str | Path,
@@ -134,8 +176,14 @@ def export(
 
     Returns:
         The round-trip result.
+
+    Raises:
+        RoundTripUnavailableError: If the store carries no ``segy_file_header`` variable,
+            which is the shape SDIP writes for a source whose textual header did not
+            decode (``DECISIONS.md`` D-0055).
     """
     store_path, output_path, source_path = Path(store), Path(output), Path(source)
+    _assert_exportable(store_path)
     ledger = WarningLedger()
     with recording_warnings(ledger, reemit=False):
         from mdio import mdio_to_segy

@@ -37,7 +37,7 @@ from __future__ import annotations
 import base64
 import os
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
@@ -53,6 +53,26 @@ SAVE_FILE_HEADER_STRICT: Final[str] = "1"
 Mode 2 exists and is **never** used: it silently rewrites the text header (§4.2).
 """
 
+SAVE_FILE_HEADER_OFF: Final[str] = "0"
+"""Mode 0. Upstream's default: persists neither file header and validates nothing.
+
+Used on exactly one path — a source whose textual header **cannot be decoded** (§4.2,
+``DECISIONS.md`` D-0055). It is not a preference and never applies to a decodable
+source: it costs upstream's parsed views, and the store it produces cannot be exported.
+"""
+
+TEXT_HEADER_ROWS: Final[int] = 40
+TEXT_HEADER_COLS: Final[int] = 80
+"""The card layout the SEG-Y standard mandates: 40 rows of 80 characters, 3200 bytes.
+
+Fixed rather than read off the spec because the decode contract §4.2 states, and the
+contract upstream enforces, are both this shape and no other. A ``TextHeaderSpec``
+declaring anything else describes a file that is not a SEG-Y textual header.
+"""
+
+MAX_ASCII_ORDINAL: Final[int] = 127
+"""A textual header card is 7-bit ASCII. Anything above this did not decode."""
+
 ATTR_RAW_TEXT: Final[str] = "sdipRawTextHeader"
 ATTR_RAW_BINARY: Final[str] = "sdipRawBinaryHeader"
 ATTR_RAW_TEXT_SHA: Final[str] = "sdipRawTextHeaderSha256"
@@ -62,12 +82,17 @@ authoritative bytes and are named so nobody has to guess which is which."""
 
 
 @contextmanager
-def file_headers_persisted() -> Iterator[None]:
-    """Enable MDIO's file-header persistence in STRICT mode for one call.
+def _save_file_header_mode(mode: str) -> Iterator[None]:
+    """Pin ``MDIO__IMPORT__SAVE_SEGY_FILE_HEADER`` for one call, then restore it.
 
     Scoped and restored, so SDIP does not leave the process configured differently from
     how it found it — the same discipline applied to upstream's leaking warning filters
     (``DECISIONS.md`` D-0004).
+
+    The mode is written **explicitly on every path**, including the one that wants
+    upstream's own default. An ambient value is not a default: a process that inherited
+    ``…=2`` would silently sanitise the header §4.2 forbids sanitising, and the ingest
+    would look like it worked.
 
     ``MDIO__IMPORT__SAVE_SEGY_FILE_HEADER`` is **not** a barred variable (§9.1 bars
     ``MDIO_IGNORE_CHECKS`` and ``MDIO__IMPORT__RAW_HEADERS``). The distinction is the
@@ -76,7 +101,7 @@ def file_headers_persisted() -> Iterator[None]:
     the opposite of the thing §9.1 forbids.
     """
     previous = os.environ.get(SAVE_FILE_HEADER_VAR)
-    os.environ[SAVE_FILE_HEADER_VAR] = SAVE_FILE_HEADER_STRICT
+    os.environ[SAVE_FILE_HEADER_VAR] = mode
     try:
         yield
     finally:
@@ -84,6 +109,139 @@ def file_headers_persisted() -> Iterator[None]:
             os.environ.pop(SAVE_FILE_HEADER_VAR, None)
         else:
             os.environ[SAVE_FILE_HEADER_VAR] = previous
+
+
+def file_headers_persisted() -> AbstractContextManager[None]:
+    """Enable MDIO's file-header persistence in STRICT mode for one call. Mode 1."""
+    return _save_file_header_mode(SAVE_FILE_HEADER_STRICT)
+
+
+def file_headers_not_persisted() -> AbstractContextManager[None]:
+    """Pin MDIO's file-header persistence **off** for one call. Mode 0.
+
+    The undecodable-textual-header path and nothing else (§4.2, ``DECISIONS.md``
+    D-0055). Mode 1 raises on such a header and mode 2 rewrites it; mode 0 is the only
+    one that lets the ingest complete without upstream substituting bytes SDIP is
+    required to preserve verbatim. What it costs is recorded on the certificate, not
+    hidden: no ``segy_file_header`` variable, so no parsed views and no export.
+    """
+    return _save_file_header_mode(SAVE_FILE_HEADER_OFF)
+
+
+@dataclass(frozen=True, slots=True)
+class TextualHeaderDecode:
+    """Whether the raw textual header decodes, measured from the bytes themselves.
+
+    §4.2 requires the detected encoding **recorded, never silently normalised**, and
+    requires a decode failure recorded on the certificate rather than raised as an
+    ingestion failure. Both need an answer that was measured on this file; before
+    ``DECISIONS.md`` D-0055 the certificate asserted ``decoded`` unconditionally, which
+    is a claim with no number behind it (**SP8**).
+    """
+
+    encoding: str
+    """The declared encoding, from the spec the ingest ran with. Recorded, never used
+    to normalise: Plane 1 compares bytes."""
+
+    decoded: bool
+    """True when the 3200 bytes decode to 40 rows of 80 printable 7-bit ASCII."""
+
+    offending: tuple[tuple[int, int], ...]
+    """``(row, column)`` of every character that failed the contract. 0-based, exhaustive."""
+
+    reason: str
+    """What failed, in one clause. Empty when :attr:`decoded`."""
+
+    @property
+    def status(self) -> str:
+        """The certificate's ``decode_status`` enum value (§4.7)."""
+        return "decoded" if self.decoded else "raw_preserved_decode_failed"
+
+    def to_json(self) -> dict[str, Any]:
+        """The certificate's ``detected_encoding`` block, §4.7."""
+        detail = (
+            "SDIP stores the raw 3200 bytes and compares them as bytes; the encoding is "
+            "recorded, never used to normalise (§4.2)."
+            if self.decoded
+            else (
+                f"{self.reason}. The raw 3200 bytes are preserved verbatim and Plane 1 "
+                f"is checked against them; decode failure is not an ingestion failure, "
+                f"silent substitution is (§4.2). Offending (row, column), 0-based: "
+                f"{[list(p) for p in self.offending[:16]]}"
+                + (f" (+{len(self.offending) - 16} more)" if len(self.offending) > 16 else "")
+            )
+        )
+        return {"encoding": self.encoding, "decode_status": self.status, "detail": detail}
+
+
+def classify_textual_header(raw: bytes, text_spec: Any) -> TextualHeaderDecode:
+    """Decide whether the raw textual header decodes, using the ingest's own spec.
+
+    The decode is performed by ``text_spec.decode`` — the **same** ``TextHeaderSpec``
+    object handed to ``segy_to_mdio``, and the same call ``SegyFile.text_header`` makes,
+    so the string judged here is byte-for-byte the string upstream would judge. Only the
+    verdict is SDIP's, and it restates §4.2's contract rather than importing upstream's
+    validator: §3.3 permits the public API, not a reach into a module upstream does not
+    export.
+
+    Being SDIP's own predicate, it can disagree with upstream's. The ingest is arranged
+    so that either direction of disagreement is safe rather than silent — see
+    :func:`sdip.ingest.orchestrator.ingest`. Agreement is measured on both fixtures
+    rather than assumed (``tests/integration/test_undecodable_textheader.py``).
+
+    Args:
+        raw: The 3200 raw textual-header bytes, straight from the source.
+        text_spec: The ``TextHeaderSpec`` the ingest runs with.
+
+    Returns:
+        The measured decode outcome.
+
+    Raises:
+        UntrustedInputError: If ``raw`` is not exactly 3200 bytes.
+    """
+    if len(raw) != SEGY_TEXTUAL_HEADER_BYTES:
+        msg = f"textual header is {len(raw)} bytes, must be {SEGY_TEXTUAL_HEADER_BYTES}"
+        raise UntrustedInputError(msg)
+
+    encoding = str(getattr(text_spec.encoding, "value", text_spec.encoding))
+    rows = str(text_spec.decode(raw)).split("\n")
+
+    if len(rows) != TEXT_HEADER_ROWS:
+        return TextualHeaderDecode(
+            encoding=encoding,
+            decoded=False,
+            offending=(),
+            reason=f"decoded to {len(rows)} rows, the card layout mandates {TEXT_HEADER_ROWS}",
+        )
+    wrong_width = [i for i, row in enumerate(rows) if len(row) != TEXT_HEADER_COLS]
+    if wrong_width:
+        return TextualHeaderDecode(
+            encoding=encoding,
+            decoded=False,
+            offending=tuple((i, len(rows[i])) for i in wrong_width),
+            reason=(
+                f"{len(wrong_width)} row(s) are not {TEXT_HEADER_COLS} columns wide; "
+                "the pairs below are (row, observed width)"
+            ),
+        )
+
+    offending = tuple(
+        (i, j)
+        for i, row in enumerate(rows)
+        for j, char in enumerate(row)
+        if ord(char) > MAX_ASCII_ORDINAL or not char.isprintable()
+    )
+    if offending:
+        return TextualHeaderDecode(
+            encoding=encoding,
+            decoded=False,
+            offending=offending,
+            reason=(
+                f"{len(offending)} character(s) are non-ASCII or non-printable after the "
+                f"declared {encoding} decode"
+            ),
+        )
+    return TextualHeaderDecode(encoding=encoding, decoded=True, offending=(), reason="")
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,6 +322,29 @@ def read_raw_file_headers(source: str | Path) -> RawFileHeaders:
     )
 
 
+UPSTREAM_FILE_HEADER_VARIABLE: Final[str] = "segy_file_header"
+"""The scalar variable upstream hangs its parsed ``textHeader``/``binaryHeader`` on.
+
+**Absent from a store whose textual header did not decode**, because that ingest ran
+with header persistence off (``DECISIONS.md`` D-0055). Its absence is the store-level
+signal that the source was non-conforming, and the reason nothing may assume it exists.
+"""
+
+
+def raw_header_node(group: Any) -> Any:
+    """The node SDIP's authoritative raw-header attributes live on.
+
+    Upstream's ``segy_file_header`` variable when the store has one, and the root group
+    when it does not. **One resolver, used everywhere**: the reader, the writer and G7's
+    textual-header controls must agree about where the bytes are, or a control would
+    error on a store shape the reader handles and G7 would report a corruption it never
+    applied.
+    """
+    if UPSTREAM_FILE_HEADER_VARIABLE in group:
+        return group[UPSTREAM_FILE_HEADER_VARIABLE]
+    return group
+
+
 def attach_raw_file_headers(store_path: str | Path, headers: RawFileHeaders) -> None:
     """Write the authoritative raw headers into the store, under SDIP's namespace.
 
@@ -173,9 +354,7 @@ def attach_raw_file_headers(store_path: str | Path, headers: RawFileHeaders) -> 
     """
     import zarr
 
-    group = zarr.open_group(str(store_path), mode="r+")
-    node = group["segy_file_header"] if "segy_file_header" in group else group
-    node.attrs.update(headers.to_attrs())
+    raw_header_node(zarr.open_group(str(store_path), mode="r+")).attrs.update(headers.to_attrs())
 
 
 def _stored_attr(store_path: str | Path, attr: str) -> bytes:
@@ -190,9 +369,7 @@ def _stored_attr(store_path: str | Path, attr: str) -> bytes:
     """
     import zarr
 
-    group = zarr.open_group(str(store_path), mode="r")
-    node = group["segy_file_header"] if "segy_file_header" in group else group
-    attrs = dict(node.attrs)
+    attrs = dict(raw_header_node(zarr.open_group(str(store_path), mode="r")).attrs)
     if attr not in attrs:
         msg = (
             f"store carries no SDIP raw file header attribute {attr}. The plane that "

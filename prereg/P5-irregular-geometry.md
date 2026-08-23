@@ -335,3 +335,53 @@ Raised, not decided — each is outside the authority of the probe that found it
 Disposition of debt **D5** is left to a maintainer: the probe's own falsifier did not fire, but six
 findings above bear on it, and four of the ten pre-registered conditions do not convert — one of
 which, `duplicate_index`, is the correct refusal and the other three are limitations.
+
+---
+
+## Addendum — 2026-08-23, re-measured under the D8 preflight
+
+Appended, not merged into the run above. The 2026-08-22 table records what was true on
+2026-08-22; this records what changed and why. Nothing above this heading has been edited.
+
+**What changed.** Closing debt D8 added `src/sdip/ingest/preflight.py`, which reconciles the binary
+header's declared counts against the file size before any allocation and before upstream is called
+(§11.4). **Exactly one of the ten conditions changed, and only in who refuses it.**
+
+| Fixture | 2026-08-22 | 2026-08-23 |
+|---|---|---|
+| `byte_swapped` (little-endian) | `ValueError: 256 is not a valid DataSampleFormatCode`, raised inside `segy` | `UntrustedInputError`, raised by SDIP's own preflight |
+
+The new message, measured rather than quoted:
+
+```
+UntrustedInputError: binary header (bytes 3217-3218) declares a sample interval of -24561
+microseconds; the interval is a positive duration. Read little-endian the same bytes give
+sample-format code 1 and 16 samples per trace, so this is most likely a little-endian SEG-Y.
+SDIP reads SEG-Y as big-endian and does not guess byte order.
+```
+
+Read big-endian, the little-endian sample interval `4000` arrives as `-24561`, so preflight refuses
+the file before the format-code check is reached. The other nine rows re-measured identically:
+`duplicate_index` still `GridTraceCountError: 29 != 30`, `coord_scalar_zero` still
+`Invalid coordinate scalar: 0 for file revision SegyStandard.REV1`, `rev0_minimal` still the missing
+template fields, and the six converting conditions still convert. `MDIO_IGNORE_CHECKS` still absent.
+
+**What did not change.** The verdict, all four falsifier clauses, and every finding above. A
+little-endian SEG-Y still does not convert, and finding 2 — that the blocker is SDIP's own spec
+asserting `endianness = big`, not the format and not upstream — is unaffected. The test's
+independent evidence for it is untouched: `build_gap_free_spec(1).segy_spec.endianness.value` is
+still asserted to be `"big"`, and the same file is still read correctly in the same test with
+`spec.endianness = None`.
+
+If anything the finding now reads more directly, because the refusal is SDIP's own typed error
+naming the byte order rather than an untyped `ValueError` about a format code of 256.
+
+**Bearing on finding 5 and the sparsity clause: none.** D8 deliberately did **not** re-type MDIO's
+`GridTraceCountError` or `GridTraceSparsityError` inside SDIP, on the grounds that `DECISIONS.md`
+D-0036 pins those types as the defence SDIP relies on. That is recorded as D8's open residual. The
+duplicate result above therefore stands exactly as measured, including the argument that turns on
+`GridTraceCountError` being raised unconditionally while only `GridTraceSparsityError` is gated by
+the barred variable.
+
+Re-measured by the P5 agent from a clean process, not accepted on report. `tests/integration/test_p5_geometry.py`: 60 passed. Two assertions in that
+file were updated by the D8 agent to match, both citing `DECISIONS.md` D-0057.

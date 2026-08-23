@@ -182,7 +182,7 @@ INGESTS: dict[str, str | None] = {
     "coord_scalar_zero": "Invalid coordinate scalar: 0",
     "coord_scalar_pos": None,
     "coord_scalar_neg": None,
-    "byte_swapped": "256 is not a valid DataSampleFormatCode",
+    "byte_swapped": "most likely a little-endian SEG-Y",
     "rev0_minimal": "Required fields ['cdp_x', 'cdp_y', 'crossline', 'inline']",
 }
 """Measured on 2026-08-22 against ``multidimio==1.2.1`` / ``segy==0.6.0``. ``None`` means
@@ -191,6 +191,15 @@ the ingest succeeded; a string is a substring of the error that was actually rai
 This is a **record of what happened**, not a wish. Four conditions do not convert, and
 pinning the exact error is what turns "irregular geometry sometimes fails" into a claim
 a stranger can check and an upstream bump can falsify.
+
+**``byte_swapped`` updated 2026-08-23, debt D8.** The verdict is unchanged — a
+little-endian SEG-Y still does not convert — but *who* refuses it moved. It was
+``ValueError: 256 is not a valid DataSampleFormatCode``, raised inside ``segy`` after
+the parser had already read the file. It is now
+:class:`~sdip.errors.UntrustedInputError`, raised by
+:mod:`sdip.ingest.preflight` before any allocation, and the message names the byte order
+rather than leaving the reader to work out why a format code read 256. This row is a
+record, so a deliberate change updates it — see ``DECISIONS.md`` D-0057.
 """
 
 
@@ -522,8 +531,15 @@ def test_a_little_endian_file_cannot_be_declared_to_sdip(probe):
 
     ``build_gap_free_spec`` inherits ``endianness = big`` from the revision standard and
     :func:`sdip.ingest.ingest` exposes no way to change it, so the little-endian binary
-    header is read big-endian: sample-format code ``1`` arrives as ``0x0100`` and the
-    conversion dies on ``256 is not a valid DataSampleFormatCode``.
+    header is read big-endian: sample interval ``4000`` arrives as ``-24561``, and
+    sample-format code ``1`` as ``0x0100`` — ``256``.
+
+    **Updated 2026-08-23 (debt D8).** The finding is unchanged; the refusal moved. It
+    used to reach ``segy`` and die there on ``256 is not a valid DataSampleFormatCode``.
+    :mod:`sdip.ingest.preflight` now refuses it before any allocation with SDIP's own
+    typed error, and — because a little-endian SEG-Y is a real file rather than a
+    corruption — the message says so instead of leaving the reader to work out why a
+    format code read 256.
 
     The same file reads correctly the moment the spec stops asserting a byte order —
     ``segy`` infers it from the binary header when ``spec.endianness is None``. So this is
@@ -532,7 +548,8 @@ def test_a_little_endian_file_cannot_be_declared_to_sdip(probe):
     run = probe["byte_swapped"]
     assert run.article.endianness == "little"
     assert not run.ingested
-    assert "256 is not a valid DataSampleFormatCode" in (run.error or "")
+    assert "UntrustedInputError" in (run.error or "")
+    assert "most likely a little-endian SEG-Y" in (run.error or "")
     assert build_gap_free_spec(1).segy_spec.endianness.value == "big"
 
     inferring = build_gap_free_spec(1)

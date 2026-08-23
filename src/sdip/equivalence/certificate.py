@@ -93,6 +93,33 @@ def verdict_for(
     return "PROVISIONAL"
 
 
+def _detected_encoding(result: Any) -> dict[str, Any]:
+    """The certificate's ``detected_encoding`` block. §4.2, §4.7.
+
+    §4.2 requires the encoding *recorded, never silently normalised*, and a decode
+    failure *recorded on the certificate* rather than raised as an ingestion failure.
+    Both come from the ingest, which measured them on this file's raw 3200 bytes before
+    the converter ran (``DECISIONS.md`` D-0055).
+
+    A result carrying no measurement is reported as such rather than defaulted to
+    ``decoded``: an unmeasured plane is ``NOT_RUN`` everywhere else in this module, and
+    an unmeasured decode must not read as a passing one.
+    """
+    decode = getattr(result, "textual_decode", None)
+    if decode is None:
+        return {
+            "encoding": "unknown",
+            "decode_status": "raw_preserved_decode_failed",
+            "detail": (
+                "this ingest recorded no textual-header decode measurement, so the "
+                "encoding is unknown. The raw 3200 bytes are preserved and Plane 1 is "
+                "checked against them regardless (§4.2)."
+            ),
+        }
+    block: dict[str, Any] = decode.to_json()
+    return block
+
+
 def read_codec_manifest(store: str | Path) -> list[str]:
     """Read every codec name on disk, with stock ``zarr``. SP3.
 
@@ -290,7 +317,7 @@ def issue(
         "source_sha256_post_read": result.source_sha256_post_read,
         "source_bytes": result.source_bytes,
         "segy_revision": str(result.spec.revision),
-        # MEASURED on this file's own 3200 bytes, never asserted. Before D-0053 this
+        # MEASURED on this file's own 3200 bytes, never asserted. Before D-0055 this
         # block said `decoded` unconditionally - a fidelity claim with no number behind
         # it (SP8), and one that would have been false for exactly the non-conforming
         # legacy vintage §4.2 exists to rescue.

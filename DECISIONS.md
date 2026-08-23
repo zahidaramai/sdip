@@ -2398,3 +2398,369 @@ extrapolation that cannot reproduce the measurement it is extrapolating from is 
 evidence, and importing the auditor's number because it sounds right would be exactly
 the assumption SP8 forbids. A measurement in the real size regime is running; the
 correcting entry for D-0042 waits on it.
+
+---
+
+## D-0057 — 2026-08-23 — **SDIP validated almost nothing before handing an untrusted SEG-Y to upstream.** 18 of 33
+
+**Debt D8, closed against a corpus.** `CLAUDE.md` §3.6 and spec §11.4 both state that a
+malformed or hostile SEG-Y must produce a clean error, never a crash, an unbounded
+allocation, or a write outside the output path, and that *"header-declared lengths and
+counts are validated against actual file size before allocation."* **Every word of that
+was an assertion.** `sdip.errors.UntrustedInputError` existed and its docstring quoted
+§11.4; what it was actually raised for was a file shorter than 3600 bytes, a path that
+was not a regular file, and nothing else.
+
+**33 synthetic hostile files, 9 classes, one fixed seed** — `tests/fixtures/generators/
+hostile.py`, run one per process by `tests/negative/test_d8_hostile_corpus.py`.
+
+### What the corpus measured, before any fix
+
+| Outcome | Members | Examples |
+|---|---:|---|
+| Typed `UntrustedInputError` | **8** | empty file, 3599 bytes, not a regular file |
+| **Untyped exception from a dependency** | **18** | `ValueError`, **`ZeroDivisionError`**, `pydantic.ValidationError`, `SegyFileSpecMismatchError`, `GridTraceSparsityError` |
+| Converted | 7 | structurally valid, semantically odd |
+
+**A zero in binary-header bytes 3217-3218 — the sample interval — produced a
+`ZeroDivisionError` from inside a dependency.** That is the shape of finding D8 was
+raised to look for: a one-field, two-byte edit to an otherwise valid file, and the answer
+is an untyped exception and a traceback on the console.
+
+Every one of the 18 was raised **inside `segy`, `mdio` or `pydantic`** — that is, *after*
+the file had been opened, read and sized from its own numbers. The validation §11.4
+requires before allocation was happening after it, in someone else's code, or not at all.
+
+### The fix — `src/sdip/ingest/preflight.py`
+
+Reads **exactly 400 bytes** at a fixed offset and does integer arithmetic against
+`st_size`. No allocation is proportional to anything it reads. In order, because each
+check is a precondition of the next: samples per trace `> 0`; sample interval `> 0`;
+sample-format code present in the pinned `segy` 0.6.0 enumeration; extended textual
+header count `>= -1` and not larger than the file; trace data present; and the trace data
+a whole number of `240 + samples x bytes_per_sample` traces.
+
+The format-code table is **read out of `segy.standards.codes.DataSampleFormatCode`**, not
+written down. A hardcoded list is a second source of truth that drifts from the decoder
+actually in use; this one cannot disagree with what the pin can decode, because it is what
+the pin can decode.
+
+**The divisibility check is not a new policy.** `raw_samples.source_trace_layout` has
+applied the identical reconciliation since the raw `ibm32` view shipped, and it has run
+over 116,532 real traces. D8 moves it earlier and makes it universal.
+
+### After
+
+| Outcome | Members | Change |
+|---|---:|---|
+| Typed `UntrustedInputError`, **raised inside `sdip`** | **24** | +16 |
+| MDIO's typed grid errors | **3** | recorded residual |
+| Untyped exception from a dependency | **0** | **-18** |
+| Converted | 6 | -1 (`sample_interval_negative` now refused) |
+
+**Peak RSS, measured per process** (Darwin 25.5.0, CPython 3.12.13):
+
+| | Before | After |
+|---|---:|---:|
+| Refusal | 118.6-120.3 MB | **52.9-53.4 MB** |
+| Successful ingest | 209.8-212.0 MB | 210.3-212.0 MB |
+
+**A refusal now costs what starting the interpreter costs.** The 66 MB that disappeared
+was upstream opening and parsing a file SDIP had already been told not to trust. Declared
+ceiling: **512 MiB**, asserted on every member; the observed maximum is 212.0 MB and it is
+a *successful* ingest.
+
+**No unbounded allocation was ever found**, before the fix or after —
+`declared_extended_headers_exceed_file` claims 104,854,400 bytes of extended headers in a
+14,640-byte file and never allocated for it. The defect was the error *type* and the
+traceback, not memory.
+
+**No write escape was found.** The run tree and the repository are snapshotted around
+every child process. `path_bait_in_headers` is a structurally valid file whose textual
+header and trace-header tails read `../../../../../../tmp/sdip_d8_escape`; it converts, as
+it must, and the bait exists nowhere on disk afterwards.
+
+### What was deliberately **not** fixed
+
+Three members are refused by `GridTraceSparsityError` / `GridTraceCountError` and reach
+the console as a traceback. **They are left alone on purpose.** These are geometry
+verdicts, reachable only after a full trace-header pass — the thing pre-allocation
+validation must not do — and **probe P5 measured MDIO making exactly these refusals and
+pinned the types as the defence SDIP relies on** (D-0036). `GridTraceCountError` is raised
+unconditionally, so it is *not* suppressible by `MDIO_IGNORE_CHECKS`, which is the whole
+reason the duplicate-trace defence counts as a defence. Re-typing them inside SDIP would
+overturn a recorded measurement to satisfy a presentation preference. That is a
+maintainer's call (§9), and it stays open on D8.
+
+### One prior record updated
+
+`test_p5_geometry.INGESTS["byte_swapped"]` moved from `"256 is not a valid
+DataSampleFormatCode"` to `"most likely a little-endian SEG-Y"`. **The verdict is
+unchanged** — a little-endian SEG-Y still does not convert — but the refusal moved from
+`segy`, after the read, to `sdip`, before it. The message now names the byte order rather
+than leaving a reader to work out why a format code read 256. P5's table is explicitly a
+record of what happened, so a deliberate change updates it rather than being worked
+around.
+
+**A little-endian SEG-Y is a real file, not a corruption**, so `preflight` re-reads the
+offending fields the other way round and says so when they come out coherent. That is the
+difference between an error a reader can act on and one that sends them looking for
+damage that is not there.
+
+---
+
+## D-0058 — 2026-08-23 — **`sdip ingest` accepted `s3://`, exited 0, reported `G1 PASS`, and wrote to a local directory named `s3:`.** 0 objects in the bucket
+
+**Found by probe P8's local object-store leg** (`prereg/P8-cloud-object-store.md`,
+Amendment A) against a real S3 server — MinIO `RELEASE.2025-10-15T17-29-55Z` on loopback,
+`s3fs` 2026.1.0 — not a mock.
+
+### What was measured
+
+| Entry point | Asked for | Objects in bucket | What happened |
+|---|---|---:|---|
+| `ingest(src, "s3://sdip-p8/via-sdip.mdio")` | an object store | **0** | Returned **normally**, no exception. `IngestResult.output_path` = `/Users/…/seis-mdio-zarr/s3:/sdip-p8/via-sdip.mdio`. **49 paths, 20 files** written under a local directory literally named `s3:` at the process working directory. |
+| `sdip ingest src s3://sdip-p8/via-cli.mdio` | an object store | **0** | **Exit code 0.** Printed `G1 PASS`, `read path intact`, and `output /…/work/s3:/sdip-p8/via-cli.mdio`. |
+
+The cause was one line in `sdip.ingest.orchestrator.ingest`:
+
+```python
+output_path = Path(output).resolve()
+```
+
+`pathlib` collapses the doubled slash, so `s3://bucket/store.mdio` becomes the **relative**
+path `s3:/bucket/store.mdio` and resolves against the working directory. No scheme is
+recognised, nothing is validated, nothing raises.
+
+### Why this is worse than a crash
+
+**A green run and an empty bucket were indistinguishable to the operator.** Spec §11.4
+bars a crash on bad input, and it equally bars *"a write outside the output path"* — which
+is exactly what this was, at the operator's working directory rather than anywhere they
+named. An operator running this in a container gets exit 0 and a store on ephemeral disk,
+which is the situation §11.2 exists to talk about, since that disk is then discarded.
+
+It also means **the `cloud` extra in `pyproject.toml` has never been usable**, and §11.2's
+object-store requirements were never reachable through any shipped entry point. `verify`,
+`export` and `certify` are equally unable to address a store: all three type the argument
+as `click.Path(exists=True, file_okay=False)`, which no URI satisfies.
+
+### The decision: refuse, do not implement
+
+**Object-store output is debt D7 and is out of phase. This change does not implement it.**
+It makes the absence audible instead of silent. `validate_output_path` in
+`sdip/ingest/orchestrator.py` runs **before `Path(output)` touches the argument** — that
+is, before the source is read, before the spec is built, before G1, before any allocation
+— and raises `PhaseNotAuthorisedError`, an existing type whose meaning is exactly this
+(*"the requested capability belongs to a later roadmap phase"*) and which the CLI boundary
+already handles.
+
+```
+$ sdip ingest article.sgy s3://bucket/store.mdio
+sdip: output path names the URI scheme 's3' (s3:/bucket/store.mdio). SDIP writes to the
+local filesystem only; object-store output is NOT implemented (OPEN_DEBTS D7, probe P8)
+and no scheme is supported, including s3://, gs://, gcs://, az://, abfs://, abfss://,
+adl://, wasb://, wasbs:// and http(s)://. Refusing before any work is done. …
+exit 2, and the working directory is unchanged.
+```
+
+**Every scheme is refused, not a barred list.** The failure being prevented is "SDIP
+silently wrote somewhere else"; an allow-list would let the next scheme through. `file://`
+is refused too — `Path("file:///tmp/x")` is the relative path `file:/tmp/x`, so it fails
+the same way, and letting one scheme through because it *sounds* local would reintroduce
+the defect for that scheme.
+
+**Two forms are matched, because the mistake arrives two ways.** A library caller passes
+`s3://bucket/key` intact; `click.Path(path_type=Path)` has already collapsed it to
+`s3:/bucket/key` by the time the CLI reaches `ingest`. A check matching only `://` would
+pass every library test and still leak from the CLI. The scheme must be **at least two
+characters**, so `C:/surveys/x.mdio` is a Windows drive and is accepted; the slash is
+**required**, so `my:dir/store.mdio` is a legal POSIX directory and is accepted.
+
+### The negative control, and it fails without the fix
+
+`tests/negative/test_object_store_output_refused.py` — **32 tests, all passing.** Disabling
+the single `validate_output_path(output)` call and re-running gives **12 failed, 20
+passed**: the 12 are the three assertions that measure integration rather than the
+predicate — the ordering proof, the working-directory proof, and the CLI exit code. The 20
+that still pass call the validator directly, which is correct, and is the reason the
+integration assertions exist at all.
+
+Three assertions per barred scheme, because any two of them pass on a broken fix:
+
+1. It raises `PhaseNotAuthorisedError` — typed, not a traceback.
+2. The CLI exit code is non-zero, no traceback reaches stderr, and **no gate prints a
+   verdict** for a run that was refused.
+3. **Nothing is created in the working directory.** This is the assertion that pins the
+   defect: a fix that raised *after* `segy_to_mdio` ran would satisfy 1 and 2 and still
+   leave the `s3:` tree on disk.
+
+The ordering assertion passes a **source that does not exist**. If the output check ran
+after `validate_source` the result would be `UntrustedInputError` about a missing file —
+a passing test for a check placed too late to prevent the write. §11.4 is an ordering
+requirement, so the ordering is what is asserted.
+
+**The positive control is not decoration** (**SP11**, the discipline of G7 and of the D8
+corpus). A validator refusing every path would score perfectly on 1–3 and be useless, so
+`store.mdio`, `/tmp/surveys/store.mdio`, `C:/surveys/store.mdio` and `my:dir/store.mdio`
+must be **accepted**, and a real local ingest through the CLI must still exit 0.
+
+### Scope, stated plainly
+
+**Output only.** A source given as `s3://…` is already refused cleanly by
+`validate_source` (`UntrustedInputError`, "source is not a regular file") and by click's
+`exists=True`, so no silent write is possible there — but the *message* names the wrong
+cause, and that is left as an observation rather than widened into this change.
+
+**D7 stays open and is untouched by this.** Nothing here makes an object store work; it
+makes the fact that it does not work impossible to mistake for success.
+
+---
+
+## D-0059 — 2026-08-23 — The derived arrays are inside the audit surface. Tier-1 closed
+
+Closes the Tier-1 finding of **D-0056**. Two new legs, two new G7 controls, and the two
+false strings corrected.
+
+### The measurement, before and after
+
+| Corruption | P1 | P2 | P3 | P4 | P5 |
+|---|---|---|---|---|---|
+| baseline | PASS | PASS | PASS | PASS | PASS |
+| `cdp_x[0,0]` +1 | PASS | PASS | **FAIL** | PASS | PASS |
+| `cdp_y[0,0]` +1 | PASS | PASS | **FAIL** | PASS | PASS |
+| `time[0]` +1 | PASS | PASS | PASS | **FAIL** | PASS |
+| `inline[0]` +1 | PASS | PASS | FAIL | FAIL | FAIL |
+| `crossline[0]` +1 | PASS | PASS | FAIL | FAIL | FAIL |
+
+Before this change the three middle rows were **all PASS**. Each now fails **exactly
+one** plane, and the baseline is untouched — the leg catches corruption without
+manufacturing failures on good stores.
+
+### What the legs actually assert
+
+**Plane 3 (G2c) — `cdp_x`/`cdp_y`.** Recomputed from the source trace headers under the
+declared coordinate-scalar semantics (positive multiplies, negative divides) and compared
+with `np.array_equal`. **Each trace's own scalar**, never trace 0's applied to all:
+upstream reads trace 0 only, and a survey whose scalar varies is legal SEG-Y, so applying
+one trace's scalar to the rest is a fabrication under **SP12**.
+
+**Plane 4 (G2d) — the sample axis.** Recomputed as `delay + i × interval/1000` from the
+trace-header sample interval and delay. The samples themselves are untouched by an axis
+corruption, so **every float comparison still passes** — which is exactly why the decoded
+leg cannot see it and why this control is not redundant with `flipped_sample_bit`.
+
+**Absent or underivable is NOT CHECKED, never checked-and-passed** — the discipline the
+raw legs already use. A store with no coordinate array, a spec with no coordinate scalar,
+or a source whose interval varies between traces yields `None`, and only an explicit
+`False` fails.
+
+### Two defects I introduced and caught before landing
+
+**SP8 applies to my own work.** Both were found by running the thing, not by reading it.
+
+1. **The baseline went FAIL on P4.** I resolved the sample axis as
+   `store_dimensions(group)[-1]`, but `store_dimensions` returns the **grid** dimensions
+   and deliberately excludes the sample axis — so the leg compared the `crossline` array
+   against a time progression. Now resolved by subtracting the grid from the data
+   variable's `dimension_names`, in `_sample_axis_name`, which exists precisely so that
+   mistake cannot be repeated with an index.
+2. **Plane 3 RAISED on every prestack geometry.** The leg indexed coordinate arrays with
+   the full grid cell, but a coordinate array need not be indexed by the whole grid. **A
+   plane that raises has not judged the store at all** — the exact P7 failure mode of
+   D-0039, reintroduced by me. Fixed with `_project_cell`, which projects the cell onto
+   the dimensions each array declares and returns `None` — NOT CHECKED — rather than
+   guessing when the grid cannot address them.
+
+Had I committed on the poststack table alone, the second would have shipped.
+
+### G7: 12 controls, each failing exactly its declared set
+
+```
+control                  | declared    | observed    | extra | missed
+flipped_textual_byte     | G2a         | G2a         |   -   |   -
+truncated_textual_header | G2a         | G2a         |   -   |   -
+flipped_binary_byte      | G2b         | G2b         |   -   |   -
+flipped_header_byte      | G2c         | G2c         |   -   |   -
+flipped_sample_bit       | G2d         | G2d         |   -   |   -
+inverted_live_mask       | G2e         | G2e         |   -   |   -
+dropped_trace            | G2c,G2d,G2e | G2c,G2d,G2e |   -   |   -
+flipped_raw_header_byte  | G2c         | G2c         |   -   |   -
+flipped_raw_ibm32_word   | G2d         | G2d         |   -   |   -
+transposed_traces        | G2c,G2d     | G2c,G2d     |   -   |   -
+corrupted_cdp_coordinate | G2c         | G2c         |   -   |   -   <- new
+corrupted_sample_axis    | G2d         | G2d         |   -   |   -   <- new
+```
+
+`corrupted_cdp_coordinate` shifts a coordinate by **one unit**, not to an absurd value,
+deliberately: a coordinate-scalar sign error is the realistic geometry defect and it is
+quiet. A control that only caught absurd values would not catch the real bug.
+
+### Finding 3 — the certificate no longer contradicts itself
+
+`RAW_IBM32_NOTE` and the `plane_4` docstring both said the raw leg was *"NOT part of
+G2d's verdict"* while the code AND-ed it. Both now state the asymmetry as implemented: a
+raw mismatch **fails** the plane; a raw pass **cannot** rescue a failed decoded
+comparison. **No certificate needs superseding** — both payloads under `local/` predate
+the raw view and carry no such note. Checked, not assumed.
+
+**Suite: 1071 passed.** ruff and mypy clean on 45 modules.
+
+---
+
+## D-0060 — 2026-08-23 — **D-0042's mechanism sentence is retracted for the verification path.** P3 measured a constant
+
+Correcting entry, appended under **SP10** — D-0042 is left unedited.
+
+### What D-0042 said, and why it is wrong
+
+D-0042 states that **"memory tracks the chunk working set"**. That is true of the dask
+ingest path and **false of the verification path**, which fully materialises.
+
+Ten `[:]` sites in `planes.py`. `plane_4` holds `handle.sample[:]` **and**
+`group[variable][:]` simultaneously — the whole source volume and the whole store volume
+in memory at once.
+
+### P3 measured replication, not scaling
+
+**The 2.81–2.87 GiB flatness across eleven files is a constant, not evidence of
+scale-invariance.** Every Sleipner file is **byte-identical in size at 494,565,408** —
+verified across all twelve. The independent variable never varied. **D2 was closed on
+that basis, and the closure does not support the generalisation it was read as making.**
+
+### What I measured, and what I refuse to claim
+
+First attempt, on 0.9–21.8 MB files: fit `RSS = 0.45 + 9.26 × source` (GB). It
+**over-predicted the one real data point by 65 %**. A ~0.4 GB interpreter baseline
+dominates at that scale and the slope is not resolvable. **That measurement is discarded
+as unfit, not quietly averaged in.**
+
+Second attempt, in the real regime (four runs, 51–403 MB):
+
+| source | peak RSS |
+|---|---|
+| 51.4 MB | 607.1 MB |
+| 102.0 MB | 1,002.6 MB |
+| 201.7 MB | 1,784.3 MB |
+| 402.6 MB | 3,324.6 MB |
+
+**`RSS_MB = 214.7 + 7.73 × source_MB`, R² = 0.99997.** Verification memory is **linear in
+file size**. The mechanism claim is settled.
+
+**The breach point is a range, and I am reporting it as one:**
+
+- from the synthetic fit — **1,083 MB**
+- anchored on the single real point (494.6 MB → ~3,049 MB, ratio **6.17×**) — **1,393 MB**
+
+The synthetic fit still over-predicts the real point by **32 %**, so the two bracket
+rather than agree. **The external audit's ~1.4 GB sits at the top of that range and is
+corroborated, but I am not adopting it as a single figure** — the honest statement is
+**breach between roughly 1.1 and 1.4 GB**, and a 20 GB file needs on the order of
+**155 GB** and OOMs outright.
+
+### What is NOT being done here
+
+**The streaming refactor is deliberately not attempted in this change.** It is a design
+lock, not a patch: chunked comparison changes how every plane reads, and landing it
+beside the Tier-1 fix would make both unreviewable. Raised as debt **D38** with the
+measured falsifier.

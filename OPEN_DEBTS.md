@@ -1062,3 +1062,229 @@ so the output is expected rather than alarming.
 
 Recorded now because the release ships this behaviour to every consumer, and an unrecorded
 surprise is worse than a declared one.
+
+---
+
+## D17 — NARROWED 2026-08-23 — the ingest half is closed; the certify half is not
+
+- **Narrows:** D17 above, left in place unedited (**SP10**)
+- **Decision:** `DECISIONS.md` D-0055 · **Prior:** D-0020, D-0021, D-0028
+
+D17 said Plane 1 *"does not yet preserve an undecodable textual header"*, and that
+upstream mode 1 raises so *"the ingest fails rather than completing with the failure
+recorded."* The second half is now false, on the measurement in D-0055.
+
+**CLOSED — the ingest path.** Measured on a synthetic N=1 fixture, 12 traces, 8 planted
+non-conforming bytes, against pinned `multidimio` 1.2.1 / `segy` 0.6.0:
+
+| Claim | Measured |
+|---|---|
+| Ingest completes on a non-conforming textual header | **yes** — was `ValueError` from `segy_to_mdio` |
+| Stored raw textual header vs source | **byte-identical**, 3200 of 3200 |
+| Plane 1 / G2a | **PASS** |
+| Plane 2 / G2b | **PASS** (raw authoritative) |
+| Certificate `decode_status` | **`raw_preserved_decode_failed`** |
+| Offending cells named by SDIP vs by upstream's own `ValueError` | **8 of 8 identical** |
+| G7 on the fallback store shape | **PASS** — 10 of 10 controls, exact gate sets |
+| Textual controls on that shape | fail **G2a alone** |
+
+The closure path D17 proposed is the one taken, with one change: the raw bytes were
+already captured before the converter ran (D-0021), so what was needed was not a capture
+but a **mode choice** — upstream's file-header persistence is pinned **off** for such a
+source, which is the only one of its three modes that neither refuses nor rewrites.
+
+**Scope of the measurement.** N=1 synthetic fixture. **Unmeasured on a real
+non-conforming legacy vintage**, which is the data this clause exists for and which the
+test-data policy (§6) rightly keeps out of the repository. Nothing here is measured at
+survey scale.
+
+**STILL OPEN — `sdip certify` on such a source.** The store carries no
+`segy_file_header` variable, so `mdio_to_segy` cannot export it and **G3 is unreachable**.
+`sdip.export.roundtrip.export` now refuses with a typed `RoundTripUnavailableError`
+naming the cause, so the failure is clean rather than an upstream traceback — but
+`certify` calls `export` unconditionally and stops there.
+
+This is **not** a defect in the fallback. Upstream's exporter re-encodes the *decoded*
+text and sanitises anything that will not encode, so whole-file byte identity is
+impossible for a non-conforming textual header under **every** mode, including the barred
+mode 2. The open question is what G3 should *report* for a source that can never
+round-trip:
+
+- **`FAIL`** — truthful, and yields `NON-EQUIVALENT`; or
+- **`ROUNDTRIP-SCOPED`** — which §7 G3 reserves for *"sources whose non-conformance makes
+  byte-identity impossible"*, and which requires a written justification naming the
+  specific non-conformance. §7 G3 also says it is **never inferred** from a mismatch.
+
+Either is a change to a gate. **§9 requires a maintainer, so neither was chosen here.**
+Note the load-bearing detail for whoever rules on it: `verdict_for` reaches `EQUIVALENT`
+on planes plus G7 alone, so recording G3 as `NOT_RUN` for such a store would let it
+certify as `EQUIVALENT` without a round trip ever having been attempted. That must not
+happen, and it is the reason `export` refuses rather than returning a result.
+
+**Closure for the remaining half:** a maintainer ruling on G3 for sources whose textual
+header cannot be decoded, then whatever `certify` needs to honour it.
+
+---
+
+## D8 — **NARROWED 2026-08-23.** Corpus built; 33 members, 9 classes; one residual
+
+- **Status:** `NARROWED` (original entry above unedited, **SP10**) · **Decision:** `DECISIONS.md` D-0057
+- **Original status:** `OPEN`, blocking public release · **Spec:** §11.4
+
+The corpus exists: `tests/fixtures/generators/hostile.py` writes **33 malformed SEG-Y
+files across 9 hostility classes** from a fixed seed, and
+`tests/negative/test_d8_hostile_corpus.py` runs every one of them — plus a **well-formed
+positive control** (**SP11**) — through a real ingest in its own process, asserting on
+error type, the frame that raised, peak RSS and the filesystem either side of the run.
+
+**What it found.** 18 of the 33 came back with an exception SDIP does not define, raised
+inside `segy`, `mdio` or `pydantic` after the file had already been read and sized from
+its own numbers — including a **`ZeroDivisionError` from a zero in binary-header bytes
+3217-3218**. §11.4's *"validated against actual file size before allocation"* was not
+happening. `src/sdip/ingest/preflight.py` now does it, in 400 bytes and integer
+arithmetic, before any allocation.
+
+| | Before | After |
+|---|---:|---:|
+| Typed `UntrustedInputError`, raised inside `sdip` | 8 | **24** |
+| Untyped exception from a dependency | **18** | **0** |
+| MDIO's typed grid errors | (counted above) | 3 |
+| Converted | 7 | 6 |
+| Peak RSS on a refusal | 118.6-120.3 MB | **52.9-53.4 MB** |
+
+**Two of §11.4's four clauses were already true and are now measured rather than
+asserted:** no unbounded allocation was ever found (declared ceiling 512 MiB, observed
+maximum 212.0 MB, and that is a *successful* ingest), and no write escaped the declared
+output directory — `path_bait_in_headers` is a valid file whose textual header reads
+`../../../../../../tmp/sdip_d8_escape`, and it converts without that path becoming one.
+
+### What remains open
+
+**1. Three members reach the console as a traceback.** `grid_sparse_enormous`,
+`grid_index_negative` and `grid_all_identical` are refused by MDIO's
+`GridTraceSparsityError` / `GridTraceCountError`. They are **deliberately not re-typed**:
+these are geometry verdicts needing a full trace-header pass, and **probe P5 pinned those
+exact types as the defence SDIP relies on** (`DECISIONS.md` D-0036) — `GridTraceCountError`
+is raised unconditionally and is therefore not suppressible by `MDIO_IGNORE_CHECKS`.
+Re-typing them would overturn a recorded measurement for a presentation preference, which
+is a maintainer's call (`CLAUDE.md` §9). **Candidate closure:** handle the named upstream
+types at the CLI boundary only, so the library keeps raising what P5 measured while the
+operator stops getting a stack trace.
+
+**2. A file declaring a *variable* number of extended textual headers is not
+reconciled.** Bytes 3505-3506 may hold `-1`, meaning *"variable, terminated by a stanza"*.
+No fixed-offset arithmetic can then find the first trace, so `preflight` declares the
+layout unknown and passes the file to the parser that can read stanzas rather than
+guessing an offset or refusing a legal rev 2 file. The corpus has **no member for this
+case** because generating a stanza-terminated rev 2 file needs writer support the pinned
+`segy` 0.6.0 does not expose through its factory.
+
+**3. The corpus is structural, not combinatorial.** 33 hand-built members, each isolating
+one property, is the *"deterministic committed corpus"* the debt asked for — it is not a
+fuzzer and does not claim a fuzzer's coverage. No mutation search, no coverage feedback,
+no long-running campaign. A file that is hostile in two ways at once is unmeasured.
+
+**4. Measured on one platform.** Darwin 25.5.0, CPython 3.12.13. The RSS ceiling is a
+declared number checked against `ru_maxrss`, whose unit differs between Darwin and Linux;
+the conversion is explicit in `tests/negative/hostile_child.py` but the *figures* have not
+been reproduced on Linux.
+
+---
+
+## D7 — MEASURED 2026-08-23 — the cloud path is not merely untested, it is **unreachable**
+
+- **Status:** `OPEN`, and the scope of the debt has grown
+- **Probe:** P8, Amendment A local object-store leg, **RAN** · **Decision:** `DECISIONS.md` D-0058
+- Prior D7 entries left in place unedited (**SP10**)
+
+D7 has said since it was raised that cloud deployment is *unmeasured*. P8's local leg —
+MinIO `RELEASE.2025-10-15T17-29-55Z` on loopback, a real S3 server, not a mock — measured
+something worse:
+
+**There is no cloud entry point, and using one silently succeeds.** Given
+`s3://bucket/store.mdio`, `ingest()` returned normally and `sdip ingest` **exited 0** with
+`G1 PASS`, having written a complete 20-file store to a local directory literally named
+`s3:` in the working directory, with **0 objects** in the bucket. `Path(output).resolve()`
+collapses the doubled slash into a relative local path. See `DECISIONS.md` D-0058.
+
+**Known symptom, now refused.** `sdip.ingest.orchestrator.validate_output_path` rejects
+any URI scheme before any work is done, with a typed `PhaseNotAuthorisedError` naming this
+debt, and `tests/negative/test_object_store_output_refused.py` holds the control — 32
+tests, and 12 of them fail if the check is unwired. **The refusal is not a fix for D7.**
+It replaces a silent wrong write with a loud refusal; it implements nothing.
+
+**What the leg did establish, and it narrows the remaining work.** With the path left
+intact, every SDIP helper and all five planes work against MinIO **unmodified** —
+`segy_to_mdio` already takes a `UPath`, and the planes call `zarr.open_group(str(store))`,
+which stock `zarr` routes through `fsspec`. An object-store ingest was byte-identical to a
+local-filesystem ingest of the same source: 10/10 chunk files, 11/11 arrays `array_equal`,
+one differing leaf key across 12 `zarr.json` files and it is `createdOn`. **The blocker is
+the two `Path(...).resolve()` calls and the CLI argument types, not the storage layer.**
+
+**§11.2's mandatory clause is unmet.** *"Checkpoint-on-write is mandatory for any long
+run."* There is no checkpoint of any kind: a killed 284 MB ingest loses everything, a
+restart re-ingests from zero (36.13 s against 36.91 s fresh), and no object exists in the
+store that is not an array, its metadata, or a chunk. An interrupted store also carries no
+incompleteness marker — read with `mdio` absent it opens clean, returns 75–81 % fabricated
+`NaN` fill values with `trace_mask` calling every trace live, and emits **zero warnings**.
+
+**Still entirely unmeasured, and D7 remains open against all of it:** real cloud
+throttling, transient 5xx, connection resets, eventual consistency, GCS, Azure, and
+anything measured over hours. The longest run in the leg was 37 seconds. **No claim about
+S3, GCS or Azure behaviour may cite this leg.**
+
+**A separate finding from the same leg is not D7's** and is recorded here only so the
+trail is not lost: a partially written store missing `amplitude_raw_ibm32` and
+`headers_raw_uint8` passes all five planes and `sdip verify` reports `verify: PASS`. It
+reproduces on the local filesystem, so it is a property of the Equivalence Engine rather
+than of object storage, and it awaits a maintainer ruling under §9. See
+`prereg/P8-cloud-object-store.md`.
+
+---
+
+## D38 — The verification path materialises whole files; the declared ceiling breaches near 1.1–1.4 GB
+
+- **Status:** `OPEN` (raised 2026-08-23) · **Decision:** `DECISIONS.md` D-0060
+- **Supersedes the reading of:** D2 (closed on a measurement that varied nothing)
+
+**Measured, N=4, 51–403 MB:** `RSS_MB = 214.7 + 7.73 × source_MB`, **R² = 0.99997**.
+Verification memory is **linear in file size**, not in a chunk working set. Ten `[:]`
+sites in `planes.py`; `plane_4` holds the source samples and the store volume at once.
+
+**P3's flat 2.81–2.87 GiB across eleven files measured one file size eleven times** — all
+twelve Sleipner files are byte-identical at 494,565,408 bytes.
+
+**Falsifier, pre-registered here before the run that would test it:** ingest and verify a
+single source file of **≥ 1.5 GB** under the declared 8.0 GiB ceiling. If peak RSS stays
+under the ceiling, this debt's model is wrong and the entry is corrected. If it breaches
+— predicted between **1.1 GB** (synthetic fit) and **1.4 GB** (real-point anchor) — the
+fix is streaming comparison, not a raised ceiling.
+
+**Closure requires a refactor, not a patch.** Chunked comparison changes how every plane
+reads its inputs, and it is explicitly **out of scope for the D-0059 change**: landing a
+read-path refactor beside a new equivalence leg would make both unreviewable. Separate
+design lock.
+
+**Not a correctness defect.** Every gate's verdict is unaffected; what is affected is the
+largest file the engine can verify at all, and the honesty of the D-0042 sentence that
+claimed otherwise.
+
+---
+
+## D39 — A wall-clock assertion in the suite flakes under load
+
+- **Status:** `OPEN` (raised 2026-08-23) · observed while validating D-0059
+
+`test_p7_latency.py::test_a_shape_built_for_a_pattern_beats_the_default_on_that_pattern`
+failed at load average **11.2** with `matched=6.33 ms` against `default=4.00 ms`, then
+**passed 3/3 in isolation** on the same commit.
+
+It is a real comparison — a chunk shape built for an access pattern should beat the
+default on that pattern — but at millisecond scale on a contended machine the measurement
+is noise. **CI is parked (`ci/`), so this has never run in CI**; it will flake there the
+first time a runner is busy, and a flaky gate teaches people to re-run rather than read.
+
+**Not fixed here**, because the honest options are a design choice: raise N and compare
+medians, compare a ratio with a declared margin, or mark it as a benchmark excluded from
+the gating suite. Each changes what the probe asserts, and P7's pre-registration is
+committed.

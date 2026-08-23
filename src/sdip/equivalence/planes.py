@@ -25,6 +25,7 @@ import numpy as np
 from sdip._pins import SEGY_BINARY_HEADER_BYTES, SEGY_TEXTUAL_HEADER_BYTES
 from sdip.errors import UntrustedInputError
 from sdip.ingest.file_headers import (
+    raw_header_node,
     read_raw_binary_from_store,
     read_raw_file_headers,
     read_raw_textual_from_store,
@@ -137,8 +138,7 @@ def plane_2(source: str | Path, store: str | Path) -> PlaneResult:
     try:
         import zarr
 
-        group = zarr.open_group(str(store), mode="r")
-        node = group["segy_file_header"] if "segy_file_header" in group else group
+        node = raw_header_node(zarr.open_group(str(store), mode="r"))
         parsed_present = "binaryHeader" in dict(node.attrs)
     except (KeyError, ValueError):  # pragma: no cover - store without the variable
         parsed_present = False
@@ -325,6 +325,276 @@ def _raw_header_evidence(
     }
 
 
+DERIVED_COORD_NOTE = (
+    "Derived-array leg, AND-ed into G2c's verdict. cdp_x and cdp_y are the OUTPUT of "
+    "the declared coordinate-scalar transform (DECISIONS.md D-0040), and SP1 requires a "
+    "declared transform to be VERIFIED - a declared transform whose output nothing "
+    "checks is half-declared. Recomputed here from the source trace headers under the "
+    "declared semantics (positive scalar multiplies, negative divides) and compared with "
+    "np.array_equal against the arrays a consumer actually reads (G4, section 10.3). "
+    "Until 2026-08-23 nothing compared them: an external audit corrupted cdp_x and cdp_y "
+    "individually and ALL FIVE PLANES still returned PASS (D-0056)."
+)
+
+DERIVED_TIME_NOTE = (
+    "Derived-axis leg, AND-ed into G2d's verdict. The sample axis is recomputed from the "
+    "trace-header sample interval and delay - axis[i] = delay + i * interval/1000 - and "
+    "compared with np.array_equal against the stored axis. Samples are meaningless "
+    "without the axis that positions them: a corrupted axis mislabels every sample in "
+    "depth or time while the sample values themselves compare equal. Until 2026-08-23 "
+    "nothing compared it (D-0056)."
+)
+
+
+def _scale_coordinate(raw: Any, scalar: int) -> Any:
+    """Apply the SEG-Y coordinate scalar exactly as the declared transform defines it.
+
+    Positive multiplies, negative divides, and 0 is treated as 1 - the convention
+    :class:`~sdip.spec.transforms.CoordinateScalarTransform` documents. Division is done
+    in ``float64`` because that is what the stored arrays are; this is **not** a
+    tolerance, and the comparison downstream is still exact.
+    """
+    values = np.asarray(raw, dtype=np.float64)
+    if scalar > 1:
+        return values * float(scalar)
+    if scalar < -1:
+        return values / float(-scalar)
+    return values
+
+
+def _project_cell(cell: tuple[int, ...], grid: tuple[str, ...], dims: tuple[str, ...]) -> Any:
+    """Project a full-grid cell onto the dimensions one array actually declares.
+
+    A derived coordinate array is **not** necessarily indexed by the whole grid. Plane 3
+    RAISED on every prestack geometry when this leg first landed, because the cell was
+    used whole - and a plane that raises has not judged the store at all, which is the
+    P7 failure mode over again (D-0039).
+
+    Returns the projected index tuple, or ``None`` when the array names a dimension the
+    grid does not - in which case the caller records NOT CHECKED rather than guessing.
+    """
+    if not dims:
+        return None
+    try:
+        return tuple(cell[grid.index(d)] for d in dims)
+    except ValueError:
+        return None
+
+
+def _array_dimension_names(group: Any, name: str) -> tuple[str, ...]:
+    """Dimension names an array declares, or ``()`` when it declares none."""
+    names = getattr(group[name].metadata, "dimension_names", None)
+    return tuple(names) if names else ()
+
+
+def _derived_coordinate_evidence(
+    source_headers: Any, group: Any, trace_map: Any, grid: tuple[str, ...]
+) -> dict[str, Any]:
+    """Recompute ``cdp_x``/``cdp_y`` from the source headers and compare, exactly.
+
+    **Absent array means NOT CHECKED, never checked-and-passed** - the same discipline
+    the raw legs use. A store without a coordinate array, or a source whose spec carries
+    no coordinate scalar, yields ``None`` rather than ``True``.
+    """
+    from sdip.spec.transforms import COORD_ARRAYS, COORD_SCALAR_FIELD, detect_coordinate_scalar
+
+    names = getattr(getattr(source_headers, "dtype", None), "names", None) or ()
+    present = [a for a in COORD_ARRAYS if a in group]
+    if not present:
+        return {
+            "derived_coords_present": False,
+            "derived_coords_verified": False,
+            "derived_coords_identical": None,
+            "derived_coords_note": (
+                "store carries no cdp_x/cdp_y array; absence is NOT evidence they match."
+            ),
+        }
+
+    transform = detect_coordinate_scalar(source_headers)
+    if transform is None or COORD_SCALAR_FIELD not in names:
+        return {
+            "derived_coords_present": True,
+            "derived_coords_verified": False,
+            "derived_coords_identical": None,
+            "derived_coords_note": (
+                "spec declares no coordinate scalar, so the derivation cannot be "
+                "reconstructed. NOT CHECKED - not checked-and-passed."
+            ),
+        }
+
+    scalars = np.asarray(source_headers[COORD_SCALAR_FIELD]).ravel()
+    mismatches: list[dict[str, Any]] = []
+    compared = 0
+
+    for array_name in present:
+        if array_name not in names:
+            return {
+                "derived_coords_present": True,
+                "derived_coords_verified": False,
+                "derived_coords_identical": None,
+                "derived_coords_note": (
+                    f"source header has no {array_name!r} field; the derivation cannot "
+                    "be reconstructed. NOT CHECKED."
+                ),
+            }
+        stored = np.asarray(group[array_name][:])
+        raw = np.asarray(source_headers[array_name]).ravel()
+        dims = _array_dimension_names(group, array_name)
+        projected = {
+            ordinal: _project_cell(cell, grid, dims)
+            for ordinal, cell in trace_map.ordinal_to_cell.items()
+        }
+        if not dims or any(v is None for v in projected.values()):
+            return {
+                "derived_coords_present": True,
+                "derived_coords_verified": False,
+                "derived_coords_identical": None,
+                "derived_coords_note": (
+                    f"{array_name} is indexed by {list(dims)}, which the grid "
+                    f"{list(grid)} does not address. NOT CHECKED - not "
+                    "checked-and-passed."
+                ),
+            }
+        for ordinal in sorted(trace_map.ordinal_to_cell):
+            index = projected[ordinal]
+            compared += 1
+            # Each trace's OWN scalar, never trace 0's applied to all. Upstream reads
+            # trace 0 only; a survey whose scalar varies is legal SEG-Y, and applying one
+            # trace's scalar to the rest would be a fabrication under SP12.
+            expected = _scale_coordinate(raw[ordinal], int(scalars[ordinal]))
+            observed = np.asarray(stored[index], dtype=np.float64)
+            if not np.array_equal(expected, observed):
+                if len(mismatches) < 20:
+                    mismatches.append(
+                        {
+                            "array": array_name,
+                            "source_ordinal": ordinal,
+                            "cell": list(index),
+                            "header_value": float(np.asarray(raw[ordinal], dtype=np.float64)),
+                            "coordinate_scalar": int(scalars[ordinal]),
+                            "expected": float(expected),
+                            "observed": float(observed),
+                        }
+                    )
+
+    return {
+        "derived_coords_present": True,
+        "derived_coords_verified": True,
+        "derived_coords_identical": not mismatches,
+        "derived_coords_arrays": present,
+        "derived_coords_compared": "np.array_equal, recomputed from source headers - EXACT",
+        "derived_coords_n": compared,
+        "derived_coords_scalar_uniform": transform.uniform,
+        "derived_coords_scalar_values": list(transform.distinct_values),
+        "derived_coords_first_difference": mismatches[0] if mismatches else None,
+        "derived_coords_mismatch_count": len(mismatches),
+        "derived_coords_note": DERIVED_COORD_NOTE,
+    }
+
+
+def _sample_axis_name(group: Any, variable: str, grid: tuple[str, ...]) -> str | None:
+    """Name of the sample axis: the data variable's dimensions minus the grid ones.
+
+    **Read from Zarr v3 metadata, never assumed to be ``"time"``** - a depth-domain
+    template names it ``depth``, and hard-coding a dimension name is exactly the defect
+    probe P7 found in planes 3-5 (D-0039).
+
+    Note it cannot come from :func:`store_dimensions`, which reports the **grid**
+    dimensions and deliberately excludes the sample axis. Using its last entry compares
+    the crossline array against a time progression - a mistake made and caught here
+    during the D-0056 fix, and the reason this helper exists rather than an index.
+    """
+    if variable not in group:
+        return None
+    names = getattr(group[variable].metadata, "dimension_names", None)
+    if not names:
+        return None
+    extra = [n for n in names if n not in set(grid)]
+    return extra[-1] if extra else None
+
+
+def _time_axis_evidence(source_headers: Any, group: Any, axis: str | None) -> dict[str, Any]:
+    """Recompute the sample axis from the source headers and compare, exactly."""
+    if axis is None:
+        return {
+            "derived_axis_present": False,
+            "derived_axis_verified": False,
+            "derived_axis_identical": None,
+            "derived_axis_note": (
+                "the store declares no sample axis distinct from its grid dimensions; "
+                "NOT CHECKED - not checked-and-passed."
+            ),
+        }
+    names = getattr(getattr(source_headers, "dtype", None), "names", None) or ()
+    if axis not in group:
+        return {
+            "derived_axis_present": False,
+            "derived_axis_verified": False,
+            "derived_axis_identical": None,
+            "derived_axis_note": f"store carries no {axis!r} array; NOT CHECKED.",
+        }
+    if "sample_interval" not in names or "delay_recording_time" not in names:
+        return {
+            "derived_axis_name": axis,
+            "derived_axis_present": True,
+            "derived_axis_verified": False,
+            "derived_axis_identical": None,
+            "derived_axis_note": (
+                "source header lacks sample_interval or delay_recording_time, so the "
+                "axis cannot be reconstructed. NOT CHECKED - not checked-and-passed."
+            ),
+        }
+
+    intervals = np.unique(np.asarray(source_headers["sample_interval"]).ravel())
+    delays = np.unique(np.asarray(source_headers["delay_recording_time"]).ravel())
+    if intervals.size != 1 or delays.size != 1:
+        # A varying interval or delay is legal SEG-Y and means the axis is not a single
+        # shared progression. Recorded, never guessed at.
+        return {
+            "derived_axis_name": axis,
+            "derived_axis_present": True,
+            "derived_axis_verified": False,
+            "derived_axis_identical": None,
+            "derived_axis_intervals": [int(v) for v in intervals[:10]],
+            "derived_axis_delays": [int(v) for v in delays[:10]],
+            "derived_axis_note": (
+                "sample_interval or delay_recording_time varies between traces, so a "
+                "single shared axis is not derivable. NOT CHECKED."
+            ),
+        }
+
+    stored = np.asarray(group[axis][:])
+    interval_us = int(intervals[0])
+    delay_ms = int(delays[0])
+    expected = delay_ms + np.arange(stored.shape[0], dtype=np.float64) * (interval_us / 1000.0)
+    observed = np.asarray(stored, dtype=np.float64)
+    identical = bool(np.array_equal(expected, observed))
+
+    first = None
+    if not identical:
+        differing = np.flatnonzero(expected != observed)
+        if differing.size:
+            i = int(differing[0])
+            first = {
+                "index": i,
+                "expected": float(expected[i]),
+                "observed": float(observed[i]),
+            }
+
+    return {
+        "derived_axis_name": axis,
+        "derived_axis_present": True,
+        "derived_axis_verified": True,
+        "derived_axis_identical": identical,
+        "derived_axis_compared": "np.array_equal, recomputed from source headers - EXACT",
+        "derived_axis_n": int(stored.shape[0]),
+        "derived_axis_sample_interval_us": interval_us,
+        "derived_axis_delay_ms": delay_ms,
+        "derived_axis_first_difference": first,
+        "derived_axis_note": DERIVED_TIME_NOTE,
+    }
+
+
 def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool) -> PlaneResult:
     """**Plane 3 — trace header.** Gate G2c. Spec §4.4.
 
@@ -432,7 +702,19 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
     raw_identical = raw_evidence.get("raw_header_bytes_identical")
     raw_ok = raw_identical is not False
 
-    ok = not mismatches and not missing_fields and trace_map.invertible and raw_ok
+    # THIRD leg: the derived coordinate arrays. cdp_x/cdp_y are the OUTPUT of the
+    # declared coordinate-scalar transform (D-0040), and SP1 requires a declared
+    # transform to be verified - a declared transform whose output nothing checks is
+    # half-declared. An external audit corrupted each of them and every plane still
+    # returned PASS (D-0056); G4 promotes precisely these arrays as what a consumer
+    # reads, so a store could carry corrupted world coordinates under EQUIVALENT.
+    #
+    # Same `None` discipline as the byte leg: absent or underivable is NOT CHECKED and
+    # NOT a failure. Only an explicit False fails.
+    coord_evidence = _derived_coordinate_evidence(source_headers, group, trace_map, dimensions)
+    coord_ok = coord_evidence.get("derived_coords_identical") is not False
+
+    ok = not mismatches and not missing_fields and trace_map.invertible and raw_ok and coord_ok
     return PlaneResult(
         plane=3,
         gate="G2c",
@@ -455,13 +737,16 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
                 "byte leg, which needs no spec, is ANDed in beside it."
             ),
         }
-        | raw_evidence,
+        | raw_evidence
+        | coord_evidence,
     )
 
 
 RAW_IBM32_NOTE = (
-    "Second leg, reported separately and NOT part of G2d's verdict. The decoded "
-    "comparison above is the gate; this one compares the undecoded uint32 words in "
+    "Second leg, AND-ed into G2d's verdict (DECISIONS.md D-0049): a raw mismatch fails "
+    "this plane, and a raw pass cannot rescue a failed decoded comparison. The decoded "
+    "comparison above remains the gate's definition; this leg compares the undecoded "
+    "uint32 words in "
     "amplitude_raw_ibm32 against the same words read from the source by raw byte "
     "offset. It is EXACTLY invertible by construction - a uint32 is copied, not "
     "transformed - so it holds precisely where the float comparison cannot: probe P2 "
@@ -565,16 +850,26 @@ def plane_4(
     padding introduced to regularise the grid; it is **not data** (**SP12**) and is
     excluded by the live mask rather than compared against anything.
 
-    **The raw ``ibm32`` words are a second, separate leg.** Where the store carries the
-    parallel ``amplitude_raw_ibm32`` view (``OPEN_DEBTS`` D1), the undecoded ``uint32``
-    words are additionally compared against the source, and the result is recorded as
-    ``raw_ibm32_words_verified`` / ``raw_ibm32_identical``. That comparison is **exactly
-    invertible by construction** and therefore says something the decoded comparison
-    cannot — but it does **not** decide this plane's verdict, in either direction: it
-    cannot rescue a decoded mismatch, and a raw mismatch cannot convert a decoded pass
-    into a failure here. G2d is defined on the decoded samples (§4.5); the raw leg is
-    evidence the certificate carries alongside it, and a reader must be able to see the
-    two facts separately because a store can have correct raw words and a lossy decode.
+    **The raw ``ibm32`` words are a second leg, AND-ed into this plane's verdict.**
+    Where the store carries the parallel ``amplitude_raw_ibm32`` view (``OPEN_DEBTS``
+    D1), the undecoded ``uint32`` words are compared against the source and the result
+    recorded as ``raw_ibm32_words_verified`` / ``raw_ibm32_identical``. That comparison
+    is **exactly invertible by construction** and therefore says something the decoded
+    comparison cannot.
+
+    **A raw mismatch FAILS this plane** (``DECISIONS.md`` D-0049). Asymmetry is the
+    point: a raw pass cannot rescue a failed decoded comparison, but a raw failure is
+    still a failure. Left evidence-only, SDIP could write a corrupted
+    ``amplitude_raw_ibm32`` and no gate would notice — *a portable copy nothing checks
+    is not evidence.*
+
+    This docstring, and ``RAW_IBM32_NOTE`` which ships **inside the certificate**, both
+    said the opposite until 2026-08-23: that the leg was *"NOT part of G2d's verdict"*.
+    D-0049 changed the code and left both strings behind. Corrected under D-0056; a
+    certificate carrying a false statement about its own semantics is not a typo.
+
+    **The time axis is verified here too** — see :func:`_time_axis_evidence`. The samples
+    are meaningless without the axis that positions them.
     """
     from sdip.equivalence.trace_map import build_trace_map
 
@@ -624,7 +919,17 @@ def plane_4(
     raw_identical = raw_evidence.get("raw_ibm32_identical")
     raw_ok = raw_identical is not False
 
-    ok = not mismatches and trace_map.invertible and raw_ok
+    # THIRD leg: the sample axis. Samples are meaningless without the axis that
+    # positions them - a corrupted axis mislabels every sample in depth or time while
+    # the sample VALUES still compare equal, which is why the decoded leg cannot see it.
+    # The axis name comes from Zarr v3 dimension metadata, never assumed to be "time":
+    # hard-coding a dimension name is the defect P7 found (D-0039).
+    axis_evidence = _time_axis_evidence(
+        source_headers, group, _sample_axis_name(group, variable, dimensions)
+    )
+    axis_ok = axis_evidence.get("derived_axis_identical") is not False
+
+    ok = not mismatches and trace_map.invertible and raw_ok and axis_ok
     return PlaneResult(
         plane=4,
         gate="G2d",
@@ -644,7 +949,8 @@ def plane_4(
                 "compared. No tolerance is applied anywhere in this comparison."
             ),
         }
-        | raw_evidence,
+        | raw_evidence
+        | axis_evidence,
     )
 
 

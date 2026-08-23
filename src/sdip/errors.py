@@ -48,6 +48,15 @@ class UntrustedInputError(SdipError):
     """A source file failed validation before allocation. Spec section 11.4."""
 
 
+class RoundTripUnavailableError(SdipError):
+    """The store cannot be exported, so gate G3 cannot be run against it. Spec 7 G3.
+
+    Raised rather than returning a result: G3 is defined as whole-file SHA-256 equality
+    between an export and the source, and a round trip that never happened has no
+    verdict. Reporting one would put an unmeasured gate on a certificate.
+    """
+
+
 class PhaseNotAuthorisedError(SdipError):
     """The requested capability belongs to a later roadmap phase. Spec section 13.
 
