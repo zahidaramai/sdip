@@ -3478,3 +3478,53 @@ exists to catch, one level up again.
 | full grid (no padding) | **not applicable**, named, reason recorded |
 
 **16 controls. Suite: 1118 passed.**
+
+---
+
+## D-0070 — 2026-08-23 — Declared scope: a supported/refused table, and a refusal above the memory envelope
+
+**D-0063 ruling 5.** Two halves of one idea: **say what is supported, and refuse the rest
+with a code rather than degrading.**
+
+### The envelope refusal
+
+The verification path fully materialises, so peak RSS is **linear in file size** —
+`RSS_MB = 214.7 + 7.73 × source_MB`, **R² = 0.99997** (D-0060). Above the envelope the
+process is **OOM-killed**, and the operator gets **no verdict at all**.
+
+**A tool that dies is worse than a tool that declines**, because a death leaves nothing
+to read. `sdip verify` now refuses above a declared envelope, **before any read**, on the
+file's size alone — the same fail-before-you-allocate rule as §3.6.
+
+**The default is 1.0 GiB, chosen UNDER a range the measurements do not agree on.** D-0060
+bracketed the breach of a declared 8 GiB ceiling between **1,083 MB** (synthetic fit) and
+**1,393 MB** (anchored on the one real survey point). *A default set inside a range where
+two measurements disagree would be a guess wearing a number.*
+
+**The projection is used as the conservative side of a bracket, never as a point
+estimate.** It over-predicts the single real measurement by ~32 %, and that direction is
+the safe one: an under-prediction would let a file through that then OOMs, which is the
+exact failure this prevents. A test pins that direction.
+
+**There is no clamp.** `--envelope-gib 0` disables the check entirely, because an
+operator who knows their machine has the memory may say so, and the number they pass is
+recorded. Refusing is not a dead end and the message names the escape hatch.
+
+Verified against the real 494 MB survey: `--envelope-gib 0.1` exits **1** with
+`SDIP-E-ENVELOPE`, cites the measurement, projects 3.9 GiB, and emits **no traceback**.
+
+### The table
+
+`README.md` gains supported and refused sections. **Every refusal carries a stable reason
+code so a caller can branch on the code, not on prose.**
+
+**The most important row is the one that is not a refusal.** `int32`, `uint32`, `int64`,
+`uint64` and `float64` are **not refused** — they certify **`NON-EQUIVALENT` with a named
+cause**. The decode to `float32` can alter the value (P9), no undecoded view is written
+for them, so Plane 4 fails and *nothing can make it pass*. **That is fail-safe, and since
+D-0062 it is diagnosed rather than silent.**
+
+That row is the shape of every future gap: a capability is admitted **when a real file
+demands it**, and every admitted capability ships **its G7 control and its refusal path
+in the same change** (ruling 7). Until then the honest outcome is a **named** failure,
+not a plausible one.

@@ -19,7 +19,8 @@ from sdip import __version__
 from sdip._pins import SPEC_VERSION
 from sdip.cli.doctor import environment_block, run_doctor
 from sdip.cli.result import Report, Status
-from sdip.errors import DirtyTreeError, PhaseNotAuthorisedError, SdipError
+from sdip.equivalence.envelope import DEFAULT_ENVELOPE_GIB
+from sdip.errors import DirtyTreeError, PhaseNotAuthorisedError, SdipError, UntrustedInputError
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -241,17 +242,22 @@ def ingest_cmd(
         click.echo(
             f"warnings      {len(ledger.observed)} python warning(s), "
             f"{len(ledger.logged)} log record(s), "
+            f"{len(ledger.stderr_recovered)} stderr line(s), "
             f"{len(ledger.suppressions)} suppression(s), "
             f"{len(ledger.undeclared_suppressions)} UNDECLARED"
         )
         # Printing the counts without the scope is the exact misreading SP6 is about:
         # zero observed warnings is not evidence of a quiet run when warnings raised in
-        # MDIO's spawn workers never reach this process (OPEN_DEBTS D26).
+        # MDIO's spawn workers never reach this process as objects (OPEN_DEBTS D35).
         click.echo(f"              covers: {scope.get('covers', 'unknown')}")
         if scope.get("worker_process_warnings"):
             click.echo(f"              workers: {scope['worker_process_warnings']}")
         for record in ledger.logged[:5]:
             click.echo(f"              [{record.level}] {record.logger}: {record.message[:70]}")
+        # Printed under their own heading, never folded into the warning count: a
+        # recovered line is text somebody printed, not a Warning object handed over.
+        for recovered in ledger.stderr_recovered[:5]:
+            click.echo(f"              [stderr] {recovered.category}: {recovered.message[:70]}")
     sys.exit(EXIT_OK if result.read_path_intact else EXIT_FAIL)
 
 
@@ -284,8 +290,25 @@ def _print_planes(planes: list[Any]) -> None:
 )
 @click.option("--skip-portability", is_flag=True, help="Skip G4 (it spawns a subprocess).")
 @click.option("--json", "as_json", is_flag=True, help="Emit a machine-readable report.")
+@click.option(
+    "--envelope-gib",
+    type=float,
+    default=DEFAULT_ENVELOPE_GIB,
+    show_default=True,
+    help=(
+        "Largest single source file to attempt. Above it, verification is REFUSED rather "
+        "than started: the verification path fully materialises, so peak RSS is linear in "
+        "file size and the process is killed instead of returning a verdict. Pass 0 to "
+        "disable the check."
+    ),
+)
 def verify_cmd(
-    source: Path, store: Path, revision: str, skip_portability: bool, as_json: bool
+    source: Path,
+    store: Path,
+    revision: str,
+    skip_portability: bool,
+    as_json: bool,
+    envelope_gib: float,
 ) -> None:
     """Run the Equivalence Engine against a store: five planes plus G4.
 
@@ -293,7 +316,15 @@ def verify_cmd(
     or G4 fails.
     """
     from sdip.equivalence import g4
+    from sdip.equivalence.envelope import envelope_refusal
     from sdip.spec import build_gap_free_spec, g1_for_spec
+
+    # Checked BEFORE any read, on the file's size alone - the same fail-before-you-
+    # allocate rule as §3.6. Discovering the limit by being OOM-killed mid-plane costs
+    # the operator the run and returns no verdict at all.
+    refusal = envelope_refusal(source, envelope_gib=envelope_gib)
+    if refusal is not None:
+        raise UntrustedInputError(refusal)
 
     number: float | int = float(revision) if "." in revision else int(revision)
     built = build_gap_free_spec(number)
@@ -448,7 +479,7 @@ def certify_cmd(
     from sdip.equivalence import g4, g5, issue
     from sdip.equivalence.closure import roundtrip_closure
     from sdip.equivalence.determinism import g6
-    from sdip.equivalence.nonvacuity import g3_control, g7
+    from sdip.equivalence.nonvacuity import closure_control, g3_control, g7
     from sdip.export import export as run_export
     from sdip.ingest import ingest as run_ingest
     from sdip.provenance.git import capture_git_state
@@ -503,6 +534,16 @@ def certify_cmd(
         closure = roundtrip_closure(exported, output, spec, workdir=Path(scratch) / "closure")
         closure_status, closure_summary = closure.status, closure.summary()
 
+        # Closure's own negative control (CLAUDE.md §5): corrupt one byte of the export's
+        # binary file header - the bytes that live in ATTRIBUTES rather than arrays, and
+        # that closure was measured PASSING over before D-0067 - and require the
+        # file-header leg, and only that leg, to catch it. The clean run above is handed
+        # in as the baseline rather than recomputed: a second re-ingest to learn an answer
+        # already on hand is exactly the cost D18 was about.
+        closure_check = closure_control(
+            exported, output, spec, baseline=closure, workdir=Path(scratch) / "closure_control"
+        )
+
         # G6: two INDEPENDENT ingests of the same source, compared on chunk bytes and on
         # array values. Determinism cannot be shown by one run, so this is the only
         # place it can be established.
@@ -546,6 +587,7 @@ def certify_cmd(
             issued_by=f"sdip {__version__}",
         )
         certificate.payload["nonvacuity"]["g3_control"] = g3_check
+        certificate.payload["nonvacuity"]["closure_control"] = closure_check
 
     certificates.mkdir(parents=True, exist_ok=True)
     stamp = issued_at.replace(":", "").replace("-", "")
@@ -559,6 +601,14 @@ def certify_cmd(
     click.echo(g5_line)
     click.echo(f"[{g6_status}] G6        {g6_summary}")
     click.echo(f"[{closure_status}] closure   {closure_summary}")
+    click.echo(
+        f"[{closure_check['status']}] closure7  control {closure_check['name']}: "
+        + (
+            f"caught by the {closure_check['must_fire_leg']} leg and no other"
+            if closure_check["status"] == "PASS"
+            else "; ".join(closure_check["failure_reasons"])
+        )
+    )
     click.echo("")
     readiness = certificate.payload["release_readiness"]
     click.echo("")

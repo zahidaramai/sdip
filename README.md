@@ -47,6 +47,7 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 
 - [Overview](#-overview)
 - [Roadmap & Status](#️-roadmap--status)
+- [What SDIP Supports, and What It Refuses](#-what-sdip-supports-and-what-it-refuses)
 - [The Equivalence Contract](#-the-equivalence-contract)
 - [Tech Stack](#-tech-stack)
 - [Features](#-features)
@@ -165,6 +166,45 @@ and the `logger.warning` half of SP6 (D26).
 
 Full consolidated status: [`DECISIONS.md`](DECISIONS.md) **D-0041**. Live debts:
 [`OPEN_DEBTS.md`](OPEN_DEBTS.md) — debts are scheduled, never cancelled.
+
+---
+
+## ✅ What SDIP Supports, and What It Refuses
+
+**Anything unsupported refuses with a stable reason code. Nothing degrades.** A tool that
+half-works on a file it does not understand produces an artifact nobody can trust, and
+this project's entire claim is that its output is trustworthy. **Coverage is earned by
+demand; honesty is not optional at any coverage.**
+
+### Supported, end to end
+
+| | Support | Evidence |
+|---|---|---|
+| **SEG-Y revision 1** | full chain, certifiable | 11 files, 5.07 GiB, every gate `PASS`, every `G3` byte-identical |
+| **SEG-Y revision 0** | via a §6.4 override | `overrides/segy-rev0-poststack3d.toml` |
+| **Poststack 3D** | full chain | the primary path |
+| **Prestack CDP-offset, 2-D and 3-D** | full chain, certifiable | via an alias override; all five planes `PASS` |
+| **Sample formats `int8` `int16` `uint8` `uint16` `float32`** | exact decode | probe **P9** |
+| **`ibm32`** | with an undecoded parallel view | probe **P2**; `EQUIVALENT` only when `G3` is byte-identical |
+| **Big-endian** | the only byte order SDIP reads | — |
+| **Local filesystem** | the only backend measured | — |
+
+### Refused, each with a code and no build
+
+| Reason code | What is refused | Why, and the debt |
+|---|---|---|
+| `SDIP-E-ENVELOPE` | a single source file above the declared verification envelope (**1.0 GiB** by default) | verification RSS is **linear in file size** — measured `R² = 0.99997`. Above it the process is killed and you get **no verdict**, which is worse than declining. Streaming comparison is the fix and is deferred (**D38**, **D23**) |
+| little-endian | a byte order SDIP does not read | SDIP does not **guess** byte order; the refusal names it (**D28**) |
+| revision 2 / 2.1 | upstream-blocked | **D6** |
+| sparsity ratio > 10 | a grid sparser than upstream will build | **D30**. Lifting it needs `MDIO_IGNORE_CHECKS`, which is **barred** |
+| coordinate scalar `0` | an undefined scalar | **D27** |
+| cloud object stores | no named backend measured | **D7**. MinIO is a real S3 server but is not AWS S3, GCS or Azure |
+| `int32` `uint32` `int64` `uint64` `float64` | **not refused — certified `NON-EQUIVALENT` with a named cause** | the decode to `float32` can alter the value (**P9**), no undecoded view is written, so Plane 4 fails and *nothing can make it pass*. That is fail-safe, and it is now diagnosed rather than silent (**D41**) |
+
+**That last row is the shape of every future gap.** A format, geometry or backend is
+admitted when a real file demands it — and every admitted capability ships **its G7
+control and its refusal path in the same change**. Until then the honest outcome is a
+named failure, not a plausible one.
 
 ---
 
