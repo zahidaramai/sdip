@@ -82,11 +82,42 @@ def test_doctor_runs_every_declared_check(repo_root):
     ]
 
 
-def test_doctor_environment_checks_pass_here(repo_root):
-    """Everything except the tree state must pass in a correct environment."""
+# Checks that report on the ENVIRONMENT rather than on the code. Neither is a defect
+# in SDIP, and both legitimately fail in a correct setup: `working-tree` fails whenever
+# anything is uncommitted, and `git-hooks` fails until someone runs
+# `git config core.hooksPath .githooks`, which a fresh clone has not.
+ENVIRONMENT_DEPENDENT: frozenset[str] = frozenset({"working-tree", "git-hooks"})
+
+
+def test_doctor_substantive_checks_pass_here(repo_root):
+    """Every check that judges the CODE must pass. Environment state may vary.
+
+    **CORRECTED 2026-08-24, by CI's first-ever execution.** This asserted
+    ``failing <= {"working-tree"}`` and passed on every developer machine, because a
+    developer has run ``git config core.hooksPath .githooks`` at some point. A fresh CI
+    checkout has not, so ``git-hooks`` failed and took the whole unit job with it.
+
+    **The check was right and the test was wrong.** `sdip doctor` correctly reports that
+    hooks are not installed in that job — the `doctor` job installs them explicitly
+    before running, and `unit` has no reason to. What the test means to assert is that
+    the checks judging SDIP itself pass: barred variables, barred packages, upstream
+    pins, the licence scan and the publication firewall.
+
+    The environment-dependent pair is named in :data:`ENVIRONMENT_DEPENDENT` rather than
+    widened inline, so adding a third one is a deliberate act somebody has to justify.
+    """
     report = run_doctor(repo_root)
     failing = {c.name for c in report.failed}
-    assert failing <= {"working-tree"}, [c.summary for c in report.failed]
+    assert failing <= ENVIRONMENT_DEPENDENT, [c.summary for c in report.failed]
+    # and the substantive ones are asserted positively, not merely "not failing"
+    passing = {c.name for c in report.checks if c.name not in failing}
+    assert {
+        "barred-env-vars",
+        "barred-packages",
+        "upstream-pins",
+        "runtime-licences",
+        "publication-firewall",
+    } <= passing
 
 
 def test_every_check_cites_a_clause(repo_root):

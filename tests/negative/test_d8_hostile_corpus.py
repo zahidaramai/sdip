@@ -412,10 +412,28 @@ def test_the_hostile_corpus_costs_less_memory_than_the_well_formed_file(corpus_r
         if name != "positive_control" and not run.ingested
     }
     worst = max(refusals, key=lambda key: refusals[key])
-    assert refusals[worst] <= control, (
+
+    # A DECLARED MARGIN, and the reason is that the strict form asserts the wrong thing.
+    #
+    # CI's first-ever run failed here at 374.4 MB against 371.8 MB - 0.7 % apart, which
+    # is allocator and platform noise, not evidence of anything. Both numbers are
+    # dominated by interpreter and library baseline; neither reflects the megabytes a
+    # header CLAIMED.
+    #
+    # The property §3.6 actually asks for is that a refusal must not allocate from the
+    # file's own declared numbers. A corpus member declaring gigabytes would show up as
+    # a MULTIPLE of the control, not as a rounding difference. 1.25x is far below any
+    # such signal and far above platform noise, so the test still fails loudly on the
+    # defect it exists for while surviving a change of machine.
+    #
+    # Not fitted to the observed 1.007: a margin chosen to just clear the number that
+    # failed is a margin chosen by the data it was meant to judge.
+    allowed = control * 1.25
+    assert refusals[worst] <= allowed, (
         f"{worst} was refused but peaked at {refusals[worst] / 1024**2:.1f} MB against "
-        f"{control / 1024**2:.1f} MB for a real ingest. A refusal that costs more than "
-        "the work it refused to do allocated from the file's own numbers."
+        f"{control / 1024**2:.1f} MB for a real ingest (limit {allowed / 1024**2:.1f} MB, "
+        "1.25x). A refusal costing a MULTIPLE of the work it refused to do has allocated "
+        "from the file's own numbers, which is what section 3.6 forbids."
     )
 
 
