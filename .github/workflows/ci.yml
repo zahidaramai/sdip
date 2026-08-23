@@ -8,6 +8,8 @@
 name: ci
 
 on:
+  # Manual trigger, so a run can be re-fired without an empty commit.
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
