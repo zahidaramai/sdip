@@ -185,3 +185,78 @@ not a recalibration.
 **It does not retire the flat 1500 s by edit.** That number governed the v1.0.0
 certificate. It is superseded **by citation**, with both values readable, because a
 ceiling that quietly changes value makes every certificate issued under it unauditable.
+
+---
+
+## Amendment A — results, 2026-08-23
+
+Run after Amendment A was committed and pushed (`4cb9685`), per **SP9**.
+
+### The falsifier did NOT fire. The linear shape is right
+
+| statistic | value |
+|---|---|
+| controls applied | **15** of 16 (`fabricated_value_in_padding` n/a — full grid) |
+| **max** | **42.38 s** (`flipped_sample_bit`) |
+| median | 40.76 s |
+| mean | 40.85 s |
+| range | 38.95 – 42.38 s — **±4 %** |
+| falsifier `max > 3 × median` | **42.38 > 122.27 → does not fire** |
+
+**Controls are interchangeable units of work.** A per-control table is not needed; a
+single coefficient is the right shape. That was the question Amendment A asked, and it is
+answered.
+
+### Stage costs
+
+| stage | seconds |
+|---|---|
+| ingest | 77.63 |
+| five planes | 41.05 |
+| G4 portability | 0.85 |
+| export + G3 | 0.90 |
+| **G7, all 16 controls** | **612.93** |
+| closure | 110.69 |
+
+### **The derivation is INVALID, and is not adopted. Two reasons, both mine**
+
+**1. The harness did not time what the method requires.** Amendment A defines
+`T_base` as *"everything that is not G7 and not closure"*. **G6 and `g3_control` were
+never instrumented** — 271.22 s of the certified chain is unaccounted for. `T_base` can
+only be recovered by anchoring on a *different run's* total, which is not what the method
+said to do.
+
+**2. `N = 1` cannot set a coefficient that must hold across runs.** Working the
+derivation through anyway:
+
+```
+T_base 391.64  +  per_control 42.38 × 16  +  closure 110.69  =  1180.38 s  →  1150 s
+```
+
+**1150 s breaches a run that actually happened.** The D-0073 chain took **1168.55 s** on
+the same code path. Run-to-run variance is **4.6 %**, and the derivation leaves less
+headroom than that.
+
+### What is NOT being done, and why each would be wrong
+
+**Not adopting 1150 s.** Amendment A says a computed number below 1500 s is adopted — but
+that rule assumed a *sound* derivation. This one violated its own method and produces a
+ceiling that fails legitimate runs. **A derivation that did not follow its method has not
+produced a number; it has produced an error.**
+
+**Not adding a variance margin now.** Inventing a `× 1.1` after seeing that 1150 is too
+low is choosing slack to fit an observation — **exactly the SP9 trap this whole
+recalibration exists to avoid.** A variance term must be *declared before* the run that
+measures it.
+
+**Not raising 1500 s either.** It held, twice.
+
+### **The flat 1500 s stands.** D43 remains open
+
+**Closing D43 requires Amendment B, declared before its run:** instrument **every** stage
+including G6 and `g3_control`, run **N ≥ 3** chains, and **declare the variance statistic
+in advance** — a max-of-N, or a mean plus a stated multiple of the spread.
+
+**This is the probe working.** It established the model's shape, and it caught the
+method's insufficiency **before** a number derived from it became a gate. A ceiling set
+from this data would have failed the next legitimate run and looked like a regression.
