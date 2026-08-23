@@ -1622,3 +1622,31 @@ chain and read as a regression.
 **It retro-explains the original failure.** At 10 controls the model computes **1,080.5 s**
 where P3 declared **900 s** — that ceiling was already under-provisioned when written,
 which is why control growth broke it rather than merely tightening it.
+
+---
+
+## D44 — G6 has no dedicated test; its CI gate reports NOT_RUN, accurately
+
+- **Status:** `OPEN` (raised 2026-08-24) · **Decision:** `DECISIONS.md` D-0079
+
+**`-k 'determinism or g6'` selects zero tests.** `g6()` runs in the certify chain and is
+exercised **incidentally** inside the full-chain certificate test, but nothing tests it
+directly. **A defect in `g6` that the certificate test did not happen to notice would be
+caught by nothing.**
+
+Its CI gate's subject glob `test_determinism*.py` matches no file, so the gate reports
+`NOT_RUN` — **and that is the correct answer, not a bug.** The gate was deliberately left
+unarmed rather than pointed at the incidental coverage: aiming it there would report a
+gate as *armed* when nothing tests its subject directly, which is worse than an honest
+`NOT_RUN`.
+
+**Contrast with G4**, fixed in the same change: its subject `test_portability*.py` had
+**also never matched a file**, but G4 *is* directly covered — 21 tests under other names.
+That gate was mis-aimed and is now armed. **The two look identical from the CI summary and
+are entirely different problems**, which is exactly why D14 says a green build does not
+mean the gates pass.
+
+**Closure:** a dedicated test for `g6` — two ingests, arrays compared, plus a negative
+control that perturbs one store and requires G6 to catch it. Then point the gate at it.
+Per **ruling 7** this is not capability work and needs no external file, but it is new
+test surface and belongs to whoever picks up D14's remainder.

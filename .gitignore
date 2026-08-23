@@ -100,3 +100,8 @@ coverage.xml
 .idea/
 .vscode/
 *.swp
+
+# CI job artifacts. The `doctor` job writes this into the workspace before
+# uploading it; running the workflow locally leaves it in the tree, where an
+# unwary `git add` would publish a machine's environment report.
+doctor-report.json

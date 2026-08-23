@@ -321,8 +321,11 @@ jobs:
               unvalidated. OPEN_DEBTS D11.
           - gate: portability-G4
             phase: F3
-            subject: tests/integration/test_portability*.py
-            command: uv run pytest tests/integration -k portability -v
+            # Points at tests that EXIST. The old subject, test_portability*.py, has
+            # never matched a file, so this gate reported NOT_RUN permanently while G4
+            # was in fact covered by 21 tests under other names (D-0079).
+            subject: tests/integration/test_p4_crossimpl.py
+            command: uv run pytest tests/integration -k 'portability or crossimpl or g4' -v
             note: Store must open with stock zarr and xarray asserting 'mdio' not in sys.modules.
           - gate: spawn-guard
             phase: F2
@@ -333,9 +336,14 @@ jobs:
               the pool with BrokenProcessPool.
           - gate: determinism-G6
             phase: F3
+            # Deliberately left unmatched, and that NOT_RUN is ACCURATE. G6 has no
+            # dedicated test: `g6()` is exercised only incidentally inside the
+            # full-chain certificate test, and `-k 'determinism or g6'` selects zero.
+            # Pointing this gate at that incidental coverage would report a gate as
+            # armed when nothing tests it directly. Tracked as D44 (D-0079).
             subject: tests/integration/test_determinism*.py
             command: uv run pytest tests/integration -k determinism -v
-            note: Two ingests of the same fixture must produce identical array bytes.
+            note: NOT_RUN is ACCURATE - G6 has no dedicated test. See OPEN_DEBTS D44.
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

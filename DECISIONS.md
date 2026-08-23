@@ -3910,3 +3910,64 @@ so adopting it as a default becomes a deliberate act someone has to justify.
 **Scope, so it is not over-read:** one command, one file, one machine. It is **not** a
 model of a different file; D38's 1.0 GiB verification envelope is a separate limit and is
 untouched.
+
+---
+
+## D-0079 — 2026-08-24 — Running CI locally before spending on it found three defects, one of them years-shaped
+
+**Ran every CI job on this machine before enabling GitHub Actions.** 15 job/matrix
+combinations. **Three real defects, none of which could have been seen any other way** —
+because **CI has never executed a step in this repository**, so nothing in it has ever
+been exercised.
+
+### 1. A guard that failed on the correct value
+
+`publication-readiness` ran `grep 'zahidaramai/sdip'` and errored *"repository URL
+placeholder is unresolved"*. **That string was a placeholder when the guard was written at
+F0, before the repository existed.** The repository was then created at exactly that name,
+which **made the placeholder real while the guard kept failing on it**.
+
+Replaced with tokens that are placeholders in every world — `\bOWNER\b`, `YOUR-ORG`,
+`<owner>`, `XXX-PLACEHOLDER`, `UNRESOLVED-`. **That shape would have caught the defect
+that actually bit us**: the certificate schema shipped with a literal `OWNER` in its
+`$id` (D-0054). The old guard could not have.
+
+**My first replacement was over-broad** and flagged `CONTRIBUTING.md`'s DCO example,
+`Your Name <you@example.com>` — correct prose teaching contributors the format. Split:
+strict tokens everywhere, `example.com` only in machine-read metadata where it would be a
+real defect.
+
+Added a check the old guard lacked entirely: **the `pyproject` Homepage must match the
+actual git remote.** Non-placeholder is not the same as correct, and that is verifiable
+offline.
+
+### 2. G4's gate had never been able to arm
+
+Subject `tests/integration/test_portability*.py` — **no such file has ever existed.** The
+gate reported `NOT_RUN` permanently while **G4 was covered by 21 tests under other
+names**. Re-aimed at `test_p4_crossimpl.py` with `-k 'portability or crossimpl or g4'`;
+it now arms and passes.
+
+### 3. G6's gate also never armed — and there the `NOT_RUN` is correct
+
+Same symptom, opposite cause. `-k 'determinism or g6'` selects **zero**: `g6()` is
+exercised only **incidentally** inside the full-chain certificate test. **Pointing the
+gate at that would report it armed when nothing tests its subject directly**, so it was
+deliberately left unarmed and its note now says why. Raised as **D44**.
+
+**Two gates, identical from the CI summary, entirely different problems.** That is D14's
+warning made concrete: a green build means *everything that exists passes*.
+
+### On the local runner itself
+
+**It produced two false REDs before it was right**, and a false red is as misleading as a
+false green. It initially ignored `if:` conditions and ran gates CI would skip, reporting
+G4 and G6 as failures. It now evaluates `steps.<id>.outputs.<key>` against captured
+`GITHUB_OUTPUT`, so a skip here means a skip there.
+
+**`doctor` fails locally and that is an artifact, not a defect** — the working tree is
+dirty mid-edit, and CI checks out clean. Verified by committing and re-running.
+
+**What this cannot catch, stated rather than implied:** it runs on **macOS**, CI runs on
+**ubuntu-latest**; it uses the existing checkout rather than a fresh clone; and
+`actions/*` steps are skipped entirely. **A green local sweep is evidence, not proof.**
