@@ -28,7 +28,7 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 [![ci](https://img.shields.io/badge/ci-deferred_%C2%B7_workflows_in_%2Fci-lightgrey?style=flat-square)](ci/README.md)
 [![dco](https://img.shields.io/badge/dco-required_on_every_commit-informational?style=flat-square)](CONTRIBUTING.md)
 
-![Phase](https://img.shields.io/badge/roadmap_phase-F5–F7-orange?style=flat-square)
+![Release](https://img.shields.io/badge/release-v1.0.0-brightgreen?style=flat-square)
 ![Tests](https://img.shields.io/badge/tests-627_passing-success?style=flat-square)
 ![Gates enforcing](https://img.shields.io/badge/gates_enforcing-7_of_7-success?style=flat-square)
 ![Certificates](https://img.shields.io/badge/certificates_issued-0-lightgrey?style=flat-square)
@@ -81,7 +81,7 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Author** | Zahid Aramai · KLCube Network Agency |
 | **Licence** | Apache-2.0 |
 | **Repository** | `github.com/zahidaramai/sdip` — public, open contribution |
-| **Roadmap phase** | **F5–F7** — probes. F0–F4 complete; see [Roadmap & Status](#️-roadmap--status) |
+| **Release** | **v1.0.0** — first certificate issued; see [Roadmap & Status](#️-roadmap--status) |
 | **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
 | **Source** | 9,168 lines across 43 modules |
 | **Tests** | 627 passing · mypy strict clean · ruff clean |
