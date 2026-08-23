@@ -33,3 +33,33 @@ certificates from an engine whose gates have never been shown to fail. Tracked a
 5. A certificate issued under a different upstream pin is not comparable to one issued
    under this pin. A pin bump invalidates every certificate issued before it (§3.3);
    record the bump here as well as in `DECISIONS.md`.
+
+---
+
+## Correction — 2026-08-23 — the table is still empty, but not for the reason above
+
+**Appended, not edited (SP10).** The section *"Why this table is empty"* above says the
+Equivalence Engine *"does not exist yet"* and that the repository is at **F0**. Both were
+true when written and **neither is true now.** The engine exists, all seven gates run,
+and **D11 was closed on 2026-08-22** — G7 has been shown capable of failing, with ten
+negative controls each failing exactly the gates it declares.
+
+**The table is nonetheless still empty, and that is correct.** Rule 1 admits *one row per
+issued certificate*, and **`sdip certify` has never completed on a clean working tree.**
+No row is owed. Every run so far has been either a harness run or a run whose tree was
+dirty at issue time — and §11.3 refuses those, with no `--force`.
+
+**What has been measured is recorded elsewhere, deliberately.** The survey-scale results
+— 11 files, 5,440,219,488 source bytes, every gate `PASS`, **every `G3` byte-identical** —
+live in `prereg/P3-scale.md`, because they came from a probe harness rather than from
+`sdip certify`. **A probe result is not a certificate and must not be entered here as
+one.** Conflating the two is precisely the confusion this ledger exists to prevent.
+
+Two payloads exist locally, at commits `706059b` and `3573e87`, carrying
+`issued_at: "LOCAL-RUN"` rather than a timestamp. **They are not certificates**: they
+were produced by a harness that bypassed `issue()`'s tree check, they predate
+`release_readiness`, and they are held in the firewalled `local/` tree. **They are not
+eligible for a row and are named here only so that their existence is on the record
+rather than discovered later.**
+
+The first row will be added when `sdip certify` issues from a clean tree.
