@@ -243,8 +243,34 @@ jobs:
             echo "::error::NOTICE/CITATION.cff carry an unresolved placeholder - OPEN_DEBTS D12"
             exit 1
           fi
-          if grep -rn 'zahidaramai/sdip' README.md CITATION.cff pyproject.toml ; then
-            echo "::error::repository URL placeholder zahidaramai/sdip is unresolved"
+          # `zahidaramai/sdip` was a PLACEHOLDER when this guard was written at F0,
+          # before the repository existed. The repository was then created at exactly
+          # that name, which made the placeholder real while the guard kept failing on
+          # the correct value. Replaced with patterns that are placeholders in every
+          # world - including the one that actually bit us: the certificate schema
+          # shipped with a literal OWNER in its $id (DECISIONS.md D-0054), which this
+          # shape of check would have caught and the old one could not.
+          # Split deliberately. A documented EXAMPLE is not an unresolved placeholder:
+          # CONTRIBUTING.md teaches the DCO format with `Your Name <you@example.com>`,
+          # which is correct prose and must not fail this gate. So the strict tokens are
+          # checked everywhere, and `example.com` only where it would be a real defect -
+          # machine-read metadata that something resolves against.
+          if grep -rInE '(\bOWNER\b|YOUR[-_]ORG|<owner>|XXX-PLACEHOLDER|UNRESOLVED-)' \
+               README.md CITATION.cff pyproject.toml CONTRIBUTING.md SECURITY.md \
+               src/sdip/schema/*.json ; then
+            echo "::error::an unresolved placeholder reached a published file"
+            exit 1
+          fi
+          if grep -rInE 'example\.(com|org)' CITATION.cff pyproject.toml src/sdip/schema/*.json ; then
+            echo "::error::example.com reached machine-read metadata"
+            exit 1
+          fi
+
+          # The canonical URL must name a repository that resolves, not merely be
+          # non-placeholder. Checked without network: it must match the git remote.
+          REMOTE=$(git config --get remote.origin.url | sed -E 's#.*github\.com[:/]##; s#\.git$##')
+          if [ -n "$REMOTE" ] && ! grep -q "$REMOTE" pyproject.toml ; then
+            echo "::error::pyproject Homepage does not match the git remote ($REMOTE)"
             exit 1
           fi
 
