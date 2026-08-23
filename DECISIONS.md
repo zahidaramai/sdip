@@ -3554,3 +3554,54 @@ before staging.* The rule as written passed while its purpose failed.
 
 Not corrected by a revert — the content belongs in the tree and reverting would lose a
 real test. Recorded so the next reader sees that the discipline slipped and how.
+
+---
+
+## D-0072 — 2026-08-23 — **D42 closed.** A recorded control that nothing reads is not an audit
+
+Maintainer-authorised. **D42 correctly stopped at §9** — `release_readiness` is the
+release gate, and changing what it blocks on is a gate change, not a side effect of
+closing a debt.
+
+### The hole
+
+`release_readiness` read `gates`, `planes`, `roundtrip_closure`, the lossy-codec flag,
+the transform block and the tree state. It **never read** `nonvacuity.g3_control` or
+`nonvacuity.closure_control`.
+
+Both controls corrupt an **exported file** and require a check to catch it. A control
+reporting `FAIL` therefore means the check it audits **has been shown incapable of
+failing** — the precise definition of a vacuous check under **SP11**. A certificate could
+carry `g3_control: FAIL` beside `G3: PASS` and still report `release_ready: true`.
+
+**The gate and its own audit could disagree, and the release criterion sided with the
+gate.**
+
+### Why these two and not G7's
+
+G7's controls need no clause: **G7 is a gate**, it is in `GATES`, and it is already
+blocked on. These two live outside G7 because each needs a corrupted **export file**
+rather than a corrupted store, so they cannot share its machinery — **and that is exactly
+how they came to be recorded and never read.** The mechanism that made them necessary is
+the mechanism that made them invisible.
+
+### Absent blocks too
+
+A missing control blocks as loudly as a failing one. `NOT_RUN` is not a pass — the lesson
+three separate tests in this repository had to relearn, each having stated it in its own
+name while contradicting it in its body.
+
+### What is deliberately NOT required
+
+**G4, G5 and G6 have no negative controls at all, and this change does not demand any.**
+§7 G7's declared remit is G2a–G2e and G3, so those three sit outside it **by
+specification**. Blocking on controls that do not exist would be inventing a requirement
+the spec never made — and it is asserted as a test, so the boundary is pinned rather than
+remembered.
+
+### The test module proves itself first
+
+Five tests each remove exactly one thing and assert it blocks. **A sixth asserts the
+baseline is genuinely ready** — because without it, all five would "pass" against a
+function that refused everything, and the module would assert nothing at all. That is the
+same discipline the G7 controls are held to, applied to the tests of the release gate.

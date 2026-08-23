@@ -401,6 +401,11 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
     Returns:
         ``{"release_ready": bool, "blocking": [...], "criterion": ...}``.
     """
+    # NOTE ON SCOPE, so this is not read as wider than it is: G4, G5 and G6 have no
+    # negative controls at all. That is not an oversight here - §7 G7's declared remit is
+    # G2a-G2e and G3, so those three sit outside it by specification. This function
+    # blocks on controls that EXIST and RAN; it does not invent a requirement for
+    # controls the specification never asked for.
     gates = payload.get("gates", {})
     planes = payload.get("planes", {})
     blocking: list[str] = []
@@ -413,6 +418,32 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
         status = planes.get(key, {}).get("status", NOT_RUN)
         if status != "PASS":
             blocking.append(f"{key} is {status}")
+
+    # D42 / SP11. The controls are consulted, not merely recorded. `g3_control` and
+    # `closure_control` each demonstrate that a check is CAPABLE OF FAILING - they
+    # corrupt an export and require the check to catch it. A control that came back
+    # non-PASS means its check has been shown incapable of failing, which is the precise
+    # definition of a vacuous check, and until now `release_readiness` never read either.
+    #
+    # G7's own controls need no clause here: G7 is in GATES and is already blocked on
+    # above. These two live outside it because both need a corrupted EXPORT FILE rather
+    # than a corrupted store, so they cannot share G7's machinery - and that is exactly
+    # how they came to be recorded and never read.
+    nonvacuity = payload.get("nonvacuity") or {}
+    for control in ("g3_control", "closure_control"):
+        outcome = nonvacuity.get(control)
+        if outcome is None:
+            blocking.append(
+                f"{control} NOT_RUN - the check it audits has not been shown capable "
+                "of failing (SP11)"
+            )
+            continue
+        status = outcome.get("status", NOT_RUN)
+        if status != "PASS":
+            blocking.append(
+                f"{control} is {status} - the check it audits was NOT caught out by a "
+                "corruption it must catch, so that check is vacuous (SP11)"
+            )
 
     closure = payload.get("roundtrip_closure")
     if closure is None:

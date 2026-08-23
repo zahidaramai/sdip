@@ -1498,3 +1498,72 @@ a non-PASS `nonvacuity.g3_control` or `nonvacuity.closure_control` as blocking, 
 controls at all. That is a different question — §7 G7's declared remit is G2a–G2e and G3,
 so those three sit outside it by specification. This debt is only about controls that
 exist, run, and are then not consulted.
+
+---
+
+## D25 — CLOSED 2026-08-23 — `ingest()` forwards `grid_overrides`
+
+- **Closes:** D25 above, left unedited (**SP10**) · **Decision:** `DECISIONS.md` D-0065
+
+`ingest()` takes `grid_overrides` and passes it straight to `segy_to_mdio`. **No default
+is supplied.** An override changes what the store *contains*, not merely whether it can
+be written, and a grid this tool chose is not one anybody declared — the same reasoning
+that keeps G5's ceilings off by default (**SP9**).
+
+---
+
+## D24 — CLOSED 2026-08-23 — the name can now be supplied, for the two geometries a name was the blocker for
+
+- **Closes:** D24 above, left unedited (**SP10**) · **Decision:** `DECISIONS.md` D-0065
+
+A §6.4 alias override supplies the template's field names. Measured through
+`sdip ingest` itself: **`cdp_offset_3d` and `cdp_offset_2d` ingest and pass all five
+planes.**
+
+**Two of seven, and the remaining five are not the same problem.** `offset` and `cdp` are
+the standard's own words for bytes **37** and **21** — an alias supplies a label over a
+byte that already exists. `cable`, `channel`, `gun`, `sail_line`, `receiver` and
+`shot_line` are **not rev 1 fields under any name**: there is no byte to alias, so no
+override can conjure them. Those need a real survey whose own spec declares them, and per
+**D-0063 ruling 7** none is built until such a file exists. **The boundary is asserted as
+a test rather than assumed** — if any of those six ever becomes a rev 1 field, it fails.
+
+---
+
+## D29 — CLOSED 2026-08-23 — padding is verified as padding
+
+- **Closes:** D29 above, left unedited (**SP10**) · **Decision:** `DECISIONS.md` D-0069
+
+**The ambiguity is not fixed and cannot be.** Measured on 18 real padding cells: floats
+fill `NaN`, integers fill `0`, and there is no integer `NaN` to fill with. A downstream
+reader that ignores `trace_mask` can still misread a padding zero as a measured zero.
+
+**What was fixed is what SP12 actually asks for.** Padding was *excluded* from every
+comparison — correctly; it has nothing to compare against — and therefore nothing could
+catch data **appearing** there. Plane 5 now asserts every dead cell holds the declared
+fill and nothing else, and the certificate records the fill per array plus whether it is
+ambiguous by value, so the reliance on `trace_mask` is visible rather than inferred.
+
+Control `fabricated_value_in_padding` → `{G2e}`, proven on both halves: it **fires** on a
+ragged grid and is recorded **not applicable, by name**, on a full one.
+
+---
+
+## D42 — CLOSED 2026-08-23 — the controls are consulted, not merely recorded
+
+- **Closes:** D42 above, left unedited (**SP10**) · **Decision:** `DECISIONS.md` D-0072
+- **Authorised by:** the maintainer, on the §9 point D42 correctly stopped at
+
+`release_readiness` now blocks on a non-`PASS` **or absent** `nonvacuity.g3_control` and
+`nonvacuity.closure_control`. A control reporting `FAIL` means the check it audits has
+been shown **incapable of failing** — the definition of a vacuous check under **SP11** —
+and until now the certificate recorded that and the release gate never read it.
+
+**Non-vacuity is asserted for the test module itself**, not just for the fix: a baseline
+payload is proved release-ready first, so the five one-at-a-time tests cannot all "pass"
+against a function that refuses everything.
+
+**Scope is asserted too, so the rule is not read as wider than it is.** G4, G5 and G6
+have no negative controls, and that is **by specification** — §7 G7's declared remit is
+G2a–G2e and G3. This blocks on controls that exist and ran; it invents no requirement the
+specification never made.
