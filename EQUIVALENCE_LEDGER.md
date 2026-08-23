@@ -116,3 +116,37 @@ certificates.
 
 **Neither carries the false `raw_ibm32_note`** described in D-0056 — both predate the raw
 view. Checked, not assumed, so neither needs superseding.
+
+---
+
+## The table, from here
+
+**Appended, never edited (SP10).** The header above stands unchanged; this is where rows
+are recorded from now on. The two correction sections between it and here explain why it
+stayed empty until 2026-08-23 and what the rules are.
+
+| # | Issued (UTC) | Source SHA-256 | Source | Spec | Rev | Verdict | Gates G1–G7 | Ready |
+|---|---|---|---|---|---|---|---|---|
+| **1** | 2026-08-23T08:12:00Z | `750bcb953545a8ae2ff0555ae34543c9cd987834c840a0a26323a30fbeeffe8d` | `LOCAL-ONLY (D-0025)` · 494,565,408 B · 116,532 traces | v1.0 | 1 | **EQUIVALENT** | `PPPPPPP` | **`true`** |
+
+**Row 1 — the first certificate this project has ever issued.**
+
+Issued by `sdip 0.1.0.dev0` at commit **`2f33f3e`**, working tree **clean**. `release_ready:
+true`, `blocking: []`.
+
+- **All seven gates PASS.** G5 measured **1,115.3 s of a declared 1,500 s** and **3.64 GiB
+  of a declared 8.0 GiB**, against `prereg/P10-scale-recalibration.md@2f33f3e` — a
+  pre-registration committed **before** the run it governs (**SP9**).
+- **G7:** 15 corruptions, each failing exactly the gates it declares and no others; one
+  (`fabricated_value_in_padding`) recorded **not applicable** by name, because this store's
+  grid is full and has no padding cell to fabricate into.
+- **Round-trip closure PASS**, including the file-headers leg added at D-0067 — and its
+  own control, `closure_control`, PASS, *caught by that leg and no other*.
+- **`g3_control` and `closure_control` are consulted by the release gate**, not merely
+  recorded (D-0072, D-0073).
+
+**The source path reads `LOCAL-ONLY (D-0025)` and that is the policy, not a redaction of
+convenience.** The digest, the byte count, the trace count, the verdict, the gate string
+and the commit are all here, because **a digest is not data** — withholding the row
+entirely would let the public record understate what the engine has been shown to do. The
+certificate JSON itself stays in the firewalled tree.
