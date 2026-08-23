@@ -274,7 +274,15 @@ jobs:
           - gate: integration
             phase: F3
             subject: tests/integration/test_*.py
-            command: uv run pytest tests/integration -v
+            # -m 'not slow' removes EXACTLY the 63 P7 latency benchmarks and
+            # nothing else - verified against the collected set. They assert a
+            # chunk shape beats the default at MILLISECOND scale, which is a real
+            # comparison on a quiet machine and noise on a shared runner (D39).
+            # A flaky gate teaches people to re-run rather than read, so the
+            # benchmark runs locally and the correctness legs gate here. The other
+            # two `slow` suites - P2 ibm32 fidelity and the D8 hostile corpus - are
+            # correctness, live under tests/unit and tests/negative, and still run.
+            command: uv run pytest tests/integration -m 'not slow' -v
             note: Lifted round-trip fixture extended to the 240-byte plane; SHA-256 assertion.
           - gate: negative-G7
             phase: F4

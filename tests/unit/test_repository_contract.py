@@ -204,7 +204,7 @@ def test_the_tolerance_detector_actually_detects():
 
 
 def test_barred_environment_variables_are_never_set_in_ci(repo_root):
-    workflows = list((repo_root / "ci").glob("*.yml"))
+    workflows = list((repo_root / ".github" / "workflows").glob("*.yml"))
     assert workflows, "CI workflows are a required public-project file"
     for path in workflows:
         text = path.read_text()
@@ -348,7 +348,7 @@ def test_all_four_firewall_layers_declare_the_same_set(repo_root):
 
     gitignore = (repo_root / ".gitignore").read_text()
     hook = (repo_root / ".githooks" / "pre-commit").read_text()
-    ci = (repo_root / "ci" / "ci.yml").read_text()
+    ci = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
     firewall_job = ci.split("  firewall:", 1)[1].split("\n  fixture-policy:", 1)[0]
 
     for pattern in NEVER_PUBLISH:
@@ -448,7 +448,7 @@ def test_every_gate_has_a_ci_job_that_arms_itself(repo_root):
     not fail while unbuilt. It therefore looks for its own subject and starts
     enforcing the moment that subject appears.
     """
-    ci = (repo_root / "ci" / "ci.yml").read_text()
+    ci = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
     for gate in (
         "integration",
         "negative-G7",
@@ -467,7 +467,7 @@ def test_unbuilt_gates_do_not_hard_fail_the_build(repo_root):
     A leftover `exit 1` in a gate job would silently reintroduce the always-red
     build that cannot be merged out of.
     """
-    ci = (repo_root / "ci" / "ci.yml").read_text()
+    ci = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
     gates_block = ci.split("  gates:", 1)[1].split("\n  roadmap:", 1)[0]
     assert "exit 1" not in gates_block
 
@@ -478,7 +478,7 @@ def test_firewall_is_enforced_in_ci_independently_of_doctor(repo_root):
     A broken environment is exactly when someone force-adds a file to make a check
     go away, so the job that catches it cannot itself depend on that environment.
     """
-    ci = (repo_root / "ci" / "ci.yml").read_text()
+    ci = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
     block = ci.split("  firewall:", 1)[1].split("\n  ", 1)[0]
     assert "needs: doctor" not in block
     assert "--all" in ci, "the firewall job must scan history, not only HEAD"

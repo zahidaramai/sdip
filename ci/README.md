@@ -1,58 +1,38 @@
-# `ci/` — workflow definitions that are **not currently executed**
+# `ci/` — the workflows moved to `.github/workflows/` and now execute
 
-| File | What it defines |
-|---|---|
-| [`ci.yml`](ci.yml) | `doctor`, `lint`, `unit`, `forbid-list`, `licence`, `firewall`, `fixture-policy`, `publication-readiness`, `gates`, `roadmap` |
-| [`dco.yml`](dco.yml) | `sign-off` — every commit in a pull request carries `Signed-off-by` |
+**They ran nowhere until 2026-08-23.** GitHub Actions executes workflows **only** from
+`.github/workflows/`, and these files were deliberately kept out of it while the gates
+were being built — an always-failing job would have blocked the very pull request that
+built the gate (`DECISIONS.md` D-0012).
 
-## Why they are here and not in `.github/workflows/`
+**v1.0.0 changed what that parking means.** At `0.x`, deferred CI reads as honest
+immaturity. At a version that claims maturity, a check that exists but never runs is an
+overstatement (**D14**, and `DECISIONS.md` D-0076).
 
-GitHub Actions executes workflows **only** from `.github/workflows/`. These files were
-moved out of that directory, so **no job below runs on any push or pull request.**
+| File | Now at | Jobs |
+|---|---|---|
+| `ci.yml` | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | `doctor`, `lint`, `unit`, `forbid-list`, `licence`, `firewall`, `fixture-policy`, `publication-readiness`, `gates`, `roadmap` |
+| `dco.yml` | [`.github/workflows/dco.yml`](../.github/workflows/dco.yml) | `sign-off` |
 
-CI is deferred until the project is complete. Leaving the workflows in place while they
-cannot run produced a failed check on every commit, which trains reviewers to ignore CI
-— the exact failure mode this project criticises elsewhere. A check nobody reads is not
-a check (**SP11**).
+## What the `gates` job does and does not run
 
-**Nothing was deleted.** The files are unchanged and moved with `git mv`, so their
-history follows them and every job, step, and assertion remains public and reviewable.
+It runs `tests/integration` with **`-m 'not slow'`**, which removes **exactly** the 63
+**P7 latency benchmarks** and nothing else — verified against the collected set, not
+assumed.
 
-## Re-enabling
+Those benchmarks assert that a chunk shape built for an access pattern beats the default
+**at millisecond scale**. That is a real comparison on a quiet machine and **noise on a
+shared runner** (**D39**: observed failing at load average 11.2, then passing 3/3 in
+isolation on the same commit). **A flaky gate teaches people to re-run rather than read**,
+so the benchmark runs locally and the correctness legs gate here.
 
-```bash
-git mv ci/*.yml .github/workflows/
-```
+**The other two `slow` suites still run**, because they are correctness rather than
+timing: **P2 `ibm32` fidelity** under `tests/unit`, and the **D8 hostile corpus** under
+`tests/negative`.
 
-That is the whole operation. Then update the path references — this file, the CI/CD
-section of [`README.md`](../README.md), the *Continuous integration* section of
-[`CONTRIBUTING.md`](../CONTRIBUTING.md), and the four `ci/ci.yml` reads in
-`tests/unit/test_repository_contract.py`.
+## Green still does not mean the gates pass
 
-## These checks are still binding on a contributor
-
-**Unexecuted is not unenforced.** These files are the reviewable statement of the
-specification's §7.8 job table — what CI asserts, and what a PR is reviewed against
-whether or not a runner has confirmed it. In particular:
-
-- the `ast`-based forbid-list scans — barred environment variables, tolerance
-  comparisons, suppressed warnings, and the negative controls proving each detector fires
-- the `firewall` job's history scan (`--all`), which is the only layer that catches an
-  unpublishable path in **any** commit on **any** ref rather than at `HEAD`
-- the licence scan — no GPL or AGPL in the runtime dependency tree
-- the self-arming gate jobs, which run the real check or report `NOT_RUN` with the phase
-- the DCO sign-off check
-
-A PR that would fail one of these fails review for the same reason.
-
-`tests/unit/test_repository_contract.py` asserts on the contents of `ci.yml` directly —
-the firewall layer set, the self-arming gate design, the absence of a hard `exit 1` in
-an unbuilt gate, and the absence of barred variables. Those assertions run in the local
-suite, so the job definitions stay under test while the jobs themselves do not run.
-
-## Running the equivalent locally
-
-```bash
-uv run sdip doctor
-uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
-```
+The five gate jobs **arm themselves** on the presence of their own subject and report
+`NOT_RUN` otherwise (**D-0012**). A green build means *everything that exists passes*.
+The `roadmap` job writes all seven gate states into every run summary so the distinction
+is visible in the run rather than only here. See **D14**.
