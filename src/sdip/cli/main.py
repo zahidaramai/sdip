@@ -577,6 +577,8 @@ def certify_cmd(
             result,
             planes,
             baseline=baseline,
+            g3_control=g3_check,
+            closure_control=closure_check,
             roundtrip=roundtrip,
             portability=portability,
             nonvacuity=nonvacuity,
@@ -586,8 +588,6 @@ def certify_cmd(
             issued_at=issued_at,
             issued_by=f"sdip {__version__}",
         )
-        certificate.payload["nonvacuity"]["g3_control"] = g3_check
-        certificate.payload["nonvacuity"]["closure_control"] = closure_check
 
     certificates.mkdir(parents=True, exist_ok=True)
     stamp = issued_at.replace(":", "").replace("-", "")

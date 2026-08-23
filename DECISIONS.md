@@ -3605,3 +3605,74 @@ Five tests each remove exactly one thing and assert it blocks. **A sixth asserts
 baseline is genuinely ready** — because without it, all five would "pass" against a
 function that refused everything, and the module would assert nothing at all. That is the
 same discipline the G7 controls are held to, applied to the tests of the release gate.
+
+---
+
+## D-0073 — 2026-08-23 — **First real-survey chain with everything in. `release_ready: false`, and two of the three blockers were mine**
+
+The run that counts: commit `5cd2b98`, clean tree, 494,565,408 bytes, 116,532 traces.
+**Every Category-B fix executing together for the first time.**
+
+### Result
+
+| | |
+|---|---|
+| **Planes 1–5** | **PASS** — all five |
+| **G1 G2 G3 G4 G6 G7** | **PASS** |
+| **G5** | **FAIL** — wall clock **1,168.5 s** against the declared **900 s** |
+| Round-trip closure | **PASS** — export re-ingests, five planes hold, both raw file headers and all 11 arrays identical |
+| `closure_control` | **PASS** — caught by the `file_headers` leg **and no other** |
+| G7 | **PASS** — 15 corruptions each failing exactly its declared set; 1 not applicable (`fabricated_value_in_padding`, full grid) |
+| Peak RSS | **3.50 GB** against the declared 8.59 GB — **no breach** |
+| `worker_stderr_text_recovered` | **`true`** — D26's ratification condition is **met** |
+| `portable_headers` | `true` |
+| **`release_ready`** | **`false`, 3 blocking** |
+
+### Blocker 1 — G5, and it is real
+
+**The engine got more expensive and the ceiling did not move.** The 900 s was
+pre-registered in `P3-scale.md@9904bec` when the chain ran **10** G7 controls and closure
+did not re-ingest. It now runs **16** controls — each copying touched arrays and re-running
+five planes over 116,532 traces — plus a closure re-ingest added by D19's fix.
+
+**The ceiling is not being raised now.** Choosing a threshold after seeing the result it
+judges is exactly what **SP9** forbids, and *"gates never bend in either direction"* is the
+sentence. A larger ceiling needs a **new pre-registration committed before the re-run**,
+stating the new control count as the reason. **Memory was never the problem** — 3.50 GB
+against 8.59 GB, a 59 % margin.
+
+### Blockers 2 and 3 — a defect I introduced in the D42 fix, six hours old
+
+`g3_control NOT_RUN` and `closure_control NOT_RUN` — **on a run where the log shows both
+controls executing and passing.**
+
+`release_readiness` is computed **inside** `issue()`. The CLI attached both controls to
+the payload **after** `issue()` returned. So the clause I added yesterday to make the
+release gate consult them **could never see them**, on any certificate, ever. It reported
+`NOT_RUN` and blocked — **fail-safe, and permanently blocking, which is its own kind of
+broken.**
+
+**This is D-0072's own lesson, landing on D-0072's own fix.** The standing law reads:
+*any check that cannot share the standard control machinery gets an explicit consultation
+path in the same commit, because out-of-machinery checks are structurally invisible to
+the standard audit.* I built the consultation path and **wired it to a payload that did
+not yet contain them.**
+
+Fixed: `issue()` now **takes** both controls and folds them into the `nonvacuity` block
+before readiness reads it. A helper carries the reasoning so the ordering constraint is
+stated where it binds.
+
+**Six unit tests passed against this the whole time**, because they construct a payload
+directly and never exercise the CLI's assembly order. *The tests were right about the
+logic and blind to the wiring* — which is why the real-survey chain is the acceptance
+criterion and a green suite is not.
+
+### The environment delta, named once and closed
+
+**1,128 in the dev environment, 1,109 in the audit environment. The delta is exactly 19:
+the whole of `tests/integration/test_p4_crossimpl.py`**, gated at line 77 on
+`pytest.importorskip("tensorstore")` — 3 harness-integrity tests, 9 parametrised
+core-array crossings (`amplitude`, `amplitude_raw_ibm32`, `headers_raw_uint8`, `inline`,
+`crossline`, `time`, `trace_mask`, `cdp_x`, `cdp_y`) and 7 header/file-header boundary
+tests. `tensorstore` is **dev-only** because the runtime dependency tree is licence-scanned
+and must not grow. **The two counts are one fact.**

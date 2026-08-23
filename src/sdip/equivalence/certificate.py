@@ -173,6 +173,8 @@ def issue(
     root: str | Path = ".",
     require_clean_tree: bool = True,
     baseline: GitState | None = None,
+    g3_control: dict[str, Any] | None = None,
+    closure_control: dict[str, Any] | None = None,
     issued_at: str,
     issued_by: str,
 ) -> Certificate:
@@ -199,6 +201,10 @@ def issue(
         require_clean_tree: Refuse to issue from a dirty tree (§11.3). **There is no
             ``--force``**; this parameter exists so tests can exercise the refusal, and
             the CLI never sets it to ``False``.
+        g3_control: G3's negative control — a corrupted export G3 must catch. Passed IN
+            rather than attached afterwards, because ``release_readiness`` runs inside
+            this function and cannot consult what is added to the payload later (D-0073).
+        closure_control: The same, for round-trip closure.
         baseline: Git state captured **before the measurements began**. When given, the
             commit must still match at issue time. A clean tree at issue time is not
             sufficient on its own: a run that starts dirty and is committed midway ends
@@ -340,7 +346,12 @@ def issue(
             else {"performed": False, "byte_identical": False}
         ),
         "portability": portability.to_json() if portability is not None else None,
-        "nonvacuity": nonvacuity.to_json() if nonvacuity is not None else None,
+        # The out-of-machinery controls are placed here BEFORE release_readiness reads
+        # them. They used to be attached to the payload by the CLI *after* `issue`
+        # returned, so `release_readiness` - computed inside `issue` - could never see
+        # them and reported NOT_RUN on every certificate. Fail-safe, and permanently
+        # blocking, which is its own kind of broken (D-0073).
+        "nonvacuity": _nonvacuity_block(nonvacuity, g3_control, closure_control),
         "roundtrip_closure": closure.to_json() if closure is not None else None,
         "determinism": determinism.to_json() if determinism is not None else None,
         "scale": scale.to_json() if scale is not None else None,
@@ -501,6 +512,30 @@ def _verdict_reason(
         "it is recorded NOT_RUN here rather than assumed, and release_readiness treats "
         "every NOT_RUN as blocking (D-0031)."
     )
+
+
+def _nonvacuity_block(
+    nonvacuity: Any,
+    g3_control: dict[str, Any] | None,
+    closure_control: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """G7's result plus the two controls that cannot share its machinery.
+
+    ``g3_control`` and ``closure_control`` each need a corrupted **export file** rather
+    than a corrupted store, so neither can run inside G7's control loop. They are folded
+    in here so that :func:`release_readiness` — which runs later in this same function —
+    can consult them. **The lesson from D-0072, applied to its own fix:** a check that
+    cannot share the standard machinery needs its consultation path built deliberately,
+    because otherwise it is structurally invisible.
+    """
+    if nonvacuity is None and g3_control is None and closure_control is None:
+        return None
+    block: dict[str, Any] = nonvacuity.to_json() if nonvacuity is not None else {}
+    if g3_control is not None:
+        block["g3_control"] = g3_control
+    if closure_control is not None:
+        block["closure_control"] = closure_control
+    return block
 
 
 def _portable_headers(store: str | Path) -> bool:
