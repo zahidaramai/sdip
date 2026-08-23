@@ -438,9 +438,14 @@ def certify_cmd(
     one, G5 is recorded NOT_RUN - which is honest, and which release_readiness treats as
     blocking.
 
-    The best verdict reachable today is PROVISIONAL: G7 does not exist, and a store
-    whose planes pass against an engine never shown capable of failing has not been
-    checked (OPEN_DEBTS D11).
+    EQUIVALENT is reachable. G7 exists and runs as a gate (F4), so a store's planes
+    are judged by an engine that has been shown capable of failing: 10 negative
+    controls, each failing exactly the gates it declares and no others. D11 is closed.
+
+    EQUIVALENT is not the release bar. ``release_readiness`` on the certificate is
+    stricter - every gate PASS with none NOT_RUN, plus round-trip closure on the
+    exported SEG-Y - because a verdict tolerates G5 and G6 being NOT_RUN and a reader
+    at release stops looking. Declare both ceilings to reach it.
     """
     import datetime as _dt
     import resource
