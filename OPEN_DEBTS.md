@@ -1567,3 +1567,25 @@ against a function that refuses everything.
 have no negative controls, and that is **by specification** — §7 G7's declared remit is
 G2a–G2e and G3. This blocks on controls that exist and ran; it invents no requirement the
 specification never made.
+
+---
+
+## D43 — The wall-clock ceiling is a bare constant, and a bare constant goes stale silently
+
+- **Status:** `OPEN` (raised 2026-08-23) · **Decision:** `prereg/P10-scale-recalibration.md`
+
+P3 declared **900 s** when the chain ran **10** G7 controls. Six controls and one closure
+re-ingest later it ran **1,168.5 s** and G5 failed — **not because anything regressed, but
+because the engine got more thorough and its budget did not follow.** The gate was right;
+the number was out of date.
+
+P10 rescales it to **1500 s**, which fixes today and **not the mechanism**. The next
+control added moves the cost again and nothing will notice until a run fails.
+
+**Closure:** express the ceiling as `base + per_control × len(CONTROLS)` so the budget
+tracks the work. Deriving `base` and `per_control` requires measuring one control's cost
+at survey scale — **its own probe, its own pre-registration** (**SP9**), not an appendix
+to P10.
+
+**Until then, P10 is explicit that it does not license a third rescale.** A ceiling raised
+twice is not a ceiling.
