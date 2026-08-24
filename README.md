@@ -25,13 +25,14 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 [![NumPy](https://img.shields.io/badge/NumPy-2.5-013243?style=for-the-badge&logo=numpy&logoColor=white)](https://numpy.org)
 [![uv](https://img.shields.io/badge/uv-managed-DE5FE9?style=for-the-badge&logo=astral&logoColor=white)](https://docs.astral.sh/uv/)
 
-[![ci](https://img.shields.io/badge/ci-deferred_%C2%B7_workflows_in_%2Fci-lightgrey?style=flat-square)](ci/README.md)
-[![dco](https://img.shields.io/badge/dco-required_on_every_commit-informational?style=flat-square)](CONTRIBUTING.md)
+[![ci](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml)
+[![dco](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml)
 
-![Release](https://img.shields.io/badge/release-v1.0.0-brightgreen?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-627_passing-success?style=flat-square)
-![Gates enforcing](https://img.shields.io/badge/gates_enforcing-7_of_7-success?style=flat-square)
-![Certificates](https://img.shields.io/badge/certificates_issued-0-lightgrey?style=flat-square)
+![Release](https://img.shields.io/badge/release-v1.1.0-brightgreen?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-1%2C140_passing-success?style=flat-square)
+![Gates](https://img.shields.io/badge/gates-7_of_7_PASS_on_a_real_survey-success?style=flat-square)
+![G7 controls](https://img.shields.io/badge/G7_controls-16-success?style=flat-square)
+![Certificates](https://img.shields.io/badge/certificates_issued-1-success?style=flat-square)
 ![Type checked](https://img.shields.io/badge/mypy-strict-2A6DB2?style=flat-square)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.12%2C%3C3.14-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/license-Apache--2.0-black?style=flat-square)
@@ -81,22 +82,32 @@ None of these failures are loud. They surface years later, in an inversion that 
 | **Author** | Zahid Aramai · KLCube Network Agency |
 | **Licence** | Apache-2.0 |
 | **Repository** | `github.com/zahidaramai/sdip` — public, open contribution |
-| **Release** | **v1.0.0** — first certificate issued; see [Roadmap & Status](#️-roadmap--status) |
+| **Release** | **v1.1.0** — additive; the guarantee is unchanged from v1.0.0 |
 | **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
-| **Source** | 9,168 lines across 43 modules |
-| **Tests** | 627 passing · mypy strict clean · ruff clean |
-| **Gates enforcing** | **7 of 7** — every gate the specification defines |
-| **Certificates issued** | `EQUIVALENT` demonstrated on a real survey; none committed (restricted source) |
-| **Decision record** | 50 entries, append-only |
-| **Open debts** | 54 entries, append-only — scheduled, never cancelled |
+| **Source** | 12,804 lines across 47 modules · 14,313 lines of tests |
+| **Tests** | **1,140 passing** · mypy strict clean · ruff clean |
+| **CI** | **15/15 green** — every gate job arms; none reports `NOT_RUN` |
+| **Gates** | **7 of 7 `PASS`** on a real 494,565,408-byte survey |
+| **Certificates issued** | **1** — `EQUIVALENT`, `release_ready: true`, [`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md) row 1 |
+| **Probes** | 10 pre-registered, **9 run** — P2, P5, P6, P7, P8, P9 fired |
+| **Decision record** | 80 entries, append-only |
+| **Open debts** | 44 tracked — **17 open, 8 narrowed, 3 half-closed, 16 closed** |
 
-> **Read the two rows in bold before using anything here.** Zero gates enforce today. What has actually been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md). Where a property is unmeasured this project says so and names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
+> **The two rows that matter are `Certificates issued` and `Open debts`.** One certificate on one file is **one measurement** — a rev 1, big-endian, poststack 3-D, `ibm32` survey. It says nothing about rev 2, little-endian, five of the six lossy sample formats, prestack beyond CDP-offset, files above 1.0 GiB, or any cloud backend. Those are **declared refusals with reason codes**, listed below. What has been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md), and each names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
 
 ---
 
 ## 🗺️ Roadmap & Status
 
-**Gates enforcing: 7 of 7.** Every gate the specification defines now passes — G1, G2, G3, G4, G5, G6, G7.
+**7 of 7 gates `PASS` on a real survey**, and the certificate that says so is
+[`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md) row 1: 494,565,408 bytes, 116,532
+traces, `release_ready: true`, `blocking: []`, from a clean tree.
+
+**The roadmap is complete and the queue is empty by design.** No further capability is
+built without a real file or user demanding it — every unsupported format, geometry,
+endianness and backend **refuses with a reason code** rather than degrading. A minor
+release that widens the supported surface without demand is how a narrow guarantee
+quietly becomes a broad claim nobody measured.
 
 | Phase | Deliverable | Gates | State |
 |---|---|---|---|
@@ -105,10 +116,10 @@ None of these failures are loud. They surface years later, in an inversion that 
 | F2 | Ingest orchestration, certificate v0, provenance | G1, G2a/b | **complete** |
 | F3 | Equivalence Engine — five planes, G2–G4 | G2, G3, G4 | **complete** |
 | F4 | **G7 non-vacuity suite** | G7 | **complete** |
-| F5 | Probes P2, P5, P6 | — | **run — P2 and P6 fired** |
-| F6 | Scale and cloud: P3, P8 | G5, G6 | **partial** — **G5 and G6 done, P3 passed**; **P8 not run** |
-| F7 | Prestack P7; portability P4 | — | **partial** — both run, both incomplete |
-| F8 | **v1.0.0 public release** | full | not started |
+| F5 | Probes P2, P5, P6 | — | **complete — P2 and P6 fired** |
+| F6 | Scale and cloud: P3, P8 | G5, G6 | **complete** — P3 passed; **P8 fired**, and D7 stands as a declared refusal |
+| F7 | Prestack P7; portability P4 | — | **complete** — both run and recorded |
+| F8 | **Public release** | full | **shipped — v1.0.0 then v1.1.0** |
 
 ### Probe results — pre-registered before every run (**SP9**)
 
@@ -116,12 +127,14 @@ None of these failures are loud. They surface years later, in an inversion that 
 |---|---|
 | **P1** gap-free spec | `PASSED` |
 | **P2** `ibm32` fidelity | **FIRED** — only 1,656 of 4,103 words round-trip; **1,939 lose the value** |
-| **P3** scale | did **not** fire — **1,281,852 traces, 5.07 GiB, 11 files, zero breaches** |
+| **P3** scale | did **not** fire — **1,281,852 traces, 5.07 GiB, 11 files, zero breaches**. Superseded for wall clock by **P10** |
 | **P4** cross-implementation | did **not** fire — **method now satisfied, two readers ran**. TensorStore reads all 97 header fields; **zarr-java refuses them and cannot even list the store** |
 | **P5** irregular geometry | did **not** fire — duplicates refused **and** surfaced |
 | **P6** revision coverage | **FIRED for 3 of 4** — only rev 1 works end to end |
 | **P7** prestack | **FIRED** — the planes hard-coded the grid; fixed, 0/7 → 4/7 |
-| **P8** cloud object store | **NOT RUN** — no credentials, and a mock was deliberately refused |
+| **P8** cloud object store | **FIRED** — a partially written store **passed all five planes and certified `EQUIVALENT`**. Fixed; D7 stands as a declared refusal |
+| **P9** sample formats | **FIRED** — **6 of 11** formats lose values through MDIO's `float32` decode, not `ibm32` alone |
+| **P10** scale recalibration | did **not** fire — the ceiling is now `1350 + 44.92 × (n − 16)`. **Two of three derivations were discarded by their own pre-registered guards** |
 
 Pre-registrations live in [`prereg/`](prereg/), committed and timestamped **before** their
 runs. That is the whole mechanism: a commitment made after the result is not one.
@@ -351,9 +364,9 @@ sdip/
 │   ├── export/                   # MDIO -> SEG-Y, round-trip driver          [F3]
 │   └── equivalence/              # THE ENGINE: five planes, G1–G7, certificates [F3]
 ├── tests/
-│   ├── unit/                     # 175 tests, every guard with its negative control
-│   ├── integration/              # seeded from the upstream round-trip test  [F3]
-│   ├── negative/                 # G7 non-vacuity: corruptions that MUST fail [F4]
+│   ├── unit/                     # 395 tests, every guard with its negative control
+│   ├── integration/              # 379 tests: planes, probes, closure, G6   [live]
+│   ├── negative/                 # 366 tests: G7's 16 controls + hostile corpus
 │   └── fixtures/PROVENANCE.md    # synthetic or openly licensed — binding
 ├── certificates/                 # issued certificates (JSON) — empty
 ├── DECISIONS.md                  # append-only design decision log
@@ -404,13 +417,14 @@ doctor: PASS (8 checks)
 | Command | Description |
 |---|---|
 | `uv run sdip doctor` | Eight environment checks; exits 1 on any failure |
+| `uv run sdip certify SRC OUT --rss-ceiling-gib 8.0 --wall-ceiling-s 1500` | Full chain; issues a certificate. **Refuses from a dirty tree** |
 | `uv run sdip doctor --json` | Machine-readable report, suitable as a CI artifact |
-| `uv run pytest` | Full suite — 175 tests |
+| `uv run pytest` | Full suite — **1,140 tests** |
 | `uv run sdip spec build --revision 0` | Build and validate a gap-free spec; runs G1 |
 | `uv run pytest tests/negative -v` | The G7 non-vacuity suite — permanent negative controls |
 | `uv run pytest tests/unit -k "actually_detects or negative"` | Just the negative controls — proof the guards fire |
 | `uv run ruff check . && uv run ruff format --check .` | Lint and format |
-| `uv run mypy` | Strict type check across 40 modules |
+| `uv run mypy` | Strict type check across **47 modules** |
 | `uv build` | Build sdist + wheel (`docs/` is excluded from both) |
 
 ---
@@ -421,8 +435,8 @@ Only measured numbers appear here.
 
 | Dimension | Evidence |
 |---|---|
-| **Unit tests** | **627 passing**, 0 failing |
-| **Type checking** | `mypy --strict` clean across **40** source modules |
+| **Tests** | **1,140 passing**, 0 failing — 395 unit · 379 integration · 366 negative |
+| **Type checking** | `mypy --strict` clean across **47** source modules |
 | **Lint / format** | `ruff check` and `ruff format --check` clean |
 | **Warnings** | `filterwarnings = ["error"]` — any warning reaching pytest fails the suite |
 | **Negative controls** | Every guard has one: barred env vars (6 forms), barred packages, pin mismatch, missing distribution, copyleft spellings, the pre-commit hook, and each firewall path |
@@ -436,12 +450,16 @@ Only measured numbers appear here.
 | **Licence scan** | **51** runtime distributions, **zero GPL/AGPL**, one allowlisted with cited evidence — D-0005 / D-0006 |
 | **Reproducibility** | A fresh clone syncs, passes `doctor` 8/8, and runs the suite with no local state |
 | **Survey-scale validation** | **Probe P3: 11 files, 1,281,852 traces, 5.07 GiB.** Every gate `PASS` on every file, **G3 byte-identical 11 of 11**, **1,283,133,852 samples compared exhaustively and exactly**, **zero ceiling breaches** against limits declared *before* the run — D-0042 |
-| **Memory behaviour** | Peak RSS **2.87 GiB of 8.0 declared**. Varied by **0.06 GiB** across files of identical size — memory tracks the chunk working set, not the file. That flatness *is* "no unbounded growth" |
+| **Memory behaviour** | Peak RSS **3.64 GiB of 8.0 declared** on the certified run. **The earlier claim that "memory tracks the chunk working set, not the file" was RETRACTED** (D-0060): the *verification* path fully materialises, and peak RSS is **linear in file size** — `RSS_MB = 214.7 + 7.73 × source_MB`, **R² = 0.99997**. The old flatness measured **eleven files of identical size**, which is replication, not scaling. `sdip verify` now **refuses** above a declared 1.0 GiB envelope rather than being OOM-killed |
 | **Single-bit detection** | **One flipped bit in one sample, out of 116,648,532, fails G2d and nothing else** — D-0030 |
 | **G7 cost** | Was 370 s / 2.83 GB — **87 % of the chain**. Now copies only what a control touches, hard-links the rest, and hashes the original before and after. **D18 closed** — D-0038 |
 | **Header cost, measured on real data** | Full 240-byte preservation compressed to **2.0 B/trace (121:1)** — **0.06 % of the store**. ≈10× cheaper than §5.4's synthetic pessimistic figure |
-| **Gates enforcing** | **7 of 7** — measured at survey scale. See [The Gates](#-the-gates). |
-| **Certificates issued** | `EQUIVALENT` demonstrated on a real survey; none committed (restricted source) |
+| **Gates** | **7 of 7 `PASS`** at survey scale, `release_ready: true`. See [The Gates](#-the-gates) |
+| **Certificates issued** | **1**, indexed as [`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md) row 1. The JSON stays in the firewalled tree; its **digest, byte count, verdict, gate string and commit are public**, because a digest is not data |
+| **CI** | **15/15 green**, every gate job armed. First execution 2026-08-24 — see [CI/CD](#-cicd) |
+| **G7 non-vacuity** | **16 controls**, each failing exactly the gates it declares and no others; 1 recorded *not applicable* by name on a full grid |
+| **Sample formats** | **P9: 6 of 11** expressible formats lose values through MDIO's unconditional `float32` decode. `ibm32` is one case, not the case. The other five certify **`NON-EQUIVALENT` with a named cause** rather than silently |
+| **Wall-clock ceiling** | `1350 + 44.92 × (n − 16)`, from `sdip.equivalence.scale`. **Two of three derivations were discarded by their own pre-registered guards** — both would have failed a run that actually happened |
 
 ### Two defects the tests caught, recorded rather than quietly fixed
 
@@ -483,7 +501,9 @@ Layer 4 deliberately does **not** declare `needs: doctor` and uses no Python: a 
 - Gap-free trace-header specification generation and management
 - The Equivalence Engine, its gates, and the Equivalence Certificate
 - MDIO → SEG-Y export and round-trip verification
-- Poststack and prestack geometries; survey-scale chunking, memory ceilings, cloud stores
+- **Poststack 3-D**, and **prestack CDP-offset (2-D and 3-D)** through `sdip ingest` itself — the two geometries a §6.4 alias unblocks, because `offset` and `cdp` are the standard's own words for bytes 37 and 21. The other five prestack layouts need names no rev 1 byte carries, so **no override can conjure them**
+- Survey-scale ingestion within a **pre-declared** memory ceiling, and a **wall-clock ceiling that tracks the control count** rather than a constant
+- **Cloud object stores are NOT in scope** — no named backend has been measured (**D7**), and `s3://` and friends **refuse** rather than silently writing a local directory, which is what probe P8 caught them doing
 - Provenance, custody, and reproducibility metadata
 
 ### Explicitly out of scope
@@ -517,13 +537,23 @@ SDIP holds no secrets and requires no credentials. Cloud object-store access, wh
 
 ## ☁️ CI/CD
 
-> **These workflows are not currently executed.** They live in [`ci/`](ci/README.md), not
-> `.github/workflows/`, so GitHub Actions never picks them up — CI is deferred until the
-> project is complete. The table below is still the binding statement of what CI enforces
-> (spec §7.8): a contributor is held to every row of it, and the jobs are one
-> `git mv ci/*.yml .github/workflows/` away from running. See [`ci/README.md`](ci/README.md).
+**CI executes, and it is green: 15/15.** Every job on every push and PR; any failure
+blocks merge (spec §7.8).
 
-Every job on every PR, once enabled. Any failure blocks merge.
+> **It ran nowhere until 2026-08-24, and the reason is worth stating.** The workflows were
+> deliberately parked outside `.github/workflows/` while the gates were being built — an
+> always-failing job would have blocked the very pull request that built the gate. When
+> they were finally wired, **jobs still died in two seconds with zero steps**: the account
+> was locked by a payment declined on 19 August, which no repository setting reveals.
+> GitHub's own annotation said so; the billing page did not, because the payment had since
+> succeeded. See `DECISIONS.md` **D-0080**.
+
+**Running the suite locally before paying for it found three defects CI had never been
+able to show**: a guard that failed on the *correct* value, and two gate jobs whose
+subject globs had never matched a file — one mis-aimed while its gate was covered by 21
+tests under other names, one honestly unarmed because no such test existed. **Identical
+from the CI summary, entirely different problems.** Then the real run found two more that
+only ubuntu and a fresh clone could expose. **Neither pass was redundant.**
 
 | Job | Asserts | Gated on `doctor` |
 |---|---|---|
@@ -535,11 +565,23 @@ Every job on every PR, once enabled. Any failure blocks merge.
 | `firewall` | Nothing unpublishable at `HEAD` **or anywhere in history** | **no — deliberately** |
 | `fixture-policy` | No fixture lacking an entry in `PROVENANCE.md` | yes |
 | `publication-readiness` | No unresolved placeholder can reach a public repository | yes |
-| `gates` | Five self-arming gate jobs: run the real check, or report `NOT_RUN` with the phase | yes |
+| `gates` | **Five self-arming gate jobs, all five now armed**: integration (G2), negative (G7), portability (G4), spawn-guard, determinism (G6) | yes |
 | `roadmap` | Writes all seven gate states into every run summary | — |
 | `dco` | Every commit carries `Signed-off-by` | — |
 
 CI has no network access except the pinned package index.
+
+**Green still does not mean the gates pass on your data.** The gate jobs run against
+**committed synthetic fixtures**; a certificate is issued against **a specific store from
+a specific source**. **CI cannot certify anything** — that is what
+[`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md) is for, and why **D14** stays open as a
+standing warning rather than being closed by a green badge.
+
+**The `gates` job excludes exactly the 63 P7 latency benchmarks** (`-m 'not slow'`),
+verified against the collected set. They compare chunk shapes at millisecond scale — a
+real comparison on a quiet machine and noise on a shared runner, and **a flaky gate
+teaches people to re-run rather than read** (**D39**). The other two `slow` suites are
+correctness, not timing, and still run.
 
 ---
 
