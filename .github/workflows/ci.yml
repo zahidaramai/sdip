@@ -336,14 +336,14 @@ jobs:
               the pool with BrokenProcessPool.
           - gate: determinism-G6
             phase: F3
-            # Deliberately left unmatched, and that NOT_RUN is ACCURATE. G6 has no
-            # dedicated test: `g6()` is exercised only incidentally inside the
-            # full-chain certificate test, and `-k 'determinism or g6'` selects zero.
-            # Pointing this gate at that incidental coverage would report a gate as
-            # armed when nothing tests it directly. Tracked as D44 (D-0079).
+            # ARMED 2026-08-24. The subject now exists - test_determinism_g6.py, written
+            # for D44 precisely because this gate had nothing to point at. It was left
+            # deliberately unmatched until then rather than aimed at the incidental
+            # coverage inside the certificate test, which would have reported a gate as
+            # armed while nothing tested its subject directly.
             subject: tests/integration/test_determinism*.py
             command: uv run pytest tests/integration -k determinism -v
-            note: NOT_RUN is ACCURATE - G6 has no dedicated test. See OPEN_DEBTS D44.
+            note: Two ingests must produce identical chunk bytes AND values; controls break each level.
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

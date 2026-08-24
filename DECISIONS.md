@@ -4022,3 +4022,42 @@ paths are `/settings/billing/summary` and `/account/billing/history`.
 defects; the real run then found two more that only ubuntu and a fresh clone could show.
 **Neither pass was redundant, and doing them the other way round would have spent
 Actions minutes discovering the cheap findings.**
+
+---
+
+## D-0081 — 2026-08-24 — **D44 closed.** The last gate that could not arm now can
+
+`tests/integration/test_determinism_g6.py`. **G6 had no dedicated test**: `g6()` ran in
+the certify chain and was exercised only *incidentally* inside the full-chain certificate
+test, so a defect it did not happen to disturb would have been caught by nothing.
+
+**The filename is the fix.** The CI gate's subject glob `test_determinism*.py` had never
+matched a file — so writing the test the gate needed **armed the gate**, with no workflow
+change. That is why the gate was left deliberately unmatched rather than re-aimed at the
+incidental coverage: **re-aiming would have reported a gate as armed while nothing tested
+its subject directly**, which is the failure D-0079 found in G4 and refused to repeat here.
+
+### Two positives, four controls, and one control for the controls
+
+The positives assert `g6()` holds on two real ingests and cleans up its run directories.
+The controls each break G6 at **one named level**, because G6 reports the levels
+separately and the separation is the finding:
+
+- **flipped chunk byte** → caught at the byte level, and the chunk is named
+- **changed sample value** → caught at the value level
+- **removed array** → an **error**, not a per-array finding. A comparison over the arrays
+  that happened to survive would report a verdict about a question nobody asked.
+- **identical stores** → **the control for the other three.** Without it, all of them
+  would pass against a comparator that reported everything as different — a comparator
+  that has measured nothing, in exactly the shape **SP11** exists to catch.
+
+**That last one is the point of the file.** Asserting that corruption is caught is easy;
+asserting that non-corruption is *not* flagged is what makes the first assertion mean
+something.
+
+### The gate table is now honest end to end
+
+**Every gate job arms.** No `NOT_RUN` remains — not the two that were misconfigured
+(D-0079), not the one that was accurately unarmed (this entry).
+
+**Suite: 1,140 passed**, six of them new.

@@ -1677,3 +1677,30 @@ equivalence — that is what `EQUIVALENCE_LEDGER.md` is for.
 
 **Remaining to close:** D44, the one gate whose `NOT_RUN` is honest rather than
 misconfigured.
+
+---
+
+## D44 — CLOSED 2026-08-24 — G6 has a dedicated test, and its gate is armed
+
+- **Closes:** D44 above, left unedited (**SP10**) · **Decision:** `DECISIONS.md` D-0081
+
+`tests/integration/test_determinism_g6.py`. **The filename is the fix**: the CI gate's
+subject glob `test_determinism*.py` had matched nothing, so writing the test the gate
+needed also armed it, with no workflow change. `-k determinism` now selects **6**.
+
+**Two positive legs and four controls**, because a comparison that cannot fail is not a
+comparison (**SP11**):
+
+| leg | asserts |
+|---|---|
+| `g6()` on two real ingests | `PASS`, both levels, arrays non-empty |
+| run directories cleaned up | documented behaviour, now asserted |
+| flipped chunk byte | caught at the **byte** level, chunk **named** |
+| changed sample value | caught at the **value** level |
+| removed array | an **error**, not a per-array finding — a comparison over a subset would answer a question nobody asked |
+| identical stores | **the control for the controls** — without it, all three above would pass against a comparator that called everything different |
+
+That last row is the one that matters: it is what stops the negative controls from
+passing vacuously.
+
+**Every gate job now arms.** The gate table has no honest `NOT_RUN` left in it.
