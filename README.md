@@ -4,7 +4,7 @@
 
 ### *The product is not the file. The product is the file plus the proof.*
 
-An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Zarr v3** and issues a machine-checkable **Equivalence Certificate** proving the conversion was an identity map on every measured value. Built for the subsurface data community — exploration, imaging, inversion, and archival — where a conversion nobody verified is a liability nobody priced.
+An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Zarr v3** and issues a machine-checkable **Equivalence Certificate** proving the conversion changed nothing.
 
 <br />
 
@@ -25,600 +25,135 @@ An open-source Python toolchain that converts **SEG-Y** seismic data to **MDIO/Z
 [![NumPy](https://img.shields.io/badge/NumPy-2.5-013243?style=for-the-badge&logo=numpy&logoColor=white)](https://numpy.org)
 [![uv](https://img.shields.io/badge/uv-managed-DE5FE9?style=for-the-badge&logo=astral&logoColor=white)](https://docs.astral.sh/uv/)
 
-[![ci](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/ci.yml)
-[![dco](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml/badge.svg)](https://github.com/zahidaramai/sdip/actions/workflows/dco.yml)
+<br />
 
-![Release](https://img.shields.io/badge/release-v1.1.0-brightgreen?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-1%2C140_passing-success?style=flat-square)
-![Gates](https://img.shields.io/badge/gates-7_of_7_PASS_on_a_real_survey-success?style=flat-square)
-![G7 controls](https://img.shields.io/badge/G7_controls-16-success?style=flat-square)
-![Certificates](https://img.shields.io/badge/certificates_issued-1-success?style=flat-square)
-![Type checked](https://img.shields.io/badge/mypy-strict-2A6DB2?style=flat-square)
-![Python](https://img.shields.io/badge/python-%3E%3D3.12%2C%3C3.14-3776AB?style=flat-square&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/license-Apache--2.0-black?style=flat-square)
+![Python](https://img.shields.io/badge/python-%3E%3D3.12%2C%3C3.14-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Made in Malaysia](https://img.shields.io/badge/made%20in-Malaysia-CC0001?style=flat-square)
-
-[**Report a vulnerability**](https://github.com/zahidaramai/sdip/security/advisories/new) · [**Contributing**](CONTRIBUTING.md) · [**Decision record**](DECISIONS.md) · [**Open debts**](OPEN_DEBTS.md)
 
 </div>
 
 ---
 
-## 📑 Table of Contents
+## The problem
 
-- [Overview](#-overview)
-- [Roadmap & Status](#️-roadmap--status)
-- [What SDIP Supports, and What It Refuses](#-what-sdip-supports-and-what-it-refuses)
-- [The Equivalence Contract](#-the-equivalence-contract)
-- [Tech Stack](#-tech-stack)
-- [Features](#-features)
-- [The Gates](#-the-gates)
-- [Command Surface](#-command-surface)
-- [Project Structure](#-project-structure)
-- [Getting Started](#-getting-started)
-- [Available Commands](#-available-commands)
-- [Quality & Verification](#-quality--verification)
-- [Publication Firewall](#-publication-firewall)
-- [Scope](#-scope)
-- [Environment Variables](#-environment-variables)
-- [CI/CD](#-cicd)
-- [Upstream Pins](#-upstream-pins)
-- [Security](#-security)
-- [License](#-license)
+A seismic survey is measured once. The acquisition is gone the moment the vessel leaves, and what remains is a file — often the only copy of a subsurface nobody can go back and re-measure.
+
+That file gets converted. SEG-Y to a cloud-native format, tape to disk, one vintage to the next. Every conversion is a chance to lose something quietly: a header field dropped because a parser did not name it, a sample altered because a decode was not exactly invertible, a trace mislabelled because a grid was regularised.
+
+**Nothing catches it.** The conversion succeeds. The file opens. The volume looks right. The loss surfaces years later — in an inversion that will not converge, a 4D difference that is an artifact, a well tie that is off by a sample — and by then nobody can tell whether the data was always like that or whether a tool changed it in 2019.
+
+Plenty of tools convert SEG-Y. **What has been missing is the receipt.**
 
 ---
 
-## 🎯 Overview
+## What SDIP does
 
-The industry converts SEG-Y to cloud-native formats routinely and **almost never proves the conversion preserved the data.** Trace headers get dropped because they weren't in a template. Proprietary byte locations vanish silently. Lossy codecs get enabled for a size win and never get disclosed downstream. Padding introduced to regularise an irregular grid becomes indistinguishable from measured data.
+SDIP converts SEG-Y to MDIO/Zarr v3 **and proves the conversion was an identity map on every measured value.**
 
-None of these failures are loud. They surface years later, in an inversion that won't converge or a QC that can't be reproduced, long after the original tape has been archived.
+The proof is a **certificate** — a JSON document, validated against a published schema, that a third party can check **without running SDIP**. It records what was compared, how, and with what result:
 
-**SDIP's contribution is not another converter. It is the receipt.**
-
-| | |
+| Plane | The claim it settles |
 |---|---|
-| **Project** | SDIP — Seismic Data Ingestion & Preparation |
-| **Author** | Zahid Aramai · KLCube Network Agency |
-| **Licence** | Apache-2.0 |
-| **Repository** | `github.com/zahidaramai/sdip` — public, open contribution |
-| **Release** | **v1.1.0** — additive; the guarantee is unchanged from v1.0.0 |
-| **Python** | `>=3.12,<3.14` (the intersection of both upstream pins) |
-| **Source** | 12,804 lines across 47 modules · 14,313 lines of tests |
-| **Tests** | **1,140 passing** · mypy strict clean · ruff clean |
-| **CI** | **15/15 green** — every gate job arms; none reports `NOT_RUN` |
-| **Gates** | **7 of 7 `PASS`** on a real 494,565,408-byte survey |
-| **Certificates issued** | **1** — `EQUIVALENT`, `release_ready: true`, [`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md) row 1 |
-| **Probes** | 10 pre-registered, **9 run** — P2, P5, P6, P7, P8, P9 fired |
-| **Decision record** | 80 entries, append-only |
-| **Open debts** | 44 tracked — **17 open, 8 narrowed, 3 half-closed, 16 closed** |
+| **Textual header** | The 3,200 bytes are preserved verbatim |
+| **Binary header** | The 400 bytes are preserved; the raw bytes are authoritative |
+| **Trace headers** | All **240 bytes** of every trace are recoverable, bit-exact |
+| **Samples** | Every live sample is bit-exact after the declared decode |
+| **Cardinality** | Trace count, ordering, live mask and duplicates all reconcile |
 
-> **The two rows that matter are `Certificates issued` and `Open debts`.** One certificate on one file is **one measurement** — a rev 1, big-endian, poststack 3-D, `ibm32` survey. It says nothing about rev 2, little-endian, five of the six lossy sample formats, prestack beyond CDP-offset, files above 1.0 GiB, or any cloud backend. Those are **declared refusals with reason codes**, listed below. What has been measured is in [`DECISIONS.md`](DECISIONS.md); what has not is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md), and each names the probe that would settle it. **Unmeasured is a status, not an embarrassment.**
+**All five must hold simultaneously.** There is no partial credit and no "mostly equivalent" — a store that satisfies four planes is `NON-EQUIVALENT`, and the certificate says which one failed and where.
+
+Comparisons are **byte equality** or `array_equal`. **There is no tolerance anywhere in the engine**, because a tolerance is how a lossy path gets a passing grade.
 
 ---
 
-## 🗺️ Roadmap & Status
+## Why you would want it
 
-**7 of 7 gates `PASS` on a real survey**, and the certificate that says so is
-[`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md) row 1: 494,565,408 bytes, 116,532
-traces, `release_ready: true`, `blocking: []`, from a clean tree.
+**You are moving a survey and cannot re-acquire it.** The conversion either preserved the data or it did not, and "the volume looked fine" is not an answer you can hand to anyone.
 
-**The roadmap is complete and the queue is empty by design.** No further capability is
-built without a real file or user demanding it — every unsupported format, geometry,
-endianness and backend **refuses with a reason code** rather than degrading. A minor
-release that widens the supported surface without demand is how a narrow guarantee
-quietly becomes a broad claim nobody measured.
+**You received data from someone else.** A certificate travels with the store and can be verified independently — you do not have to trust the sender's toolchain, or run it.
 
-| Phase | Deliverable | Gates | State |
-|---|---|---|---|
-| F0 | Repo skeleton, public files, `NOTICE`, `sdip doctor` | — | **complete** |
-| F1 | Gap-free spec generator + G1 | G1 | **complete** |
-| F2 | Ingest orchestration, certificate v0, provenance | G1, G2a/b | **complete** |
-| F3 | Equivalence Engine — five planes, G2–G4 | G2, G3, G4 | **complete** |
-| F4 | **G7 non-vacuity suite** | G7 | **complete** |
-| F5 | Probes P2, P5, P6 | — | **complete — P2 and P6 fired** |
-| F6 | Scale and cloud: P3, P8 | G5, G6 | **complete** — P3 passed; **P8 fired**, and D7 stands as a declared refusal |
-| F7 | Prestack P7; portability P4 | — | **complete** — both run and recorded |
-| F8 | **Public release** | full | **shipped — v1.0.0 then v1.1.0** |
+**You are building on converted data.** An inversion or a 4D study inherits every defect upstream of it. A certificate turns "we think the conversion was clean" into something with a number behind it.
 
-### Probe results — pre-registered before every run (**SP9**)
-
-| Probe | Verdict |
-|---|---|
-| **P1** gap-free spec | `PASSED` |
-| **P2** `ibm32` fidelity | **FIRED** — only 1,656 of 4,103 words round-trip; **1,939 lose the value** |
-| **P3** scale | did **not** fire — **1,281,852 traces, 5.07 GiB, 11 files, zero breaches**. Superseded for wall clock by **P10** |
-| **P4** cross-implementation | did **not** fire — **method now satisfied, two readers ran**. TensorStore reads all 97 header fields; **zarr-java refuses them and cannot even list the store** |
-| **P5** irregular geometry | did **not** fire — duplicates refused **and** surfaced |
-| **P6** revision coverage | **FIRED for 3 of 4** — only rev 1 works end to end |
-| **P7** prestack | **FIRED** — the planes hard-coded the grid; fixed, 0/7 → 4/7 |
-| **P8** cloud object store | **FIRED** — a partially written store **passed all five planes and certified `EQUIVALENT`**. Fixed; D7 stands as a declared refusal |
-| **P9** sample formats | **FIRED** — **6 of 11** formats lose values through MDIO's `float32` decode, not `ibm32` alone |
-| **P10** scale recalibration | did **not** fire — the ceiling is now `1350 + 44.92 × (n − 16)`. **Two of three derivations were discarded by their own pre-registered guards** |
-
-Pre-registrations live in [`prereg/`](prereg/), committed and timestamped **before** their
-runs. That is the whole mechanism: a commitment made after the result is not one.
-
-### Definition of done
-
-**Both outputs — the MDIO store and the exported SEG-Y — must pass full end-to-end
-validation and certification** (`DECISIONS.md` D-0031). Three arrows, each verified:
-
-```
-  SEG-Y source  ──①──▶  MDIO store  ──②──▶  SEG-Y export  ──③──▶  MDIO store′
-```
-
-`sdip certify` reports **`release_readiness`**, which is stricter than `verdict`: it
-requires *every* gate `PASS` with **none `NOT_RUN`**, plus round-trip closure. **It has
-never yet been demonstrated `True`** — not because a gate fails, but because
-`sdip certify` has not yet completed on a clean working tree, and §11.3 refuses to issue
-from a dirty one. That is why [`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md) has no
-rows: **a probe result is not a certificate.**
-
-### What still blocks a release
-
-1. **The store is now 1.51× the source, not 0.77×** (D36). `amplitude_raw_ibm32` costs
-   **3,147 B/trace — 97 % of `amplitude` itself**. Headers were never the cost; the
-   samples are. Deliberately **not** solved with a size flag: that is the shape §0.1
-   warns about, and P2 measured **1,939 words in 4,103** losing the value unrecoverably.
-   Three closure candidates are on the debt; the choice is a maintainer's.
-2. **SP6 still has one blind spot** (D35) — worker-process warnings never reach the
-   parent, so `warnings_raised[]` can be empty while data is lost. The `logger.warning`
-   half is closed; this half is **declared on the certificate** rather than papered over.
-3. **The `uint8` header plane does not make the group enumerable** (D32) — it makes
-   header *data* portable, but zarr-java's `Group.list()` still fails on
-   `segy_file_header`'s `fixed_length_utf32`.
-4. **None of the three named cloud backends has been measured** (D7). P8's Amendment A
-   adds a **MinIO** leg — a real S3 server over real HTTP, explicitly **not a mock** —
-   but MinIO is not AWS S3, GCS or Azure, and the amendment does not claim it is. That
-   narrows D7; it does not close it.
-
-**Closed since the last revision of this list:** §6.4 survey overrides (D21), the
-`ibm32` raw `uint32` view (D1), rev 0 support (D22), little-endian declaration (D28),
-and the `logger.warning` half of SP6 (D26).
-
-Full consolidated status: [`DECISIONS.md`](DECISIONS.md) **D-0041**. Live debts:
-[`OPEN_DEBTS.md`](OPEN_DEBTS.md) — debts are scheduled, never cancelled.
+**You are the custodian of an archive.** Tapes degrade, formats age, and the migration you run today is the one someone audits in twenty years. SDIP writes down what it did, in a form that outlives the person who ran it.
 
 ---
 
-## ✅ What SDIP Supports, and What It Refuses
+## What makes the proof worth anything
 
-**Anything unsupported refuses with a stable reason code. Nothing degrades.** A tool that
-half-works on a file it does not understand produces an artifact nobody can trust, and
-this project's entire claim is that its output is trustworthy. **Coverage is earned by
-demand; honesty is not optional at any coverage.**
+**A gate a corrupted store passes is not a gate.**
 
-### Supported, end to end
+The engine ships **16 permanent negative controls** — deliberate corruptions that *must* fail, each required to fail **exactly** the check it targets and no others. One flipped bit in one sample. One flipped header byte. A dropped trace. Two transposed traces. An inverted live mask. A truncated textual header. A deleted array.
 
-| | Support | Evidence |
-|---|---|---|
-| **SEG-Y revision 1** | full chain, certifiable | 11 files, 5.07 GiB, every gate `PASS`, every `G3` byte-identical |
-| **SEG-Y revision 0** | via a §6.4 override | `overrides/segy-rev0-poststack3d.toml` |
-| **Poststack 3D** | full chain | the primary path |
-| **Prestack CDP-offset, 2-D and 3-D** | full chain, certifiable | via an alias override; all five planes `PASS` |
-| **Sample formats `int8` `int16` `uint8` `uint16` `float32`** | exact decode | probe **P9** |
-| **`ibm32`** | with an undecoded parallel view | probe **P2**; `EQUIVALENT` only when `G3` is byte-identical |
-| **Big-endian** | the only byte order SDIP reads | — |
-| **Local filesystem** | the only backend measured | — |
+If a corruption passes, or fails the wrong check, **the whole engine is treated as unvalidated** — because a checker that cannot localise a fault cannot be trusted to have found one.
 
-### Refused, each with a code and no build
-
-| Reason code | What is refused | Why, and the debt |
-|---|---|---|
-| `SDIP-E-ENVELOPE` | a single source file above the declared verification envelope (**1.0 GiB** by default) | verification RSS is **linear in file size** — measured `R² = 0.99997`. Above it the process is killed and you get **no verdict**, which is worse than declining. Streaming comparison is the fix and is deferred (**D38**, **D23**) |
-| little-endian | a byte order SDIP does not read | SDIP does not **guess** byte order; the refusal names it (**D28**) |
-| revision 2 / 2.1 | upstream-blocked | **D6** |
-| sparsity ratio > 10 | a grid sparser than upstream will build | **D30**. Lifting it needs `MDIO_IGNORE_CHECKS`, which is **barred** |
-| coordinate scalar `0` | an undefined scalar | **D27** |
-| cloud object stores | no named backend measured | **D7**. MinIO is a real S3 server but is not AWS S3, GCS or Azure |
-| `int32` `uint32` `int64` `uint64` `float64` | **not refused — certified `NON-EQUIVALENT` with a named cause** | the decode to `float32` can alter the value (**P9**), no undecoded view is written, so Plane 4 fails and *nothing can make it pass*. That is fail-safe, and it is now diagnosed rather than silent (**D41**) |
-
-**That last row is the shape of every future gap.** A format, geometry or backend is
-admitted when a real file demands it — and every admitted capability ships **its G7
-control and its refusal path in the same change**. Until then the honest outcome is a
-named failure, not a plausible one.
+That is the difference between a tool that reports success and a tool whose success means something.
 
 ---
 
-## 🔒 The Equivalence Contract
-
-A store `Z` is **equivalent** to a source `S` **iff all five planes hold simultaneously.** Partial satisfaction is `NON-EQUIVALENT`, never "mostly equivalent". **There is no partial credit.**
-
-| Plane | Claim | Gate |
-|---|---|---|
-| **1 — Textual** | 3200-byte textual header verbatim, including non-conforming EBCDIC. Decode failure is recorded; silent substitution is a defect. | `G2a` |
-| **2 — Binary** | 400-byte binary header as a parsed mapping **and** as raw bytes. Raw bytes are authoritative on conflict. | `G2b` |
-| **3 — Trace header** | All **240** header bytes per trace, bit-exact. Field naming is metadata; **byte content is the contract**. | `G2c` |
-| **4 — Sample** | Every live sample bit-exact after the declared decode — **exact equality, never `allclose`**. | `G2d` |
-| **5 — Cardinality** | Counts, ordering, live/dead mask, duplicate index tuples surfaced never silently overwritten. | `G2e` |
-
-### The engineering guarantees behind it
-
-- **No tolerance exists anywhere in the codebase.** Comparisons are `array_equal` or byte equality. A CI job parses the source with `ast` and fails the build on `allclose`, `isclose`, `assert_almost_equal`, `rtol=`, or `atol=`.
-- **Gap-free header spec.** Every ingest runs against a spec covering bytes 1–240 with **zero gaps and zero overlaps**, asserted by `G1` *before a single trace is read*. Uncovered bytes become `uint8` fillers — `uint8` carries no byte-order or numeric-format semantics, so no endianness swap or IBM promotion can be applied to bytes whose meaning is undeclared.
-- **Lossless codecs only.** Blosc family and Zstd. `zfpy` must not be installed, and `sdip doctor` fails if it is importable. A store whose codec manifest contains a lossy entry is void.
-- **No fabrication.** Grid padding introduced to regularise an irregular geometry is **not data** and is excluded by the live mask. Interpolation and generative reconstruction are barred on all paths without exception.
-- **No suppressed warnings.** Upstream silences two Zarr warnings; SDIP records the *suppression itself* onto the certificate and classifies it `declared` or `UNDECLARED`. See [`DECISIONS.md`](DECISIONS.md) D-0004 for why detection, not re-raising, is the honest implementation.
-- **Certificates cannot be issued from a dirty tree.** There is no `--force`.
-
----
-
-## 🧱 Tech Stack
-
-| Layer | Technology | Notes |
-|---|---|---|
-| Language | [Python](https://www.python.org) `>=3.12,<3.14` | The intersection of both upstream pins — `multidimio` wants `>=3.12,<3.15`, `segy` wants `>=3.11,<3.14` |
-| Store format | [Zarr](https://zarr.dev) v3 · [MDIO](https://github.com/TGSAI/mdio-python) v1 | Output is a plain Zarr v3 store; MDIO is a schema over it |
-| SEG-Y reader | [`segy`](https://github.com/TGSAI/segy) `0.6.0` | Pinned by version **and** commit SHA |
-| Converter | [`multidimio`](https://github.com/TGSAI/mdio-python) `1.2.1` | Public API only — no monkeypatching, no fork |
-| Arrays | [NumPy](https://numpy.org) 2.5 · [Dask](https://dask.org) · [xarray](https://xarray.dev) | Consumers need none of SDIP or MDIO installed |
-| CLI | [Click](https://click.palletsprojects.com) | Already in the `multidimio` tree — adds nothing to the licence surface |
-| Tooling | [uv](https://docs.astral.sh/uv/) · [pytest](https://pytest.org) · [ruff](https://docs.astral.sh/ruff/) · [mypy](https://mypy-lang.org) strict | |
-
----
-
-## ✨ Features
-
-### Available now — the whole chain runs
-
-- **`sdip doctor`** — eight FAIL-severity environment checks with `--json` output and **no override flag**. Runs first in CI and first in every runbook. If doctor fails, nothing else runs.
-- **Forbid-list enforcement** (`sdip.guard`) — barred environment variables, barred packages, binding upstream pins, a runtime dependency-tree licence scan, an SP6 warning ledger, and an `ast` scan proving SDIP never *sets* a barred variable.
-- **Provenance capture** (`sdip.provenance`) — streamed SHA-256 (bounded regardless of input size), full environment capture, and git working-tree state including untracked files.
-- **Publication firewall** — four layers, one of which prevents rather than detects. See [below](#-publication-firewall).
-- **Published certificate JSON Schema v0** — shipped inside the package, so `pip install sdip` gives a validator to a consumer who never clones. `verdict: EQUIVALENT` is structurally unrepresentable unless all five planes and `G1`/`G2`/`G7` are `PASS` in the same document.
-
-- **The Equivalence Engine** (`sdip.equivalence`) — all five planes, `G2`–`G4`, `G6`, and `G7`. Comparisons are `array_equal` or byte equality. There is no tolerance anywhere in the engine, and a CI job greps for one.
-- **`sdip certify`** — the full chain: ingest, five planes, export, whole-file round trip, portability, non-vacuity, certificate. **Refuses to issue from a dirty working tree, and there is no `--force`.**
-- **Survey-scale evidence.** `G5`/`G6`/`P3` ran over **11 files, 5,440,219,488 source bytes (5.07 GiB)**: every gate `PASS`, **every `G3` byte-identical** — eleven whole-file SHA-256 matches — at a peak RSS of **2.87 GiB against a pre-declared 8.0 GiB ceiling** and a worst wall clock of **467 s against 900 s**. The ceilings were committed before the run (**SP9**).
-- **A `uint8` header plane.** The 240 raw trace-header bytes, stored as a plain 2-D `uint8` array, because three readers gave three different answers about the structured `struct` dtype and `struct` has no Zarr v3 specification. Costs **9.26 B/trace**, measured on 116,532 real traces.
-
-### Built and deliberately not armed
-
-`sdip certify` reports `G5` as `NOT_RUN` unless you declare a ceiling on the command line. That is not an oversight. **`G5` judges what a run cost against a limit somebody committed to beforehand**, and a default ceiling would be a limit this tool invented — which is exactly what **SP9** forbids.
-
-```console
-$ sdip certify survey.sgy out.mdio           # G5: NOT_RUN, and the certificate says so
-$ sdip certify survey.sgy out.mdio \
-    --rss-ceiling-gib 8.0 --wall-ceiling-s 900 \
-    --prereg 'prereg/P3-scale.md@9904bec'    # G5 armed against a committed number
-```
-
-`release_readiness` on the certificate treats every `NOT_RUN` as blocking, so an unarmed gate cannot be mistaken for a passing one.
-
----
-
-## 🚦 The Gates
-
-Gates are **binary**. No warnings-as-passes. Every gate names the number that kills it.
-
-| Gate | Asserts | What kills it | Phase | State |
-|---|---|---|---|---|
-| `G1` | Byte coverage `== {1..240}`, itemsize `== 240`, zero overlaps, zero void gaps | Any uncovered or doubly-covered byte | F1 | **enforcing** |
-| `G2` | The five planes, per plane | One differing byte on any plane | F2–F3 | **all five enforcing** |
-| `G3` | `sha256(export) == sha256(source)` for the whole file | Hash mismatch with no scoped justification | F3 | **enforcing** |
-| `G4` | Store opens with stock `zarr` and `xarray` in a process asserting `"mdio" not in sys.modules` | Any array a consumer needs being unreadable without MDIO | F3 | **enforcing** |
-| `G5` | Survey-scale ingest inside a **pre-declared** memory ceiling | OOM, or peak RSS over the ceiling | F6 | **enforcing** |
-| `G6` | Two independent runs produce **identical array bytes** | Any array-content difference between runs | F6 | **enforcing** |
-| `G7` | **Every corruption fails its gate and only its gate** | Any corruption that passes, or one that fails the wrong gate | **F4** | **enforcing** |
-
-### G7 is the gate on the gates
-
-> **A gate a corrupted store passes is not a gate.**
-
-Every equivalence check must ship a permanent negative control that **must fail it**: one flipped header byte, one flipped sample bit, one dropped trace, two transposed traces, an inverted live mask, a truncated textual header. Each corruption must fail **its** gate and **only** its gate — a checker that fails everything on any corruption looks maximally safe and is maximally useless.
-
-**G7 now runs per store.** `sdip certify` corrupts *copies* of the store it is certifying, re-runs every checker, and records the outcome on that store's certificate — because a certificate cannot report the result of a test suite that ran on somebody's laptop last Tuesday.
-
-Each control declares the **exact set** of gates it must fail, and the observed set must *equal* it. One assertion catches both failure modes: a **narrow** checker that misses the corruption, and an **over-broad** one that fires on somebody else's.
-
-**It found a real defect on its first run.** Planes 1 and 2 shared a validating reader, so truncating the *textual* header also failed **G2b** — §7 G7's *"fails the wrong gate"* killer. The engine had been green on synthetic data, green on 116,532 real traces, and byte-identical on round trip, and still had two non-independent planes. Nothing else would have caught it (D-0028).
-
-### What green CI means here
-
-The five gate jobs **arm themselves**: each looks for its own subject in the tree and either runs the real check or reports `NOT_RUN` with its phase. A green build means *everything that exists passes*. **It does not mean the gates pass.** The `roadmap` CI job writes all seven gate states into every run summary so the distinction is visible in the run, not just in this file.
-
----
-
-## 💻 Command Surface
-
-```
-sdip doctor       # env sanity: barred vars, barred packages, pins, licences,
-                  # tree state, publication firewall, git hooks      [F0 — live]
-sdip spec build   # generate + validate a gap-free spec; runs G1     [F1 — live]
-sdip ingest       # SEG-Y -> MDIO  (must sit behind a __main__ guard) [F2 — live]
-sdip verify       # Equivalence Engine against a store (G2, G4)     [F3 — live]
-sdip export       # MDIO -> SEG-Y, then G3 whole-file SHA-256       [F3 — live]
-sdip certify      # full chain + round trip + certificate       [F3 — live, F4]
-```
-
----
-
-## 📂 Project Structure
-
-```
-sdip/
-├── .githooks/pre-commit          # publication firewall — the only layer that PREVENTS
-├── ci/                           # workflow definitions — NOT executed; see ci/README.md
-│   ├── ci.yml                    # doctor, lint, unit, forbid-list, licence,
-│   │                             # firewall, fixture-policy, gates, roadmap
-│   └── dco.yml                   # every commit carries Signed-off-by
-├── src/sdip/
-│   ├── _pins.py                  # binding pins + forbid lists — single source of truth
-│   ├── errors.py                 # typed errors; untrusted binary input never crashes
-│   ├── guard/                    # forbid-list enforcement (spec §9)
-│   │   ├── env.py                #   barred env vars + ast scan for assignments
-│   │   ├── packages.py           #   zfpy must not be importable
-│   │   ├── pins.py               #   exact version match; SHA declared, not verified
-│   │   ├── licences.py           #   runtime tree scan, tiered evidence, no prose match
-│   │   └── warn.py               #   SP6 ledger: detects suppression, contains the leak
-│   ├── provenance/               # sha256, environment capture, git state
-│   ├── schema/                   # PUBLISHED certificate JSON Schema (spec §4.7)
-│   ├── cli/                      # doctor | spec | ingest | verify | export | certify
-│   ├── spec/                     # gap-free SegySpec generator + G1     [F1 — live]
-│   │   ├── coverage.py           #   byte arithmetic, independent of the generator
-│   │   ├── generator.py          #   one uint8 filler per uncovered byte (SP5)
-│   │   └── gate.py               #   G1: five conditions, judged independently
-│   ├── templates/                # MDIO template registration & chunking     [F2]
-│   ├── ingest/                   # orchestration + raw file-header capture [F2 — live]
-│   ├── export/                   # MDIO -> SEG-Y, round-trip driver          [F3]
-│   └── equivalence/              # THE ENGINE: five planes, G1–G7, certificates [F3]
-├── tests/
-│   ├── unit/                     # 395 tests, every guard with its negative control
-│   ├── integration/              # 379 tests: planes, probes, closure, G6   [live]
-│   ├── negative/                 # 366 tests: G7's 16 controls + hostile corpus
-│   └── fixtures/PROVENANCE.md    # synthetic or openly licensed — binding
-├── certificates/                 # issued certificates (JSON) — empty
-├── DECISIONS.md                  # append-only design decision log
-├── EQUIVALENCE_LEDGER.md         # append-only index of issued certificates
-└── OPEN_DEBTS.md                 # unmeasured properties — scheduled, never cancelled
-```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- **Python `>=3.12,<3.14`** — outside that window one of the two upstream pins cannot be satisfied
-- **[uv](https://docs.astral.sh/uv/)** — `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- **git** ≥ 2.30
-
-### Install
+## Getting started
 
 ```bash
 git clone https://github.com/zahidaramai/sdip && cd sdip
-git config core.hooksPath .githooks   # required — see Publication Firewall
-uv sync
-uv run sdip doctor
+uv sync --all-extras --dev
+
+uv run sdip doctor          # environment sanity; runs first, always
 ```
 
-Expected on a clean checkout:
+Convert and certify:
 
-```console
-[PASS] python-version         Python 3.12.13 is inside the supported window
-[PASS] barred-env-vars        none of 2 barred variables are set
-[PASS] barred-packages        none of 1 barred modules are importable
-[PASS] upstream-pins          all 2 binding pins match
-[PASS] runtime-licences       51 runtime distributions scanned, no GPL/AGPL entry
-[PASS] working-tree           working tree clean at ba11e78…
-[PASS] publication-firewall   nothing unpublishable is tracked
-[PASS] git-hooks              pre-commit firewall hook is installed and executable
-
-doctor: PASS (8 checks)
+```bash
+uv run sdip certify survey.sgy survey.mdio \
+    --rss-ceiling-gib 8.0 \
+    --wall-ceiling-s 1500
 ```
 
-`doctor` exits `1` if any check fails, and **there is no override flag** — no `--force`, no `--allow-dirty`. A dirty working tree fails it, which is the correct reading: the environment is fine and the run is not certifiable.
+This ingests, runs all five planes, exports back to SEG-Y, compares the whole file by SHA-256, checks the store opens with **stock `zarr` and `xarray` with MDIO uninstalled**, runs the negative controls, and writes the certificate.
 
----
+> **Ingestion must sit behind `if __name__ == "__main__":`.** MDIO's header parser uses a `spawn` multiprocessing context; without the guard the child re-executes your script. This is measured, not theoretical.
 
-## 📜 Available Commands
-
-| Command | Description |
+| Command | What it does |
 |---|---|
-| `uv run sdip doctor` | Eight environment checks; exits 1 on any failure |
-| `uv run sdip certify SRC OUT --rss-ceiling-gib 8.0 --wall-ceiling-s 1500` | Full chain; issues a certificate. **Refuses from a dirty tree** |
-| `uv run sdip doctor --json` | Machine-readable report, suitable as a CI artifact |
-| `uv run pytest` | Full suite — **1,140 tests** |
-| `uv run sdip spec build --revision 0` | Build and validate a gap-free spec; runs G1 |
-| `uv run pytest tests/negative -v` | The G7 non-vacuity suite — permanent negative controls |
-| `uv run pytest tests/unit -k "actually_detects or negative"` | Just the negative controls — proof the guards fire |
-| `uv run ruff check . && uv run ruff format --check .` | Lint and format |
-| `uv run mypy` | Strict type check across **47 modules** |
-| `uv build` | Build sdist + wheel (`docs/` is excluded from both) |
+| `sdip doctor` | Environment sanity. If it fails, nothing else runs |
+| `sdip spec build` | Build a gap-free trace-header specification |
+| `sdip ingest` | SEG-Y → MDIO |
+| `sdip verify` | Run the Equivalence Engine against an existing store |
+| `sdip export` | MDIO → SEG-Y |
+| `sdip certify` | The full chain, ending in a certificate |
 
 ---
 
-## ✅ Quality & Verification
+## What it is proven on
 
-Only measured numbers appear here.
+SDIP has issued a certificate on a real survey: **494,565,408 bytes, 116,532 traces**, SEG-Y rev 1, big-endian, poststack 3-D — every check passing, from a clean working tree.
 
-| Dimension | Evidence |
-|---|---|
-| **Tests** | **1,140 passing**, 0 failing — 395 unit · 379 integration · 366 negative |
-| **Type checking** | `mypy --strict` clean across **47** source modules |
-| **Lint / format** | `ruff check` and `ruff format --check` clean |
-| **Warnings** | `filterwarnings = ["error"]` — any warning reaching pytest fails the suite |
-| **Negative controls** | Every guard has one: barred env vars (6 forms), barred packages, pin mismatch, missing distribution, copyleft spellings, the pre-commit hook, and each firewall path |
-| **Upstream verification** | All three API claims re-verified against the *live pinned objects*, including cited line numbers — `DECISIONS.md` D-0002 |
-| **Pin integrity** | **145** installed files recomputed against the wheels' own `RECORD` manifests, plus artifact SHA-256 read from `uv.lock`. Commit SHAs remain declared-only and the report says so — D-0015 |
-| **Header coverage** | Gap-free construction measured for **every** revision: rev 0 → 131 fields, rev 1 → 97, rev 2 / 2.1 → 90 (gap-free as shipped). Zero `ibm32` header fields in all four — D-0003 |
-| **Revision support, end to end** | **rev 0 and rev 1**, both byte-identical. rev 0 needed a §6.4 survey override, now built (D-0044). rev 2 / 2.1 blocked on two filed upstream defects |
-| **`ibm32` invertibility** | **P2 fired.** Only **1,656 of 4,103** IBM words (40.4 %) round-trip bit-identically; **1,939 lose the value**, not just the spelling. The one transform SP1 permits is **not** exactly invertible — D-0034 |
-| **Irregular geometry** | **P5 did not fire.** Duplicates refused at ingest *and* surfaced by Plane 5 — two independent defences. Padding is `NaN` and excluded from Plane 4. No suppressed check anywhere — D-0036 |
-| **Cross-implementation** | **P4 did not fire.** TensorStore (C++, no shared code with `zarr-python`) read all **97** structured header fields byte-identically. The same reader **refused** `segy_file_header`'s dtype — extension support is per-implementation — D-0035 |
-| **Licence scan** | **51** runtime distributions, **zero GPL/AGPL**, one allowlisted with cited evidence — D-0005 / D-0006 |
-| **Reproducibility** | A fresh clone syncs, passes `doctor` 8/8, and runs the suite with no local state |
-| **Survey-scale validation** | **Probe P3: 11 files, 1,281,852 traces, 5.07 GiB.** Every gate `PASS` on every file, **G3 byte-identical 11 of 11**, **1,283,133,852 samples compared exhaustively and exactly**, **zero ceiling breaches** against limits declared *before* the run — D-0042 |
-| **Memory behaviour** | Peak RSS **3.64 GiB of 8.0 declared** on the certified run. **The earlier claim that "memory tracks the chunk working set, not the file" was RETRACTED** (D-0060): the *verification* path fully materialises, and peak RSS is **linear in file size** — `RSS_MB = 214.7 + 7.73 × source_MB`, **R² = 0.99997**. The old flatness measured **eleven files of identical size**, which is replication, not scaling. `sdip verify` now **refuses** above a declared 1.0 GiB envelope rather than being OOM-killed |
-| **Single-bit detection** | **One flipped bit in one sample, out of 116,648,532, fails G2d and nothing else** — D-0030 |
-| **G7 cost** | Was 370 s / 2.83 GB — **87 % of the chain**. Now copies only what a control touches, hard-links the rest, and hashes the original before and after. **D18 closed** — D-0038 |
-| **Header cost, measured on real data** | Full 240-byte preservation compressed to **2.0 B/trace (121:1)** — **0.06 % of the store**. ≈10× cheaper than §5.4's synthetic pessimistic figure |
-| **Gates** | **7 of 7 `PASS`** at survey scale, `release_ready: true`. See [The Gates](#-the-gates) |
-| **Certificates issued** | **1**, indexed as [`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md) row 1. The JSON stays in the firewalled tree; its **digest, byte count, verdict, gate string and commit are public**, because a digest is not data |
-| **CI** | **15/15 green**, every gate job armed. First execution 2026-08-24 — see [CI/CD](#-cicd) |
-| **G7 non-vacuity** | **16 controls**, each failing exactly the gates it declares and no others; 1 recorded *not applicable* by name on a full grid |
-| **Sample formats** | **P9: 6 of 11** expressible formats lose values through MDIO's unconditional `float32` decode. `ibm32` is one case, not the case. The other five certify **`NON-EQUIVALENT` with a named cause** rather than silently |
-| **Wall-clock ceiling** | `1350 + 44.92 × (n − 16)`, from `sdip.equivalence.scale`. **Two of three derivations were discarded by their own pre-registered guards** — both would have failed a run that actually happened |
+It is **deliberately narrow**. Where a format, geometry or backend has not been measured, SDIP **refuses with a named reason** rather than converting it anyway. A tool that half-works on data it does not understand produces exactly the artifact this project exists to prevent.
 
-### Two defects the tests caught, recorded rather than quietly fixed
-
-1. **`git status --porcelain` output was being stripped**, shifting every dirty path by one character (`a.txt` → `.txt`). Now `-z` parsed and unstripped. Caught by its own negative control.
-2. **Two forbid-list gates were greps that fired on prose.** `pandas` embeds a **63,416-byte** licence text in its `License` metadata field — including PSF text discussing GPL compatibility — so a substring scan flags a BSD-3-Clause package as copyleft. Both gates are now `ast`-parsed with negative controls. **A gate that fires on prose is a gate that gets switched off.**
+Everything measured is recorded in [`DECISIONS.md`](DECISIONS.md); everything not yet measured is in [`OPEN_DEBTS.md`](OPEN_DEBTS.md), each naming the experiment that would settle it. Issued certificates are indexed in [`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md).
 
 ---
 
-## 🛡️ Publication Firewall
+## Not in scope, on purpose
 
-This repository is public. Some paths are **never committed** — not with `git add -f`, not "just this once to fix a link":
+**SDIP does not process seismic data.** No filtering, scaling, resampling, regridding, muting, interpolation or denoising. It is an identity map with a receipt, and every one of those would break the only promise it makes.
 
-```
-docs/                    CLAUDE.md               AGENTS.md
-.claude/                 CLAUDE.local.md         .cursor/   .aider*
-.claude-session-sync.md                          .github/copilot-instructions.md
-```
-
-| # | Layer | Catches | Timing | Bypassed by |
-|---|---|---|---|---|
-| **1** | `.githooks/pre-commit` | staged paths | **before the commit exists** | `git commit --no-verify` |
-| 2 | `.gitignore` | an accidental `git add -A` | at `git add` | `git add -f` |
-| 3 | `sdip doctor` → `publication-firewall` | index **and** `HEAD` | on demand | not running it |
-| 4 | CI `firewall` job | **any commit, any ref** | every PR and push | nothing in-repo |
-
-**Only layer 1 prevents. Layers 2–4 detect.** Once a path is in a commit the only remedy is a history rewrite, because a clone receives history — `git rm --cached` removes a file from the index and leaves it in every commit that already had it.
-
-Layer 4 deliberately does **not** declare `needs: doctor` and uses no Python: a broken environment is exactly when someone force-adds a file to make a check go away, so the layer that catches that cannot depend on the environment being healthy.
-
-> `docs/` holds the governing specification, the probe pre-registrations, and the runbooks. Every rule it imposes on a contribution is restated in this file, [`CONTRIBUTING.md`](CONTRIBUTING.md), and [`DECISIONS.md`](DECISIONS.md). If a rule you are asked to follow appears in none of the three, **open an issue** — that is a defect in those files, not in you. Tracked as **D13**.
+It does not invent a format either — it adopts **MDIO v1** and pins its upstream dependencies exactly, because a certificate issued under one version of a decoder says nothing about another.
 
 ---
 
-## 🧭 Scope
+## Contributing
 
-### In scope
+Contributions are welcome under Apache-2.0 with a DCO sign-off. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) — it states the rules a change is held to, and invites an issue wherever a rule is unclear.
 
-- SEG-Y → MDIO v1 / Zarr v3 ingestion. **Measured revision support: rev 0 and rev 1** end to end, byte-identical. rev 2 / 2.1 build a valid gap-free spec and pass G1, then fail on two upstream defects that are filed (D-0037, D-0044)
-- Gap-free trace-header specification generation and management
-- The Equivalence Engine, its gates, and the Equivalence Certificate
-- MDIO → SEG-Y export and round-trip verification
-- **Poststack 3-D**, and **prestack CDP-offset (2-D and 3-D)** through `sdip ingest` itself — the two geometries a §6.4 alias unblocks, because `offset` and `cdp` are the standard's own words for bytes 37 and 21. The other five prestack layouts need names no rev 1 byte carries, so **no override can conjure them**
-- Survey-scale ingestion within a **pre-declared** memory ceiling, and a **wall-clock ceiling that tracks the control count** rather than a constant
-- **Cloud object stores are NOT in scope** — no named backend has been measured (**D7**), and `s3://` and friends **refuse** rather than silently writing a local directory, which is what probe P8 caught them doing
-- Provenance, custody, and reproducibility metadata
-
-### Explicitly out of scope
-
-- **Seismic processing of any kind.** No filtering, scaling, resampling, regridding, muting, interpolation, denoising, or reconstruction. **SDIP is an identity map with a receipt.**
-- **ZGY, VDS, SGZ as ingestion sources** — ruled derivative-only. ZGY carries *no trace headers*; readers synthesise them and **234 of 240 bytes are zeros**. Sample types are routinely `int8`/`int16` with a linear coding range, so the data is already quantised before SDIP would see it. Display or screening path only, flagged `DERIVATIVE`, never quantitative.
-- **Interpretation data** — horizons, faults, wells, velocity models. Different problem.
-- **Format invention.** SDIP adopts MDIO v1; it does not design a competing schema.
-
-### Not KPIs
-
-- **Compression ratio.** Size reduction is a side effect of lossless codecs, never a target that could justify a lossy path.
-- **Ingestion speed**, until equivalence is proven at scale. A fast pipeline with an unproven contract has negative value — it produces untrustworthy data faster.
+Security issues: [report privately](https://github.com/zahidaramai/sdip/security/advisories/new). SDIP parses binary files it did not create, so it treats untrusted input as a real attack surface — see [`SECURITY.md`](SECURITY.md).
 
 ---
 
-## 🔑 Environment Variables
+## License
 
-SDIP reads **no** configuration from the environment. Two variables are **barred**, and `sdip doctor` fails if either is set — presence alone, including `=0` and `=""`.
+**Apache-2.0.** See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
 
-| Variable | Why it is barred |
-|---|---|
-| `MDIO_IGNORE_CHECKS` | Demotes MDIO's grid-sparsity error to a log line. **A suppressible gate is not a gate.** |
-| `MDIO__IMPORT__RAW_HEADERS` | Deprecated upstream for removal in 1.4. SDIP reaches full 240-byte header persistence through the **public API** instead, so depending on this flag is a specification violation even though it looks helpful. |
-
-> **If you find one of these set, do not just unset it and move on.** Someone set it because something failed. That thing still fails. `MDIO_IGNORE_CHECKS` means a grid did not resolve — probe **P5**. `MDIO__IMPORT__RAW_HEADERS` means someone believed headers were being dropped — verify with **G2c**, not with the flag.
-
-SDIP holds no secrets and requires no credentials. Cloud object-store access, when it lands in phase F6, uses the backend's own credential chain.
-
----
-
-## ☁️ CI/CD
-
-**CI executes, and it is green: 15/15.** Every job on every push and PR; any failure
-blocks merge (spec §7.8).
-
-> **It ran nowhere until 2026-08-24, and the reason is worth stating.** The workflows were
-> deliberately parked outside `.github/workflows/` while the gates were being built — an
-> always-failing job would have blocked the very pull request that built the gate. When
-> they were finally wired, **jobs still died in two seconds with zero steps**: the account
-> was locked by a payment declined on 19 August, which no repository setting reveals.
-> GitHub's own annotation said so; the billing page did not, because the payment had since
-> succeeded. See `DECISIONS.md` **D-0080**.
-
-**Running the suite locally before paying for it found three defects CI had never been
-able to show**: a guard that failed on the *correct* value, and two gate jobs whose
-subject globs had never matched a file — one mis-aimed while its gate was covered by 21
-tests under other names, one honestly unarmed because no such test existed. **Identical
-from the CI summary, entirely different problems.** Then the real run found two more that
-only ubuntu and a fresh clone could expose. **Neither pass was redundant.**
-
-| Job | Asserts | Gated on `doctor` |
-|---|---|---|
-| `doctor` | Runs first. If doctor fails, nothing else runs. | — |
-| `lint / type` | `ruff check`, `ruff format --check`, `mypy --strict` | yes |
-| `unit` | Full suite on Python **3.12** and **3.13** | yes |
-| `forbid-list` | Barred vars absent · SDIP never *sets* one (`ast`) · `zfpy` unimportable · no tolerance (`ast`) · no suppressed warnings · **the detectors have been shown to fire** | yes |
-| `licence` | No GPL/AGPL in the runtime dependency tree | yes |
-| `firewall` | Nothing unpublishable at `HEAD` **or anywhere in history** | **no — deliberately** |
-| `fixture-policy` | No fixture lacking an entry in `PROVENANCE.md` | yes |
-| `publication-readiness` | No unresolved placeholder can reach a public repository | yes |
-| `gates` | **Five self-arming gate jobs, all five now armed**: integration (G2), negative (G7), portability (G4), spawn-guard, determinism (G6) | yes |
-| `roadmap` | Writes all seven gate states into every run summary | — |
-| `dco` | Every commit carries `Signed-off-by` | — |
-
-CI has no network access except the pinned package index.
-
-**Green still does not mean the gates pass on your data.** The gate jobs run against
-**committed synthetic fixtures**; a certificate is issued against **a specific store from
-a specific source**. **CI cannot certify anything** — that is what
-[`EQUIVALENCE_LEDGER.md`](EQUIVALENCE_LEDGER.md) is for, and why **D14** stays open as a
-standing warning rather than being closed by a green badge.
-
-**The `gates` job excludes exactly the 63 P7 latency benchmarks** (`-m 'not slow'`),
-verified against the collected set. They compare chunk shapes at millisecond scale — a
-real comparison on a quiet machine and noise on a shared runner, and **a flaky gate
-teaches people to re-run rather than read** (**D39**). The other two `slow` suites are
-correctness, not timing, and still run.
-
----
-
-## 📌 Upstream Pins
-
-| Package | Version | Commit |
-|---|---|---|
-| [`multidimio`](https://github.com/TGSAI/mdio-python) | `1.2.1` | `a2895b53088ffacbf4bd1b9e882856cbda78e235` |
-| [`segy`](https://github.com/TGSAI/segy) | `0.6.0` | `8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78` |
-
-Pinned **together** — the `ibm32` header fix straddles the `segy` 0.6.0 boundary. **A bump invalidates every certificate issued under the previous pin**, requires a maintainer decision in [`DECISIONS.md`](DECISIONS.md), and ships as a minor release with a migration note.
-
-**SDIP pins and does not fork.** Full 240-byte header persistence is reachable through the public API, independent of the deprecated raw-headers flag — the chain was verified against the live pinned objects rather than read from documentation (D-0002). No monkeypatching, no subclassing around, no reaching into internals.
-
-> Commit SHAs are **declared, not runtime-verified** — a wheel does not carry the SHA it was built from. Every certificate says so in its own `env` block rather than implying an attestation that did not happen. Tracked as **D9**.
-
----
-
-## 🔐 Security
-
-**[Report a vulnerability privately →](https://github.com/zahidaramai/sdip/security/advisories/new)**
-
-SDIP parses **untrusted binary input**. A SEG-Y file is a header-length-prefixed binary format from an arbitrary source — a tape transcription, a contractor deliverable, an email attachment. A malformed or hostile file must produce a clean, typed error, never a crash, an unbounded allocation, or a write outside the output path.
-
-**A forged or wrongly issued Equivalence Certificate is a security issue, not merely a correctness bug.** The certificate is what a downstream consumer trusts *instead of* re-verifying the data themselves. Treat a way to produce a false `EQUIVALENT` verdict as you would an authentication bypass.
-
-Full policy, scope, and the supported-version window: [`SECURITY.md`](SECURITY.md).
-
----
-
-## 📄 License
-
-**Apache-2.0.** See [`LICENSE`](LICENSE).
-
-[`NOTICE`](NOTICE) carries mandatory attribution to **TGS** for `mdio-python` and `segy` (Apache-2.0) and for the round-trip test the Equivalence Engine is seeded from. **That attribution is a legal obligation and must survive refactors.** `ThomasHertweck/seisio` (LGPL) is cited as design prior art with an explicit *no code copied* statement; no code has been taken from `trhallam/segysak` (GPL) or `stuliveshere/pyseis-io` (AGPL-3.0), at any size.
-
-Contributions are accepted under Apache-2.0 with DCO sign-off — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Citation metadata: [`CITATION.cff`](CITATION.cff).
+The round-trip test fixture is adapted from [`TGSAI/mdio-python`](https://github.com/TGSAI/mdio-python) (Apache-2.0); attribution in `NOTICE` is a legal obligation and survives refactors.
 
 ---
 
