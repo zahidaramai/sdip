@@ -15,6 +15,72 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [1.1.0] — 2026-08-24
+
+**Additive only. No behaviour of v1.0.0 changed**, and the guarantee is unchanged: a
+certificate still means what it meant.
+
+### Added
+
+- **`sdip.equivalence.scale.parametric_wall_ceiling(n_controls)`** — the G5 wall-clock
+  ceiling as a **function of the work** rather than a constant, with
+  `WALL_CEILING_BASE_S`, `WALL_CEILING_REFERENCE_CONTROLS` and
+  `WALL_CEILING_PER_CONTROL_S` carrying their provenance.
+
+  ```
+  ceiling(n) = 1350 + 44.92 × (n − 16)
+  ```
+
+  **It is deliberately NOT a default.** `sdip certify` still requires
+  `--wall-ceiling-s`, because a ceiling this tool applies on its own behalf is not one
+  anybody declared (**SP9**). A test asserts the CLI does not reference it, so adopting
+  it as a default becomes a deliberate act.
+
+  **Measured over three amendments, two of them discarded** (`prereg/P10`): the first had
+  no floor check and would have shipped 1,150 s; the second's floor caught 1,100 s. Both
+  sit **below a run that actually happened** (1,168.55 s) and would have failed the next
+  legitimate chain. Closes **D43**.
+
+- **A dedicated G6 determinism test** (`tests/integration/test_determinism_g6.py`) — two
+  positive legs and four controls, including a control **for the controls**: identical
+  stores must be reported identical, without which the other three would pass against a
+  comparator that called everything different. Closes **D44**.
+
+### Fixed
+
+- **`CITATION.cff` shipped v1.0.0 declaring `version: 0.1.0.dev0`.** The field existed
+  with a stale value, so the release bump skipped it — a citation for the released
+  software named a version that was never released. Now `1.1.0`, with `date-released`
+  corrected too.
+- **`sdip doctor`'s environment test assumed hooks were installed.** It passed on every
+  developer machine and failed on a fresh checkout. The check was right; the test was
+  wrong.
+- **A refusal/ingest memory comparison had no declared margin** and failed on a 0.7 %
+  difference — allocator noise. Margin declared at **1.25×**, far from the value that
+  failed.
+- **A CI guard that failed on the correct value.** It grepped for `zahidaramai/sdip` as
+  an unresolved placeholder — which it *was* when written, before the repository existed
+  at that name.
+- **Two CI gates that could never arm.** G4's subject matched no file while G4 was
+  covered by 21 tests under other names; G6's matched no file because no such test
+  existed, which is what D44 wrote.
+
+### Infrastructure
+
+- **CI executes.** Workflows moved into `.github/workflows/`, and the first fully green
+  run in this repository's history is **15/15**. Every gate job now **arms** — no
+  `NOT_RUN` remains.
+- **The pin-bump rule was corrected at 1.0.0** and holds here: an upstream pin bump is a
+  **major** release, because it invalidates every certificate issued under the previous
+  pin.
+
+### Unchanged, and deliberately
+
+The supported/refused table is **identical to v1.0.0**. No format, geometry, endianness or
+backend was added, because none was demanded. **A minor release that widens the supported
+surface without a real file asking for it is how a narrow guarantee quietly becomes a
+broad claim nobody measured.**
+
 ## [1.0.0] — 2026-08-23
 
 **The first release, and the first Equivalence Certificate this project has issued.**
@@ -228,4 +294,5 @@ regression-tested. See D-0018.
   thirty lines below the entry announcing the full command surface was live, and carried
   a near-duplicate copy of its own F3–F7 block. Both corrected here.
 
+[1.1.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.0
 [1.0.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.0.0
