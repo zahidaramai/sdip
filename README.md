@@ -13,13 +13,7 @@
 
 <br />
 
-## 🧊 Designed & Developed by KLCube Network Agency
-
-### Zahid Aramai — Founder & Lead Developer
-
-[![KLCube Network Agency](https://img.shields.io/badge/KLCube-Network_Agency-0EA5E9?style=for-the-badge&logoColor=white)](#-designed--developed-by-klcube-network-agency)
-[![Lead Developer](https://img.shields.io/badge/Lead_Developer-Zahid_Aramai-0F172A?style=for-the-badge)](#-designed--developed-by-klcube-network-agency)
-[![Copyright](https://img.shields.io/badge/©_2026-Zahid_Aramai-2563EB?style=for-the-badge)](NOTICE)
+**Zahid Aramai**
 
 <br />
 
@@ -187,8 +181,8 @@ print(ds)
 # data vars:   amplitude, headers, headers_raw_uint8, trace_mask, ...
 # coords:      inline, crossline, time, cdp_x, cdp_y
 
-volume = ds["amplitude"]       # dims ('inline', 'crossline', 'time'), lazy + dask-backed
-inline_42 = volume.sel(inline=42).values          # label-based, straight to NumPy
+volume = ds["amplitude"]  # dims ('inline', 'crossline', 'time'), lazy + dask-backed
+inline_42 = volume.sel(inline=42).values  # label-based, straight to NumPy
 ```
 
 **With `zarr` directly:**
@@ -197,12 +191,12 @@ inline_42 = volume.sel(inline=42).values          # label-based, straight to Num
 import zarr
 
 store = zarr.open_group("survey.mdio", mode="r")
-amplitude = store["amplitude"]          # samples, (inline, crossline, time), float32
-headers   = store["headers"]            # structured array, 97 named trace-header fields
-mask      = store["trace_mask"][...]    # which traces are live
+amplitude = store["amplitude"]  # samples, (inline, crossline, time), float32
+headers = store["headers"]  # structured array, 97 named trace-header fields
+mask = store["trace_mask"][...]  # which traces are live
 raw_bytes = store["headers_raw_uint8"]  # all 240 header bytes per trace, verbatim
 
-tile = amplitude[100:132, 200:232, :]   # chunk-level random access — NumPy from here on
+tile = amplitude[100:132, 200:232, :]  # chunk-level random access — NumPy from here on
 ```
 
 **Into a training loop:** the arrays are NumPy-compatible and chunk-addressable, so a `torch.utils.data.Dataset` (or a `tf.data` pipeline) is a thin wrapper — slice the region you want per `__getitem__` and let Zarr fetch only the chunks it touches. SDIP deliberately ships no data loader of its own; the store is a standard one, so yours works.
@@ -348,19 +342,10 @@ Common searches this project answers: *convert SEG-Y to Zarr* · *SEG-Y to MDIO 
 
 <div align="center">
 
-## 🧊 Designed & Developed by KLCube Network Agency
+Built as an open-source contribution to the subsurface data community
+Kuala Lumpur, Malaysia
 
-### Zahid Aramai — Founder & Lead Developer
-
-[![KLCube Network Agency](https://img.shields.io/badge/KLCube-Network_Agency-0EA5E9?style=for-the-badge&logoColor=white)](#-designed--developed-by-klcube-network-agency)
-[![Lead Developer](https://img.shields.io/badge/Lead_Developer-Zahid_Aramai-0F172A?style=for-the-badge)](#-designed--developed-by-klcube-network-agency)
-[![Copyright](https://img.shields.io/badge/©_2026-Zahid_Aramai-2563EB?style=for-the-badge)](NOTICE)
-
-<br />
-
-Built as an open-source contribution to the subsurface data community · Kuala Lumpur, Malaysia
-
-© 2026 **Zahid Aramai** · Licensed under Apache-2.0
+© 2026 **Zahid Aramai** (M Zahid B Zamanshah) · Licensed under Apache-2.0
 
 *The product is not the file. The product is the file plus the proof.*
 

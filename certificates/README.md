@@ -21,7 +21,7 @@ uvx check-jsonschema \
   certificates/*.json
 ```
 
-`pip install sdip` carries the schema, so a consumer who never clones this repository
+Installing the package carries the schema, so a consumer who never clones this repository
 still has the validator. Several project rules are encoded as schema constraints rather than left to
 prose, so an invalid certificate cannot be produced by accident:
 
@@ -50,3 +50,6 @@ timestamp disambiguates re-issues. Neither component is ever derived from file
 
 **Until G7 passes, every certificate the engine issues is unvalidated** (**D11**). Do
 not publish certificates from an engine whose gates have never been shown to fail.
+
+**Not on PyPI.** Install from the tag — `pip install git+https://github.com/zahidaramai/sdip@v1.1.0`. PyPI is a support
+commitment, not a checkbox, and an install instruction that 404s is worse than none.

@@ -56,16 +56,23 @@ flag — see [`DECISIONS.md`](DECISIONS.md) D-0007.
 
 ---
 
-## Continuous integration — defined, not yet executed
+## Continuous integration
 
-The workflow definitions live in [`ci/`](ci/README.md), **not** in `.github/workflows/`.
-GitHub only executes workflows under `.github/workflows/`, so **no job in `ci/ci.yml` or
-`ci/dco.yml` currently runs on a push or a pull request.** CI is deferred until the
-project is complete; nothing was deleted, and re-enabling it is one command:
+The workflows live in [`.github/workflows/`](../.github/workflows/) and **run on every
+push and pull request**. Any failure blocks merge.
+
+Run them locally before you push — it is faster than a round trip, and it is how three
+defects were found that CI had never been able to show:
 
 ```bash
-git mv ci/*.yml .github/workflows/
+uv run sdip doctor
+uv run pytest
+uv run ruff check . && uv run ruff format --check . && uv run mypy
 ```
+
+> **`ruff format` also formats fenced Python inside Markdown.** A README code block with
+> aligned inline comments will fail `--check`. This is not hypothetical; it turned the
+> `lint` job red once.
 
 **The checks those files encode are still binding on you.** They are the reviewable
 statement of the §7.8 job table — the forbid-list `ast` scans, the publication-firewall
@@ -101,7 +108,7 @@ Four layers enforce it, and only the first one *prevents* anything:
 | 1 | `.githooks/pre-commit` | staged paths | **before the commit exists** |
 | 2 | `.gitignore` | an accidental `git add -A` | at `git add` |
 | 3 | `sdip doctor` → `publication-firewall` | index **and** `HEAD` | on demand |
-| 4 | CI `firewall` job (`ci/ci.yml`) | **any commit, any ref** | every PR and push — *see [Continuous integration](#continuous-integration--defined-not-yet-executed): not currently executed* |
+| 4 | CI `firewall` job (`.github/workflows/ci.yml`) | **any commit, any ref** | every PR and push |
 
 Layers 2–4 only *detect*. Once a path is in a commit the remedy is a history rewrite,
 because a clone receives history — `git rm --cached` removes a file from the index and

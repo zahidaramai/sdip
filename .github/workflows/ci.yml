@@ -393,25 +393,41 @@ jobs:
       - uses: actions/checkout@v4
       - name: Summarise what has and has not been measured
         run: |
+          # DERIVED, never hard-coded. The previous version of this block printed
+          # "Current phase: F0" and all seven gates "NOT BUILT" into EVERY run summary,
+          # months after they were built - the loudest text in CI, and false. A table
+          # somebody has to remember to update is a table that goes stale, so this one
+          # reads the tree.
           {
-            echo "## SDIP roadmap status"
+            echo "## SDIP gate status"
             echo
-            echo "Current phase: **F0** — repository skeleton, public-project files, \`sdip doctor\`."
+            echo "Derived from the tree on every run. Nothing here is hard-coded."
             echo
-            echo "| Gate | Phase | State |"
+            echo "| Gate | Subject in tree | State |"
             echo "|---|---|---|"
             for row in \
-              "G1 spec completeness|F1|NOT BUILT" \
-              "G2 ingest identity|F3|NOT BUILT" \
-              "G3 round trip|F3|NOT BUILT" \
-              "G4 portability|F3|NOT BUILT" \
-              "G5 scale|F6|NOT BUILT — probe P3" \
-              "G6 determinism|F3|NOT BUILT" \
-              "G7 non-vacuity|F4|**NOT BUILT — OPEN_DEBTS D11**"; do
-              IFS='|' read -r g p s <<< "$row"; echo "| $g | $p | $s |"
+              "G1 spec completeness|src/sdip/spec/gate.py" \
+              "G2 five planes|src/sdip/equivalence/planes.py" \
+              "G3 round trip|src/sdip/export/roundtrip.py" \
+              "G4 portability|src/sdip/equivalence/portability.py" \
+              "G5 scale|src/sdip/equivalence/scale.py" \
+              "G6 determinism|src/sdip/equivalence/determinism.py" \
+              "G7 non-vacuity|src/sdip/equivalence/nonvacuity.py"; do
+              IFS='|' read -r gate subject <<< "$row"
+              if [ -e "$subject" ]; then
+                echo "| $gate | \`$subject\` | BUILT |"
+              else
+                echo "| $gate | \`$subject\` | NOT BUILT |"
+              fi
             done
             echo
-            echo "**Until G7 passes, every certificate the engine issues is unvalidated.**"
-            echo "Do not publish certificates from an engine whose gates have never been"
-            echo "shown to fail. Live debts: \`OPEN_DEBTS.md\`."
+            CONTROLS=$(grep -c 'Corruption(' src/sdip/equivalence/nonvacuity.py || echo 0)
+            echo "**G7 ships $CONTROLS permanent negative controls**, each required to fail"
+            echo "exactly the gates it declares and no others."
+            echo
+            echo "**Green here means every check that exists passes. It does NOT mean the"
+            echo "Equivalence Contract holds on your data** - these jobs run against committed"
+            echo "synthetic fixtures, while a certificate is issued against a specific store"
+            echo "from a specific source. CI cannot certify anything; \`EQUIVALENCE_LEDGER.md\`"
+            echo "indexes what was actually certified."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -5,9 +5,11 @@ equality or ``array_equal``. A tolerance-based comparison is a specification def
 (§4.5, §9.5), and a CI job parses this tree with ``ast`` to make sure none appears.
 
 Phase F2 implements **Plane 1** (textual) and **Plane 2** (binary) — gates G2a and G2b.
-Planes 3, 4 and 5 are F3 and are not stubbed: :func:`plane_3`, :func:`plane_4` and
-:func:`plane_5` do not exist, so a caller gets an ``AttributeError`` rather than a
-plausible-looking `PASS` for a check that never ran.
+**All five planes are implemented and run.** :func:`plane_3`, :func:`plane_4` and
+:func:`plane_5` compare trace headers, samples and cardinality respectively; each also
+carries the legs added since — the raw header-byte plane, the undecoded sample view, the
+derived coordinate arrays, the sample axis, and array-presence checks. A plane returns
+``PASS`` only when every one of its legs holds.
 
 Every checker compares the **store** against the **source file on disk**, never against
 something remembered from the ingest that produced it. A checker that validates its own

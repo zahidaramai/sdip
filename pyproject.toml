@@ -19,7 +19,7 @@ keywords = [
     "reproducibility", "cloud-native",
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.12",
@@ -35,7 +35,8 @@ classifiers = [
 # segy       0.6.0  SHA 8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78
 # Pin BOTH together: the ibm32 header fix straddles the segy 0.6.0 boundary.
 # A bump invalidates every certificate issued under the previous pin and requires
-# a maintainer decision in DECISIONS.md plus a minor release with a migration note.
+# a maintainer decision in DECISIONS.md plus a MAJOR release with a migration note:
+# a bump invalidates every certificate issued under the previous pin (CHANGELOG 1.0.0).
 # The `lossy` extra of multidimio (zfpy) is BARRED - spec section 9.2, SP3.
 dependencies = [
     "multidimio==1.2.1",

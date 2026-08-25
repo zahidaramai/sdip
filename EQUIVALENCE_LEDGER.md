@@ -13,7 +13,22 @@ certificate schema.
 
 ---
 
+> ## STATUS AS OF 2026-08-25
+>
+> **The table below is the original F0 header and is superseded.** The Equivalence Engine
+> exists, all seven gates pass, and **one certificate has been issued** — see
+> **[The table, from here](#the-table-from-here)** near the end of this file for the live
+> rows, and the corrections between here and there for how the record moved.
+>
+> `EQUIVALENCE_LEDGER.md` is append-only under **SP10**: rows and corrections are added,
+> never edited. **That governs the record, not the navigation** — this pointer is added
+> so the first screen does not misinform a reader who does not scroll.
+
+---
+
 ## Why this table is empty
+
+*(Superseded — see the status block above.)*
 
 The Equivalence Engine does not exist yet. The repository is at roadmap phase **F0**
 (specification §13); the engine is F3 and its non-vacuity suite is **F4**.
