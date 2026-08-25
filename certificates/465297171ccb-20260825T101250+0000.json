@@ -1,0 +1,2574 @@
+{
+  "certificate_schema_version": "0",
+  "codecs_used": [
+    "blosc",
+    "bytes",
+    "zstd"
+  ],
+  "detected_encoding": {
+    "decode_status": "decoded",
+    "detail": "SDIP stores the raw 3200 bytes and compares them as bytes; the encoding is recorded, never used to normalise (\u00a74.2).",
+    "encoding": "ebcdic"
+  },
+  "determinism": {
+    "array_count": 11,
+    "arrays_compared": [
+      "amplitude",
+      "amplitude_raw_ibm32",
+      "cdp_x",
+      "cdp_y",
+      "crossline",
+      "headers",
+      "headers_raw_uint8",
+      "inline",
+      "segy_file_header",
+      "time",
+      "trace_mask"
+    ],
+    "chunk_byte_divergences": [],
+    "error": null,
+    "findings": [
+      {
+        "array": "amplitude",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "1 chunk file(s) identical byte for byte",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      },
+      {
+        "array": "amplitude_raw_ibm32",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "1 chunk file(s) identical byte for byte",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      },
+      {
+        "array": "cdp_x",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "1 chunk file(s) identical byte for byte",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      },
+      {
+        "array": "cdp_y",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "1 chunk file(s) identical byte for byte",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      },
+      {
+        "array": "crossline",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "1 chunk file(s) identical byte for byte",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      },
+      {
+        "array": "headers",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "1 chunk file(s) identical byte for byte",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      },
+      {
+        "array": "headers_raw_uint8",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "1 chunk file(s) identical byte for byte",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      },
+      {
+        "array": "inline",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "1 chunk file(s) identical byte for byte",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      },
+      {
+        "array": "segy_file_header",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "no chunk files on disk - byte level compared nothing for this array",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      },
+      {
+        "array": "time",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "1 chunk file(s) identical byte for byte",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      },
+      {
+        "array": "trace_mask",
+        "chunk_bytes_identical": true,
+        "chunk_detail": "1 chunk file(s) identical byte for byte",
+        "first_differing_chunk": null,
+        "partial_determinism": false,
+        "runs": [
+          0,
+          1
+        ],
+        "status": "PASS",
+        "value_detail": "array_equal - exact, never allclose",
+        "values_identical": true
+      }
+    ],
+    "first_differing_chunk": null,
+    "gate": "G6",
+    "note": "Two levels, reported separately: on-disk chunk files compared byte for byte, and decoded arrays compared with array_equal. Identical values with differing compressed bytes is partial determinism - it still FAILS G6, because the governing text says array bytes. zarr.json is skipped for the byte comparison as the metadata-timestamp exclusion (it carries createdOn), which also puts stored attributes - the raw SEG-Y file headers - outside G6's scope; those are measured by G2a and G2b.",
+    "partial_determinism": false,
+    "runs": 2,
+    "status": "PASS",
+    "summary": "G6 PASS: 2 independent ingests, 11 arrays, chunk bytes and values identical across every run pair",
+    "value_divergences": []
+  },
+  "env": {
+    "declared_pins": {
+      "multidimio": {
+        "commit_sha": "a2895b53088ffacbf4bd1b9e882856cbda78e235",
+        "repository": "https://github.com/TGSAI/mdio-python",
+        "sha_verification": "declared-not-runtime-verified",
+        "version": "1.2.1"
+      },
+      "segy": {
+        "commit_sha": "8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78",
+        "repository": "https://github.com/TGSAI/segy",
+        "sha_verification": "declared-not-runtime-verified",
+        "version": "0.6.0"
+      }
+    },
+    "machine": "arm64",
+    "packages": {
+      "dask": "2026.7.1",
+      "fsspec": "2026.1.0",
+      "multidimio": "1.2.1",
+      "numcodecs": "0.16.5",
+      "numpy": "2.5.2",
+      "pandas": "2.3.3",
+      "python_full": "3.12.13",
+      "segy": "0.6.0",
+      "xarray": "2026.7.0",
+      "zarr": "3.3.0"
+    },
+    "pins": [
+      {
+        "artifact_hashes": {
+          "multidimio-1.2.1-py3-none-any.whl": "sha256:ef79f8e5732cd42d290d4097c1dd90d69bf86a7bbd9b46d9b7c80cdd23cae78a",
+          "multidimio-1.2.1.tar.gz": "sha256:06441b8c1ea4a26ab53bb07b43c94a69a84e767f63872c60e7274522356a62c9"
+        },
+        "commit_sha_verified": false,
+        "declared_commit_sha": "a2895b53088ffacbf4bd1b9e882856cbda78e235",
+        "distribution": "multidimio",
+        "expected": "1.2.1",
+        "installed": "1.2.1",
+        "installed_file_integrity": {
+          "attests": "installed files match the wheel's own RECORD manifest",
+          "does_not_attest": "that the wheel was built from the declared commit",
+          "files_checked": 100,
+          "mismatched": [],
+          "missing": [],
+          "unhashed_entries": 1
+        },
+        "ok": true
+      },
+      {
+        "artifact_hashes": {
+          "segy-0.6.0-py3-none-any.whl": "sha256:82a3c772434ff7a12e0ef371a288362411d90798377c17946e66737a1791f473",
+          "segy-0.6.0.tar.gz": "sha256:1ec623361e99ddbf952be286403912e4c50218f49bdddf73a0c907a9a06a74f7"
+        },
+        "commit_sha_verified": false,
+        "declared_commit_sha": "8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78",
+        "distribution": "segy",
+        "expected": "0.6.0",
+        "installed": "0.6.0",
+        "installed_file_integrity": {
+          "attests": "installed files match the wheel's own RECORD manifest",
+          "does_not_attest": "that the wheel was built from the declared commit",
+          "files_checked": 45,
+          "mismatched": [],
+          "missing": [],
+          "unhashed_entries": 1
+        },
+        "ok": true
+      }
+    ],
+    "platform": "Darwin 25.5.0",
+    "python": "3.12.13",
+    "python_implementation": "CPython"
+  },
+  "gates": {
+    "G1": "PASS",
+    "G2": "PASS",
+    "G3": "PASS",
+    "G4": "PASS",
+    "G5": "PASS",
+    "G6": "PASS",
+    "G7": "PASS"
+  },
+  "git": {
+    "branch": "main",
+    "describe": "v1.1.0-6-g20e5a7a",
+    "dirty": false,
+    "dirty_paths": [],
+    "is_repository": true,
+    "sdip_commit": "20e5a7ad35784328cc237765c60d280d9eadd69d",
+    "sdip_version": "1.1.0"
+  },
+  "issued_at": "2026-08-25T10:12:50+00:00",
+  "issued_by": "sdip 1.1.0",
+  "lossy_codec_present": false,
+  "nonvacuity": {
+    "baseline_clean": true,
+    "bytes_copied": 581753,
+    "bytes_hardlinked": 179159,
+    "bytes_if_whole_store_copied_per_control": 760912,
+    "closure_control": {
+      "baseline_clean": true,
+      "baseline_detail": "closure PASS: the export re-ingests, all 5 planes hold against it, both raw file headers and all 11 arrays are identical to the original store's",
+      "clause": "\u00a77 G7 applied to arrow 3 - OPEN_DEBTS D19, DECISIONS D-0031 / D-0067",
+      "corrupted_closure_summary": "closure FAIL: binary file header: 1 of 400 bytes differ; first at binary header byte 101 (0-based offset 100)",
+      "description": "One bit flipped at byte 3300 of the exported SEG-Y - binary file header byte 101, unassigned in SEG-Y revisions 0, 1 and 2",
+      "detected": true,
+      "differing_file_headers": [
+        "sdipRawBinaryHeader"
+      ],
+      "export_unmodified": true,
+      "failure_reasons": [],
+      "g3_also_fires_when_byte_identical": true,
+      "leg_exact": true,
+      "must_fail": [
+        "roundtrip_closure"
+      ],
+      "must_fire_leg": "file_headers",
+      "name": "closure_binary_header_byte",
+      "note": "The textual header attribute is asserted to be UNCHANGED here (sdipRawTextHeader): a leg that reported both headers moving when one byte of one of them was flipped could not localise a fault, which is \u00a77 G7's other killer. G3 also fails on this corruption whenever the round trip was byte-identical; in the ROUNDTRIP-SCOPED regime closure exists for, G3 is already FAIL and discriminates nothing.",
+      "observed_legs": [
+        "file_headers"
+      ],
+      "offset": 3300,
+      "status": "PASS",
+      "store_unmodified": true
+    },
+    "control_count": 16,
+    "controls": [
+      {
+        "bytes_copied": 34171,
+        "bytes_hardlinked": 13386,
+        "clause": "\u00a74.2",
+        "description": "One bit flipped in the stored 3200-byte textual header",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2a"
+        ],
+        "name": "flipped_textual_byte",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2a"
+        ],
+        "status": "PASS",
+        "touches": [
+          "segy_file_header"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 34171,
+        "bytes_hardlinked": 13386,
+        "clause": "\u00a77 G7 minimum set",
+        "description": "Textual header cut from 3200 to 3100 bytes",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2a"
+        ],
+        "name": "truncated_textual_header",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2a"
+        ],
+        "status": "PASS",
+        "touches": [
+          "segy_file_header"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 34171,
+        "bytes_hardlinked": 13386,
+        "clause": "\u00a74.3",
+        "description": "One bit flipped in the stored 400-byte binary header",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2b"
+        ],
+        "name": "flipped_binary_byte",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2b"
+        ],
+        "status": "PASS",
+        "touches": [
+          "segy_file_header"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 36796,
+        "bytes_hardlinked": 10761,
+        "clause": "\u00a77 G7 minimum set",
+        "description": "One trace-header byte incremented (pad_240, first live cell)",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2c"
+        ],
+        "name": "flipped_header_byte",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2c"
+        ],
+        "status": "PASS",
+        "touches": [
+          "headers"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 37248,
+        "bytes_hardlinked": 10309,
+        "clause": "\u00a77 G7 minimum set",
+        "description": "One sample's low mantissa bit flipped",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2d"
+        ],
+        "name": "flipped_sample_bit",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2d"
+        ],
+        "status": "PASS",
+        "touches": [
+          "amplitude"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 34216,
+        "bytes_hardlinked": 13341,
+        "clause": "\u00a77 G7 minimum set",
+        "description": "Live mask flipped on one trace",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2e"
+        ],
+        "name": "inverted_live_mask",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2e"
+        ],
+        "status": "PASS",
+        "touches": [
+          "trace_mask"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 39918,
+        "bytes_hardlinked": 7639,
+        "clause": "\u00a77 G7 minimum set",
+        "description": "One live trace zeroed and removed from the mask",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2c",
+          "G2d",
+          "G2e"
+        ],
+        "name": "dropped_trace",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2c",
+          "G2d",
+          "G2e"
+        ],
+        "status": "PASS",
+        "touches": [
+          "amplitude",
+          "headers",
+          "trace_mask"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 38610,
+        "bytes_hardlinked": 8947,
+        "clause": "probe P4 / DECISIONS D-0047 - the portable copy of the trace headers",
+        "description": "One bit flipped in the undecoded uint8 header plane (byte 233)",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2c"
+        ],
+        "name": "flipped_raw_header_byte",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2c"
+        ],
+        "status": "PASS",
+        "touches": [
+          "headers_raw_uint8"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 36954,
+        "bytes_hardlinked": 10603,
+        "clause": "OPEN_DEBTS D1 - the only recoverable copy of the source bits",
+        "description": "One bit flipped in the undecoded uint32 sample word",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2d"
+        ],
+        "name": "flipped_raw_ibm32_word",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2d"
+        ],
+        "status": "PASS",
+        "touches": [
+          "amplitude_raw_ibm32"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 39873,
+        "bytes_hardlinked": 7684,
+        "clause": "\u00a77 G7 minimum set",
+        "description": "Two adjacent traces swapped, headers and samples together",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2c",
+          "G2d"
+        ],
+        "name": "transposed_traces",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2c",
+          "G2d"
+        ],
+        "status": "PASS",
+        "touches": [
+          "amplitude",
+          "headers"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 34252,
+        "bytes_hardlinked": 13305,
+        "clause": "DECISIONS D-0056 - the declared coordinate-scalar transform's output",
+        "description": "One derived world coordinate shifted by one unit (cdp_x)",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2c"
+        ],
+        "name": "corrupted_cdp_coordinate",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2c"
+        ],
+        "status": "PASS",
+        "touches": [
+          "cdp_x"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 34309,
+        "bytes_hardlinked": 13248,
+        "clause": "DECISIONS D-0056 - samples are meaningless without their axis",
+        "description": "First entry of the sample axis shifted by one unit",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2d"
+        ],
+        "name": "corrupted_sample_axis",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2d"
+        ],
+        "status": "PASS",
+        "touches": [
+          "time"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 36954,
+        "bytes_hardlinked": 10603,
+        "clause": "DECISIONS D-0061 - one chunk failed, the whole array passed",
+        "description": "The whole amplitude_raw_ibm32 array removed, as a died ingest leaves it",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2d"
+        ],
+        "name": "deleted_raw_ibm32_array",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2d"
+        ],
+        "status": "PASS",
+        "touches": [
+          "amplitude_raw_ibm32"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 38610,
+        "bytes_hardlinked": 8947,
+        "clause": "DECISIONS D-0063 ruling 3 - returned, now conditioned on the marker",
+        "description": "The whole headers_raw_uint8 array removed from a marked SDIP store",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2c"
+        ],
+        "name": "deleted_raw_header_plane",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2c"
+        ],
+        "status": "PASS",
+        "touches": [
+          "headers_raw_uint8"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 37248,
+        "bytes_hardlinked": 10309,
+        "clause": "SP12 / OPEN_DEBTS D29 - padding is not data, and now it is checked",
+        "description": "A real-looking sample written into a cell no source trace maps to",
+        "error": null,
+        "missed_failures": [
+          "G2e"
+        ],
+        "must_fail": [
+          "G2e"
+        ],
+        "name": "fabricated_value_in_padding",
+        "not_applicable": "the store's grid is full; there is no padding cell to fabricate into",
+        "observed_failures": [],
+        "status": "PASS",
+        "touches": [
+          "amplitude"
+        ],
+        "unexpected_failures": []
+      },
+      {
+        "bytes_copied": 34252,
+        "bytes_hardlinked": 13305,
+        "clause": "DECISIONS D-0061 - the declared transform's output must exist",
+        "description": "The whole cdp_x array removed",
+        "error": null,
+        "missed_failures": [],
+        "must_fail": [
+          "G2c"
+        ],
+        "name": "deleted_derived_coordinate",
+        "not_applicable": null,
+        "observed_failures": [
+          "G2c"
+        ],
+        "status": "PASS",
+        "touches": [
+          "cdp_x"
+        ],
+        "unexpected_failures": []
+      }
+    ],
+    "controls_applied": 15,
+    "controls_not_applicable": [
+      {
+        "name": "fabricated_value_in_padding",
+        "reason": "the store's grid is full; there is no padding cell to fabricate into"
+      }
+    ],
+    "g3_control": {
+      "clause": "\u00a77 G3",
+      "description": "One bit flipped at byte 3700 of the exported SEG-Y",
+      "detected": true,
+      "must_fail": [
+        "G3"
+      ],
+      "name": "roundtrip_byte_change",
+      "offset": 3700,
+      "restored_cleanly": true,
+      "status": "PASS"
+    },
+    "gate": "G7",
+    "note": "A gate a corrupted store passes is not a gate. Each control declares the exact set of gates it must fail; the observed set must equal it, which catches an over-broad checker and a narrow one alike.",
+    "original_store_detail": "store under audit unchanged: 22 files byte-identical before and after",
+    "original_store_intact": true,
+    "status": "PASS",
+    "summary": "G7 PASS: 15 corruptions, each failing exactly the gates it must and no others; 1 not applicable to this store (fabricated_value_in_padding)"
+  },
+  "output_array_manifest": [
+    {
+      "chunks": [
+        128,
+        128,
+        128
+      ],
+      "codecs": [
+        "blosc",
+        "bytes"
+      ],
+      "data_type": "float32",
+      "name": "amplitude",
+      "shape": [
+        12,
+        14,
+        64
+      ],
+      "zarr_v3_core_spec": true
+    },
+    {
+      "chunks": [
+        128,
+        128,
+        128
+      ],
+      "codecs": [
+        "blosc",
+        "bytes"
+      ],
+      "data_type": "uint32",
+      "name": "amplitude_raw_ibm32",
+      "shape": [
+        12,
+        14,
+        64
+      ],
+      "zarr_v3_core_spec": true
+    },
+    {
+      "chunks": [
+        12,
+        14
+      ],
+      "codecs": [
+        "blosc",
+        "bytes"
+      ],
+      "data_type": "float64",
+      "name": "cdp_x",
+      "shape": [
+        12,
+        14
+      ],
+      "zarr_v3_core_spec": true
+    },
+    {
+      "chunks": [
+        12,
+        14
+      ],
+      "codecs": [
+        "blosc",
+        "bytes"
+      ],
+      "data_type": "float64",
+      "name": "cdp_y",
+      "shape": [
+        12,
+        14
+      ],
+      "zarr_v3_core_spec": true
+    },
+    {
+      "chunks": [
+        14
+      ],
+      "codecs": [
+        "bytes",
+        "zstd"
+      ],
+      "data_type": "int32",
+      "name": "crossline",
+      "shape": [
+        14
+      ],
+      "zarr_v3_core_spec": true
+    },
+    {
+      "chunks": [
+        128,
+        128
+      ],
+      "codecs": [
+        "blosc",
+        "bytes"
+      ],
+      "data_type": {
+        "configuration": {
+          "fields": [
+            {
+              "data_type": "int32",
+              "name": "trace_seq_num_line"
+            },
+            {
+              "data_type": "int32",
+              "name": "trace_seq_num_reel"
+            },
+            {
+              "data_type": "int32",
+              "name": "orig_field_record_num"
+            },
+            {
+              "data_type": "int32",
+              "name": "trace_num_orig_record"
+            },
+            {
+              "data_type": "int32",
+              "name": "energy_source_point_num"
+            },
+            {
+              "data_type": "int32",
+              "name": "ensemble_num"
+            },
+            {
+              "data_type": "int32",
+              "name": "trace_num_ensemble"
+            },
+            {
+              "data_type": "int16",
+              "name": "trace_id_code"
+            },
+            {
+              "data_type": "int16",
+              "name": "vertically_summed_traces"
+            },
+            {
+              "data_type": "int16",
+              "name": "horizontally_stacked_traces"
+            },
+            {
+              "data_type": "int16",
+              "name": "data_use"
+            },
+            {
+              "data_type": "int32",
+              "name": "source_to_receiver_distance"
+            },
+            {
+              "data_type": "int32",
+              "name": "receiver_group_elevation"
+            },
+            {
+              "data_type": "int32",
+              "name": "source_surface_elevation"
+            },
+            {
+              "data_type": "int32",
+              "name": "source_depth_below_surface"
+            },
+            {
+              "data_type": "int32",
+              "name": "receiver_datum_elevation"
+            },
+            {
+              "data_type": "int32",
+              "name": "source_datum_elevation"
+            },
+            {
+              "data_type": "int32",
+              "name": "source_water_depth"
+            },
+            {
+              "data_type": "int32",
+              "name": "receiver_water_depth"
+            },
+            {
+              "data_type": "int16",
+              "name": "elevation_depth_scalar"
+            },
+            {
+              "data_type": "int16",
+              "name": "coordinate_scalar"
+            },
+            {
+              "data_type": "int32",
+              "name": "source_coord_x"
+            },
+            {
+              "data_type": "int32",
+              "name": "source_coord_y"
+            },
+            {
+              "data_type": "int32",
+              "name": "group_coord_x"
+            },
+            {
+              "data_type": "int32",
+              "name": "group_coord_y"
+            },
+            {
+              "data_type": "int16",
+              "name": "coordinate_unit"
+            },
+            {
+              "data_type": "int16",
+              "name": "weathering_velocity"
+            },
+            {
+              "data_type": "int16",
+              "name": "subweathering_velocity"
+            },
+            {
+              "data_type": "int16",
+              "name": "source_uphole_time"
+            },
+            {
+              "data_type": "int16",
+              "name": "group_uphole_time"
+            },
+            {
+              "data_type": "int16",
+              "name": "source_static_correction"
+            },
+            {
+              "data_type": "int16",
+              "name": "receiver_static_correction"
+            },
+            {
+              "data_type": "int16",
+              "name": "total_static_applied"
+            },
+            {
+              "data_type": "int16",
+              "name": "lag_time_a"
+            },
+            {
+              "data_type": "int16",
+              "name": "lag_time_b"
+            },
+            {
+              "data_type": "int16",
+              "name": "delay_recording_time"
+            },
+            {
+              "data_type": "int16",
+              "name": "mute_time_start"
+            },
+            {
+              "data_type": "int16",
+              "name": "mute_time_end"
+            },
+            {
+              "data_type": "int16",
+              "name": "samples_per_trace"
+            },
+            {
+              "data_type": "int16",
+              "name": "sample_interval"
+            },
+            {
+              "data_type": "int16",
+              "name": "instrument_gain_type"
+            },
+            {
+              "data_type": "int16",
+              "name": "instrument_gain_const"
+            },
+            {
+              "data_type": "int16",
+              "name": "instrument_gain_initial"
+            },
+            {
+              "data_type": "int16",
+              "name": "correlated_data"
+            },
+            {
+              "data_type": "int16",
+              "name": "sweep_freq_start"
+            },
+            {
+              "data_type": "int16",
+              "name": "sweep_freq_end"
+            },
+            {
+              "data_type": "int16",
+              "name": "sweep_length"
+            },
+            {
+              "data_type": "int16",
+              "name": "sweep_type"
+            },
+            {
+              "data_type": "int16",
+              "name": "sweep_taper_start"
+            },
+            {
+              "data_type": "int16",
+              "name": "sweep_taper_end"
+            },
+            {
+              "data_type": "int16",
+              "name": "taper_type"
+            },
+            {
+              "data_type": "int16",
+              "name": "alias_filter_freq"
+            },
+            {
+              "data_type": "int16",
+              "name": "alias_filter_slope"
+            },
+            {
+              "data_type": "int16",
+              "name": "notch_filter_freq"
+            },
+            {
+              "data_type": "int16",
+              "name": "notch_filter_slope"
+            },
+            {
+              "data_type": "int16",
+              "name": "low_cut_freq"
+            },
+            {
+              "data_type": "int16",
+              "name": "high_cut_freq"
+            },
+            {
+              "data_type": "int16",
+              "name": "low_cut_slope"
+            },
+            {
+              "data_type": "int16",
+              "name": "high_cut_slope"
+            },
+            {
+              "data_type": "int16",
+              "name": "year_recorded"
+            },
+            {
+              "data_type": "int16",
+              "name": "day_of_year"
+            },
+            {
+              "data_type": "int16",
+              "name": "hour_of_day"
+            },
+            {
+              "data_type": "int16",
+              "name": "minute_of_hour"
+            },
+            {
+              "data_type": "int16",
+              "name": "second_of_minute"
+            },
+            {
+              "data_type": "int16",
+              "name": "time_basis_code"
+            },
+            {
+              "data_type": "int16",
+              "name": "trace_weighting_factor"
+            },
+            {
+              "data_type": "int16",
+              "name": "group_num_roll_switch"
+            },
+            {
+              "data_type": "int16",
+              "name": "group_num_first_trace"
+            },
+            {
+              "data_type": "int16",
+              "name": "group_num_last_trace"
+            },
+            {
+              "data_type": "int16",
+              "name": "gap_size"
+            },
+            {
+              "data_type": "int16",
+              "name": "taper_overtravel"
+            },
+            {
+              "data_type": "int32",
+              "name": "cdp_x"
+            },
+            {
+              "data_type": "int32",
+              "name": "cdp_y"
+            },
+            {
+              "data_type": "int32",
+              "name": "inline"
+            },
+            {
+              "data_type": "int32",
+              "name": "crossline"
+            },
+            {
+              "data_type": "int32",
+              "name": "shot_point"
+            },
+            {
+              "data_type": "int16",
+              "name": "shot_point_scalar"
+            },
+            {
+              "data_type": "int16",
+              "name": "trace_value_unit"
+            },
+            {
+              "data_type": "int32",
+              "name": "transduction_const_mantissa"
+            },
+            {
+              "data_type": "int16",
+              "name": "transduction_const_exponent"
+            },
+            {
+              "data_type": "int16",
+              "name": "transduction_unit"
+            },
+            {
+              "data_type": "int16",
+              "name": "device_trace_id"
+            },
+            {
+              "data_type": "int16",
+              "name": "times_scalar"
+            },
+            {
+              "data_type": "int16",
+              "name": "source_type_orientation"
+            },
+            {
+              "data_type": "int32",
+              "name": "source_energy_dir_mantissa"
+            },
+            {
+              "data_type": "int16",
+              "name": "source_energy_dir_exponent"
+            },
+            {
+              "data_type": "int32",
+              "name": "source_measurement_mantissa"
+            },
+            {
+              "data_type": "int16",
+              "name": "source_measurement_exponent"
+            },
+            {
+              "data_type": "int16",
+              "name": "source_measurement_unit"
+            },
+            {
+              "data_type": "uint8",
+              "name": "pad_233"
+            },
+            {
+              "data_type": "uint8",
+              "name": "pad_234"
+            },
+            {
+              "data_type": "uint8",
+              "name": "pad_235"
+            },
+            {
+              "data_type": "uint8",
+              "name": "pad_236"
+            },
+            {
+              "data_type": "uint8",
+              "name": "pad_237"
+            },
+            {
+              "data_type": "uint8",
+              "name": "pad_238"
+            },
+            {
+              "data_type": "uint8",
+              "name": "pad_239"
+            },
+            {
+              "data_type": "uint8",
+              "name": "pad_240"
+            }
+          ]
+        },
+        "name": "struct"
+      },
+      "name": "headers",
+      "shape": [
+        12,
+        14
+      ],
+      "zarr_v3_core_spec": false
+    },
+    {
+      "chunks": [
+        128,
+        128,
+        240
+      ],
+      "codecs": [
+        "blosc",
+        "bytes"
+      ],
+      "data_type": "uint8",
+      "name": "headers_raw_uint8",
+      "shape": [
+        12,
+        14,
+        240
+      ],
+      "zarr_v3_core_spec": true
+    },
+    {
+      "chunks": [
+        12
+      ],
+      "codecs": [
+        "bytes",
+        "zstd"
+      ],
+      "data_type": "int32",
+      "name": "inline",
+      "shape": [
+        12
+      ],
+      "zarr_v3_core_spec": true
+    },
+    {
+      "chunks": [],
+      "codecs": [
+        "bytes",
+        "zstd"
+      ],
+      "data_type": {
+        "configuration": {
+          "length_bytes": 4
+        },
+        "name": "fixed_length_utf32"
+      },
+      "name": "segy_file_header",
+      "shape": [],
+      "zarr_v3_core_spec": false
+    },
+    {
+      "chunks": [
+        64
+      ],
+      "codecs": [
+        "bytes",
+        "zstd"
+      ],
+      "data_type": "int32",
+      "name": "time",
+      "shape": [
+        64
+      ],
+      "zarr_v3_core_spec": true
+    },
+    {
+      "chunks": [
+        12,
+        14
+      ],
+      "codecs": [
+        "blosc",
+        "bytes"
+      ],
+      "data_type": "int8",
+      "name": "trace_mask",
+      "shape": [
+        12,
+        14
+      ],
+      "zarr_v3_core_spec": true
+    }
+  ],
+  "output_bytes": 47557,
+  "output_path": "/Users/zahidaramai/Local_Sites/seis-mdio-zarr/local/refcert/reference.mdio",
+  "output_zarr_format": 3,
+  "planes": {
+    "plane_1": {
+      "evidence": {
+        "compared": "raw bytes, source vs store",
+        "first_difference": null,
+        "n": 3200,
+        "note": "Compared as bytes, never as a decoded string: two byte sequences that decode alike are not the same header (\u00a74.2).",
+        "sampling": "exhaustive",
+        "source_sha256": "cdb7ae2a918a6c49bc26b357900cc391ac63a4bc2759e7c07c2bcbbe5ea36f0c",
+        "store_sha256": "cdb7ae2a918a6c49bc26b357900cc391ac63a4bc2759e7c07c2bcbbe5ea36f0c"
+      },
+      "status": "PASS"
+    },
+    "plane_2": {
+      "evidence": {
+        "compared": "raw bytes, source vs store",
+        "first_difference": null,
+        "n": 400,
+        "note": "Raw bytes decide the verdict. The parsed mapping is recorded because \u00a74.3 requires both, but it is not authoritative on conflict.",
+        "parsed_mapping_present": true,
+        "sampling": "exhaustive",
+        "source_sha256": "523c412d461598dc46ee806a583cae7a282d55250250c3246f60d7446b62635a",
+        "store_sha256": "523c412d461598dc46ee806a583cae7a282d55250250c3246f60d7446b62635a"
+      },
+      "status": "PASS"
+    },
+    "plane_3": {
+      "evidence": {
+        "byte_coverage_guaranteed_by": "G1 (gap-free spec: 240 of 240 bytes)",
+        "compared": "every declared field, source vs store, array_equal",
+        "derived_coords_arrays": [
+          "cdp_x",
+          "cdp_y"
+        ],
+        "derived_coords_compared": "np.array_equal, recomputed from source headers - EXACT",
+        "derived_coords_first_difference": null,
+        "derived_coords_identical": true,
+        "derived_coords_mismatch_count": 0,
+        "derived_coords_n": 336,
+        "derived_coords_note": "Derived-array leg, AND-ed into G2c's verdict. cdp_x and cdp_y are the OUTPUT of the declared coordinate-scalar transform (DECISIONS.md D-0040), and SP1 requires a declared transform to be VERIFIED - a declared transform whose output nothing checks is half-declared. Recomputed here from the source trace headers under the declared semantics (positive scalar multiplies, negative divides) and compared with np.array_equal against the arrays a consumer actually reads (G4, section 10.3). Until 2026-08-23 nothing compared them: an external audit corrupted cdp_x and cdp_y individually and ALL FIVE PLANES still returned PASS (D-0056).",
+        "derived_coords_present": true,
+        "derived_coords_scalar_uniform": true,
+        "derived_coords_scalar_values": [
+          1
+        ],
+        "derived_coords_verified": true,
+        "field_count": 97,
+        "first_difference": null,
+        "map_invertible": true,
+        "mismatch_count": 0,
+        "missing_fields_in_store": [],
+        "missing_required_arrays": [],
+        "n": 168,
+        "note": "Field naming is metadata; byte content is the contract. Field-wise equality equals byte equality here only because G1 proved the spec covers all 240 bytes with no gaps and no overlaps - which is why the byte leg, which needs no spec, is ANDed in beside it.",
+        "raw_header_bytes_identical": true,
+        "raw_header_bytes_per_trace": 240,
+        "raw_header_bytes_verified": true,
+        "raw_header_compared": "np.array_equal on uint8 bytes, source vs store - EXACT",
+        "raw_header_first_difference": null,
+        "raw_header_mismatch_count": 0,
+        "raw_header_n": 168,
+        "raw_header_note": "Second leg, ANDed into G2c's verdict. The field-wise comparison above equals byte equality only because G1 proved the gap-free spec covers all 240 bytes; this leg compares the 240 raw bytes in headers_raw_uint8 against the same bytes read from the source by raw byte offset, and has NO spec dependency at all. It exists because probe P4 measured three Zarr readers giving three different answers about the structured array's `struct` data_type - TensorStore accepts it, zarr-java refuses it, zarr-python warns - and `struct` has no Zarr v3 specification, so a reader that declines it is conformant (DECISIONS.md D-0047). The plane is the portable copy, and a portable copy nothing checks is not evidence.",
+        "raw_header_plane_present": true,
+        "raw_header_sampling": "exhaustive over live traces",
+        "required_array_note": "Presence leg. An array the source implies MUST exist and does not is a FAILURE, not a NOT CHECKED. Measured 2026-08-23 (D-0061): deleting one CHUNK of amplitude_raw_ibm32 failed this plane, while deleting the WHOLE ARRAY passed it - and a partially written store, reached by a real credential expiry mid-ingest, certified EQUIVALENT while missing the D1 and D-0047 mitigations entirely. Recording NOT CHECKED in evidence while the verdict still reads EQUIVALENT is checked-and-passed wearing an honest label (SP11).",
+        "sampling": "exhaustive"
+      },
+      "status": "PASS"
+    },
+    "plane_4": {
+      "evidence": {
+        "compared": "np.array_equal per live trace - EXACT, never allclose",
+        "derived_axis_compared": "np.array_equal, recomputed from source headers - EXACT",
+        "derived_axis_delay_ms": 0,
+        "derived_axis_first_difference": null,
+        "derived_axis_identical": true,
+        "derived_axis_n": 64,
+        "derived_axis_name": "time",
+        "derived_axis_note": "Derived-axis leg, AND-ed into G2d's verdict. The sample axis is recomputed from the trace-header sample interval and delay - axis[i] = delay + i * interval/1000 - and compared with np.array_equal against the stored axis. Samples are meaningless without the axis that positions them: a corrupted axis mislabels every sample in depth or time while the sample values themselves compare equal. Until 2026-08-23 nothing compared it (D-0056).",
+        "derived_axis_present": true,
+        "derived_axis_sample_interval_us": 4000,
+        "derived_axis_verified": true,
+        "first_difference": null,
+        "mismatch_count": 0,
+        "missing_required_arrays": [],
+        "n": 168,
+        "note": "Grid padding is not data (SP12) and is excluded by the live mask, not compared. No tolerance is applied anywhere in this comparison.",
+        "padding_excluded": true,
+        "raw_ibm32_compared": "np.array_equal on uint32 words, source vs store - EXACT",
+        "raw_ibm32_first_difference": null,
+        "raw_ibm32_identical": true,
+        "raw_ibm32_mismatch_count": 0,
+        "raw_ibm32_n": 168,
+        "raw_ibm32_note": "Second leg, AND-ed into G2d's verdict (DECISIONS.md D-0049): a raw mismatch fails this plane, and a raw pass cannot rescue a failed decoded comparison. The decoded comparison above remains the gate's definition; this leg compares the undecoded uint32 words in amplitude_raw_ibm32 against the same words read from the source by raw byte offset. It is EXACTLY invertible by construction - a uint32 is copied, not transformed - so it holds precisely where the float comparison cannot: probe P2 measured 1,939 of 4,103 ibm32 words losing the VALUE in the decode, and two decoded arrays that both read `inf` are equal without either being the source sample. A store can have correct raw words and a lossy decode; both facts belong on the certificate, and neither is allowed to stand in for the other.",
+        "raw_ibm32_sampling": "exhaustive over live traces",
+        "raw_ibm32_view_present": true,
+        "raw_ibm32_words_per_trace": 64,
+        "raw_ibm32_words_verified": true,
+        "required_array_note": "Presence leg. An array the source implies MUST exist and does not is a FAILURE, not a NOT CHECKED. Measured 2026-08-23 (D-0061): deleting one CHUNK of amplitude_raw_ibm32 failed this plane, while deleting the WHOLE ARRAY passed it - and a partially written store, reached by a real credential expiry mid-ingest, certified EQUIVALENT while missing the D1 and D-0047 mitigations entirely. Recording NOT CHECKED in evidence while the verdict still reads EQUIVALENT is checked-and-passed wearing an honest label (SP11).",
+        "samples_per_trace": 64,
+        "sampling": "exhaustive over live traces",
+        "variable": "amplitude"
+      },
+      "status": "PASS"
+    },
+    "plane_5": {
+      "evidence": {
+        "checks": {
+          "count_matches": true,
+          "map_complete": true,
+          "map_invertible": true,
+          "mask_matches_map": true,
+          "no_duplicates": true,
+          "no_required_array_missing": true,
+          "padding_is_only_fill": true
+        },
+        "compared": "trace counts, mapping invertibility, live mask, duplicates",
+        "failed_checks": [],
+        "live_cells_in_mask": 168,
+        "missing_required_arrays": [],
+        "n": 168,
+        "note": "A duplicate index tuple is data loss, not a labelling problem: one trace is absent from the store and nothing records that it existed.",
+        "padding_ambiguous_by_value": [],
+        "padding_cells": 0,
+        "padding_fills": {},
+        "padding_note": "Padding is VERIFIED as padding, not merely excluded from comparison. SP12: a value in an output that did not come from the source is a defect, and a grid cell no source trace maps to must therefore hold the declared fill and nothing else. Float arrays fill with NaN, which is unambiguous. INTEGER arrays fill with 0, which is indistinguishable BY VALUE from a measured 0 - so `trace_mask` is the authoritative liveness signal and a reader that ignores it can misread padding as data (OPEN_DEBTS D29). SDIP cannot give an integer dtype a NaN; what it can do is prove no padding cell was written with anything else, and say so here.",
+        "padding_verified": true,
+        "padding_violations": [],
+        "required_array_note": "Presence leg. An array the source implies MUST exist and does not is a FAILURE, not a NOT CHECKED. Measured 2026-08-23 (D-0061): deleting one CHUNK of amplitude_raw_ibm32 failed this plane, while deleting the WHOLE ARRAY passed it - and a partially written store, reached by a real credential expiry mid-ingest, certified EQUIVALENT while missing the D1 and D-0047 mitigations entirely. Recording NOT CHECKED in evidence while the verdict still reads EQUIVALENT is checked-and-passed wearing an honest label (SP11).",
+        "sampling": "exhaustive",
+        "source_trace_count": 168,
+        "trace_map": {
+          "dimensions": [
+            "inline",
+            "crossline"
+          ],
+          "duplicate_cells": [],
+          "duplicate_count": 0,
+          "invertible": true,
+          "mapped": 168,
+          "source_trace_count": 168,
+          "unmapped_count": 0,
+          "unmapped_ordinals": []
+        }
+      },
+      "status": "PASS"
+    }
+  },
+  "portability": {
+    "arrays": {
+      "amplitude": {
+        "data_type": "float32",
+        "nbytes": 43008,
+        "read": true,
+        "shape": [
+          12,
+          14,
+          64
+        ],
+        "zarr_v3_core_spec": true
+      },
+      "amplitude_raw_ibm32": {
+        "data_type": "uint32",
+        "nbytes": 43008,
+        "read": true,
+        "shape": [
+          12,
+          14,
+          64
+        ],
+        "zarr_v3_core_spec": true
+      },
+      "cdp_x": {
+        "data_type": "float64",
+        "nbytes": 1344,
+        "read": true,
+        "shape": [
+          12,
+          14
+        ],
+        "zarr_v3_core_spec": true
+      },
+      "cdp_y": {
+        "data_type": "float64",
+        "nbytes": 1344,
+        "read": true,
+        "shape": [
+          12,
+          14
+        ],
+        "zarr_v3_core_spec": true
+      },
+      "crossline": {
+        "data_type": "int32",
+        "nbytes": 56,
+        "read": true,
+        "shape": [
+          14
+        ],
+        "zarr_v3_core_spec": true
+      },
+      "headers": {
+        "data_type": {
+          "configuration": {
+            "fields": [
+              {
+                "data_type": "int32",
+                "name": "trace_seq_num_line"
+              },
+              {
+                "data_type": "int32",
+                "name": "trace_seq_num_reel"
+              },
+              {
+                "data_type": "int32",
+                "name": "orig_field_record_num"
+              },
+              {
+                "data_type": "int32",
+                "name": "trace_num_orig_record"
+              },
+              {
+                "data_type": "int32",
+                "name": "energy_source_point_num"
+              },
+              {
+                "data_type": "int32",
+                "name": "ensemble_num"
+              },
+              {
+                "data_type": "int32",
+                "name": "trace_num_ensemble"
+              },
+              {
+                "data_type": "int16",
+                "name": "trace_id_code"
+              },
+              {
+                "data_type": "int16",
+                "name": "vertically_summed_traces"
+              },
+              {
+                "data_type": "int16",
+                "name": "horizontally_stacked_traces"
+              },
+              {
+                "data_type": "int16",
+                "name": "data_use"
+              },
+              {
+                "data_type": "int32",
+                "name": "source_to_receiver_distance"
+              },
+              {
+                "data_type": "int32",
+                "name": "receiver_group_elevation"
+              },
+              {
+                "data_type": "int32",
+                "name": "source_surface_elevation"
+              },
+              {
+                "data_type": "int32",
+                "name": "source_depth_below_surface"
+              },
+              {
+                "data_type": "int32",
+                "name": "receiver_datum_elevation"
+              },
+              {
+                "data_type": "int32",
+                "name": "source_datum_elevation"
+              },
+              {
+                "data_type": "int32",
+                "name": "source_water_depth"
+              },
+              {
+                "data_type": "int32",
+                "name": "receiver_water_depth"
+              },
+              {
+                "data_type": "int16",
+                "name": "elevation_depth_scalar"
+              },
+              {
+                "data_type": "int16",
+                "name": "coordinate_scalar"
+              },
+              {
+                "data_type": "int32",
+                "name": "source_coord_x"
+              },
+              {
+                "data_type": "int32",
+                "name": "source_coord_y"
+              },
+              {
+                "data_type": "int32",
+                "name": "group_coord_x"
+              },
+              {
+                "data_type": "int32",
+                "name": "group_coord_y"
+              },
+              {
+                "data_type": "int16",
+                "name": "coordinate_unit"
+              },
+              {
+                "data_type": "int16",
+                "name": "weathering_velocity"
+              },
+              {
+                "data_type": "int16",
+                "name": "subweathering_velocity"
+              },
+              {
+                "data_type": "int16",
+                "name": "source_uphole_time"
+              },
+              {
+                "data_type": "int16",
+                "name": "group_uphole_time"
+              },
+              {
+                "data_type": "int16",
+                "name": "source_static_correction"
+              },
+              {
+                "data_type": "int16",
+                "name": "receiver_static_correction"
+              },
+              {
+                "data_type": "int16",
+                "name": "total_static_applied"
+              },
+              {
+                "data_type": "int16",
+                "name": "lag_time_a"
+              },
+              {
+                "data_type": "int16",
+                "name": "lag_time_b"
+              },
+              {
+                "data_type": "int16",
+                "name": "delay_recording_time"
+              },
+              {
+                "data_type": "int16",
+                "name": "mute_time_start"
+              },
+              {
+                "data_type": "int16",
+                "name": "mute_time_end"
+              },
+              {
+                "data_type": "int16",
+                "name": "samples_per_trace"
+              },
+              {
+                "data_type": "int16",
+                "name": "sample_interval"
+              },
+              {
+                "data_type": "int16",
+                "name": "instrument_gain_type"
+              },
+              {
+                "data_type": "int16",
+                "name": "instrument_gain_const"
+              },
+              {
+                "data_type": "int16",
+                "name": "instrument_gain_initial"
+              },
+              {
+                "data_type": "int16",
+                "name": "correlated_data"
+              },
+              {
+                "data_type": "int16",
+                "name": "sweep_freq_start"
+              },
+              {
+                "data_type": "int16",
+                "name": "sweep_freq_end"
+              },
+              {
+                "data_type": "int16",
+                "name": "sweep_length"
+              },
+              {
+                "data_type": "int16",
+                "name": "sweep_type"
+              },
+              {
+                "data_type": "int16",
+                "name": "sweep_taper_start"
+              },
+              {
+                "data_type": "int16",
+                "name": "sweep_taper_end"
+              },
+              {
+                "data_type": "int16",
+                "name": "taper_type"
+              },
+              {
+                "data_type": "int16",
+                "name": "alias_filter_freq"
+              },
+              {
+                "data_type": "int16",
+                "name": "alias_filter_slope"
+              },
+              {
+                "data_type": "int16",
+                "name": "notch_filter_freq"
+              },
+              {
+                "data_type": "int16",
+                "name": "notch_filter_slope"
+              },
+              {
+                "data_type": "int16",
+                "name": "low_cut_freq"
+              },
+              {
+                "data_type": "int16",
+                "name": "high_cut_freq"
+              },
+              {
+                "data_type": "int16",
+                "name": "low_cut_slope"
+              },
+              {
+                "data_type": "int16",
+                "name": "high_cut_slope"
+              },
+              {
+                "data_type": "int16",
+                "name": "year_recorded"
+              },
+              {
+                "data_type": "int16",
+                "name": "day_of_year"
+              },
+              {
+                "data_type": "int16",
+                "name": "hour_of_day"
+              },
+              {
+                "data_type": "int16",
+                "name": "minute_of_hour"
+              },
+              {
+                "data_type": "int16",
+                "name": "second_of_minute"
+              },
+              {
+                "data_type": "int16",
+                "name": "time_basis_code"
+              },
+              {
+                "data_type": "int16",
+                "name": "trace_weighting_factor"
+              },
+              {
+                "data_type": "int16",
+                "name": "group_num_roll_switch"
+              },
+              {
+                "data_type": "int16",
+                "name": "group_num_first_trace"
+              },
+              {
+                "data_type": "int16",
+                "name": "group_num_last_trace"
+              },
+              {
+                "data_type": "int16",
+                "name": "gap_size"
+              },
+              {
+                "data_type": "int16",
+                "name": "taper_overtravel"
+              },
+              {
+                "data_type": "int32",
+                "name": "cdp_x"
+              },
+              {
+                "data_type": "int32",
+                "name": "cdp_y"
+              },
+              {
+                "data_type": "int32",
+                "name": "inline"
+              },
+              {
+                "data_type": "int32",
+                "name": "crossline"
+              },
+              {
+                "data_type": "int32",
+                "name": "shot_point"
+              },
+              {
+                "data_type": "int16",
+                "name": "shot_point_scalar"
+              },
+              {
+                "data_type": "int16",
+                "name": "trace_value_unit"
+              },
+              {
+                "data_type": "int32",
+                "name": "transduction_const_mantissa"
+              },
+              {
+                "data_type": "int16",
+                "name": "transduction_const_exponent"
+              },
+              {
+                "data_type": "int16",
+                "name": "transduction_unit"
+              },
+              {
+                "data_type": "int16",
+                "name": "device_trace_id"
+              },
+              {
+                "data_type": "int16",
+                "name": "times_scalar"
+              },
+              {
+                "data_type": "int16",
+                "name": "source_type_orientation"
+              },
+              {
+                "data_type": "int32",
+                "name": "source_energy_dir_mantissa"
+              },
+              {
+                "data_type": "int16",
+                "name": "source_energy_dir_exponent"
+              },
+              {
+                "data_type": "int32",
+                "name": "source_measurement_mantissa"
+              },
+              {
+                "data_type": "int16",
+                "name": "source_measurement_exponent"
+              },
+              {
+                "data_type": "int16",
+                "name": "source_measurement_unit"
+              },
+              {
+                "data_type": "uint8",
+                "name": "pad_233"
+              },
+              {
+                "data_type": "uint8",
+                "name": "pad_234"
+              },
+              {
+                "data_type": "uint8",
+                "name": "pad_235"
+              },
+              {
+                "data_type": "uint8",
+                "name": "pad_236"
+              },
+              {
+                "data_type": "uint8",
+                "name": "pad_237"
+              },
+              {
+                "data_type": "uint8",
+                "name": "pad_238"
+              },
+              {
+                "data_type": "uint8",
+                "name": "pad_239"
+              },
+              {
+                "data_type": "uint8",
+                "name": "pad_240"
+              }
+            ]
+          },
+          "name": "struct"
+        },
+        "nbytes": 40320,
+        "read": true,
+        "shape": [
+          12,
+          14
+        ],
+        "zarr_v3_core_spec": false
+      },
+      "headers_raw_uint8": {
+        "data_type": "uint8",
+        "nbytes": 40320,
+        "read": true,
+        "shape": [
+          12,
+          14,
+          240
+        ],
+        "zarr_v3_core_spec": true
+      },
+      "inline": {
+        "data_type": "int32",
+        "nbytes": 48,
+        "read": true,
+        "shape": [
+          12
+        ],
+        "zarr_v3_core_spec": true
+      },
+      "segy_file_header": {
+        "data_type": {
+          "configuration": {
+            "length_bytes": 4
+          },
+          "name": "fixed_length_utf32"
+        },
+        "nbytes": 0,
+        "read": true,
+        "shape": [],
+        "zarr_v3_core_spec": false
+      },
+      "time": {
+        "data_type": "int32",
+        "nbytes": 256,
+        "read": true,
+        "shape": [
+          64
+        ],
+        "zarr_v3_core_spec": true
+      },
+      "trace_mask": {
+        "data_type": "int8",
+        "nbytes": 168,
+        "read": true,
+        "shape": [
+          12,
+          14
+        ],
+        "zarr_v3_core_spec": true
+      }
+    },
+    "child_returncode": 0,
+    "gate": "G4",
+    "mdio_never_imported": true,
+    "non_core_spec_arrays": [
+      "headers",
+      "segy_file_header"
+    ],
+    "note": "A non-core data_type does not fail G4 - the killer is an array a consumer needs being unreadable without MDIO. Cross-implementation readability is probe P4 / debt D3 and is NOT measured here.",
+    "status": "PASS",
+    "steps": {
+      "xarray_open_zarr": true,
+      "zarr_open_group": true,
+      "zarr_read_all": true
+    },
+    "unreadable_arrays": [],
+    "xarray_version": "2026.7.0",
+    "zarr_version": "3.3.0"
+  },
+  "portable_headers": true,
+  "release_readiness": {
+    "blocking": [],
+    "criterion": "Both outputs fully validated: every gate PASS with none NOT_RUN, all five planes PASS, and the exported SEG-Y validated as an artifact in its own right by round-trip closure. See DECISIONS.md D-0031.",
+    "release_ready": true
+  },
+  "roundtrip": {
+    "byte_identical": true,
+    "export_bytes": 86928,
+    "export_sha256": "465297171ccbf63f1f7f71ef0ccdec9f9a72dccc254673b7250706a624086b85",
+    "first_difference": null,
+    "performed": true,
+    "status": "PASS"
+  },
+  "roundtrip_closure": {
+    "G1": {
+      "conditions": [
+        {
+          "condition": "coverage",
+          "detail": "bytes 1-240 fully covered",
+          "passed": true
+        },
+        {
+          "condition": "no-overlaps",
+          "detail": "no byte is claimed twice",
+          "passed": true
+        },
+        {
+          "condition": "in-range",
+          "detail": "every field lies within bytes 1-240",
+          "passed": true
+        },
+        {
+          "condition": "itemsize",
+          "detail": "dtype itemsize is 240",
+          "passed": true
+        },
+        {
+          "condition": "no-void-gaps",
+          "detail": "no numpy void padding between fields",
+          "passed": true
+        }
+      ],
+      "coverage": {
+        "covered_bytes": 240,
+        "field_count": 97,
+        "gap_free": true,
+        "itemsize": 240,
+        "out_of_range": [],
+        "overlaps": [],
+        "uncovered_bytes": [],
+        "uncovered_runs": []
+      },
+      "gate": "G1",
+      "status": "PASS",
+      "summary": "G1 PASS: 97 fields cover bytes 1-240 with no gaps, no overlaps, no void padding"
+    },
+    "arrays": [
+      {
+        "closure_dtype": "float32",
+        "closure_shape": [
+          12,
+          14,
+          64
+        ],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "amplitude",
+        "original_dtype": "float32",
+        "original_shape": [
+          12,
+          14,
+          64
+        ]
+      },
+      {
+        "closure_dtype": "uint32",
+        "closure_shape": [
+          12,
+          14,
+          64
+        ],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "amplitude_raw_ibm32",
+        "original_dtype": "uint32",
+        "original_shape": [
+          12,
+          14,
+          64
+        ]
+      },
+      {
+        "closure_dtype": "float64",
+        "closure_shape": [
+          12,
+          14
+        ],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "cdp_x",
+        "original_dtype": "float64",
+        "original_shape": [
+          12,
+          14
+        ]
+      },
+      {
+        "closure_dtype": "float64",
+        "closure_shape": [
+          12,
+          14
+        ],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "cdp_y",
+        "original_dtype": "float64",
+        "original_shape": [
+          12,
+          14
+        ]
+      },
+      {
+        "closure_dtype": "int32",
+        "closure_shape": [
+          14
+        ],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "crossline",
+        "original_dtype": "int32",
+        "original_shape": [
+          14
+        ]
+      },
+      {
+        "closure_dtype": "[('trace_seq_num_line', '<i4'), ('trace_seq_num_reel', '<i4'), ('orig_field_record_num', '<i4'), ('trace_num_orig_record', '<i4'), ('energy_source_point_num', '<i4'), ('ensemble_num', '<i4'), ('trace_num_ensemble', '<i4'), ('trace_id_code', '<i2'), ('vertically_summed_traces', '<i2'), ('horizontally_stacked_traces', '<i2'), ('data_use', '<i2'), ('source_to_receiver_distance', '<i4'), ('receiver_group_elevation', '<i4'), ('source_surface_elevation', '<i4'), ('source_depth_below_surface', '<i4'), ('receiver_datum_elevation', '<i4'), ('source_datum_elevation', '<i4'), ('source_water_depth', '<i4'), ('receiver_water_depth', '<i4'), ('elevation_depth_scalar', '<i2'), ('coordinate_scalar', '<i2'), ('source_coord_x', '<i4'), ('source_coord_y', '<i4'), ('group_coord_x', '<i4'), ('group_coord_y', '<i4'), ('coordinate_unit', '<i2'), ('weathering_velocity', '<i2'), ('subweathering_velocity', '<i2'), ('source_uphole_time', '<i2'), ('group_uphole_time', '<i2'), ('source_static_correction', '<i2'), ('receiver_static_correction', '<i2'), ('total_static_applied', '<i2'), ('lag_time_a', '<i2'), ('lag_time_b', '<i2'), ('delay_recording_time', '<i2'), ('mute_time_start', '<i2'), ('mute_time_end', '<i2'), ('samples_per_trace', '<i2'), ('sample_interval', '<i2'), ('instrument_gain_type', '<i2'), ('instrument_gain_const', '<i2'), ('instrument_gain_initial', '<i2'), ('correlated_data', '<i2'), ('sweep_freq_start', '<i2'), ('sweep_freq_end', '<i2'), ('sweep_length', '<i2'), ('sweep_type', '<i2'), ('sweep_taper_start', '<i2'), ('sweep_taper_end', '<i2'), ('taper_type', '<i2'), ('alias_filter_freq', '<i2'), ('alias_filter_slope', '<i2'), ('notch_filter_freq', '<i2'), ('notch_filter_slope', '<i2'), ('low_cut_freq', '<i2'), ('high_cut_freq', '<i2'), ('low_cut_slope', '<i2'), ('high_cut_slope', '<i2'), ('year_recorded', '<i2'), ('day_of_year', '<i2'), ('hour_of_day', '<i2'), ('minute_of_hour', '<i2'), ('second_of_minute', '<i2'), ('time_basis_code', '<i2'), ('trace_weighting_factor', '<i2'), ('group_num_roll_switch', '<i2'), ('group_num_first_trace', '<i2'), ('group_num_last_trace', '<i2'), ('gap_size', '<i2'), ('taper_overtravel', '<i2'), ('cdp_x', '<i4'), ('cdp_y', '<i4'), ('inline', '<i4'), ('crossline', '<i4'), ('shot_point', '<i4'), ('shot_point_scalar', '<i2'), ('trace_value_unit', '<i2'), ('transduction_const_mantissa', '<i4'), ('transduction_const_exponent', '<i2'), ('transduction_unit', '<i2'), ('device_trace_id', '<i2'), ('times_scalar', '<i2'), ('source_type_orientation', '<i2'), ('source_energy_dir_mantissa', '<i4'), ('source_energy_dir_exponent', '<i2'), ('source_measurement_mantissa', '<i4'), ('source_measurement_exponent', '<i2'), ('source_measurement_unit', '<i2'), ('pad_233', 'u1'), ('pad_234', 'u1'), ('pad_235', 'u1'), ('pad_236', 'u1'), ('pad_237', 'u1'), ('pad_238', 'u1'), ('pad_239', 'u1'), ('pad_240', 'u1')]",
+        "closure_shape": [
+          12,
+          14
+        ],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "headers",
+        "original_dtype": "[('trace_seq_num_line', '<i4'), ('trace_seq_num_reel', '<i4'), ('orig_field_record_num', '<i4'), ('trace_num_orig_record', '<i4'), ('energy_source_point_num', '<i4'), ('ensemble_num', '<i4'), ('trace_num_ensemble', '<i4'), ('trace_id_code', '<i2'), ('vertically_summed_traces', '<i2'), ('horizontally_stacked_traces', '<i2'), ('data_use', '<i2'), ('source_to_receiver_distance', '<i4'), ('receiver_group_elevation', '<i4'), ('source_surface_elevation', '<i4'), ('source_depth_below_surface', '<i4'), ('receiver_datum_elevation', '<i4'), ('source_datum_elevation', '<i4'), ('source_water_depth', '<i4'), ('receiver_water_depth', '<i4'), ('elevation_depth_scalar', '<i2'), ('coordinate_scalar', '<i2'), ('source_coord_x', '<i4'), ('source_coord_y', '<i4'), ('group_coord_x', '<i4'), ('group_coord_y', '<i4'), ('coordinate_unit', '<i2'), ('weathering_velocity', '<i2'), ('subweathering_velocity', '<i2'), ('source_uphole_time', '<i2'), ('group_uphole_time', '<i2'), ('source_static_correction', '<i2'), ('receiver_static_correction', '<i2'), ('total_static_applied', '<i2'), ('lag_time_a', '<i2'), ('lag_time_b', '<i2'), ('delay_recording_time', '<i2'), ('mute_time_start', '<i2'), ('mute_time_end', '<i2'), ('samples_per_trace', '<i2'), ('sample_interval', '<i2'), ('instrument_gain_type', '<i2'), ('instrument_gain_const', '<i2'), ('instrument_gain_initial', '<i2'), ('correlated_data', '<i2'), ('sweep_freq_start', '<i2'), ('sweep_freq_end', '<i2'), ('sweep_length', '<i2'), ('sweep_type', '<i2'), ('sweep_taper_start', '<i2'), ('sweep_taper_end', '<i2'), ('taper_type', '<i2'), ('alias_filter_freq', '<i2'), ('alias_filter_slope', '<i2'), ('notch_filter_freq', '<i2'), ('notch_filter_slope', '<i2'), ('low_cut_freq', '<i2'), ('high_cut_freq', '<i2'), ('low_cut_slope', '<i2'), ('high_cut_slope', '<i2'), ('year_recorded', '<i2'), ('day_of_year', '<i2'), ('hour_of_day', '<i2'), ('minute_of_hour', '<i2'), ('second_of_minute', '<i2'), ('time_basis_code', '<i2'), ('trace_weighting_factor', '<i2'), ('group_num_roll_switch', '<i2'), ('group_num_first_trace', '<i2'), ('group_num_last_trace', '<i2'), ('gap_size', '<i2'), ('taper_overtravel', '<i2'), ('cdp_x', '<i4'), ('cdp_y', '<i4'), ('inline', '<i4'), ('crossline', '<i4'), ('shot_point', '<i4'), ('shot_point_scalar', '<i2'), ('trace_value_unit', '<i2'), ('transduction_const_mantissa', '<i4'), ('transduction_const_exponent', '<i2'), ('transduction_unit', '<i2'), ('device_trace_id', '<i2'), ('times_scalar', '<i2'), ('source_type_orientation', '<i2'), ('source_energy_dir_mantissa', '<i4'), ('source_energy_dir_exponent', '<i2'), ('source_measurement_mantissa', '<i4'), ('source_measurement_exponent', '<i2'), ('source_measurement_unit', '<i2'), ('pad_233', 'u1'), ('pad_234', 'u1'), ('pad_235', 'u1'), ('pad_236', 'u1'), ('pad_237', 'u1'), ('pad_238', 'u1'), ('pad_239', 'u1'), ('pad_240', 'u1')]",
+        "original_shape": [
+          12,
+          14
+        ]
+      },
+      {
+        "closure_dtype": "uint8",
+        "closure_shape": [
+          12,
+          14,
+          240
+        ],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "headers_raw_uint8",
+        "original_dtype": "uint8",
+        "original_shape": [
+          12,
+          14,
+          240
+        ]
+      },
+      {
+        "closure_dtype": "int32",
+        "closure_shape": [
+          12
+        ],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "inline",
+        "original_dtype": "int32",
+        "original_shape": [
+          12
+        ]
+      },
+      {
+        "closure_dtype": "<U1",
+        "closure_shape": [],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "segy_file_header",
+        "original_dtype": "<U1",
+        "original_shape": []
+      },
+      {
+        "closure_dtype": "int32",
+        "closure_shape": [
+          64
+        ],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "time",
+        "original_dtype": "int32",
+        "original_shape": [
+          64
+        ]
+      },
+      {
+        "closure_dtype": "int8",
+        "closure_shape": [
+          12,
+          14
+        ],
+        "detail": "identical",
+        "equal": true,
+        "in_closure_store": true,
+        "in_original_store": true,
+        "name": "trace_mask",
+        "original_dtype": "int8",
+        "original_shape": [
+          12,
+          14
+        ]
+      }
+    ],
+    "arrays_compared": 11,
+    "check": "roundtrip_closure",
+    "closure_store": "/var/folders/zv/77r6ldb52zd2qt3zx0h053zw0000gn/T/tmp4dk2sqnd/closure/closure.mdio",
+    "differing_arrays": [],
+    "differing_file_headers": [],
+    "error": null,
+    "export_path": "/var/folders/zv/77r6ldb52zd2qt3zx0h053zw0000gn/T/tmp4dk2sqnd/roundtrip.sgy",
+    "file_headers": [
+      {
+        "attribute": "sdipRawTextHeader",
+        "closure_bytes": 3200,
+        "closure_sha256": "cdb7ae2a918a6c49bc26b357900cc391ac63a4bc2759e7c07c2bcbbe5ea36f0c",
+        "detail": "identical, 3200 bytes",
+        "equal": true,
+        "header": "textual",
+        "in_closure_store": true,
+        "in_original_store": true,
+        "original_bytes": 3200,
+        "original_sha256": "cdb7ae2a918a6c49bc26b357900cc391ac63a4bc2759e7c07c2bcbbe5ea36f0c"
+      },
+      {
+        "attribute": "sdipRawBinaryHeader",
+        "closure_bytes": 400,
+        "closure_sha256": "523c412d461598dc46ee806a583cae7a282d55250250c3246f60d7446b62635a",
+        "detail": "identical, 400 bytes",
+        "equal": true,
+        "header": "binary",
+        "in_closure_store": true,
+        "in_original_store": true,
+        "original_bytes": 400,
+        "original_sha256": "523c412d461598dc46ee806a583cae7a282d55250250c3246f60d7446b62635a"
+      }
+    ],
+    "file_headers_compared": 2,
+    "note": "G3 answers whether the export is byte-identical to the source. This answers whether the export is a well-formed SEG-Y that reads back to the same measured values - the only question available when the source is non-conforming and G3 is ROUNDTRIP-SCOPED. Neither subsumes the other (spec 7 G3, debt D19). The five planes here run export against the store built FROM that export, so they establish self-consistency; the file-header and array legs are the only ones that compare the export to the original store (DECISIONS.md D-0067).",
+    "only_in_closure_store": [],
+    "only_in_original_store": [],
+    "original_store": "local/refcert/reference.mdio",
+    "plane_evidence": [
+      {
+        "evidence": {
+          "compared": "raw bytes, source vs store",
+          "first_difference": null,
+          "n": 3200,
+          "note": "Compared as bytes, never as a decoded string: two byte sequences that decode alike are not the same header (\u00a74.2).",
+          "sampling": "exhaustive",
+          "source_sha256": "cdb7ae2a918a6c49bc26b357900cc391ac63a4bc2759e7c07c2bcbbe5ea36f0c",
+          "store_sha256": "cdb7ae2a918a6c49bc26b357900cc391ac63a4bc2759e7c07c2bcbbe5ea36f0c"
+        },
+        "status": "PASS"
+      },
+      {
+        "evidence": {
+          "compared": "raw bytes, source vs store",
+          "first_difference": null,
+          "n": 400,
+          "note": "Raw bytes decide the verdict. The parsed mapping is recorded because \u00a74.3 requires both, but it is not authoritative on conflict.",
+          "parsed_mapping_present": true,
+          "sampling": "exhaustive",
+          "source_sha256": "523c412d461598dc46ee806a583cae7a282d55250250c3246f60d7446b62635a",
+          "store_sha256": "523c412d461598dc46ee806a583cae7a282d55250250c3246f60d7446b62635a"
+        },
+        "status": "PASS"
+      },
+      {
+        "evidence": {
+          "byte_coverage_guaranteed_by": "G1 (gap-free spec: 240 of 240 bytes)",
+          "compared": "every declared field, source vs store, array_equal",
+          "derived_coords_arrays": [
+            "cdp_x",
+            "cdp_y"
+          ],
+          "derived_coords_compared": "np.array_equal, recomputed from source headers - EXACT",
+          "derived_coords_first_difference": null,
+          "derived_coords_identical": true,
+          "derived_coords_mismatch_count": 0,
+          "derived_coords_n": 336,
+          "derived_coords_note": "Derived-array leg, AND-ed into G2c's verdict. cdp_x and cdp_y are the OUTPUT of the declared coordinate-scalar transform (DECISIONS.md D-0040), and SP1 requires a declared transform to be VERIFIED - a declared transform whose output nothing checks is half-declared. Recomputed here from the source trace headers under the declared semantics (positive scalar multiplies, negative divides) and compared with np.array_equal against the arrays a consumer actually reads (G4, section 10.3). Until 2026-08-23 nothing compared them: an external audit corrupted cdp_x and cdp_y individually and ALL FIVE PLANES still returned PASS (D-0056).",
+          "derived_coords_present": true,
+          "derived_coords_scalar_uniform": true,
+          "derived_coords_scalar_values": [
+            1
+          ],
+          "derived_coords_verified": true,
+          "field_count": 97,
+          "first_difference": null,
+          "map_invertible": true,
+          "mismatch_count": 0,
+          "missing_fields_in_store": [],
+          "missing_required_arrays": [],
+          "n": 168,
+          "note": "Field naming is metadata; byte content is the contract. Field-wise equality equals byte equality here only because G1 proved the spec covers all 240 bytes with no gaps and no overlaps - which is why the byte leg, which needs no spec, is ANDed in beside it.",
+          "raw_header_bytes_identical": true,
+          "raw_header_bytes_per_trace": 240,
+          "raw_header_bytes_verified": true,
+          "raw_header_compared": "np.array_equal on uint8 bytes, source vs store - EXACT",
+          "raw_header_first_difference": null,
+          "raw_header_mismatch_count": 0,
+          "raw_header_n": 168,
+          "raw_header_note": "Second leg, ANDed into G2c's verdict. The field-wise comparison above equals byte equality only because G1 proved the gap-free spec covers all 240 bytes; this leg compares the 240 raw bytes in headers_raw_uint8 against the same bytes read from the source by raw byte offset, and has NO spec dependency at all. It exists because probe P4 measured three Zarr readers giving three different answers about the structured array's `struct` data_type - TensorStore accepts it, zarr-java refuses it, zarr-python warns - and `struct` has no Zarr v3 specification, so a reader that declines it is conformant (DECISIONS.md D-0047). The plane is the portable copy, and a portable copy nothing checks is not evidence.",
+          "raw_header_plane_present": true,
+          "raw_header_sampling": "exhaustive over live traces",
+          "required_array_note": "Presence leg. An array the source implies MUST exist and does not is a FAILURE, not a NOT CHECKED. Measured 2026-08-23 (D-0061): deleting one CHUNK of amplitude_raw_ibm32 failed this plane, while deleting the WHOLE ARRAY passed it - and a partially written store, reached by a real credential expiry mid-ingest, certified EQUIVALENT while missing the D1 and D-0047 mitigations entirely. Recording NOT CHECKED in evidence while the verdict still reads EQUIVALENT is checked-and-passed wearing an honest label (SP11).",
+          "sampling": "exhaustive"
+        },
+        "status": "PASS"
+      },
+      {
+        "evidence": {
+          "compared": "np.array_equal per live trace - EXACT, never allclose",
+          "derived_axis_compared": "np.array_equal, recomputed from source headers - EXACT",
+          "derived_axis_delay_ms": 0,
+          "derived_axis_first_difference": null,
+          "derived_axis_identical": true,
+          "derived_axis_n": 64,
+          "derived_axis_name": "time",
+          "derived_axis_note": "Derived-axis leg, AND-ed into G2d's verdict. The sample axis is recomputed from the trace-header sample interval and delay - axis[i] = delay + i * interval/1000 - and compared with np.array_equal against the stored axis. Samples are meaningless without the axis that positions them: a corrupted axis mislabels every sample in depth or time while the sample values themselves compare equal. Until 2026-08-23 nothing compared it (D-0056).",
+          "derived_axis_present": true,
+          "derived_axis_sample_interval_us": 4000,
+          "derived_axis_verified": true,
+          "first_difference": null,
+          "mismatch_count": 0,
+          "missing_required_arrays": [],
+          "n": 168,
+          "note": "Grid padding is not data (SP12) and is excluded by the live mask, not compared. No tolerance is applied anywhere in this comparison.",
+          "padding_excluded": true,
+          "raw_ibm32_compared": "np.array_equal on uint32 words, source vs store - EXACT",
+          "raw_ibm32_first_difference": null,
+          "raw_ibm32_identical": true,
+          "raw_ibm32_mismatch_count": 0,
+          "raw_ibm32_n": 168,
+          "raw_ibm32_note": "Second leg, AND-ed into G2d's verdict (DECISIONS.md D-0049): a raw mismatch fails this plane, and a raw pass cannot rescue a failed decoded comparison. The decoded comparison above remains the gate's definition; this leg compares the undecoded uint32 words in amplitude_raw_ibm32 against the same words read from the source by raw byte offset. It is EXACTLY invertible by construction - a uint32 is copied, not transformed - so it holds precisely where the float comparison cannot: probe P2 measured 1,939 of 4,103 ibm32 words losing the VALUE in the decode, and two decoded arrays that both read `inf` are equal without either being the source sample. A store can have correct raw words and a lossy decode; both facts belong on the certificate, and neither is allowed to stand in for the other.",
+          "raw_ibm32_sampling": "exhaustive over live traces",
+          "raw_ibm32_view_present": true,
+          "raw_ibm32_words_per_trace": 64,
+          "raw_ibm32_words_verified": true,
+          "required_array_note": "Presence leg. An array the source implies MUST exist and does not is a FAILURE, not a NOT CHECKED. Measured 2026-08-23 (D-0061): deleting one CHUNK of amplitude_raw_ibm32 failed this plane, while deleting the WHOLE ARRAY passed it - and a partially written store, reached by a real credential expiry mid-ingest, certified EQUIVALENT while missing the D1 and D-0047 mitigations entirely. Recording NOT CHECKED in evidence while the verdict still reads EQUIVALENT is checked-and-passed wearing an honest label (SP11).",
+          "samples_per_trace": 64,
+          "sampling": "exhaustive over live traces",
+          "variable": "amplitude"
+        },
+        "status": "PASS"
+      },
+      {
+        "evidence": {
+          "checks": {
+            "count_matches": true,
+            "map_complete": true,
+            "map_invertible": true,
+            "mask_matches_map": true,
+            "no_duplicates": true,
+            "no_required_array_missing": true,
+            "padding_is_only_fill": true
+          },
+          "compared": "trace counts, mapping invertibility, live mask, duplicates",
+          "failed_checks": [],
+          "live_cells_in_mask": 168,
+          "missing_required_arrays": [],
+          "n": 168,
+          "note": "A duplicate index tuple is data loss, not a labelling problem: one trace is absent from the store and nothing records that it existed.",
+          "padding_ambiguous_by_value": [],
+          "padding_cells": 0,
+          "padding_fills": {},
+          "padding_note": "Padding is VERIFIED as padding, not merely excluded from comparison. SP12: a value in an output that did not come from the source is a defect, and a grid cell no source trace maps to must therefore hold the declared fill and nothing else. Float arrays fill with NaN, which is unambiguous. INTEGER arrays fill with 0, which is indistinguishable BY VALUE from a measured 0 - so `trace_mask` is the authoritative liveness signal and a reader that ignores it can misread padding as data (OPEN_DEBTS D29). SDIP cannot give an integer dtype a NaN; what it can do is prove no padding cell was written with anything else, and say so here.",
+          "padding_verified": true,
+          "padding_violations": [],
+          "required_array_note": "Presence leg. An array the source implies MUST exist and does not is a FAILURE, not a NOT CHECKED. Measured 2026-08-23 (D-0061): deleting one CHUNK of amplitude_raw_ibm32 failed this plane, while deleting the WHOLE ARRAY passed it - and a partially written store, reached by a real credential expiry mid-ingest, certified EQUIVALENT while missing the D1 and D-0047 mitigations entirely. Recording NOT CHECKED in evidence while the verdict still reads EQUIVALENT is checked-and-passed wearing an honest label (SP11).",
+          "sampling": "exhaustive",
+          "source_trace_count": 168,
+          "trace_map": {
+            "dimensions": [
+              "inline",
+              "crossline"
+            ],
+            "duplicate_cells": [],
+            "duplicate_count": 0,
+            "invertible": true,
+            "mapped": 168,
+            "source_trace_count": 168,
+            "unmapped_count": 0,
+            "unmapped_ordinals": []
+          }
+        },
+        "status": "PASS"
+      }
+    ],
+    "planes": {
+      "plane_1": "PASS",
+      "plane_2": "PASS",
+      "plane_3": "PASS",
+      "plane_4": "PASS",
+      "plane_5": "PASS"
+    },
+    "status": "PASS",
+    "summary": "closure PASS: the export re-ingests, all 5 planes hold against it, both raw file headers and all 11 arrays are identical to the original store's"
+  },
+  "scale": {
+    "declared_rss_ceiling_bytes": 8589934592,
+    "declared_wall_ceiling_s": 1500.0,
+    "findings": [],
+    "gate": "G5",
+    "note": "Ceilings are DECLARED BEFORE THE RUN (SP9) and are a required argument with no default. A threshold nobody committed to beforehand is not a threshold. This gate judges measurements the run supplied; it does not take them.",
+    "peak_rss_bytes": 260505600,
+    "planes_passed": true,
+    "prereg": "prereg/P10-scale-recalibration.md@504b308",
+    "rss_breach": false,
+    "sampling": "exhaustive - every trace, every field, every sample",
+    "status": "PASS",
+    "summary": "G5 PASS: 168 traces, peak RSS 0.24 GiB of 8.0 GiB declared, 26s of 1500s",
+    "trace_count": 168,
+    "unbounded_growth_observed": false,
+    "wall_breach": false,
+    "wall_clock_s": 25.62496091698995
+  },
+  "segy_revision": "1",
+  "source_bytes": 86928,
+  "source_path": "/Users/zahidaramai/Local_Sites/seis-mdio-zarr/local/refcert/reference-poststack3d.sgy",
+  "source_sha256": "465297171ccbf63f1f7f71ef0ccdec9f9a72dccc254673b7250706a624086b85",
+  "source_sha256_post_read": "465297171ccbf63f1f7f71ef0ccdec9f9a72dccc254673b7250706a624086b85",
+  "spec_field_count": 97,
+  "spec_gap_free": true,
+  "spec_id": "segy-rev1-gapfree-8f",
+  "spec_itemsize": 240,
+  "spec_sha256": "0ba58a559cdd3d1e894500c51937106dc7ef4b459ab7b6b0c3650614e45cfaf5",
+  "spec_version": "1.0",
+  "transform_scope_blocks_equivalence": false,
+  "transform_scope_reason": null,
+  "transforms_declared": [
+    {
+      "applies_to": "samples",
+      "field_names": [],
+      "first_loss": "P2: 1,939 of 4,103 words lose the value",
+      "from": "ibm32",
+      "invertibility": "SCOPED",
+      "loss_class": "range_and_precision",
+      "measured_by": "probe P9, prereg/P9-sample-format-sweep.md",
+      "mechanism": "MDIO writes the data variable as ScalarType.FLOAT32 unconditionally (mdio/builder/templates/base.py:449), so the decode is always <source format> -> float32. float32 carries a 24-bit significand: every integer to 2**24 = 16,777,216 exactly, none beyond.",
+      "raw_view_stored": true,
+      "sample_format": "ibm32",
+      "scope_note": "Probe P2 measured ibm32 -> float32 -> ibm32 exhaustively over the IBM exponent axis (N=4,103) and the falsifier fired: 2,447 words are not bit-identical. Bit-identity requires exponent code 33-96 AND a normalised, non-zero fraction. Codes 1-32 underflow to zero and codes 97-127 overflow to infinity - 1,939 words lose the VALUE, not merely the spelling, and are unrecoverable from the decoded float32 alone. Negative zero loses its sign. See prereg/P2-ibm32-fidelity.md.",
+      "to": "float32"
+    }
+  ],
+  "verdict": "EQUIVALENT",
+  "verdict_reason": "All five planes PASS and G7 PASS.",
+  "warnings": {
+    "known_upstream_suppressions": [
+      {
+        "category": "UnstableSpecificationWarning",
+        "condition": "The headers array is written with data_type {'name': 'struct'}, which is not in the Zarr v3 core specification.",
+        "detected_independently_by": "G4 portability check, reading zarr.json",
+        "id": "mdio-1.2.1-unstable-structs-v3",
+        "leaks_globally": "yes - finally: pass, no catch_warnings()",
+        "message_regex": "The data type \\((.*?)\\) does not have a Zarr V3 specification\\.",
+        "package": "multidimio",
+        "probe": "P4",
+        "site": "mdio/core/zarr_io.py:20",
+        "version": "1.2.1"
+      },
+      {
+        "category": "ZarrUserWarning",
+        "condition": "A numcodecs codec was used that Zarr v3 does not specify.",
+        "detected_independently_by": "G4 codec manifest read from zarr.json",
+        "id": "mdio-1.2.1-unstable-numcodecs-v3",
+        "leaks_globally": "yes - finally: pass, no catch_warnings()",
+        "message_regex": "Numcodecs codecs are not in the Zarr version 3 specification",
+        "package": "multidimio",
+        "probe": "P4",
+        "site": "mdio/core/zarr_io.py:31",
+        "version": "1.2.1"
+      },
+      {
+        "category": "FutureWarning",
+        "condition": "xarray deduplicates its own decode_timedelta FutureWarning. Action is 'once', not 'ignore': the first occurrence is still shown.",
+        "detected_independently_by": "not required - no information is lost",
+        "id": "xarray-decode-timedelta-once",
+        "leaks_globally": "yes - module-scope filterwarnings, never restored",
+        "message_regex": "decode_timedelta",
+        "package": "xarray",
+        "probe": "-",
+        "site": "xarray/conventions.py:371",
+        "version": "2026.7.0"
+      },
+      {
+        "category": "DeprecationWarning",
+        "condition": "numcodecs deduplicates its own crc32c deprecation notice at IMPORT time, at module scope. Action is 'once', not 'ignore'.",
+        "detected_independently_by": "codec manifest read from zarr.json (G4)",
+        "id": "numcodecs-crc32c-deprecation-once",
+        "leaks_globally": "yes - module-scope filterwarnings, never restored",
+        "message_regex": "crc32c usage is deprecated.*",
+        "package": "numcodecs",
+        "probe": "-",
+        "site": "numcodecs/checksum32.py:18",
+        "version": "0.16.5"
+      },
+      {
+        "category": "UserWarning",
+        "condition": "Export re-chunks the store. Upstream analysis: https://github.com/TGSAI/mdio-python/issues/657",
+        "detected_independently_by": "chunk shape recorded on every certificate",
+        "id": "mdio-1.2.1-chunk-separation",
+        "leaks_globally": "no - uses catch_warnings()",
+        "message_regex": "The specified chunks separate the stored chunks along dimension",
+        "package": "multidimio",
+        "probe": "P7",
+        "site": "mdio/segy/creation.py:92",
+        "version": "1.2.1"
+      }
+    ],
+    "logged": [
+      {
+        "level": "WARNING",
+        "levelno": 30,
+        "logger": "mdio.ingestion.segy.coordinates",
+        "message": "Unexpected value in coordinate unit (measurement_system_code) header: 0. Can't extract coordinate unit and will ingest without coordinate units.",
+        "module": "coordinates"
+      }
+    ],
+    "logged_count": 1,
+    "observed": [],
+    "observed_count": 0,
+    "scope": {
+      "channels": "observed[] is the warnings module; logged[] is the logging module; stderr_recovered[] is text scraped off file descriptor 2. Three lists, never merged: only the first is suppressible by a filter, and only the first two are objects the emitting library handed over rather than lines it printed.",
+      "covers": "parent-process Python warnings, parent-process log records, and warning-shaped text recovered from file descriptor 2 during the guarded call",
+      "empty_observed_means": "No warning arrived in this process. That is NOT evidence that none was raised. MDIO scans headers and reads traces in a spawn pool, and both warnings.catch_warnings and logging handlers are process-local, so a worker's warning goes to the child's stderr and never becomes a warning object here. Measured by P2: an ingest whose every sample overflowed to inf produced observed == []. Read stderr_recovered[] beside it, and read worker_stderr_text_recovered to know whether anything was watching at all.",
+      "log_records_below_effective_level": "NOT CAPTURED - a record the process's logging configuration discards is never constructed, and a recorder cannot record what was never made.",
+      "log_records_below_effective_level_captured": false,
+      "stderr_recovered_means": "A line printed to file descriptor 2, in warnings.formatwarning's shape, while the guarded call ran. It is TEXT, not a Warning object: no arguments, no cause, no stack, and the category is a parsed name rather than a class. Python prints a given warning once per process under the default action, so a record is one printed LINE and not one event - 960 overflowing sample words produced one line.",
+      "why_workers_are_not_captured": "No upstream hook reaches a worker under the binding pins. mdio/segy/blocked_io.py:104 hardcodes initializer=trace_worker_init; mdio/segy/parsers.py:61 passes no initializer; segy_to_mdio takes a spec, a template, two paths, overwrite, grid_overrides and segy_header_overrides, none of which reaches a worker; MDIOSettings exposes eight fields - cloud_native, export_cpus, grid_sparsity_ratio_limit, grid_sparsity_ratio_warn, ignore_checks, import_cpus, raw_headers, save_segy_file_header - two of them barred by spec 9.1 and none a worker callback; and the workers return HeaderArray and SummaryStatistics | None, with nowhere to carry a warning back. Installing a hook anyway would be monkeypatching, which spec 3.3 forbids without exception. The child does inherit file descriptor 2, which is why the TEXT is reachable when the object is not.",
+      "worker_log_records_captured": false,
+      "worker_process_log_records": "NOT CAPTURED - see OPEN_DEBTS D35",
+      "worker_process_warnings": "NOT CAPTURED AS WARNING OBJECTS - text only, when worker_stderr_text_recovered is true. See OPEN_DEBTS D35.",
+      "worker_stderr_attribution": "The originating process is NOT recoverable from the text. What is known is that a recovered line did not come from this process's warnings.warn, because recording_warnings records rather than emits for the duration of the call.",
+      "worker_stderr_bytes_scanned": 679,
+      "worker_stderr_recovery_truncated": false,
+      "worker_stderr_text_recovered": true,
+      "worker_warnings_captured": false
+    },
+    "sp6_scope_note": "A warning suppressed by a filter installed inside a dependency cannot be re-raised without monkeypatching, which spec 3.3 forbids. The suppression itself is recorded instead, and the underlying condition is detected independently by G4.",
+    "stderr_recovered": [],
+    "stderr_recovered_count": 0,
+    "suppression_count": 2,
+    "suppressions_installed": [
+      {
+        "action": "once",
+        "category": "FutureWarning",
+        "kind": "deduplication",
+        "known_id": "xarray-decode-timedelta-once",
+        "message_regex": "decode_timedelta",
+        "status": "declared"
+      },
+      {
+        "action": "ignore",
+        "category": "ZarrUserWarning",
+        "kind": "suppression",
+        "known_id": "mdio-1.2.1-unstable-numcodecs-v3",
+        "message_regex": "Numcodecs codecs are not in the Zarr version 3 specification",
+        "status": "declared"
+      },
+      {
+        "action": "ignore",
+        "category": "UnstableSpecificationWarning",
+        "kind": "suppression",
+        "known_id": "mdio-1.2.1-unstable-structs-v3",
+        "message_regex": "The data type \\((.*?)\\) does not have a Zarr V3 specification\\.",
+        "status": "declared"
+      },
+      {
+        "action": "once",
+        "category": "DeprecationWarning",
+        "kind": "deduplication",
+        "known_id": "numcodecs-crc32c-deprecation-once",
+        "message_regex": "crc32c usage is deprecated.*",
+        "status": "declared"
+      }
+    ],
+    "undeclared_filter_count": 0,
+    "undeclared_suppression_count": 0
+  }
+}

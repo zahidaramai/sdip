@@ -1704,3 +1704,48 @@ That last row is the one that matters: it is what stops the negative controls fr
 passing vacuously.
 
 **Every gate job now arms.** The gate table has no honest `NOT_RUN` left in it.
+
+---
+
+## D45 — `certificates/` shipped empty until an external reviewer opened it
+
+- **Status:** `CLOSED` on sight (raised and closed 2026-08-25) · **Decision:** `DECISIONS.md` D-0082
+
+**The repository's whole thesis is "the file plus the proof", and it shipped the engine,
+the schema, the ledger and the philosophy with no proof a stranger could open.** A
+reviewer cloned cold, generated a certificate from *this repository's own fixture
+generator* in 35 seconds, and pointed out that there was no reason one was not already
+committed.
+
+Closed by committing a reference certificate against a synthetic fixture, with the
+regeneration command and an independent `jsonschema` validation in
+[`certificates/README.md`](certificates/README.md), and **ledger row 2**.
+
+**Recorded rather than fixed silently**, because the gap is instructive: every individual
+decision was defensible — real survey data is restricted, its certificate is firewalled,
+the ledger row carries the digest — and the aggregate was a folder that argued for
+nothing. **No single entry in the record would have caught that. Someone had to open the
+directory.**
+
+---
+
+## D46 — A published certificate carries the issuing machine's absolute path
+
+- **Status:** `OPEN` (raised 2026-08-25) · **Decision:** `DECISIONS.md` D-0082
+
+`source_path` is `Path(source).resolve()`, so every certificate records an absolute path —
+including a home directory and username — and the reference certificate published in
+`certificates/` carries one.
+
+**The resolve is correct and is not being removed**: §3.6 requires resolving before
+validating, and a relative path in a provenance record would be ambiguous about *which*
+file was measured.
+
+**Not post-processed either.** Editing a path out of an issued certificate forges it, and
+a project whose product is trust does not hand-edit its own evidence.
+
+`certificates/README.md` now states that the path is **provenance, not identity**, and
+that the SHA-256 is what a reader compares. **Closure candidates:** record both a resolved
+path and a repository-relative one where the source sits inside the tree, or record the
+parent directory only. Both change the certificate schema, so both want a maintainer
+ruling rather than a quiet edit.

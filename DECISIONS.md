@@ -4061,3 +4061,59 @@ something.
 (D-0079), not the one that was accurately unarmed (this entry).
 
 **Suite: 1,140 passed**, six of them new.
+
+---
+
+## D-0082 — 2026-08-25 — An external review found a red gate, five stale claims, and an empty room
+
+A reviewer cloned cold into a clean container, installed, ran the suite, issued a
+certificate from this repository's own fixture generator, and validated it against the
+published schema with plain `jsonschema`. **Then they read the tree.**
+
+### What they got wrong, checked first
+
+**`ruff format --check` passed** on my tree, and **both GitHub Releases exist**,
+non-draft, authored correctly. Two of their claims were simply false.
+
+### What they got right, including the one I could not see
+
+**CI was RED on `main`.** `ruff format --check` fails on `README.md` — ruff formats fenced
+Python inside Markdown, and PR #1's aligned inline comments trip it. **I could not
+reproduce it because I was three commits behind origin**: a PR had merged that I did not
+have. *My tree was not the repository, and I had been reporting on my tree.*
+
+**The `roadmap` CI job printed the loudest wrong text in the project into every single run
+summary** — `Current phase: F0`, all seven gates `NOT BUILT`, and *"Until G7 passes, every
+certificate the engine issues is unvalidated."* False since 22 August. It now **derives**
+the table from the tree and counts controls with `grep`, because **a table somebody has to
+remember to update is a table that goes stale** — which is precisely what happened.
+
+Four more contradictions, each reader-facing: `planes.py` said planes 3–5 *"do not
+exist"*; `CONTRIBUTING.md` said CI was *"defined, not yet executed"*; `pyproject.toml`
+still said a pin bump is a **minor** release after the CHANGELOG corrected it to **major**
+at 1.0.0; and `Development Status :: 2 - Pre-Alpha` sat on version 1.1.0.
+
+### The one that actually hurt
+
+**`certificates/` contained a README and nothing else.**
+
+The project argues that the product is *the file plus the proof*, and shipped every part
+of that except a proof anyone could open. **Every individual decision behind it was
+defensible** — the survey data is restricted, its certificate is firewalled, the ledger
+row carries the digest — **and the aggregate was a folder that argued for nothing.**
+
+**No entry in this record would have caught it.** It is not a wrong claim, a failed gate
+or a stale number; it is an absence, and absences do not appear in a decision log.
+**Someone had to open the directory.** That is what external review is for, and it is the
+argument for doing this again before the next release rather than after it.
+
+Closed as **D45**: a reference certificate against a synthetic fixture, with the
+regeneration command, an independent validation, and **ledger row 2**.
+
+### A smaller thing the fix surfaced
+
+Publishing a certificate meant reading one as a stranger would, which showed that
+`source_path` carries the issuing machine's **absolute path**, username included. The
+resolve is correct (§3.6) and post-processing it would **forge the certificate**, so it
+ships honest, with `certificates/README.md` stating that the path is **provenance** and
+the **SHA-256 is identity**. Raised as **D46** rather than quietly edited.
