@@ -1,5 +1,10 @@
 <div align="center">
 
+<img src="assets/sdip-overview.png" alt="SDIP — Seismic Data Ingestion & Preparation. SEG-Y in, identity conversion to MDIO v1.2.1 on Zarr v3, out with an Equivalence Certificate: a machine-checkable proof that the conversion changed nothing. Pass requires all five planes of equivalence — textual header, binary header, trace headers, samples, cardinality — backed by 16 permanent negative controls." width="100%" />
+
+<br />
+<br />
+
 # 🌊 SDIP — Seismic Data Ingestion & Preparation
 
 ### *The product is not the file. The product is the file plus the proof.*
@@ -47,6 +52,31 @@ Plenty of tools convert SEG-Y. **What has been missing is the receipt.**
 
 ---
 
+## Why the acquisition — and why it matters more now than it ever did
+
+The acquisition is the only measurement. Everything downstream — processing, imaging, interpretation, and now training — is an opinion about it. The survey is measured once, and the field record is the one place the subsurface is *recorded* rather than *inferred*.
+
+That used to be an archival concern. It is now an input problem.
+
+Seismic is moving into AI/ML: foundation models for the subsurface, ML velocity picking, fault and salt segmentation, learned denoising, 4D anomaly detection. Every one of them consumes **arrays**, at scale, in parallel, from object storage. SEG-Y cannot serve that — it is a sequential tape layout with 240-byte headers interleaved between traces: no chunking, no random access, no schema a data loader can address. So the data gets converted, and that conversion is now on the critical path of every model that will ever be trained on that survey.
+
+**That is the objective of this transformer.** SDIP is not a converter that happens to verify. It is the step that turns an irreplaceable acquisition into an **AI-ready, data-rich array store** — and proves the arrays *are* the acquisition: same samples, same 240 header bytes, same trace count and ordering, bit for bit.
+
+Because a model cannot tell the difference:
+
+- A **dropped header field** is a missing feature. The model trains without it, and nobody knows what was lost.
+- A **sample altered** by a decode that was not exactly invertible becomes signal. The model learns it.
+- A **regularised grid** becomes geometry. The prediction inherits it.
+- A **mislabelled trace** becomes a wrong label, propagated through every epoch.
+
+Corrupted ground truth does not announce itself in a loss curve. It surfaces as a model that scores well in validation and fails in the field — and by then the training set is years of provenance away from the tape.
+
+An AI-ready format is table stakes: **MDIO v1 on Zarr v3** gives chunked, parallel, cloud-native reads with the metadata addressable alongside the arrays, over open standards no vendor controls. The certificate is what makes that format worth training on — a machine-checkable statement that the array a data loader reads is the number a geophone measured.
+
+**Garbage in, garbage out is a cliché until the garbage is byte-level and the "out" is a model.** SDIP exists so the input is provably not garbage.
+
+---
+
 ## What SDIP does
 
 SDIP converts SEG-Y to MDIO/Zarr v3 **and proves the conversion was an identity map on every measured value.**
@@ -74,6 +104,8 @@ Comparisons are **byte equality** or `array_equal`. **There is no tolerance anyw
 **You received data from someone else.** A certificate travels with the store and can be verified independently — you do not have to trust the sender's toolchain, or run it.
 
 **You are building on converted data.** An inversion or a 4D study inherits every defect upstream of it. A certificate turns "we think the conversion was clean" into something with a number behind it.
+
+**You are assembling a training set.** An AI/ML platform reads arrays, not tapes, and a model has no way to notice that a header field went missing or a sample moved. The certificate is the provenance record that says this array is the acquisition — attached to the data, checkable per survey, before a single epoch runs.
 
 **You are the custodian of an archive.** Tapes degrade, formats age, and the migration you run today is the one someone audits in twenty years. SDIP writes down what it did, in a form that outlives the person who ran it.
 
