@@ -5,14 +5,18 @@ build-backend = "hatchling.build"
 [project]
 name = "sdip"
 version = "1.1.0"
-description = "SEG-Y to MDIO/Zarr v3 seismic conversion with a machine-checkable proof of lossless 1-1 equivalence and a validation certificate."
+description = "Convert SEG-Y seismic data to AI-ready MDIO/Zarr v3, with a machine-checkable proof of lossless 1-1 equivalence and a validation certificate."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12,<3.14"
 keywords = [
-    "segy", "seg-y", "mdio", "zarr", "seismic", "geophysics",
-    "lossless", "validation", "equivalence", "provenance", "cloud-native",
+    "segy", "seg-y", "segy-converter", "segy-to-zarr", "segy-to-mdio",
+    "mdio", "zarr", "zarr-v3", "xarray", "dask", "numpy", "tensorstore",
+    "seismic", "seismic-data", "geophysics", "subsurface",
+    "machine-learning", "deep-learning", "ai-ready-data", "training-data",
+    "data-conversion", "lossless", "validation", "equivalence", "provenance",
+    "reproducibility", "cloud-native",
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -21,6 +25,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 
 # --- Upstream pins are BINDING. Spec v1.0 section 3.3. -------------------------
