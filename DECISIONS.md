@@ -4117,3 +4117,64 @@ Publishing a certificate meant reading one as a stranger would, which showed tha
 resolve is correct (§3.6) and post-processing it would **forge the certificate**, so it
 ships honest, with `certificates/README.md` stating that the path is **provenance** and
 the **SHA-256 is identity**. Raised as **D46** rather than quietly edited.
+
+---
+
+## D-0083 — 2026-08-26 — Distribution shipped, and the first published wheel leaked what four firewall layers were built to stop
+
+**Context.** v1.1.1 added the two distribution channels that fit: a multi-arch container
+on GHCR and wheel/sdist attached to the release. Both verified after publication rather
+than assumed — the image was **pulled back** and run, not trusted because the job was
+green.
+
+**npm and NuGet were refused, deliberately.** GitHub Packages has no Python registry. A
+package in either would be a shim that still needs a Python 3.12 interpreter and the whole
+native stack: it would install cleanly and **fail at first use**, in an ecosystem that
+cannot run the library. Shipping a thing that reports success and does not work is the
+exact failure this project exists to prevent, so refusing was the only answer consistent
+with the mission.
+
+**The tag was cut fresh rather than reused.** v1.1.0 predates the Dockerfile, so an image
+tagged `1.1.0` would have been built from a tree that is not the one the tag names. In a
+project whose entire claim is *this artifact matches what produced it*, that discrepancy
+is not cosmetic. v1.1.1 exists so the version tag contains the file it builds.
+
+### What the verification found
+
+Pulling the published wheel apart and grepping it found **two source comments citing the
+operating contract by its assistant-tooling filename**, in `src/sdip/cli/main.py` and
+`src/sdip/ingest/preflight.py`. Both shipped to the public index.
+
+**All four firewall layers were working correctly and none of them could have caught it.**
+Every layer asks *"is this path published?"* — and for `src/sdip/cli/main.py` the answer
+is **yes, that is the point of it**. The firewall blocks **files**. The leak was **inside
+a file that is supposed to ship**.
+
+That is a category the firewall did not model, and it is worth stating plainly: *four
+independent layers agreeing does not mean the set of layers is complete.* They agreed
+because they all ask the same question.
+
+It is also a **documentation defect on its own terms**, independent of tooling hygiene: a
+public reader cannot open the cited document, so for the entire audience that receives the
+file, the citation resolves to nothing.
+
+**Closed** with a fifth layer, `test_no_published_file_cites_assistant_tooling`, which
+scans published-suffix files for tooling filenames and ships with its negative control in
+the same commit. Nine citations rewritten to cite the operating contract or the public
+specification by section.
+
+The exemption is **by path, enumerated** — never by pattern. The block-list files must
+name what they block; a firewall forbidden from naming its targets cannot have any. Nine
+paths are exempt and a tenth cannot inherit it silently. The guard immediately caught two
+files this reasoning had missed by hand (`publish.yml`, `test_cli.py`), which is the
+argument for the guard rather than the grep.
+
+### The reusable shape
+
+Both defects this week are the same shape as **D-0082**'s empty `certificates/`: not a
+wrong claim, but a **question nobody asked**. The decision log catches wrong answers. It
+does not catch unasked questions, and no amount of care in writing entries will change
+that — the only thing that has worked is **opening the artifact as a stranger would**.
+The wheel had to be downloaded and unzipped. Reading the source that went into it would
+have shown nothing wrong, because nothing in the source *was* wrong by the rules that
+existed.

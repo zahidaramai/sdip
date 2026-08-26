@@ -4,7 +4,7 @@
 
 These are **permanent fixtures**. They are not deleted when the bug they caught is
 fixed: a failed configuration becomes the permanent negative control for its fix
-(`CLAUDE.md` §5).
+(operating contract §5).
 
 **What G7 asserts is stricter than "the corruption was detected".** Each control
 declares the **exact set** of gates it must fail, and the observed set must *equal* it.

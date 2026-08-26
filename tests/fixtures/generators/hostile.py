@@ -1,4 +1,4 @@
-"""Deterministic hostile-input corpus. Debt **D8**, specification §11.4, `CLAUDE.md` §3.6.
+"""Deterministic hostile-input corpus. Debt **D8**, specification §11.4; operating contract §3.6.
 
     A malformed or hostile SEG-Y must produce a clean error - never a crash, an
     unbounded allocation, or a write outside the output path.

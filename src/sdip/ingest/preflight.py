@@ -7,7 +7,7 @@ Debt **D8** built the corpus that measured what SDIP actually did with a hostile
 and the answer was: **it handed it straight to upstream.** Of 33 malformed files, 18 came
 back with an exception SDIP does not define — ``ValueError``, ``ZeroDivisionError``, a
 ``pydantic`` ``ValidationError``, ``SegyFileSpecMismatchError`` — and every one of them
-reached the console as a traceback. ``CLAUDE.md`` §3.6 says a malformed or hostile SEG-Y
+reached the console as a traceback. The operating contract §3.6 says a malformed or hostile SEG-Y
 must produce a clean error; that was an assertion with nothing behind it (``DECISIONS.md``
 D-0057).
 

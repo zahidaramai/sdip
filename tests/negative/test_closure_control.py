@@ -2,7 +2,7 @@
 
     A check a corrupted artifact passes is not a check.
 
-These are **permanent fixtures** (`CLAUDE.md` §5). They are not deleted now that the hole
+These are **permanent fixtures** (operating contract §5). They are not deleted now that the hole
 they document is filled: a failed configuration becomes the permanent negative control
 for its fix.
 

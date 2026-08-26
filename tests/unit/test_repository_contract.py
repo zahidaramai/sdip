@@ -592,3 +592,88 @@ def test_wheel_ships_the_schema(repo_root):
     data = tomllib.loads((repo_root / "pyproject.toml").read_text())
     artifacts = data["tool"]["hatch"]["build"]["targets"]["wheel"].get("artifacts", [])
     assert any("schema" in a and a.endswith(".json") for a in artifacts), artifacts
+
+
+# --------------------------------------------------------------------------------------
+# The firewall blocks FILES. It did not block CITATIONS.
+#
+# v1.1.1 shipped a public wheel containing two source comments citing the operating
+# contract by its assistant-tooling filename. No firewall layer caught it, because every
+# layer asks "is this path published?" and the answer for ``src/sdip/cli/main.py`` is yes.
+# The leak was inside a file that is supposed to ship.
+#
+# It is also a documentation defect independent of that: a public reader cannot open the
+# cited document, so the citation resolves to nothing for the audience that has the file.
+#
+# The block-list layers are exempt BY PATH, not by pattern - a firewall that may not name
+# what it blocks cannot block anything. The exemption is narrow and enumerated so that a
+# new file cannot quietly inherit it.
+# --------------------------------------------------------------------------------------
+
+TOOLING_FILENAMES = (
+    "CLAUDE.md",
+    "CLAUDE.local.md",
+    "AGENTS.md",
+    ".claude",
+    ".cursorrules",
+    ".aider",
+    "copilot-instructions",
+)
+
+#: Files whose JOB is to enumerate the block-list. They must name what they block.
+CITATION_EXEMPT = frozenset(
+    {
+        "src/sdip/cli/doctor.py",  # NEVER_PUBLISH itself
+        "tests/unit/test_repository_contract.py",  # this file
+        ".gitignore",
+        ".dockerignore",
+        ".githooks/pre-commit",
+        ".github/workflows/ci.yml",
+        ".github/workflows/publish.yml",  # artifact-firewall block regex
+        "tests/unit/test_cli.py",  # asserts the firewall detects these exact files
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        "CONTRIBUTING.md",  # documents the firewall set for contributors
+        "DECISIONS.md",  # append-only; records the firewall decision itself
+    }
+)
+
+PUBLISHED_SUFFIXES = (".py", ".md", ".toml", ".yml", ".yaml", ".cff", ".txt")
+
+
+def _citations(text: str) -> list[str]:
+    """Return each tooling filename mentioned in ``text``."""
+    return [name for name in TOOLING_FILENAMES if name in text]
+
+
+def test_no_published_file_cites_assistant_tooling(repo_root):
+    """A file that ships to the public must not cite a document the public cannot open.
+
+    Regression guard for the v1.1.1 wheel, which carried two such citations.
+    """
+    from sdip.cli.doctor import NEVER_PUBLISH
+
+    offenders: list[str] = []
+    for path in sorted(repo_root.rglob("*")):
+        if not path.is_file() or path.suffix not in PUBLISHED_SUFFIXES:
+            continue
+        rel = path.relative_to(repo_root).as_posix()
+        if rel in CITATION_EXEMPT or rel.startswith(".git/"):
+            continue
+        # Skip anything the firewall already refuses to publish.
+        if any(rel == p or rel.startswith(f"{p}/") for p in NEVER_PUBLISH):
+            continue
+        for name in _citations(path.read_text(encoding="utf-8", errors="replace")):
+            offenders.append(f"{rel}: cites {name}")
+
+    assert offenders == [], "published files cite assistant tooling:\n" + "\n".join(offenders)
+
+
+def test_the_citation_detector_actually_detects():
+    """NEGATIVE CONTROL. A rule never shown to fire is not a rule."""
+    assert _citations("see CLAUDE.md section 5") == ["CLAUDE.md"]
+    assert _citations("# pragma: spec 11.1, AGENTS.md 3.1") == ["AGENTS.md"]
+    assert _citations("path = '.claude/settings.json'") == [".claude"]
+    assert _citations("read .github/copilot-instructions.md") == ["copilot-instructions"]
+    # Ordinary prose must NOT trip it.
+    assert _citations("the operating contract §5 says") == []
+    assert _citations("specification §11.4 covers hostile input") == []

@@ -1,4 +1,4 @@
-"""**D8 — untrusted-input handling, measured.** Specification §11.4, `CLAUDE.md` §3.6.
+"""**D8 — untrusted-input handling, measured.** Specification §11.4; operating contract §3.6.
 
     A malformed or hostile SEG-Y must produce a clean error - never a crash, an
     unbounded allocation, or a write outside the output path. Validate header-declared
@@ -95,7 +95,7 @@ types as the defence SDIP relies on (``tests/integration/test_p5_geometry.py``,
 
 Re-typing them inside SDIP would overturn a recorded measurement to satisfy a
 presentation preference, so it is a maintainer's call and not an implementer's
-(``CLAUDE.md`` §9). Recorded as the open residual on D8.
+(operating contract §9). Recorded as the open residual on D8.
 """
 
 EXPECTED_INGESTS = {

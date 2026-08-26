@@ -11,7 +11,7 @@ inside the same interpreter cannot survive a segmentation fault or an OOM kill t
 report one. A parent that reads a missing report and a negative return code can.
 
 **3. The `__main__` guard is the thing under test as well.** MDIO's header parser uses a
-`spawn` context (`CLAUDE.md` §3.1), so an entry point that can reach ingestion must sit
+`spawn` context (specification §11.1), so an entry point that can reach ingestion must sit
 behind ``if __name__ == "__main__":``. This file does, and it reaches ingestion.
 
 The child runs **two phases against the same source**, because the two questions §11.4
@@ -173,5 +173,5 @@ def main() -> int:
     return EXIT_REPORT_WRITTEN
 
 
-if __name__ == "__main__":  # pragma: no cover - spec 11.1, CLAUDE.md 3.1
+if __name__ == "__main__":  # pragma: no cover - spec 11.1
     sys.exit(main())

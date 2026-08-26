@@ -534,7 +534,7 @@ def certify_cmd(
         closure = roundtrip_closure(exported, output, spec, workdir=Path(scratch) / "closure")
         closure_status, closure_summary = closure.status, closure.summary()
 
-        # Closure's own negative control (CLAUDE.md §5): corrupt one byte of the export's
+        # Closure's own negative control (operating contract §5): corrupt one byte of the export's
         # binary file header - the bytes that live in ATTRIBUTES rather than arrays, and
         # that closure was measured PASSING over before D-0067 - and require the
         # file-header leg, and only that leg, to catch it. The clean run above is handed
