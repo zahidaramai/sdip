@@ -15,6 +15,41 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [1.1.1] — 2026-08-26
+
+**Distribution only. No engine change, and the guarantee is unchanged.**
+
+### Added
+
+- **Container image on GitHub Container Registry** — `ghcr.io/zahidaramai/sdip`, multi-arch
+  (`linux/amd64`, `linux/arm64`), non-root. The image carries the **pinned** decoder, and
+  `sdip doctor` verifies those pins **inside it**: *all 2 binding pins match; 145 installed
+  files verified against RECORD.* That is the property that matters — a certificate issued
+  under one decoder version says nothing about another.
+
+  Verified end to end in the container before shipping: ingest, then `verify` returning
+  G1 `PASS`, all five planes `PASS`, G4 `PASS`.
+
+- **Wheel and sdist attached to every release**, so installing needs no registry. The
+  workflow refuses to upload either if it carries an unpublishable path — **the
+  publication firewall applies to distribution channels, not only to commits.**
+
+### Not added, deliberately
+
+**npm and NuGet.** GitHub Packages has no Python registry, and a package in either would
+be a shim that still requires a Python 3.12 interpreter and the whole native stack — it
+would install cleanly and **fail at first use**, in an ecosystem that cannot run the
+library. That is the exact shape of failure this project exists to prevent.
+
+### Fixed
+
+- The publish workflow shipped an artifact check that **was never the script that was
+  tested** — the verified version had a suffix guard, the shipped one did not, and it
+  died opening a non-archive as a tarball.
+- Building a container from a tag cut **before the Dockerfile existed** failed with a
+  message that read like a path bug. The workflow now checks first and says what actually
+  happened.
+
 ## [1.1.0] — 2026-08-24
 
 **Additive only. No behaviour of v1.0.0 changed**, and the guarantee is unchanged: a
@@ -294,5 +329,6 @@ regression-tested. See D-0018.
   thirty lines below the entry announcing the full command surface was live, and carried
   a near-duplicate copy of its own F3–F7 block. Both corrected here.
 
+[1.1.1]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.1
 [1.1.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.0
 [1.0.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.0.0
