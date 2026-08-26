@@ -128,12 +128,35 @@ SDIP takes you from the left column to the right one **without changing a single
 
 Requires **Python 3.12–3.13**.
 
+**Container — nothing to install but Docker.** The image carries the pinned decoder, and
+`doctor` verifies those pins inside it, so you are running the same `multidimio` and
+`segy` a certificate would be issued under:
+
+```bash
+docker run --rm -v "$PWD:/work" ghcr.io/zahidaramai/sdip:latest \
+    verify /work/survey.sgy /work/survey.mdio
+```
+
+**From source:**
+
 ```bash
 git clone https://github.com/zahidaramai/sdip && cd sdip
 uv sync --all-extras --dev
 
 uv run sdip doctor          # environment sanity; runs first, always
 ```
+
+**As a package** — wheel and sdist are attached to every
+[release](https://github.com/zahidaramai/sdip/releases):
+
+```bash
+pip install git+https://github.com/zahidaramai/sdip@v1.1.0
+```
+
+> **Not on PyPI, npm or NuGet, and that is a decision rather than an omission.** PyPI is a
+> support commitment. npm and NuGet cannot run a Python library at all — a package there
+> would install cleanly and fail at first use, which is precisely the shape of failure
+> this project exists to prevent.
 
 `sdip doctor` checks the Python version, the binding upstream pins, barred packages and environment variables, runtime licences and the working tree. **If it fails, nothing else runs** — a certificate from an unsound environment is not a certificate.
 
@@ -279,6 +302,12 @@ Everything measured is recorded in [`DECISIONS.md`](DECISIONS.md); everything no
 | `sdip verify` | Run the Equivalence Engine against an existing store |
 | `sdip export` | **MDIO → SEG-Y** |
 | `sdip certify` | The full chain, ending in a certificate |
+
+**In the container, `certify` needs a git working tree** — it refuses to issue from one
+that is dirty or absent, so mount a repository if you want a certificate. `ingest`,
+`verify` and `export` need nothing but the data. For the same reason `doctor` reports two
+failures in a bare container: both are about *this repository's* development discipline,
+not your environment.
 
 ---
 

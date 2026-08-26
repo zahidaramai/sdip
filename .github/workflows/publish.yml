@@ -1,0 +1,121 @@
+# Publishes the two distribution channels that actually fit a pure-Python CLI with
+# heavy native dependencies:
+#
+#   1. a container image on GitHub Container Registry, and
+#   2. the wheel + sdist attached to the GitHub Release.
+#
+# GitHub Packages has no Python registry. Its npm and NuGet registries exist, and
+# publishing there would mean shipping a shim that still requires a Python 3.12
+# interpreter, numpy, zarr and MDIO - an install that succeeds and then fails at first
+# use, in an ecosystem that cannot consume the library. That is the opposite of what
+# this project does everywhere else, so it is deliberately not done.
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build and publish
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  container:
+    name: container -> ghcr.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          # `latest` tracks the newest release; the version tags are what anyone
+          # reproducing a certificate should pin to, because a certificate issued under
+          # one decoder version says nothing about another.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+          labels: |
+            org.opencontainers.image.title=SDIP
+            org.opencontainers.image.authors=Zahid Aramai
+            org.opencontainers.image.vendor=Zahid Aramai
+            org.opencontainers.image.licenses=Apache-2.0
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: The published image must actually run
+        run: |
+          IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
+          docker run --rm "$IMAGE" --version
+          # Pin verification inside the image is the claim that matters: it proves the
+          # container carries the exact decoder a certificate would be issued under.
+          docker run --rm "$IMAGE" doctor --json > doctor.json || true
+          python3 -c "
+          import json
+          checks = {c['name']: c['status'] for c in json.load(open('doctor.json'))['checks']}
+          assert checks['upstream-pins'] == 'PASS', checks
+          assert checks['barred-packages'] == 'PASS', checks
+          assert checks['runtime-licences'] == 'PASS', checks
+          print('image verified:', checks['upstream-pins'], checks['runtime-licences'])
+          "
+
+  wheel:
+    name: wheel + sdist -> release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv build
+
+      - name: Neither artifact may carry an unpublishable path
+        run: |
+          python3 - <<'PY'
+          import pathlib, tarfile, zipfile, re, sys
+          BAD = re.compile(r'(^|/)(docs/|local/|CLAUDE|\.claude)', re.I)
+          bad = []
+          for p in pathlib.Path('dist').iterdir():
+              names = (zipfile.ZipFile(p).namelist() if p.suffix == '.whl'
+                       else tarfile.open(p).getnames())
+              bad += [f'{p.name}:{n}' for n in names if BAD.search(n)]
+          if bad:
+              sys.exit('unpublishable paths in build artifacts: ' + ', '.join(bad))
+          print('build artifacts clean')
+          PY
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber

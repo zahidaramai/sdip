@@ -1,0 +1,30 @@
+# The publication firewall applies to images as well as to commits: docs/ and local/
+# never leave this machine, and an image layer is a distribution channel.
+docs/
+local/
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+.claude-session-sync.md
+AGENTS.md
+
+.git/
+.github/
+.githooks/
+tests/
+certificates/
+prereg/
+overrides/
+assets/
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+dist/
+build/
+*.egg-info/
