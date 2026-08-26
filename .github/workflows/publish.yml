@@ -33,6 +33,17 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
+      # A tag cut before the Dockerfile existed cannot build an image OF ITSELF, and the
+      # buildx error for that is "failed to read dockerfile", which reads like a path bug
+      # rather than a history one. Say it plainly instead.
+      - name: The checked-out ref must contain a Dockerfile
+        run: |
+          test -f Dockerfile || {
+            echo "::error::ref '${{ github.event.inputs.tag || github.ref }}' has no Dockerfile."
+            echo "::error::Container publishing began after that tag. Publish from a tag that contains it."
+            exit 1
+          }
+
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
@@ -105,7 +116,13 @@ jobs:
           import pathlib, tarfile, zipfile, re, sys
           BAD = re.compile(r'(^|/)(docs/|local/|CLAUDE|\.claude)', re.I)
           bad = []
-          for p in pathlib.Path('dist').iterdir():
+          for p in sorted(pathlib.Path('dist').iterdir()):
+              # The suffix guard is not cosmetic: without it this opens every file in
+              # dist/ as an archive and dies on the first one that is not
+              # (`tarfile.ReadError: not a gzip file`). Verified locally WITH the guard
+              # and shipped without it - the check has to be the code that ran.
+              if p.suffix not in ('.whl', '.gz'):
+                  continue
               names = (zipfile.ZipFile(p).namelist() if p.suffix == '.whl'
                        else tarfile.open(p).getnames())
               bad += [f'{p.name}:{n}' for n in names if BAD.search(n)]
