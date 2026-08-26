@@ -128,14 +128,21 @@ SDIP takes you from the left column to the right one **without changing a single
 
 Requires **Python 3.12–3.13**.
 
-**Container — nothing to install but Docker.** The image carries the pinned decoder, and
-`doctor` verifies those pins inside it, so you are running the same `multidimio` and
-`segy` a certificate would be issued under:
+**Container — nothing to install but Docker.** Multi-arch (`linux/amd64`, `linux/arm64`),
+non-root. The image carries the pinned decoder, and `doctor` verifies those pins inside
+it, so you are running the same `multidimio` and `segy` a certificate would be issued
+under:
 
 ```bash
-docker run --rm -v "$PWD:/work" ghcr.io/zahidaramai/sdip:latest \
+docker run --rm -v "$PWD:/work" ghcr.io/zahidaramai/sdip:1.1.2 \
     verify /work/survey.sgy /work/survey.mdio
 ```
+
+Published to [GitHub Container Registry](https://github.com/zahidaramai/sdip/pkgs/container/sdip)
+as `1.1.2`, `1.1` and `latest`. **Pin the exact version**, or a digest, for anything whose
+output you intend to keep: a certificate records the decoder it was issued under, so a
+store certified by one image and re-verified by a floating tag is no longer a comparison
+between equals. `latest` is for trying it out.
 
 **From source:**
 
