@@ -150,7 +150,7 @@ uv run sdip doctor          # environment sanity; runs first, always
 [release](https://github.com/zahidaramai/sdip/releases):
 
 ```bash
-pip install git+https://github.com/zahidaramai/sdip@v1.1.0
+pip install git+https://github.com/zahidaramai/sdip@v1.1.2
 ```
 
 > **Not on PyPI, npm or NuGet, and that is a decision rather than an omission.** PyPI is a
