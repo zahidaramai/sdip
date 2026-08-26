@@ -15,6 +15,34 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [1.1.2] — 2026-08-26
+
+**Supersedes 1.1.1. Use this instead.** No engine change; the guarantee and the supported
+surface are identical.
+
+### Fixed
+
+- **The 1.1.1 wheel shipped two source comments citing a document the public cannot open.**
+  Found by downloading the published wheel and unzipping it — not by reading the source,
+  which showed nothing wrong under the rules that existed.
+
+  The publication firewall has four layers and **all four were working correctly. None
+  could have caught it.** Every layer asks *"is this path published?"*, and for
+  `src/sdip/cli/main.py` the answer is **yes, that is the point of it**. The firewall
+  blocks *files*; this was inside a file that is supposed to ship.
+
+  Independent of that, it is a documentation defect: a citation to a document the reader
+  cannot open resolves to nothing for the entire audience that receives the file. Nine
+  such citations now cite the operating contract or the public specification **by section**.
+
+### Added
+
+- **A fifth firewall layer**, scanning every published-suffix file for references to
+  documents that do not ship, with its negative control in the same commit. Exemptions are
+  **by path and enumerated**, never by pattern — the block-list files must be able to name
+  what they block. The guard immediately caught two files that reasoning-by-hand had
+  missed, which is the argument for the guard over the grep.
+
 ## [1.1.1] — 2026-08-26
 
 **Distribution only. No engine change, and the guarantee is unchanged.**
@@ -329,6 +357,7 @@ regression-tested. See D-0018.
   thirty lines below the entry announcing the full command surface was live, and carried
   a near-duplicate copy of its own F3–F7 block. Both corrected here.
 
+[1.1.2]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.2
 [1.1.1]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.1
 [1.1.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.0
 [1.0.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.0.0
