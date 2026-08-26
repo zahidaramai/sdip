@@ -4178,3 +4178,47 @@ that — the only thing that has worked is **opening the artifact as a stranger 
 The wheel had to be downloaded and unzipped. Reading the source that went into it would
 have shown nothing wrong, because nothing in the source *was* wrong by the rules that
 existed.
+
+---
+
+## D-0084 — 2026-08-26 — Three commit messages keep a citation, because scrubbing them would break the thing the project sells
+
+**Ruling: leave them. No history rewrite. Maintainer decision, recorded so it is not
+quietly reversed.**
+
+Commits `3573e87`, `fbece9e` and `00c9802` cite the operating contract by its
+assistant-tooling filename in their **messages**. This is the same leak class D-0083
+closed in shipped source, and the obvious instinct is to scrub it the way the source was
+scrubbed.
+
+**That instinct is wrong here, and the reason is the whole point of the project.**
+
+`git.sdip_commit` binds **every certificate to a commit SHA**. `EQUIVALENCE_LEDGER.md`
+cites `3573e87` and `706059b` by name. A rewrite changes every SHA downstream of the
+earliest rewritten commit, which would:
+
+- point the **published reference certificate** at a commit that does not exist,
+- break the ledger rows that name those commits, and
+- require reissuing both against the new history.
+
+So the trade is: remove three filename mentions from three messages — mentions that carry
+**no authorship claim, no attribution trailer, and no co-author line**, in a history whose
+sole author is `zahidaramai <me@zahidaramai.com>` across all 78 commits — at the cost of
+**severing the provenance chain that SDIP exists to provide**. A tool whose claim is *this
+artifact matches the commit that produced it* cannot casually invalidate its own commit
+references for a cosmetic gain.
+
+**Precedent, and its limit.** History was rewritten once before for attribution, and it
+cost a repository deletion when `refs/pull/1/head` kept the old commits reachable. That
+rewrite removed **authorship metadata**, which is a different and higher-stakes category
+than a filename appearing in prose. This decision does not reopen that one.
+
+**What this ruling does not license.** It covers the three commits that already exist. A
+**new** commit citing a document that does not ship has none of the above justification —
+there is no provenance to protect in a commit not yet written — and should be reworded
+before it lands, exactly as D-0083 requires of source. The distinction is *cost of
+removal*, not *acceptability of the citation*.
+
+**Falsifier.** If a future release ever needs to rewrite history for an unrelated reason,
+these three should be corrected in the same pass, since the provenance cost is already
+being paid.
