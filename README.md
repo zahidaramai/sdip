@@ -134,12 +134,12 @@ it, so you are running the same `multidimio` and `segy` a certificate would be i
 under:
 
 ```bash
-docker run --rm -v "$PWD:/work" ghcr.io/zahidaramai/sdip:1.1.2 \
+docker run --rm -v "$PWD:/work" ghcr.io/zahidaramai/sdip:1.1.4 \
     verify /work/survey.sgy /work/survey.mdio
 ```
 
 Published to [GitHub Container Registry](https://github.com/zahidaramai/sdip/pkgs/container/sdip)
-as `1.1.2`, `1.1` and `latest`. **Pin the exact version**, or a digest, for anything whose
+as `1.1.4`, `1.1` and `latest`. **Pin the exact version**, or a digest, for anything whose
 output you intend to keep: a certificate records the decoder it was issued under, so a
 store certified by one image and re-verified by a floating tag is no longer a comparison
 between equals. `latest` is for trying it out.
@@ -157,7 +157,7 @@ uv run sdip doctor          # environment sanity; runs first, always
 [release](https://github.com/zahidaramai/sdip/releases):
 
 ```bash
-pip install git+https://github.com/zahidaramai/sdip@v1.1.2
+pip install git+https://github.com/zahidaramai/sdip@v1.1.4
 ```
 
 > **Not on PyPI, npm or NuGet, and that is a decision rather than an omission.** PyPI is a
