@@ -167,6 +167,20 @@ and the commit are all here, because **a digest is not data** — withholding th
 entirely would let the public record understate what the engine has been shown to do. The
 certificate JSON itself stays in the firewalled tree.
 
+**What is withheld is the *path*, not the *dataset*.** These are different facts and only
+one of them is sensitive. A path names a machine and a user; the dataset is the
+**Sleipner CO₂ Reference Dataset**, owned by **The Sleipner Group** (Equinor Energy AS as
+operator), distributed by CO2DataShare under the Sleipner CO2 Reference Dataset License,
+and it is attributed in [`NOTICE`](NOTICE) §6 and
+[`tests/fixtures/PROVENANCE.md`](tests/fixtures/PROVENANCE.md).
+
+Naming it is deliberate. A measurement whose source the record will not identify is a
+measurement a reader has to take on trust, which is the opposite of what this ledger is
+for — and the source licence conditions sharing on attributing its owner. Withholding the
+identity while publishing the numbers would have been the worst of both: no reproducibility
+and no attribution. **No Sleipner data is redistributed here in any form**, and per §4 of
+that licence the dataset's name must not be used to promote SDIP.
+
 ---
 
 | # | Issued (UTC) | Source SHA-256 | Source | Spec | Rev | Verdict | Gates G1–G7 | Ready |

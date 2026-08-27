@@ -36,6 +36,29 @@ smaller, it is diffable, and it cannot drift from what produced it.
 A vendored open dataset needs a licence column that is filled in and a URL that
 resolves. If either is missing, it does not go in.
 
+## Measurement sources — used, never entering this repository
+
+**A measurement source is not a fixture, and putting one in the tables above would be a
+false entry** — those tables describe data that either ships in the repository or is
+fetched by a test. The dataset below does neither. It is recorded here because it is
+named in the public record and measurements taken from it are published, so its
+provenance must be auditable from the repository alone.
+
+| Dataset | Owner | Portal | Licence | Redistributed | Used for |
+|---|---|---|---|---|---|
+| Sleipner CO₂ Reference Dataset — 4D seismic, 2006 vintage, full-stack volume (494,565,408 B, 116,532 traces) | The Sleipner Group — Equinor Energy AS (operator), ExxonMobil Exploration and Production Norway AS, LOTOS Exploration and Production Norge AS, KUFPEC Norway AS | [CO2DataShare](https://co2datashare.org/dataset/sleipner-4d-seismic-dataset) | Sleipner CO2 Reference Dataset License | **No — never, in any form** | At-scale certificate (ledger row 1); G5 wall-clock and RSS calibration |
+
+**No Sleipner data is in this repository, its history, the published wheel, sdist or
+container image, and no test fetches it.** What is public is measurements *about* it —
+digests, byte counts, trace counts, timings — and **a digest is not data** (`D-0025`).
+Attribution is in [`NOTICE`](../../NOTICE) §6, which also records the licence's
+no-endorsement clause: the dataset names must not be used to promote SDIP.
+
+Anyone reproducing the at-scale run obtains the dataset from the portal under its own
+licence. **The synthetic fixtures are the reproducible path**; the at-scale run is
+corroboration, and the ledger row carries the digest so the claim is checkable by anyone
+who holds the same file.
+
 ## Fixtures planned, per probe
 
 Registered here before they exist so the policy is applied at design time, not at
@@ -77,7 +100,20 @@ Three rules make this safe rather than a loophole:
    large file is **not** a scale probe. Probe **P3** requires a pre-registration with
    declared ceilings merged *before* the run (**SP9**).
 
-The register of such datasets is kept outside this repository.
+**Where the register lives, and the one thing that must not stay in it.** The register of
+locally held datasets — which files a maintainer has and where — is kept **outside** this
+repository: it is a list of local paths, and it is nobody else's business.
+
+**A dataset stops being purely local the moment measurements from it are published.** Once
+the public record names a dataset and carries numbers taken from it, that dataset's
+provenance and attribution must be public too — otherwise the repository is asking readers
+to trust a measurement whose source it will not fully identify, and any attribution the
+source licence requires goes unpaid. The *path* stays private; the *identity, owner and
+licence* become public. Those are different facts, and only the first is sensitive.
+
+The one dataset this currently applies to is recorded above under
+[Measurement sources](#measurement-sources--used-never-entering-this-repository), with its
+attribution in [`NOTICE`](../../NOTICE) §6.
 
 ---
 

@@ -291,7 +291,9 @@ That is the difference between a tool that reports success and a tool whose succ
 | **Output** | **MDIO v1.2.1** on **Zarr v3**, lossless codecs only |
 | **Storage** | Local filesystem measured; cloud object-store backends are an open debt |
 
-SDIP has issued a certificate on a real survey: **494,565,408 bytes, 116,532 traces**, SEG-Y rev 1, big-endian, poststack 3-D — every check passing, from a clean working tree.
+SDIP has issued a certificate at survey scale: **494,565,408 bytes, 116,532 traces**, SEG-Y rev 1, big-endian, poststack 3-D — every check passing, from a clean working tree.
+
+> That measurement was taken against the **Sleipner CO₂ Reference Dataset**, owned by **The Sleipner Group** (Equinor Energy AS, operator) and distributed by [CO2DataShare](https://co2datashare.org/dataset/sleipner-4d-seismic-dataset) under the Sleipner CO2 Reference Dataset License. **No dataset content is redistributed by this project in any form** — what is published is measurements about it, and a digest is not data. Full attribution in [`NOTICE`](NOTICE) §6. SDIP is not affiliated with, sponsored by or endorsed by The Sleipner Group or its participating companies, and the dataset is named here as the factual provenance of a measurement, not as an endorsement of SDIP.
 
 It is **deliberately narrow**. Where a format, geometry or backend has not been measured, SDIP **refuses with a named reason** rather than converting it anyway. A tool that half-works on data it does not understand produces exactly the artifact this project exists to prevent.
 
@@ -362,6 +364,10 @@ Security issues: [report privately](https://github.com/zahidaramai/sdip/security
 **Apache-2.0.** See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
 
 The round-trip test fixture is adapted from [`TGSAI/mdio-python`](https://github.com/TGSAI/mdio-python) (Apache-2.0); attribution in `NOTICE` is a legal obligation and survives refactors.
+
+**Trademarks.** MDIO and segy are product names of **TGS**. SDIP is an independent project, **not affiliated with, sponsored by, or endorsed by TGS**. Apache-2.0 §6 grants no trademark rights and none are claimed — these names are used nominatively, to say truthfully what SDIP reads and writes. MDIO is TGS's format and it is the right one: open, chunked, and owned by nobody. SDIP does not reinvent it. It adds the receipt.
+
+Other names and trademarks belong to their respective owners; see [`NOTICE`](NOTICE) §7.
 
 ---
 

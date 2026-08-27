@@ -4222,3 +4222,87 @@ removal*, not *acceptability of the citation*.
 **Falsifier.** If a future release ever needs to rewrite history for an unrelated reason,
 these three should be corrected in the same pass, since the provenance cost is already
 being paid.
+
+---
+
+## D-0085 — 2026-08-27 — Licence and attribution gaps closed, and reading the actual licence changed four of the answers
+
+An external licence review raised two gaps and two small items. All four are closed. **The
+review was right that gaps existed and wrong about what several of them were**, which is
+the part worth recording: the corrections came from reading the primary documents rather
+than the portal summaries.
+
+### What the primary sources changed
+
+**The dataset licence is not CC BY 4.0.** The review suggested it likely was, and said to
+verify. It is the **Sleipner CO2 Reference Dataset License** — a bespoke instrument under
+**Norwegian law**, Stavanger District Court as venue, distributed as `license.pdf` inside
+the dataset bag. Writing "CC BY 4.0" into `NOTICE` would have been a **false licence
+statement in the attribution file**, which is worse than the omission it was fixing.
+
+**The licensor is not Equinor.** §2.4 defines **The Sleipner Group** as the Sleipner Vest
+and Øst units: **Equinor Energy AS (operator), ExxonMobil Exploration and Production
+Norway AS, LOTOS Exploration and Production Norge AS, and KUFPEC Norway AS**. Attributing
+"Equinor / CO2DataShare" would have under-attributed three of the four owners while
+appearing to fix an attribution gap. CO2DataShare is the **portal**, not the licensor.
+
+**§4 cuts the opposite way to the review's strategic advice.** The review recommended
+naming the dataset publicly for reach. §4 forbids using The Sleipner Group's name or its
+participating companies' trademarks **to support, recommend or market** any product or
+use. Attribution and promotion point in *opposite* directions here: §3.3 requires naming
+the owner when sharing; §4 forbids leaning on that name to sell the tool. Both are now
+stated explicitly wherever the dataset appears, because the distinction is easy to lose.
+
+**§2.1 answers a question nobody asked.** Adapted Material excludes *"changes in
+formatting, file types and other changes that do not affect the content"* — such a result
+**remains Licensed Material**. An SDIP conversion is exactly that, and the Equivalence
+Certificate is the evidence. Recorded because it determines which obligations would attach
+to a converted store; SDIP holds none out for distribution.
+
+**`CITATION.cff` was already correct.** The review flagged `LGPL-3.0-or-later` as possibly
+wrong if seisio were 2.1. seisio's own `pyproject.toml` declares `LGPL-3.0-or-later` and
+its `LICENSE.md` is v3 with the "any later version" clause. The machine-readable field was
+right; **`NOTICE` said only "LGPL"**, and that was the imprecise half — "LGPL" spans 2.1
+and 3.0, which are not interchangeable. Fixed in the file that was actually wrong.
+
+### Two things the fix surfaced that the review did not
+
+**The prescribed `PROVENANCE.md` row would have been a false entry.** The review said to
+fill the *"Openly licensed fixtures"* table. That table describes data that **ships in the
+repository or is fetched by a test**. Sleipner does neither. Filing it there would state
+that a 494 MB restricted-path dataset is a redistributable fixture — the opposite of the
+truth. It gets its own **Measurement sources** section instead, which says what it is.
+
+**`PROVENANCE.md` contradicted itself the moment attribution was added.** It ended with
+*"The register of such datasets is kept outside this repository."* Adding a public entry
+made that line false. Resolved by separating two facts that had been treated as one: **the
+path stays private; the identity, owner and licence become public.** A dataset stops being
+purely local the moment measurements from it are published — otherwise the repository asks
+readers to trust a number whose source it will not identify, *and* leaves an attribution
+obligation unpaid.
+
+That also answers the review's sharpest observation, that the ledger's `LOCAL-ONLY
+(D-0025)` redaction "reads as ceremonial" while `DECISIONS.md` names Sleipner three
+sections over. **It was ambiguous rather than ceremonial, and the ambiguity was ours.**
+`LOCAL-ONLY` withholds a filesystem path that names a machine and a user. It never
+withheld the dataset. The ledger now says which.
+
+### Closed
+
+- `NOTICE` **§6** — measurement-source attribution: dataset, The Sleipner Group and all
+  four companies, portal, licence by name, no-redistribution statement, the §4
+  no-endorsement bar and the §2.1 note.
+- `NOTICE` **§7** — trademarks. MDIO and segy are TGS product names; Apache-2.0 §6 grants
+  no trademark rights and none are claimed; nominative use only, badges included.
+- `NOTICE` §4 — seisio to SPDX precision, sourced from upstream's own metadata.
+- `src/sdip/export/roundtrip.py` — TGS attribution **in the file's own docstring**, at the
+  point of use, with `NOTICE` §3 named as authoritative.
+- `PROVENANCE.md` — Measurement sources section; register contradiction resolved.
+- `EQUIVALENCE_LEDGER.md` — path-versus-identity stated.
+- `README.md` — source attributed where the scale claim is made; trademark section.
+- `test_notice_carries_every_mandatory_attribution` extended with eight strings, so every
+  new obligation is enforced by the same mechanism as the old ones rather than by memory.
+
+**Note for the record.** Neither TGS repository ships a `NOTICE` file — both return 404 —
+so Apache-2.0 §4(d) attaches **no** NOTICE obligation to this project at all. Everything
+in §§1–3 is voluntary. It stays, because the standard here is not the minimum enforceable.

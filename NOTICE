@@ -61,7 +61,7 @@ ATTRIBUTION - THIS SECTION IS A LEGAL OBLIGATION AND MUST SURVIVE REFACTORS
     is required by section 4 of the Apache License.
 
 --------------------------------------------------------------------------------
-4. Thomas Hertweck - seisio  (LGPL)  -  DESIGN PRIOR ART, NO CODE COPIED
+4. Thomas Hertweck - seisio  (LGPL-3.0-or-later)  -  DESIGN PRIOR ART, NO CODE COPIED
 --------------------------------------------------------------------------------
 
     https://github.com/ThomasHertweck/seisio
@@ -71,8 +71,13 @@ ATTRIBUTION - THIS SECTION IS A LEGAL OBLIGATION AND MUST SURVIVE REFACTORS
     generator as a matter of design reading.
 
     NO CODE FROM seisio HAS BEEN COPIED INTO SDIP, AT ANY SIZE. seisio is
-    LGPL-licensed and is not a dependency of SDIP. It does not appear in the
+    LGPL-3.0-or-later and is not a dependency of SDIP. It does not appear in the
     SDIP runtime dependency tree, and the CI licence job asserts that.
+
+    The identifier is taken from seisio's own packaging metadata, which declares
+    license = "LGPL-3.0-or-later"; its LICENSE.md is LGPL version 3 and carries
+    the "any later version" clause. Recorded to this precision because "LGPL"
+    alone spans 2.1 and 3.0, which are not interchangeable.
 
 --------------------------------------------------------------------------------
 5. EXCLUDED SOURCES - NO CODE TAKEN, AT ANY SIZE
@@ -87,5 +92,73 @@ ATTRIBUTION - THIS SECTION IS A LEGAL OBLIGATION AND MUST SURVIVE REFACTORS
                                downstream user exposing an API.
 
     No code, of any size, including single functions, has been taken from either.
+
+--------------------------------------------------------------------------------
+6. MEASUREMENT SOURCE - Sleipner CO2 Reference Dataset  (NO DATA REDISTRIBUTED)
+--------------------------------------------------------------------------------
+
+    SDIP's at-scale measurements - the certificate recorded as row 1 of
+    EQUIVALENCE_LEDGER.md, and the scale figures in DECISIONS.md and
+    OPEN_DEBTS.md - were taken against the Sleipner CO2 Reference Dataset.
+
+        Dataset   Sleipner 4D seismic dataset (2006 vintage, full-stack volume)
+        Owner     The Sleipner Group
+        Operator  Equinor Energy AS
+        Partners  ExxonMobil Exploration and Production Norway AS,
+                  LOTOS Exploration and Production Norge AS,
+                  KUFPEC Norway AS
+        Portal    CO2DataShare - https://co2datashare.org/dataset/
+                  sleipner-4d-seismic-dataset
+        Licence   Sleipner CO2 Reference Dataset License
+                  (the licence document distributed inside the dataset bag)
+        Use       Downloaded and used under that licence. Its section 3.1 grants
+                  a worldwide, royalty-free, non-exclusive licence to download
+                  and use the Licensed Material.
+
+    NO SLEIPNER DATA IS REDISTRIBUTED BY THIS PROJECT, IN ANY FORM, AT ANY SIZE.
+    The dataset is not in this repository, not in its history, not in the
+    published wheel, sdist or container image, and is not fetched by any test.
+    What appears in the public record is measurements ABOUT the data - SHA-256
+    digests, byte counts, trace counts, timings - and a digest is not data
+    (D-0025). The certificate JSON itself stays in the firewalled tree.
+
+    Attribution is given here because section 3.3 of that licence conditions
+    sharing on attributing The Sleipner Group and including a notice referring
+    to its terms. SDIP shares measurements rather than material, so the
+    condition is arguably not triggered at all; it is honoured regardless,
+    because naming a dataset publicly while omitting who owns it is the wrong
+    default whether or not a clause compels it.
+
+    NO ENDORSEMENT. Section 4 of that licence forbids using The Sleipner Group's
+    name, or the names or trademarks of its participating companies, to support,
+    recommend or market any product or use. Nothing here does so. The dataset is
+    named in this project's engineering records as the factual provenance of a
+    measurement, and it must not be used to promote SDIP.
+
+    ON "ADAPTED MATERIAL". Section 2.1 of that licence provides that changes in
+    formatting and file types which do not affect the content do not produce
+    Adapted Material - the result remains Licensed Material. An SDIP conversion
+    is precisely such a change, and the Equivalence Certificate is the evidence
+    that it is. The distinction is recorded because it determines which of the
+    licence's obligations would attach to a converted store, not because SDIP
+    holds one out for distribution. It does not.
+
+--------------------------------------------------------------------------------
+7. TRADEMARKS
+--------------------------------------------------------------------------------
+
+    MDIO and segy are product names of TGS. SDIP is an independent project and
+    is not affiliated with, sponsored by, or endorsed by TGS.
+
+    Apache License 2.0 section 6 grants no trademark rights, and none are
+    claimed. These names are used nominatively - to say truthfully what SDIP
+    reads and writes - which is the only use made of them anywhere in this
+    project, including in README badges.
+
+    Sleipner, Equinor, ExxonMobil, LOTOS and KUFPEC are names and/or trademarks
+    of their respective owners, used here solely to attribute a measurement
+    source as section 6 above requires. See the NO ENDORSEMENT paragraph there.
+
+    Zarr, NumPy, Docker and GitHub are trademarks of their respective owners.
 
 ================================================================================

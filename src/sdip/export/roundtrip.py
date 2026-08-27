@@ -12,6 +12,20 @@ impossible, and it is deliberately expensive to claim: it requires per-plane equ
 **plus a written justification naming the specific non-conformance**, on the certificate.
 It is never inferred from a hash mismatch — a mismatch with no justification is a
 failure, full stop.
+
+DERIVED WORK — ATTRIBUTION AT THE POINT OF USE
+----------------------------------------------
+This driver is seeded from TGS's ``tests/integration/test_segy_roundtrip_teapot.py``
+in ``TGSAI/mdio-python`` at commit ``a2895b53088ffacbf4bd1b9e882856cbda78e235``.
+Copyright TGS, licensed under the Apache License, Version 2.0.
+
+SDIP extends that test — which is scoped to spec-declared header fields — to the full
+240-byte trace-header plane and to a whole-file SHA-256 assertion. The extension is
+SDIP's; the seed is TGS's.
+
+``NOTICE`` §3 carries the binding attribution and is the authoritative record. This
+header repeats it because the obligation belongs where the code is read, not only in a
+file a reader may never open.
 """
 
 from __future__ import annotations

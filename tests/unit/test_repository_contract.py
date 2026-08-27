@@ -93,6 +93,18 @@ def test_notice_carries_every_mandatory_attribution(repo_root):
         "NO CODE FROM seisio HAS BEEN COPIED",
         "trhallam/segysak",
         "stuliveshere/pyseis-io",
+        # seisio to SPDX precision: "LGPL" alone spans 2.1 and 3.0, which are
+        # not interchangeable. Verified against seisio's own packaging metadata.
+        "LGPL-3.0-or-later",
+        # Measurement-source attribution. SDIP redistributes no Sleipner data,
+        # but it names the dataset publicly and publishes measurements from it.
+        "Sleipner CO2 Reference Dataset License",
+        "The Sleipner Group",
+        "Equinor Energy AS",
+        "NO SLEIPNER DATA IS REDISTRIBUTED BY THIS PROJECT",
+        # Apache-2.0 section 6 grants no trademark rights, and none are claimed.
+        "MDIO and segy are product names of TGS",
+        "not affiliated with, sponsored by, or endorsed by TGS",
     ):
         assert required in notice, required
 
