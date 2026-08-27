@@ -4306,3 +4306,50 @@ withheld the dataset. The ledger now says which.
 **Note for the record.** Neither TGS repository ships a `NOTICE` file — both return 404 —
 so Apache-2.0 §4(d) attaches **no** NOTICE obligation to this project at all. Everything
 in §§1–3 is voluntary. It stays, because the standard here is not the minimum enforceable.
+
+---
+
+## D-0086 — 2026-08-27 — The attribution release shipped a container with no attribution in it
+
+**v1.1.3 fixed the licence and attribution gaps. Its container image carried neither
+SDIP's `LICENSE` nor its `NOTICE`.** Closed in v1.1.4.
+
+`pyproject.toml` declares `license-files = ["LICENSE", "NOTICE"]`, which is why the wheel
+and sdist carry them — that was verified before cutting 1.1.3. The Dockerfile never copied
+those two files into the build context, so `uv` built a `dist-info` with **no `licenses/`
+directory**, silently. No warning, no failure, a working image.
+
+### Why it survived a release whose entire purpose was attribution
+
+**Every dependency shipped its licence — 115 of them.** Looking for licence files in the
+image finds them everywhere. The one package missing its own was **SDIP**, and it was
+missing for a structural reason: it is the only package **built from the local build
+context** rather than installed from an index. Everything installed from a wheel arrived
+with its `licenses/` intact; the thing built in place did not.
+
+That is the same shape as **D-0083**: a firewall that asks *"is this path published?"*
+cannot see a leak inside a file that is supposed to ship, and a licence check that asks
+*"are there licence files?"* cannot see the absence of **one specific** package's licence
+in a directory full of them. **Both failures are absences inside a positive result.**
+
+### What actually caught it
+
+Not the workflow, not a test — **pulling the published image and looking for the file the
+release was about.** The verification I ran on the wheel (eight required strings, all
+present) would have passed the container too if I had only asked "does a NOTICE exist
+somewhere in here". It was found by asking the narrower question: does *SDIP's own*
+dist-info carry it.
+
+### Closed
+
+- `Dockerfile` copies `LICENSE` and `NOTICE` into the build context, with a comment
+  stating they are build inputs rather than decoration.
+- A publish-time gate asserts the pushed image carries both **and** that the NOTICE inside
+  is the version carrying the current attribution — not merely that a file with that name
+  exists. A stale NOTICE would otherwise satisfy a presence check forever.
+
+**Standing note.** Three consecutive releases were each found wanting by opening the
+published artifact rather than reading the tree that produced it (D-0083, D-0085, this
+one). The tree has been correct every time. **Publishing is a transformation, and the
+transformation is where the defects are.** Any future release that adds or changes a
+distribution channel should assume the same and check the artifact, not the source.

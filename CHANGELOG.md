@@ -15,6 +15,33 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [1.1.4] — 2026-08-27
+
+**Container only. Supersedes 1.1.3 for image users; the wheel and sdist are unchanged in
+substance.**
+
+### Fixed
+
+- **The container image did not carry SDIP's own `LICENSE` or `NOTICE`.** `pyproject.toml`
+  declares `license-files = ["LICENSE", "NOTICE"]`, but the Dockerfile never copied those
+  files into the build context — so `uv` built a `dist-info` with **no `licenses/`
+  directory at all**, and said nothing about it.
+
+  The image is a redistribution of an Apache-2.0 work that *has* a NOTICE, so both files
+  must travel with it. They now do.
+
+  **Why it went unnoticed through a release whose entire purpose was attribution:** every
+  *dependency* still shipped its own licence — 115 of them. Any spot check finds licence
+  files throughout the image and concludes it is fine. The one package missing its licence
+  was **SDIP itself**, and it was missing because it is the only package built from the
+  local context rather than installed from an index.
+
+### Added
+
+- **A publish-time gate** asserting the pushed image carries `LICENSE` and `NOTICE`, and
+  that the NOTICE inside is the version carrying the current attribution — not merely that
+  a file with the right name exists.
+
 ## [1.1.3] — 2026-08-27
 
 **Licence and attribution only. No engine change; the guarantee and the supported surface
@@ -410,6 +437,7 @@ regression-tested. See D-0018.
   thirty lines below the entry announcing the full command surface was live, and carried
   a near-duplicate copy of its own F3–F7 block. Both corrected here.
 
+[1.1.4]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.4
 [1.1.3]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.3
 [1.1.2]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.2
 [1.1.1]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.1

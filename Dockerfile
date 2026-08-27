@@ -21,7 +21,12 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /opt/sdip
 
 # Dependency layer first, so a source-only change does not re-resolve the world.
-COPY pyproject.toml uv.lock README.md ./
+# LICENSE and NOTICE are build inputs, not decoration: pyproject declares
+# license-files = ["LICENSE", "NOTICE"], and if they are absent from the build context
+# uv builds a dist-info with NO licenses/ directory and says nothing about it. The image
+# then redistributes SDIP without its own licence or attribution while every dependency
+# still ships theirs - which is exactly how it shipped in 1.1.3.
+COPY pyproject.toml uv.lock README.md LICENSE NOTICE ./
 RUN uv sync --frozen --no-install-project --no-dev --no-editable
 
 COPY src/ ./src/

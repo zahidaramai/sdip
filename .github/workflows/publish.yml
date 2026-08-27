@@ -97,6 +97,29 @@ jobs:
           print('image verified:', checks['upstream-pins'], checks['runtime-licences'])
           "
 
+      - name: The image must carry SDIP's own LICENSE and NOTICE
+        run: |
+          # 1.1.3 shipped without either. pyproject declares
+          # license-files = ["LICENSE", "NOTICE"], but the Dockerfile did not copy them
+          # into the build context, so uv produced a dist-info with no licenses/
+          # directory - silently. Every DEPENDENCY still shipped its licence, which is
+          # what made it invisible: a spot check finds licence files everywhere and
+          # concludes the image is fine.
+          #
+          # The image is a redistribution of an Apache-2.0 work that HAS a NOTICE, so
+          # both files must travel with it.
+          IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
+          SP=/opt/sdip/.venv/lib/python3.12/site-packages
+          for f in LICENSE NOTICE; do
+            docker run --rm --entrypoint sh "$IMAGE" -c "ls $SP/sdip-*.dist-info/licenses/$f" \
+              || { echo "::error::the image does not carry SDIP's own $f"; exit 1; }
+          done
+          # The attribution added in 1.1.3 must be the version actually inside the image.
+          docker run --rm --entrypoint sh "$IMAGE" -c \
+            "grep -qF 'The Sleipner Group' $SP/sdip-*.dist-info/licenses/NOTICE" \
+            || { echo "::error::the NOTICE in the image predates the attribution fixes"; exit 1; }
+          echo "image carries LICENSE and NOTICE, and the NOTICE is current"
+
   wheel:
     name: wheel + sdist -> release
     runs-on: ubuntu-latest
