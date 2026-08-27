@@ -15,6 +15,59 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [1.1.3] — 2026-08-27
+
+**Licence and attribution only. No engine change; the guarantee and the supported surface
+are identical to 1.1.2.**
+
+### Added
+
+- **`NOTICE` §6 — measurement-source attribution.** SDIP's at-scale certificate was
+  measured against the **Sleipner CO₂ Reference Dataset**, owned by **The Sleipner Group**
+  — Equinor Energy AS (operator), ExxonMobil Exploration and Production Norway AS, LOTOS
+  Exploration and Production Norge AS, KUFPEC Norway AS — distributed by CO2DataShare
+  under the **Sleipner CO2 Reference Dataset License**.
+
+  **No dataset content is redistributed by this project, in any form, at any size.** It is
+  not in the repository, its history, the wheel, the sdist or the image, and no test
+  fetches it. What is published is measurements *about* it — and a digest is not data.
+
+  The section also records the licence's **no-endorsement** clause: those names must not
+  be used to promote SDIP, and are used here only as the factual provenance of a
+  measurement.
+
+- **`NOTICE` §7 — trademarks.** MDIO and segy are product names of **TGS**; SDIP is
+  independent and **not affiliated with, sponsored by, or endorsed by TGS**. Apache-2.0 §6
+  grants no trademark rights and none are claimed — nominative use only, badges included.
+
+### Fixed
+
+- **`NOTICE` recorded seisio as "LGPL"**, which spans 2.1 and 3.0 — licences that are not
+  interchangeable. Now `LGPL-3.0-or-later`, taken from seisio's own packaging metadata.
+  (`CITATION.cff` already carried the precise identifier; NOTICE was the imprecise half.)
+
+- **The round-trip driver carried no attribution in its own docstring.** `NOTICE` §3 was
+  and remains the authoritative record, but the obligation now also sits where the code is
+  read.
+
+- **`tests/fixtures/PROVENANCE.md` contradicted itself** once attribution was added: it
+  stated the register of locally held datasets is kept outside the repository. Resolved by
+  separating two facts that had been treated as one — **the path stays private; the
+  identity, owner and licence become public.** A dataset stops being purely local the
+  moment measurements from it are published.
+
+- **`EQUIVALENCE_LEDGER.md` left `LOCAL-ONLY (D-0025)` ambiguous.** It withholds a
+  filesystem path naming a machine and a user; it never withheld the dataset. The ledger
+  now says which.
+
+### Note
+
+`test_notice_carries_every_mandatory_attribution` gained eight strings, so each new
+obligation is enforced by the same mechanism as the existing ones rather than by memory.
+
+Neither TGS repository ships a `NOTICE` file, so Apache-2.0 §4(d) attaches **no** NOTICE
+obligation to this project. Everything in §§1–3 is voluntary and stays.
+
 ## [1.1.2] — 2026-08-26
 
 **Supersedes 1.1.1. Use this instead.** No engine change; the guarantee and the supported
@@ -357,6 +410,7 @@ regression-tested. See D-0018.
   thirty lines below the entry announcing the full command surface was live, and carried
   a near-duplicate copy of its own F3–F7 block. Both corrected here.
 
+[1.1.3]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.3
 [1.1.2]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.2
 [1.1.1]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.1
 [1.1.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.0
