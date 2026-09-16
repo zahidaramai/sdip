@@ -1749,3 +1749,56 @@ that the SHA-256 is what a reader compares. **Closure candidates:** record both 
 path and a repository-relative one where the source sits inside the tree, or record the
 parent directory only. Both change the certificate schema, so both want a maintainer
 ruling rather than a quiet edit.
+
+---
+
+## D47 — A store built with a survey override cannot be verified, exported or certified from the CLI
+
+- **Status:** `OPEN` (raised 2026-09-16) · **Blocks:** `sdip verify`, `sdip export` and
+  `sdip certify` on any survey that needs §6.4 to ingest — every revision 0 file carrying
+  3-D geometry, every alias override, every declared byte order
+- **Found by:** a consumer converting a revision 0, `ibm32`, poststack depth survey with
+  `sdip ingest --revision 0 --override overrides/segy-rev0-poststack3d.toml`, which succeeds.
+  Reproduced below on the committed synthetic generator alone.
+
+**Reproduction, synthetic, from this repository.** `make_revision_poststack3d(path,
+revision=0)` from `tests/fixtures/generators/revisions.py`, ingested with the committed
+override above (exit 0, `segy-rev0-gapfree-60f+segy-rev0-poststack3d@1`, 119 fields, G1
+PASS). Then, on that one byte-correct store:
+
+| Invocation | Result |
+|---|---|
+| `sdip verify SRC STORE` | **`verify: FAIL`**, exit 1, no traceback — G1 "PASS: 97 fields" is revision 1's spec, and Plane 3 fails |
+| `sdip verify --revision 0 SRC STORE` | traceback, `segy.exceptions.NonSpecFieldError` for `inline` |
+| `sdip verify --revision 0 --override …` | not expressible: no such option |
+| `sdip export --revision 0 STORE OUT --source SRC` | traceback, `ValueError: SegySpec requires trace header fields not present in MDIO: ['pad_181', …]` |
+| `sdip certify … --override …` | `No such option '--override'`; its own ingest (`main.py` `run_ingest`) and G6 (`determinism.g6`) take no override either |
+
+**No invocation produces the right answer**, and the first row is the worst of them: a
+correct conversion reported as corrupt, with nothing telling the operator why. §3.6 asks
+for a clean, named refusal; two rows are tracebacks.
+
+**The engine is not the problem.** Called from Python with the spec built the way ingest
+builds it, the same sequence runs to a verdict, and `export` round-trips byte-identically.
+Every one of the five commands is one declaration away from the right result — which is
+what makes this a root-cause defect rather than a missing option. See the root-cause entry
+recorded with the fix (`DECISIONS.md` D-0087).
+
+**Corrections to the first draft of this entry, which was never published.**
+
+- *"20 of 24,644 cells differ"* was a display cap, not a count. `planes.py` appended at most
+  20 mismatches and reported the length of that list as `derived_coords_mismatch_count`.
+- The Plane 3 and Plane 4 failures the consumer saw with the engine driven by hand are
+  **false failures produced by SDIP's own verifier**, not properties of the data:
+  - **Plane 3:** the verifier divided (`value / 100`) where the writer, `mdio` 1.2.1,
+    multiplies by the reciprocal (`value * abs(1/scalar)`). The two differ by one float64
+    step on 12–16 of every 100 final-two-digit residues at a given magnitude — 16,000 of
+    100,000 consecutive raw integers from 43,636,410 at scalar −100. Stored raw header
+    bytes were identical in every case.
+  - **Plane 4:** the verifier rebuilt the sample axis from the trace-header interval (bytes
+    117–118) and delay; the writer builds it from the binary-header interval (3217–3218).
+    A trace-header interval of zero is legal — SEG-Y rev 1 marks 117–118 "highly
+    recommended", not mandatory, and rev 2.x defines zero in a header field as unknown or
+    unspecified — so *"the gate is right to fail it"* was wrong.
+
+---
