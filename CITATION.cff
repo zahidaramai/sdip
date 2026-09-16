@@ -42,7 +42,7 @@ references:
     title: "mdio-python"
     abstract: >-
       Upstream MDIO implementation. Pinned at 1.2.1, commit
-      a2895b53088ffacbf4bd1b9e882856cbda78e235. Used through its public API only;
+      76df396e545017d2a32ee25a5f98989fa37afec4. Used through its public API only;
       no source vendored, no internal monkeypatched.
     repository-code: "https://github.com/TGSAI/mdio-python"
     license: Apache-2.0
@@ -52,7 +52,7 @@ references:
     title: "segy"
     abstract: >-
       Upstream SEG-Y reader. Pinned at 0.6.0, commit
-      8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78. Pinned together with mdio-python:
+      557bceba4abce09d084a1f0b8ac466382ce5c502. Pinned together with mdio-python:
       the ibm32 header fix straddles the segy 0.6.0 boundary.
     repository-code: "https://github.com/TGSAI/segy"
     license: Apache-2.0

@@ -471,6 +471,12 @@ class CoordinateScalarTransform:
             "field_names": list(COORD_ARRAYS),
             "coordinate_scalar": self.scalar,
             "operation": self.operation,
+            "arithmetic": (
+                "SEG-Y semantics: a negative scalar is a divisor, with no rounding rule. "
+                "Computed as value * abs(1 / scalar) in the stored dtype, exactly as "
+                "multidimio 1.2.1 writes it; Plane 3 verifies against that arithmetic "
+                "(DECISIONS.md D-0087)."
+            ),
             "invertibility": "VERIFIED" if self.uniform else "SCOPED",
             "uniform_across_traces": self.uniform,
             "distinct_scalars_found": list(self.distinct_values),

@@ -23,7 +23,8 @@ ATTRIBUTION - THIS SECTION IS A LEGAL OBLIGATION AND MUST SURVIVE REFACTORS
 --------------------------------------------------------------------------------
 
     https://github.com/TGSAI/mdio-python
-    Pinned version 1.2.1, commit a2895b53088ffacbf4bd1b9e882856cbda78e235
+    Pinned version 1.2.1 (release tag v1.2.1), commit
+    76df396e545017d2a32ee25a5f98989fa37afec4
 
     Copyright TGS. Licensed under the Apache License, Version 2.0.
 
@@ -36,7 +37,8 @@ ATTRIBUTION - THIS SECTION IS A LEGAL OBLIGATION AND MUST SURVIVE REFACTORS
 --------------------------------------------------------------------------------
 
     https://github.com/TGSAI/segy
-    Pinned version 0.6.0, commit 8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78
+    Pinned version 0.6.0 (release tag v0.6.0), commit
+    557bceba4abce09d084a1f0b8ac466382ce5c502
 
     Copyright TGS. Licensed under the Apache License, Version 2.0.
 
@@ -50,7 +52,7 @@ ATTRIBUTION - THIS SECTION IS A LEGAL OBLIGATION AND MUST SURVIVE REFACTORS
 
         tests/integration/test_segy_roundtrip_teapot.py
         https://github.com/TGSAI/mdio-python/blob/
-        a2895b53088ffacbf4bd1b9e882856cbda78e235/tests/integration/
+        76df396e545017d2a32ee25a5f98989fa37afec4/tests/integration/
         test_segy_roundtrip_teapot.py
 
     Copyright TGS. Licensed under the Apache License, Version 2.0.

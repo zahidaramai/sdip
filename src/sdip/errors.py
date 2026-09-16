@@ -63,3 +63,13 @@ class PhaseNotAuthorisedError(SdipError):
     Raised instead of returning a wrong or partial answer. SDIP would rather refuse
     than produce an unvalidated result.
     """
+
+
+class DeclarationMismatchError(SdipError):
+    """A store was handed a survey declaration other than the one that wrote it.
+
+    Raised before any plane runs (DECISIONS.md D-0087). The alternative was the D47
+    behaviour: a verdict about a reading of the source that nobody performed — FAIL on a
+    byte-correct store under one set of defaults, a traceback under another. A refusal
+    naming both declarations is the only answer that is not wrong.
+    """

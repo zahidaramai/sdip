@@ -39,9 +39,12 @@ uninstalled (§10.3, gate **G4**).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from sdip._pins import PINS
+
+if TYPE_CHECKING:
+    from sdip.spec.declaration import SurveyDeclaration
 
 ATTR_WRITER: Final[str] = "sdipWriter"
 """Which tool wrote this store. Always the string ``sdip.ingest``."""
@@ -66,37 +69,60 @@ what is actually on disk, and a difference is a partially written store. A list 
 is present would be a tautology.
 """
 
+ATTR_DECLARATION: Final[str] = "sdipDeclaration"
+"""Digest and summary of the survey declaration this store was written under (D-0087).
+
+**The digest, not the declaration.** A command that reads this store is handed its own
+declaration and builds its spec from that; this attribute only lets it detect that it was
+handed a different one. Reading the store's interpretation back out of the store and
+verifying the store against it would be circular — the artifact under test vouching for
+how it should be read — and was ruled out for that reason.
+"""
+
 MITIGATION_HEADER_PLANE: Final[str] = "headers_raw_uint8"
 """Written unconditionally by ``sdip ingest`` (D-0051)."""
 
 
-def marker_attrs(*, mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,)) -> dict[str, Any]:
+def marker_attrs(
+    *,
+    mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,),
+    declaration: SurveyDeclaration | None = None,
+) -> dict[str, Any]:
     """The attribute mapping ``sdip ingest`` writes onto the root group."""
     from sdip import __version__
 
-    return {
+    attrs: dict[str, Any] = {
         ATTR_WRITER: "sdip.ingest",
         ATTR_VERSION: __version__,
         ATTR_PINS: {pin.distribution: pin.version for pin in PINS},
         ATTR_MITIGATIONS: list(mitigations),
     }
+    if declaration is not None:
+        attrs[ATTR_DECLARATION] = declaration.to_json()
+    return attrs
 
 
 def attach_provenance_marker(
-    store_path: str | Path, *, mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,)
+    store_path: str | Path,
+    *,
+    mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,),
+    declaration: SurveyDeclaration | None = None,
 ) -> dict[str, Any]:
     """Write the marker onto the store's root group. Stock ``zarr``, no MDIO.
 
     Args:
         store_path: The MDIO store.
         mitigations: Which unconditional mitigations this writer attaches.
+        declaration: The survey declaration the store was written under. ``sdip ingest``
+            always passes one; the parameter is optional only so a marker can be written
+            for a store whose declaration is genuinely unknown.
 
     Returns:
         The attributes written.
     """
     import zarr
 
-    attrs = marker_attrs(mitigations=mitigations)
+    attrs = marker_attrs(mitigations=mitigations, declaration=declaration)
     zarr.open_group(str(store_path), mode="r+").attrs.update(attrs)
     return attrs
 
@@ -108,6 +134,14 @@ def written_by_sdip(group: Any) -> bool:
     which is a perfectly ordinary thing for the engine to be asked to verify.
     """
     return dict(group.attrs).get(ATTR_WRITER) == "sdip.ingest"
+
+
+def recorded_declaration(group: Any) -> dict[str, Any] | None:
+    """The declaration block this store records, or ``None`` if it predates binding."""
+    if not written_by_sdip(group):
+        return None
+    block = dict(group.attrs).get(ATTR_DECLARATION)
+    return dict(block) if isinstance(block, dict) else None
 
 
 def declared_mitigations(group: Any) -> tuple[str, ...]:

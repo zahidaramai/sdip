@@ -196,6 +196,11 @@ def make_irregular(
     sample_interval_us: int = 4000,
     revision: int = 1,
     coordinate_scalar: int = 1,
+    coordinate_scalars: Sequence[int] | None = None,
+    coordinates: Sequence[tuple[int, int]] | None = None,
+    trace_sample_interval_us: int | None = None,
+    delay_recording_time_ms: int = 0,
+    times_scalar: int = 0,
     dead_ordinals: Iterable[int] = (),
     endianness: str = "big",
     seed: int = DEFAULT_SEED,
@@ -217,9 +222,21 @@ def make_irregular(
             patched in by raw byte offset.
         coordinate_scalar: Value for trace header byte 71. ``0``, positive and negative
             values are all ordinary in production data and all mean different things.
+        coordinate_scalars: One scalar per trace, overriding ``coordinate_scalar``. A
+            scalar that varies across traces is legal SEG-Y, and MDIO applies the first
+            trace's to every trace (D-0087).
+        coordinates: One raw ``(cdp_x, cdp_y)`` per trace. The default,
+            ``1_000_000 + crossline * 25``, only produces multiples of 25 - values on which
+            dividing by 100 and multiplying by 1/100 agree exactly, which is how a
+            verifier using the wrong one of the two passed every test (D-0087).
+        trace_sample_interval_us: Trace-header bytes 117-118 on every trace, when it should
+            differ from the binary header's interval. ``0`` is legal - rev 2 defines zero
+            as unknown - and is common in real files (D-0087).
+        delay_recording_time_ms: Trace-header bytes 109-110 on every trace.
+        times_scalar: Trace-header bytes 215-216, the scalar SEG-Y applies to bytes 95-114.
         dead_ordinals: Source ordinals whose samples are all zero — measured dead traces.
-        endianness: ``"big"`` or ``"little"``. The little variant exercises a byte order
-            SDIP's ingest has no way to declare.
+        endianness: ``"big"`` or ``"little"``. The little variant is declared to SDIP
+            through a survey override's ``endianness`` key.
         seed: Seed for the planted header bytes. Fixed and committed.
         text: Textual header content, defaulting to :data:`IRREGULAR_TEXT`. Passing
             ``None`` is **not** supported: the upstream default embeds a timestamp.
@@ -250,14 +267,32 @@ def make_irregular(
     samples = factory.create_trace_sample_template(size=n_traces)
     declared = set(headers.dtype.names or ())
 
+    if coordinate_scalars is not None and len(coordinate_scalars) != n_traces:
+        msg = f"coordinate_scalars has {len(coordinate_scalars)} entries for {n_traces} traces"
+        raise ValueError(msg)
+    if coordinates is not None and len(coordinates) != n_traces:
+        msg = f"coordinates has {len(coordinates)} entries for {n_traces} traces"
+        raise ValueError(msg)
+
     for ordinal, (inline, crossline) in enumerate(pairs):
         if "inline" in declared:
             headers["inline"][ordinal] = inline
             headers["crossline"][ordinal] = crossline
         if "cdp_x" in declared:
-            headers["cdp_x"][ordinal] = 1_000_000 + crossline * 25
-            headers["cdp_y"][ordinal] = 2_000_000 + inline * 25
-        headers["coordinate_scalar"][ordinal] = coordinate_scalar
+            if coordinates is None:
+                headers["cdp_x"][ordinal] = 1_000_000 + crossline * 25
+                headers["cdp_y"][ordinal] = 2_000_000 + inline * 25
+            else:
+                headers["cdp_x"][ordinal], headers["cdp_y"][ordinal] = coordinates[ordinal]
+        headers["coordinate_scalar"][ordinal] = (
+            coordinate_scalar if coordinate_scalars is None else coordinate_scalars[ordinal]
+        )
+        if trace_sample_interval_us is not None:
+            headers["sample_interval"][ordinal] = trace_sample_interval_us
+        if delay_recording_time_ms:
+            headers["delay_recording_time"][ordinal] = delay_recording_time_ms
+        if times_scalar and "times_scalar" in declared:
+            headers["times_scalar"][ordinal] = times_scalar
         headers["trace_seq_num_line"][ordinal] = ordinal + 1
         samples[ordinal] = amplitudes[ordinal]
 

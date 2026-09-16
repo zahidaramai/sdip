@@ -14,12 +14,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-from sdip._pins import BARRED_ENV_VARS, BARRED_MODULES, PINS
+from sdip._pins import BARRED_ENV_VARS, BARRED_MODULES, PINS, UPSTREAM_SETTINGS
 from sdip.cli.result import Check, Report, Status
 from sdip.guard.env import check_barred_env_vars
 from sdip.guard.licences import check_runtime_licences
 from sdip.guard.packages import check_barred_packages
 from sdip.guard.pins import check_pins
+from sdip.guard.upstream_settings import classification_gaps
 from sdip.provenance.environment import capture_environment
 from sdip.provenance.git import capture_git_state
 
@@ -101,6 +102,28 @@ def _check_env() -> Check:
             "set": [f.name for f in findings],
             "reasons": {f.name: f.reason for f in findings},
         },
+    )
+
+
+def _check_upstream_settings() -> Check:
+    """The barred-variable registry against what the INSTALLED upstream reads (D-0087).
+
+    The unit tests prove the registry against the upstream CI installed. This proves it
+    against the one this machine installed, which is the one a certificate is issued under.
+    """
+    gaps = classification_gaps()
+    problems = [item for key in sorted(gaps) for item in gaps[key]]
+    return Check(
+        name="upstream-settings",
+        status=Status.PASS if not problems else Status.FAIL,
+        clause="spec 9.1 (D-0087)",
+        summary=(
+            f"all {len(UPSTREAM_SETTINGS)} environment variables the installed upstream "
+            "reads are classified"
+            if not problems
+            else "unclassified upstream settings: " + "; ".join(problems[:4])
+        ),
+        evidence={"gaps": gaps, "classified": len(UPSTREAM_SETTINGS)},
     )
 
 
@@ -352,6 +375,7 @@ def run_doctor(root: str | Path = ".") -> Report:
         [
             _check_python(),
             _check_env(),
+            _check_upstream_settings(),
             _check_packages(),
             _check_pins(root_path),
             _check_licences(),

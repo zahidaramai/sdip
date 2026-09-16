@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -85,9 +86,9 @@ def test_notice_carries_every_mandatory_attribution(repo_root):
     for required in (
         "mdio-python",
         "TGSAI/mdio-python",
-        "a2895b53088ffacbf4bd1b9e882856cbda78e235",
+        "76df396e545017d2a32ee25a5f98989fa37afec4",
         "TGSAI/segy",
-        "8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78",
+        "557bceba4abce09d084a1f0b8ac466382ce5c502",
         "test_segy_roundtrip_teapot.py",
         "ThomasHertweck/seisio",
         "NO CODE FROM seisio HAS BEEN COPIED",
@@ -657,27 +658,67 @@ def _citations(text: str) -> list[str]:
     return [name for name in TOOLING_FILENAMES if name in text]
 
 
-def test_no_published_file_cites_assistant_tooling(repo_root):
-    """A file that ships to the public must not cite a document the public cannot open.
+def _publication_set(root: Path) -> list[str]:
+    """Files git would publish from ``root``: tracked, plus untracked files not ignored.
 
-    Regression guard for the v1.1.1 wheel, which carried two such citations.
+    **Not the disk.** The first version of this guard walked the filesystem, so it failed
+    on a planning file excluded from git that could never ship, and it walked ``.venv``'s
+    third-party sources on every run. What matters is what a commit could carry - and an
+    untracked file that is NOT ignored is one ``git add`` from shipping, so it is included.
+    Outside a git checkout (an extracted sdist) the whole tree is the publication set.
     """
+    if not (root / ".git").exists():
+        return sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file())
+    listing = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+        cwd=root,
+        capture_output=True,
+        check=True,
+    ).stdout.decode("utf-8")
+    return sorted({entry for entry in listing.split("\0") if entry})
+
+
+def _citation_offenders(root: Path) -> list[str]:
     from sdip.cli.doctor import NEVER_PUBLISH
 
     offenders: list[str] = []
-    for path in sorted(repo_root.rglob("*")):
+    for rel in _publication_set(root):
+        path = root / rel
         if not path.is_file() or path.suffix not in PUBLISHED_SUFFIXES:
             continue
-        rel = path.relative_to(repo_root).as_posix()
-        if rel in CITATION_EXEMPT or rel.startswith(".git/"):
+        if rel in CITATION_EXEMPT:
             continue
         # Skip anything the firewall already refuses to publish.
         if any(rel == p or rel.startswith(f"{p}/") for p in NEVER_PUBLISH):
             continue
         for name in _citations(path.read_text(encoding="utf-8", errors="replace")):
             offenders.append(f"{rel}: cites {name}")
+    return offenders
 
+
+def test_no_published_file_cites_assistant_tooling(repo_root):
+    """A file that ships to the public must not cite a document the public cannot open.
+
+    Regression guard for the v1.1.1 wheel, which carried two such citations.
+    """
+    offenders = _citation_offenders(repo_root)
     assert offenders == [], "published files cite assistant tooling:\n" + "\n".join(offenders)
+
+
+def test_the_publication_set_includes_what_could_ship_and_excludes_what_cannot(tmp_path):
+    """NEGATIVE CONTROLS for the scan's scope, in a throwaway repository."""
+    citing = "See CLAUDE.md section 5.\n"
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / "tracked.md").write_text(citing)
+    subprocess.run(["git", "add", "tracked.md"], cwd=tmp_path, check=True)
+    (tmp_path / "untracked.md").write_text(citing)
+    (tmp_path / "excluded.md").write_text(citing)
+    (tmp_path / ".git" / "info" / "exclude").write_text("excluded.md\n")
+
+    offenders = _citation_offenders(tmp_path)
+    assert "tracked.md: cites CLAUDE.md" in offenders
+    assert "untracked.md: cites CLAUDE.md" in offenders, "one git add from shipping"
+    assert not any(o.startswith("excluded.md") for o in offenders), "can never ship"
 
 
 def test_the_citation_detector_actually_detects():

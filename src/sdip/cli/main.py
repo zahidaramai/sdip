@@ -20,7 +20,15 @@ from sdip._pins import SPEC_VERSION
 from sdip.cli.doctor import environment_block, run_doctor
 from sdip.cli.result import Report, Status
 from sdip.equivalence.envelope import DEFAULT_ENVELOPE_GIB
-from sdip.errors import DirtyTreeError, PhaseNotAuthorisedError, SdipError, UntrustedInputError
+from sdip.errors import (
+    DeclarationMismatchError,
+    DirtyTreeError,
+    GuardError,
+    PhaseNotAuthorisedError,
+    SdipError,
+    UntrustedInputError,
+)
+from sdip.spec.declaration import SurveyDeclaration
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -29,9 +37,57 @@ EXIT_USAGE = 2
 OVERRIDE_HELP = (
     "Survey spec override to apply over the gap-free base (spec 6.4). A committed TOML "
     "file, conventionally under overrides/. It renames and retypes bytes the base spec "
-    "already covered and changes no byte content; G1 is re-asserted after it is applied "
-    "and Plane 3 (G2c) re-verifies the bytes on every ingest."
+    "already covered and may declare the byte order; it changes no byte content. It "
+    "relaxes no gate and no refusal: G1 is re-asserted after it is applied, Plane 3 (G2c) "
+    "re-verifies the bytes, and a store records the declaration it was written under. "
+    "Pass the same override to every command that reads that store."
 )
+
+STORE_COMMANDS = frozenset({"ingest", "verify", "export", "certify"})
+"""Every command that reads a source or a store. Each takes the whole survey declaration
+and runs only in an environment with no barred variable set (D-0087)."""
+
+REVISION_CHOICES = ("0", "1", "2", "2.1")
+
+
+def declaration_options(func: Any) -> Any:
+    """``--revision``, ``--template``, ``--override``: the survey declaration, defined ONCE.
+
+    Applied to every command that reads a source or a store. Before D-0087 each command
+    declared its own options; ``--override`` reached two of the five, and ``verify`` then
+    judged a revision 0 store under revision 1's spec by default. One definition makes
+    parity structural, and ``tests/unit/test_cli_declaration_parity.py`` pins it.
+    """
+    func = click.option(
+        "--override",
+        "override_path",
+        type=click.Path(exists=True, dir_okay=False, path_type=Path),
+        default=None,
+        help=OVERRIDE_HELP,
+    )(func)
+    func = click.option(
+        "--template",
+        default="PostStack3DTime",
+        show_default=True,
+        help="MDIO template the store is, or was, written with.",
+    )(func)
+    return click.option(
+        "--revision",
+        type=click.Choice(REVISION_CHOICES),
+        default="1",
+        show_default=True,
+        help="SEG-Y revision whose base spec applies.",
+    )(func)
+
+
+def _declaration(revision: str, template: str, override_path: Path | None) -> SurveyDeclaration:
+    """The declaration a command was handed, built the same way for every command."""
+    from sdip.spec import load_override
+
+    number: float | int = float(revision) if "." in revision else int(revision)
+    override = load_override(override_path) if override_path else None
+    return SurveyDeclaration(revision=number, template=template, override=override)
+
 
 _GLYPH = {Status.PASS: "PASS", Status.FAIL: "FAIL", Status.NOT_RUN: " -- "}
 
@@ -64,11 +120,21 @@ def _emit(report: Report, *, as_json: bool, extra: Mapping[str, object] | None =
     "--version",
     message=f"sdip %(version)s (specification v{SPEC_VERSION})",
 )
-def cli() -> None:
+@click.pass_context
+def cli(ctx: click.Context) -> None:
     """SEG-Y to MDIO/Zarr v3 with a machine-checkable proof of 1-1 equivalence.
 
     The product is not the file. The product is the file plus the proof.
     """
+    # ONE place, before any command that reads a source or a store runs at all. Until
+    # D-0087 the barred variables were checked inside ingest only, so `verify`, `export`
+    # and `certify`'s own verification ran under whatever the environment said - and a
+    # variable nobody had barred produced a false PASS. `doctor` is exempt: it REPORTS
+    # the environment as it found it.
+    if ctx.invoked_subcommand in STORE_COMMANDS:
+        from sdip.guard.env import refuse_barred_env_vars
+
+        refuse_barred_env_vars(str(ctx.invoked_subcommand))
 
 
 @cli.command()
@@ -83,7 +149,7 @@ def doctor(root: Path, as_json: bool) -> None:
     """Environment sanity: barred vars, barred packages, pins, licences, tree.
 
     Runs first in CI and first in every runbook. If doctor fails, nothing else runs.
-    Exits 0 when every check passes, 1 otherwise. There is no override flag.
+    Exits 0 when every check passes, 1 otherwise. No flag skips a check.
     """
     report = run_doctor(root)
     extra = {"environment": environment_block()} if as_json else None
@@ -174,22 +240,8 @@ def spec_build(revision: str, override_path: Path | None, as_json: bool) -> None
 @cli.command("ingest")
 @click.argument("source", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.argument("output", type=click.Path(path_type=Path))
-@click.option(
-    "--revision",
-    type=click.Choice(["0", "1", "2", "2.1"]),
-    default="1",
-    show_default=True,
-    help="SEG-Y revision for the base spec.",
-)
-@click.option("--template", default="PostStack3DTime", show_default=True, help="MDIO template.")
+@declaration_options
 @click.option("--overwrite", is_flag=True, help="Overwrite an existing store.")
-@click.option(
-    "--override",
-    "override_path",
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
-    default=None,
-    help=OVERRIDE_HELP,
-)
 @click.option("--json", "as_json", is_flag=True, help="Emit a machine-readable report.")
 def ingest_cmd(
     source: Path,
@@ -211,17 +263,15 @@ def ingest_cmd(
     crossline in a rev 0 file. It is applied before G1 and changes no byte content.
     """
     from sdip.ingest import ingest as run_ingest
-    from sdip.spec import load_override
 
-    number: float | int = float(revision) if "." in revision else int(revision)
-    override = load_override(override_path) if override_path else None
+    declaration = _declaration(revision, template, override_path)
     result = run_ingest(
         source,
         output,
-        revision=number,
-        template=template,
+        revision=declaration.revision,
+        template=declaration.template,
         overwrite=overwrite,
-        override=override,
+        override=declaration.override,
     )
 
     if as_json:
@@ -280,14 +330,15 @@ def _print_planes(planes: list[Any]) -> None:
         difference = plane.evidence.get("first_difference")
         if difference:
             click.echo(f"       first difference: {difference}")
+        for finding in plane.evidence.get("findings") or []:
+            gate = "blocks release" if finding.get("blocks_release") else "finding"
+            click.echo(f"       [{gate}] {finding.get('code')}: {finding.get('message')}")
 
 
 @cli.command("verify")
 @click.argument("source", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.argument("store", type=click.Path(exists=True, file_okay=False, path_type=Path))
-@click.option(
-    "--revision", type=click.Choice(["0", "1", "2", "2.1"]), default="1", show_default=True
-)
+@declaration_options
 @click.option("--skip-portability", is_flag=True, help="Skip G4 (it spawns a subprocess).")
 @click.option("--json", "as_json", is_flag=True, help="Emit a machine-readable report.")
 @click.option(
@@ -306,6 +357,8 @@ def verify_cmd(
     source: Path,
     store: Path,
     revision: str,
+    template: str,
+    override_path: Path | None,
     skip_portability: bool,
     as_json: bool,
     envelope_gib: float,
@@ -313,11 +366,14 @@ def verify_cmd(
     """Run the Equivalence Engine against a store: five planes plus G4.
 
     Compares the store on disk against the source on disk. Exits 1 if any plane fails
-    or G4 fails.
+    or G4 fails. Pass the --revision, --template and --override the store was ingested
+    with: a store records its declaration, and a different one is refused (exit 2) before
+    any plane runs rather than judged under a reading nobody performed.
     """
     from sdip.equivalence import g4
+    from sdip.equivalence.binding import check_binding
     from sdip.equivalence.envelope import envelope_refusal
-    from sdip.spec import build_gap_free_spec, g1_for_spec
+    from sdip.spec import g1_for_spec
 
     # Checked BEFORE any read, on the file's size alone - the same fail-before-you-
     # allocate rule as §3.6. Discovering the limit by being OOM-killed mid-plane costs
@@ -326,8 +382,9 @@ def verify_cmd(
     if refusal is not None:
         raise UntrustedInputError(refusal)
 
-    number: float | int = float(revision) if "." in revision else int(revision)
-    built = build_gap_free_spec(number)
+    declaration = _declaration(revision, template, override_path)
+    binding = check_binding(store, declaration)
+    built = declaration.build_spec()
     gate1 = g1_for_spec(built)
     planes = _run_planes(source, store, built.segy_spec, g1_passed=gate1.passed)
     portability = None if skip_portability else g4(store)
@@ -343,6 +400,7 @@ def verify_cmd(
             json.dumps(
                 {
                     "command": "verify",
+                    "declaration": binding.to_json(),
                     "G1": gate1.to_json(),
                     "planes": {f"plane_{p.plane}": p.to_json() for p in planes},
                     "G4": portability.to_json() if portability else None,
@@ -353,6 +411,7 @@ def verify_cmd(
             )
         )
     else:
+        click.echo(f"[{binding.status}] declaration  {binding.describe()}")
         click.echo(f"[{gate1.status}] G1        {gate1.summary()}")
         _print_planes(planes)
         if portability is not None:
@@ -376,25 +435,34 @@ def verify_cmd(
     required=True,
     help="Original SEG-Y, for the G3 hash comparison.",
 )
-@click.option(
-    "--revision", type=click.Choice(["0", "1", "2", "2.1"]), default="1", show_default=True
-)
+@declaration_options
 @click.option("--json", "as_json", is_flag=True, help="Emit a machine-readable report.")
-def export_cmd(store: Path, output: Path, source: Path, revision: str, as_json: bool) -> None:
+def export_cmd(
+    store: Path,
+    output: Path,
+    source: Path,
+    revision: str,
+    template: str,
+    override_path: Path | None,
+    as_json: bool,
+) -> None:
     """MDIO to SEG-Y, then run G3 against the source.
 
     G3 passes only on whole-file SHA-256 equality. Exits 1 on any mismatch.
     """
+    from sdip.equivalence.binding import check_binding
     from sdip.export import export as run_export
-    from sdip.spec import build_gap_free_spec
 
-    number: float | int = float(revision) if "." in revision else int(revision)
-    built = build_gap_free_spec(number)
+    declaration = _declaration(revision, template, override_path)
+    binding = check_binding(store, declaration)
+    built = declaration.build_spec()
     result = run_export(store, output, built.segy_spec, source=source)
 
     if as_json:
-        click.echo(json.dumps(result.to_json(), indent=2, sort_keys=True))
+        payload = result.to_json() | {"declaration": binding.to_json()}
+        click.echo(json.dumps(payload, indent=2, sort_keys=True))
     else:
+        click.echo(f"[{binding.status}] declaration  {binding.describe()}")
         click.echo(f"source  {result.source_sha256}  {result.source_bytes} bytes")
         click.echo(f"export  {result.export_sha256}  {result.export_bytes} bytes")
         difference = result.first_difference()
@@ -409,10 +477,7 @@ def export_cmd(store: Path, output: Path, source: Path, revision: str, as_json: 
 @cli.command("certify")
 @click.argument("source", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.argument("output", type=click.Path(path_type=Path))
-@click.option(
-    "--revision", type=click.Choice(["0", "1", "2", "2.1"]), default="1", show_default=True
-)
-@click.option("--template", default="PostStack3DTime", show_default=True)
+@declaration_options
 @click.option("--overwrite", is_flag=True)
 @click.option(
     "--rss-ceiling-gib",
@@ -446,6 +511,7 @@ def certify_cmd(
     output: Path,
     revision: str,
     template: str,
+    override_path: Path | None,
     overwrite: bool,
     rss_ceiling_gib: float | None,
     wall_ceiling_s: float | None,
@@ -477,6 +543,7 @@ def certify_cmd(
     import time
 
     from sdip.equivalence import g4, g5, issue
+    from sdip.equivalence.binding import check_binding
     from sdip.equivalence.closure import roundtrip_closure
     from sdip.equivalence.determinism import g6
     from sdip.equivalence.nonvacuity import closure_control, g3_control, g7
@@ -506,12 +573,30 @@ def certify_cmd(
         raise DirtyTreeError(
             f"refusing to start: the working tree is not certifiable ({detail}). "
             "`sdip certify` would run the full chain and then refuse to issue, so it "
-            "refuses now instead (spec 11.3). There is no override."
+            "refuses now instead (spec 11.3). No flag skips this check."
         )
 
-    number: float | int = float(revision) if "." in revision else int(revision)
+    declaration = _declaration(revision, template, override_path)
     started = time.monotonic()
-    result = run_ingest(source, output, revision=number, template=template, overwrite=overwrite)
+    result = run_ingest(
+        source,
+        output,
+        revision=declaration.revision,
+        template=declaration.template,
+        overwrite=overwrite,
+        override=declaration.override,
+    )
+    # The store this run just wrote must bind to the declaration it was written under.
+    # Anything else is a defect in the writer, and it is refused here rather than
+    # certified - a certificate names a reading of the source, so the reading has to be
+    # provably the one on disk.
+    binding = check_binding(output, declaration)
+    if not binding.bound:
+        msg = (
+            f"the store sdip ingest just wrote is {binding.status}, not BOUND: "
+            f"{binding.describe()}. Refusing to certify."
+        )
+        raise SdipError(msg)
     spec = result.spec.segy_spec
     gate1 = g1_for_spec(result.spec)
     planes = _run_planes(source, output, spec, g1_passed=gate1.passed)
@@ -547,7 +632,13 @@ def certify_cmd(
         # G6: two INDEPENDENT ingests of the same source, compared on chunk bytes and on
         # array values. Determinism cannot be shown by one run, so this is the only
         # place it can be established.
-        determinism = g6(source, number, template=template, workdir=Path(scratch) / "g6")
+        determinism = g6(
+            source,
+            declaration.revision,
+            template=declaration.template,
+            override=declaration.override,
+            workdir=Path(scratch) / "g6",
+        )
         g6_status, g6_summary = determinism.status, determinism.summary()
 
         # G5 only when a ceiling was DECLARED. See the docstring: a default would be a
@@ -585,6 +676,7 @@ def certify_cmd(
             closure=closure,
             determinism=determinism,
             scale=scale,
+            binding=binding,
             issued_at=issued_at,
             issued_by=f"sdip {__version__}",
         )
@@ -594,6 +686,7 @@ def certify_cmd(
     path = certificates / f"{result.source_sha256[:12]}-{stamp}.json"
     path.write_text(json.dumps(certificate.payload, indent=2, sort_keys=True))
 
+    click.echo(f"[{binding.status}] declaration  {binding.describe()}")
     _print_planes(planes)
     click.echo(f"[{roundtrip.status}] G3        whole-file SHA-256")
     click.echo(f"[{portability.status}] G4        stock zarr+xarray without mdio")
@@ -631,6 +724,16 @@ def main() -> None:
         cli.main(standalone_mode=False)
     except PhaseNotAuthorisedError as exc:
         click.echo(f"sdip: {exc}", err=True)
+        sys.exit(EXIT_USAGE)
+    except GuardError as exc:
+        # Exit 2: an environment SDIP will not run in is not a verdict about any data.
+        click.echo(f"sdip: {type(exc).__name__}: {exc}", err=True)
+        sys.exit(EXIT_USAGE)
+    except DeclarationMismatchError as exc:
+        # Exit 2, not 1. A mismatched declaration is an operator input error, not a
+        # verdict about the data - reporting it as FAIL would tell a script that a
+        # correct conversion was corrupt, which is precisely D47's defect.
+        click.echo(f"sdip: {type(exc).__name__}: {exc}", err=True)
         sys.exit(EXIT_USAGE)
     except SdipError as exc:
         # Every error SDIP raises deliberately reaches the operator as a message and a

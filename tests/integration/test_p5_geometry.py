@@ -179,7 +179,7 @@ INGESTS: dict[str, str | None] = {
     "sparse_grid": None,
     "ragged_lines": None,
     "missing_lines": None,
-    "coord_scalar_zero": "Invalid coordinate scalar: 0",
+    "coord_scalar_zero": "coordinate scalar (trace-header bytes 71-72) is 0",
     "coord_scalar_pos": None,
     "coord_scalar_neg": None,
     "byte_swapped": "most likely a little-endian SEG-Y",
@@ -191,6 +191,13 @@ the ingest succeeded; a string is a substring of the error that was actually rai
 This is a **record of what happened**, not a wish. Four conditions do not convert, and
 pinning the exact error is what turns "irregular geometry sometimes fails" into a claim
 a stranger can check and an upstream bump can falsify.
+
+**``coord_scalar_zero`` updated 2026-09-16, debt D27 (DECISIONS.md D-0087).** The verdict is
+unchanged - a revision 1 file with a zero first-trace scalar still does not convert - but the
+refusal moved. It was ``ValueError: Invalid coordinate scalar: 0``, raised out of
+``mdio/segy/scalar.py`` as a traceback. It is now :class:`~sdip.errors.UntrustedInputError`
+from :mod:`sdip.ingest.preflight`, before any allocation, stating that SEG-Y rev 2.x defines
+zero as 1, that industry readers treat it so, and that the pinned writer refuses it.
 
 **``byte_swapped`` updated 2026-08-23, debt D8.** The verdict is unchanged — a
 little-endian SEG-Y still does not convert — but *who* refuses it moved. It was
@@ -486,8 +493,10 @@ def test_a_coordinate_scalar_of_zero_is_refused_for_rev_1(probe):
     """
     run = probe["coord_scalar_zero"]
     assert not run.ingested
-    assert "Invalid coordinate scalar: 0" in (run.error or "")
-    assert "REV1" in (run.error or "")
+    # D27, D-0087: refused by SDIP's preflight with the reason, not by upstream as a crash.
+    assert "UntrustedInputError" in (run.error or "")
+    assert "revision 1 file" in (run.error or "")
+    assert "D27" in (run.error or "")
 
 
 @pytest.mark.parametrize(
@@ -498,9 +507,12 @@ def test_a_nonzero_coordinate_scalar_is_applied_to_the_derived_coordinate_arrays
 ):
     """The scalar is honoured — and the scaled result is an **undeclared transform**.
 
-    Positive multiplies, negative divides, which is what the standard says. The raw
-    header value is untouched in ``headers``, so Plane 3 and the round trip are unaffected
-    and no measured value is lost.
+    SEG-Y: a positive scalar multiplies, a negative one is a divisor. MDIO computes the
+    divisor as ``value * abs(1 / scalar)``, so that is the expected value here. This test
+    is NOT the one that distinguishes the two - its coordinates are multiples of 25, on
+    which they agree; ``test_derived_coordinate_specificity.py`` sweeps all 100 residues
+    (DECISIONS.md D-0087). The raw header value is untouched in ``headers``, so Plane 3
+    and the round trip are unaffected and no measured value is lost.
 
     The finding is narrower and worth stating precisely: the store carries ``cdp_x`` and
     ``cdp_y`` **coordinate arrays** holding scaled values that appear nowhere in the
@@ -515,7 +527,7 @@ def test_a_nonzero_coordinate_scalar_is_applied_to_the_derived_coordinate_arrays
     stored = float(np.asarray(group["cdp_x"][:])[0, 0])
 
     assert int(headers["coordinate_scalar"][0, 0]) == scalar
-    expected = float(raw) * 100.0 if scalar > 0 else float(raw) / 100.0
+    expected = float(raw) * 100 if scalar > 0 else float(raw) * abs(1 / scalar)
     assert stored == expected
     assert stored != float(raw), "the coordinate array is derived, not the source value"
     assert run.plane(3).status == "PASS", "the raw header value itself is preserved"
@@ -526,30 +538,33 @@ def test_a_nonzero_coordinate_scalar_is_applied_to_the_derived_coordinate_arrays
 # ---------------------------------------------------------------------------
 
 
-def test_a_little_endian_file_cannot_be_declared_to_sdip(probe):
-    """The blocker is SDIP's own spec, not the format and not the pinned ``segy``.
+def test_an_undeclared_little_endian_file_is_refused_and_told_how_to_declare_it(probe):
+    """Undeclared, a little-endian file is refused; declared, it ingests.
 
-    ``build_gap_free_spec`` inherits ``endianness = big`` from the revision standard and
-    :func:`sdip.ingest.ingest` exposes no way to change it, so the little-endian binary
-    header is read big-endian: sample interval ``4000`` arrives as ``-24561``, and
-    sample-format code ``1`` as ``0x0100`` — ``256``.
+    This probe ingests with no declaration, so the binary header is read big-endian:
+    sample interval ``4000`` arrives as ``-24561`` and sample-format code ``1`` as ``256``,
+    and :mod:`sdip.ingest.preflight` refuses before any allocation.
 
-    **Updated 2026-08-23 (debt D8).** The finding is unchanged; the refusal moved. It
-    used to reach ``segy`` and die there on ``256 is not a valid DataSampleFormatCode``.
-    :mod:`sdip.ingest.preflight` now refuses it before any allocation with SDIP's own
-    typed error, and — because a little-endian SEG-Y is a real file rather than a
-    corruption — the message says so instead of leaving the reader to work out why a
-    format code read 256.
+    **History, kept because it is the finding.** P5 recorded that SDIP had no way to
+    declare byte order. D28 closed that at 07:44 on 2026-08-23 with the override's
+    ``endianness`` key - and the preflight, added at 09:49 the same day, read the header
+    big-endian without being given the declaration, so a declared file was refused too.
+    This test kept passing throughout, because it only ever ingested undeclared. Its old
+    name said the file *cannot be declared*, which stopped being true, and nothing
+    noticed (DECISIONS.md D-0087). The declared path is now measured through the CLI in
+    ``tests/integration/test_cli_declaration.py``; this test pins that the refusal names
+    the declaration that would admit the file.
 
-    The same file reads correctly the moment the spec stops asserting a byte order —
-    ``segy`` infers it from the binary header when ``spec.endianness is None``. So this is
-    a missing declaration in SDIP, not a limitation upstream.
+    The same file reads correctly the moment the spec stops asserting a byte order -
+    ``segy`` infers it from the binary header when ``spec.endianness is None``.
     """
     run = probe["byte_swapped"]
     assert run.article.endianness == "little"
     assert not run.ingested
     assert "UntrustedInputError" in (run.error or "")
     assert "most likely a little-endian SEG-Y" in (run.error or "")
+    assert 'endianness = "little"' in (run.error or "")
+    assert "--override" in (run.error or "")
     assert build_gap_free_spec(1).segy_spec.endianness.value == "big"
 
     inferring = build_gap_free_spec(1)

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import numpy as np
 
@@ -330,41 +330,91 @@ def _raw_header_evidence(
     }
 
 
+COORDINATE_ARITHMETIC: Final[str] = (
+    "value * abs(1 / scalar) for a negative scalar, value * scalar for a positive one, "
+    "scalar 0 as 1; value cast to the stored array's dtype first, the factor a Python "
+    "scalar - multidimio 1.2.1 mdio/segy/scalar.py _apply_coordinate_scalar, the same "
+    "reciprocal form OpenVDS and OpendTect use"
+)
+"""Exactly what the writer computes, so the comparison can stay exact (D-0087)."""
+
 DERIVED_COORD_NOTE = (
     "Derived-array leg, AND-ed into G2c's verdict. cdp_x and cdp_y are the OUTPUT of "
     "the declared coordinate-scalar transform (DECISIONS.md D-0040), and SP1 requires a "
-    "declared transform to be VERIFIED - a declared transform whose output nothing "
-    "checks is half-declared. Recomputed here from the source trace headers under the "
-    "declared semantics (positive scalar multiplies, negative divides) and compared with "
-    "np.array_equal against the arrays a consumer actually reads (G4, section 10.3). "
-    "Until 2026-08-23 nothing compared them: an external audit corrupted cdp_x and cdp_y "
-    "individually and ALL FIVE PLANES still returned PASS (D-0056)."
+    "declared transform to be VERIFIED. Recomputed from each trace's OWN header values "
+    "and OWN scalar - SEG-Y scales every trace by its own bytes 71-72, while MDIO reads "
+    "trace 0's and applies it to all, so a varying scalar fails here, correctly - using "
+    "the writer's exact arithmetic (derived_coords_arithmetic), and compared with "
+    "np.array_equal. SEG-Y defines a negative scalar as a divisor and sets no rounding "
+    "rule; the writer's reciprocal form differs from the correctly rounded quotient by "
+    "one unit in the last place on some values, counted in "
+    "derived_coords_standard_quotient_differences. Until D-0087 this leg divided, and "
+    "failed correct stores on exactly those values."
 )
 
 DERIVED_TIME_NOTE = (
-    "Derived-axis leg, AND-ed into G2d's verdict. The sample axis is recomputed from the "
-    "trace-header sample interval and delay - axis[i] = delay + i * interval/1000 - and "
-    "compared with np.array_equal against the stored axis. Samples are meaningless "
-    "without the axis that positions them: a corrupted axis mislabels every sample in "
-    "depth or time while the sample values themselves compare equal. Until 2026-08-23 "
-    "nothing compared it (D-0056)."
+    "Derived-axis leg, AND-ed into G2d's verdict. The sample axis is rebuilt the way the "
+    "writer builds it - from the BINARY header's interval (bytes 3217-3218, mandatory in "
+    "SEG-Y rev 1) and sample count, axis[i] = (i * interval_us) / 1000, starting at 0 - "
+    "and compared with np.array_equal against the stored axis. Until D-0087 it was rebuilt "
+    "from the trace-header interval plus the delay, which MDIO uses for neither, and so "
+    "failed every correct store whose trace headers carry an interval of 0 (unknown, in "
+    "rev 2.x). Disagreements between the trace headers and that axis are recorded as "
+    "named findings, not failures; a nonzero recording delay is a finding that blocks "
+    "release, because industry readers start the axis at the delay and MDIO does not. "
+    "An interval the stored int32 axis cannot represent (below 1 ms, or not a whole "
+    "number of ms) still fails: that store is genuinely wrong."
 )
 
 
-def _scale_coordinate(raw: Any, scalar: int) -> Any:
-    """Apply the SEG-Y coordinate scalar exactly as the declared transform defines it.
+MISMATCH_EXAMPLES: Final[int] = 20
+"""How many mismatches are quoted as examples. Never how many are counted."""
 
-    Positive multiplies, negative divides, and 0 is treated as 1 - the convention
-    :class:`~sdip.spec.transforms.CoordinateScalarTransform` documents. Division is done
-    in ``float64`` because that is what the stored arrays are; this is **not** a
-    tolerance, and the comparison downstream is still exact.
+
+def _scale_coordinate(raw: Any, scalar: int, dtype: Any) -> Any:
+    """Scale one raw coordinate exactly as the writer does. See :data:`COORDINATE_ARITHMETIC`.
+
+    **Why not division, which is what SEG-Y says (D-0087).** The standard defines a
+    negative scalar as a divisor and gives no rounding rule. ``mdio`` computes
+    ``value * abs(1 / scalar)``; in float64 that differs from ``value / 100`` by one unit
+    in the last place on 12-16 of every 100 final-two-digit residues. A verifier that
+    divides therefore fails correct stores, and it did, on the first survey whose
+    coordinates hit those residues. Matching the writer keeps the comparison exact - this
+    is not a tolerance: a one-ulp corruption of a stored cell still fails.
+
+    Args:
+        raw: The raw integer header value.
+        scalar: That trace's own coordinate scalar. 0 is 1, as MDIO normalises it at
+            rev 2+; at rev 0/1 MDIO refuses a zero scalar before any store exists.
+        dtype: The stored coordinate array's dtype, which is the dtype the writer used.
     """
-    values = np.asarray(raw, dtype=np.float64)
-    if scalar > 1:
-        return values * float(scalar)
-    if scalar < -1:
-        return values / float(-scalar)
-    return values
+    value = np.asarray(raw).astype(dtype)
+    effective = 1 if scalar == 0 else scalar
+    # A Python scalar, never a numpy one: numpy's weak-scalar promotion keeps the result in
+    # `dtype`, which is what the writer's `data * abs(scalar)` produces.
+    factor: int | float = 1 / effective if effective < 0 else effective
+    return value * abs(factor)
+
+
+def correctly_rounded_differences(raw: Any, scalars: Any, dtype: Any) -> int:
+    """How many values the writer's arithmetic puts off the correctly rounded quotient.
+
+    SEG-Y defines the divisor and no rounding, so this is not a failure; it is recorded so
+    the difference between what the standard's words compute and what the store holds is
+    visible on the certificate rather than hidden by choosing one side.
+    """
+    values = np.asarray(raw)
+    scale = np.asarray(scalars)
+    count = 0
+    for value, scalar in zip(values.ravel(), scale.ravel(), strict=True):
+        written = _scale_coordinate(value, int(scalar), dtype)
+        divisor = int(scalar)
+        if divisor < 0:
+            quotient = np.asarray(value).astype(dtype) / np.asarray(-divisor).astype(dtype)
+        else:
+            quotient = _scale_coordinate(value, divisor, dtype)
+        count += int(not np.array_equal(written, quotient))
+    return count
 
 
 REQUIRED_ARRAY_NOTE = (
@@ -582,7 +632,9 @@ def _derived_coordinate_evidence(
         }
 
     scalars = np.asarray(source_headers[COORD_SCALAR_FIELD]).ravel()
-    mismatches: list[dict[str, Any]] = []
+    examples: list[dict[str, Any]] = []
+    mismatch_count = 0
+    quotient_differences = 0
     compared = 0
 
     for array_name in present:
@@ -620,11 +672,17 @@ def _derived_coordinate_evidence(
             # Each trace's OWN scalar, never trace 0's applied to all. Upstream reads
             # trace 0 only; a survey whose scalar varies is legal SEG-Y, and applying one
             # trace's scalar to the rest would be a fabrication under SP12.
-            expected = _scale_coordinate(raw[ordinal], int(scalars[ordinal]))
-            observed = np.asarray(stored[index], dtype=np.float64)
+            expected = _scale_coordinate(raw[ordinal], int(scalars[ordinal]), stored.dtype)
+            observed = np.asarray(stored[index])
+            quotient_differences += correctly_rounded_differences(
+                raw[ordinal : ordinal + 1], scalars[ordinal : ordinal + 1], stored.dtype
+            )
             if not np.array_equal(expected, observed):
-                if len(mismatches) < 20:
-                    mismatches.append(
+                # The COUNT is every mismatch. Only the examples are capped: until D-0087
+                # the list was capped at 20 and its length reported as the count.
+                mismatch_count += 1
+                if len(examples) < MISMATCH_EXAMPLES:
+                    examples.append(
                         {
                             "array": array_name,
                             "source_ordinal": ordinal,
@@ -639,14 +697,17 @@ def _derived_coordinate_evidence(
     return {
         "derived_coords_present": True,
         "derived_coords_verified": True,
-        "derived_coords_identical": not mismatches,
+        "derived_coords_identical": mismatch_count == 0,
         "derived_coords_arrays": present,
         "derived_coords_compared": "np.array_equal, recomputed from source headers - EXACT",
+        "derived_coords_arithmetic": COORDINATE_ARITHMETIC,
         "derived_coords_n": compared,
         "derived_coords_scalar_uniform": transform.uniform,
         "derived_coords_scalar_values": list(transform.distinct_values),
-        "derived_coords_first_difference": mismatches[0] if mismatches else None,
-        "derived_coords_mismatch_count": len(mismatches),
+        "derived_coords_first_difference": examples[0] if examples else None,
+        "derived_coords_mismatch_count": mismatch_count,
+        "derived_coords_mismatch_examples": examples,
+        "derived_coords_standard_quotient_differences": quotient_differences,
         "derived_coords_note": DERIVED_COORD_NOTE,
     }
 
@@ -672,8 +733,24 @@ def _sample_axis_name(group: Any, variable: str, grid: tuple[str, ...]) -> str |
     return extra[-1] if extra else None
 
 
-def _time_axis_evidence(source_headers: Any, group: Any, axis: str | None) -> dict[str, Any]:
-    """Recompute the sample axis from the source headers and compare, exactly."""
+def _effective_delays_ms(raw: Any, scalars: Any) -> list[float]:
+    """Delay recording time in true milliseconds. Bytes 215-216 scale bytes 95-114.
+
+    SEG-Y: a positive scalar multiplies, a negative one divides, and zero means one.
+    """
+    effective: set[float] = set()
+    for value, scalar in zip(np.ravel(raw), np.ravel(scalars), strict=True):
+        s = int(scalar)
+        if s == 0:
+            s = 1
+        effective.add(float(value) * s if s > 0 else float(value) / abs(s))
+    return sorted(effective)
+
+
+def _time_axis_evidence(
+    source_headers: Any, binary_header: Any, group: Any, axis: str | None
+) -> dict[str, Any]:
+    """Rebuild the sample axis as the writer does and compare exactly. Name disagreements."""
     if axis is None:
         return {
             "derived_axis_present": False,
@@ -684,7 +761,6 @@ def _time_axis_evidence(source_headers: Any, group: Any, axis: str | None) -> di
                 "NOT CHECKED - not checked-and-passed."
             ),
         }
-    names = getattr(getattr(source_headers, "dtype", None), "names", None) or ()
     if axis not in group:
         return {
             "derived_axis_present": False,
@@ -692,64 +768,100 @@ def _time_axis_evidence(source_headers: Any, group: Any, axis: str | None) -> di
             "derived_axis_identical": None,
             "derived_axis_note": f"store carries no {axis!r} array; NOT CHECKED.",
         }
-    if "sample_interval" not in names or "delay_recording_time" not in names:
-        return {
-            "derived_axis_name": axis,
-            "derived_axis_present": True,
-            "derived_axis_verified": False,
-            "derived_axis_identical": None,
-            "derived_axis_note": (
-                "source header lacks sample_interval or delay_recording_time, so the "
-                "axis cannot be reconstructed. NOT CHECKED - not checked-and-passed."
-            ),
-        }
 
-    intervals = np.unique(np.asarray(source_headers["sample_interval"]).ravel())
-    delays = np.unique(np.asarray(source_headers["delay_recording_time"]).ravel())
-    if intervals.size != 1 or delays.size != 1:
-        # A varying interval or delay is legal SEG-Y and means the axis is not a single
-        # shared progression. Recorded, never guessed at.
-        return {
-            "derived_axis_name": axis,
-            "derived_axis_present": True,
-            "derived_axis_verified": False,
-            "derived_axis_identical": None,
-            "derived_axis_intervals": [int(v) for v in intervals[:10]],
-            "derived_axis_delays": [int(v) for v in delays[:10]],
-            "derived_axis_note": (
-                "sample_interval or delay_recording_time varies between traces, so a "
-                "single shared axis is not derivable. NOT CHECKED."
-            ),
-        }
-
+    interval_us = int(np.asarray(binary_header["sample_interval"]).reshape(-1)[0])
+    samples = int(np.asarray(binary_header["samples_per_trace"]).reshape(-1)[0])
     stored = np.asarray(group[axis][:])
-    interval_us = int(intervals[0])
-    delay_ms = int(delays[0])
-    expected = delay_ms + np.arange(stored.shape[0], dtype=np.float64) * (interval_us / 1000.0)
-    observed = np.asarray(stored, dtype=np.float64)
-    identical = bool(np.array_equal(expected, observed))
 
-    first = None
+    # The writer: segy's sample labels are arange(0, interval * samples, interval) in
+    # microseconds; MDIO divides by 1000 and stores the template's dimension dtype. The
+    # expectation is the TRUE millisecond value, so an axis the store truncated fails.
+    expected = np.arange(0, interval_us * samples, interval_us, dtype=np.int64) / 1000
+    observed = np.asarray(stored, dtype=np.float64)
+    identical = bool(expected.shape == observed.shape and np.array_equal(expected, observed))
+
+    first: dict[str, float] | None = None
     if not identical:
-        differing = np.flatnonzero(expected != observed)
-        if differing.size:
-            i = int(differing[0])
+        if expected.shape != observed.shape:
             first = {
-                "index": i,
-                "expected": float(expected[i]),
-                "observed": float(observed[i]),
+                "expected_length": int(expected.shape[0]),
+                "observed_length": int(observed.shape[0]),
             }
+        else:
+            i = int(np.flatnonzero(expected != observed)[0])
+            first = {"index": i, "expected": float(expected[i]), "observed": float(observed[i])}
+
+    names = getattr(getattr(source_headers, "dtype", None), "names", None) or ()
+    findings: list[dict[str, Any]] = []
+    if "sample_interval" in names:
+        trace_intervals = sorted(
+            int(v) for v in np.unique(np.asarray(source_headers["sample_interval"]))
+        )
+        if trace_intervals == [0]:
+            findings.append(
+                {
+                    "code": "trace_interval_unspecified",
+                    "blocks_release": False,
+                    "trace_intervals_us": trace_intervals,
+                    "message": (
+                        "every trace-header sample interval (bytes 117-118) is 0 while the "
+                        f"binary header declares {interval_us} us. SEG-Y rev 1 marks the "
+                        "trace-header interval highly recommended, not mandatory, and rev 2.x "
+                        "defines zero as unknown; the axis is taken from the binary header, "
+                        "as the writer and industry readers take it."
+                    ),
+                }
+            )
+        elif trace_intervals != [interval_us]:
+            findings.append(
+                {
+                    "code": "trace_interval_differs",
+                    "blocks_release": False,
+                    "trace_intervals_us": trace_intervals[:10],
+                    "message": (
+                        f"trace-header sample intervals (bytes 117-118) {trace_intervals[:10]} "
+                        f"differ from the binary header's {interval_us} us. The stored axis "
+                        "follows the binary header, as the writer builds it; for a "
+                        "fixed-length file SEG-Y rev 2.x says the trace-header value is ignored."
+                    ),
+                }
+            )
+    if "delay_recording_time" in names:
+        scalars = (
+            np.asarray(source_headers["times_scalar"])
+            if "times_scalar" in names
+            else np.zeros_like(np.asarray(source_headers["delay_recording_time"]))
+        )
+        delays = _effective_delays_ms(np.asarray(source_headers["delay_recording_time"]), scalars)
+        if delays != [0.0]:
+            findings.append(
+                {
+                    "code": "nonzero_recording_delay",
+                    "blocks_release": True,
+                    "delay_ms": delays[:10],
+                    "message": (
+                        f"delay recording time (bytes 109-110, scaled by 215-216) is {delays[:10]} "
+                        "ms. SEG-Y defines it as the time from source initiation to the first "
+                        "recorded sample, and segyio, segysak, OpenVDS, OpendTect and Madagascar "
+                        "start the axis there. The stored axis starts at 0 because the pinned "
+                        "multidimio ignores the delay, so a reader using the stored axis places "
+                        "every event earlier than those readers do. Not release-ready as stored."
+                    ),
+                }
+            )
 
     return {
         "derived_axis_name": axis,
         "derived_axis_present": True,
         "derived_axis_verified": True,
         "derived_axis_identical": identical,
-        "derived_axis_compared": "np.array_equal, recomputed from source headers - EXACT",
+        "derived_axis_compared": "np.array_equal against the writer's axis - EXACT",
+        "derived_axis_source": "binary header bytes 3217-3218 (interval) and 3221-3222 (samples)",
+        "derived_axis_arithmetic": "(i * interval_us) / 1000 for i in range(samples), from 0",
         "derived_axis_n": int(stored.shape[0]),
         "derived_axis_sample_interval_us": interval_us,
-        "derived_axis_delay_ms": delay_ms,
         "derived_axis_first_difference": first,
+        "findings": findings,
         "derived_axis_note": DERIVED_TIME_NOTE,
     }
 
@@ -1129,7 +1241,7 @@ def plane_4(
     # The axis name comes from Zarr v3 dimension metadata, never assumed to be "time":
     # hard-coding a dimension name is the defect P7 found (D-0039).
     axis_evidence = _time_axis_evidence(
-        source_headers, group, _sample_axis_name(group, variable, dimensions)
+        source_headers, handle.binary_header, group, _sample_axis_name(group, variable, dimensions)
     )
     axis_ok = axis_evidence.get("derived_axis_identical") is not False
 

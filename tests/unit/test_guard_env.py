@@ -53,8 +53,23 @@ def test_scrub_removes_and_reports(clean_env):
 
 
 def test_barred_list_matches_specification():
-    """The list is binding. Drift here is a specification violation, not a refactor."""
-    assert set(BARRED_ENV_VARS) == {"MDIO_IGNORE_CHECKS", "MDIO__IMPORT__RAW_HEADERS"}
+    """The list is binding. Drift here is a specification violation, not a refactor.
+
+    Spec 9.1 as amended by DECISIONS.md D-0087: the two original entries plus every
+    variable the pinned upstream reads that changes how a source is read, what a store
+    contains, or what upstream accepts. That the list is COMPLETE against the installed
+    upstream is proven separately, in test_upstream_settings.py.
+    """
+    assert set(BARRED_ENV_VARS) == {
+        "MDIO_IGNORE_CHECKS",
+        "MDIO__IMPORT__RAW_HEADERS",
+        "MDIO__IMPORT__CLOUD_NATIVE",
+        "MDIO__GRID__SPARSITY_RATIO_LIMIT",
+        "MDIO__GRID__SPARSITY_RATIO_WARN",
+        "SEGY_ENDIANNESS",
+        "SEGY_OVERRIDE_BINARY_HEADER",
+        "SEGY_OVERRIDE_TRACE_HEADER",
+    }
 
 
 def test_sdip_source_never_sets_a_barred_variable(repo_root):

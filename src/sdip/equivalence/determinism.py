@@ -67,6 +67,7 @@ from typing import Any
 import numpy as np
 
 from sdip.ingest import ingest
+from sdip.spec.overrides import SurveyOverride
 
 METADATA_FILENAME = "zarr.json"
 """The one file the chunk-byte comparison skips. It carries MDIO's ``createdOn``.
@@ -416,6 +417,7 @@ def g6(
     template: str = "PostStack3DTime",
     workdir: str | Path,
     runs: int = 2,
+    override: SurveyOverride | None = None,
 ) -> G6Result:
     """Ingest one source several times over and compare the stores byte for byte.
 
@@ -438,6 +440,9 @@ def g6(
         source: The SEG-Y file to ingest repeatedly.
         spec_revision: SEG-Y revision passed to every run's gap-free spec build.
         template: Registered MDIO template name, identical for every run.
+        override: The survey override every run is ingested under. Without it a survey
+            that needs one could not reach G6 at all: before D-0087 this function took
+            none, so ``certify`` of such a survey was unreachable even from Python.
         workdir: Directory to hold the run stores. Created if absent. Nothing outside it
             is written.
         runs: How many independent ingests to perform. Two is the specified minimum.
@@ -479,6 +484,7 @@ def g6(
                 revision=spec_revision,
                 template=template,
                 overwrite=False,
+                override=override,
             )
             stores.append(store)
 

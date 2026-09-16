@@ -16,7 +16,7 @@ failure, full stop.
 DERIVED WORK — ATTRIBUTION AT THE POINT OF USE
 ----------------------------------------------
 This driver is seeded from TGS's ``tests/integration/test_segy_roundtrip_teapot.py``
-in ``TGSAI/mdio-python`` at commit ``a2895b53088ffacbf4bd1b9e882856cbda78e235``.
+in ``TGSAI/mdio-python`` at commit ``76df396e545017d2a32ee25a5f98989fa37afec4``.
 Copyright TGS, licensed under the Apache License, Version 2.0.
 
 SDIP extends that test — which is scoped to spec-declared header fields — to the full
@@ -196,6 +196,12 @@ def export(
             which is the shape SDIP writes for a source whose textual header did not
             decode (``DECISIONS.md`` D-0055).
     """
+    from sdip.guard.env import refuse_barred_env_vars
+
+    # The same refusal ingest makes, for the same reason: a segy override arriving through
+    # the environment changes how the store is re-encoded without appearing anywhere the
+    # round trip records (D-0087).
+    refuse_barred_env_vars("export")
     store_path, output_path, source_path = Path(store), Path(output), Path(source)
     _assert_exportable(store_path)
     ledger = WarningLedger()

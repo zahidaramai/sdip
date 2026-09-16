@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from sdip.errors import PhaseNotAuthorisedError, SdipError, UntrustedInputError
-from sdip.guard.env import check_barred_env_vars
+from sdip.guard.env import refuse_barred_env_vars
 from sdip.guard.warn import (
     WarningLedger,
     recording_log_records,
@@ -50,8 +50,9 @@ from sdip.ingest.preflight import SourceLayout, validate_segy_structure
 from sdip.ingest.provenance_marker import attach_provenance_marker
 from sdip.ingest.raw_samples import RawSampleView, attach_raw_sample_view
 from sdip.provenance.hashing import sha256_file
+from sdip.spec.declaration import SurveyDeclaration
 from sdip.spec.gate import G1Result, g1_for_spec
-from sdip.spec.generator import GapFreeSpec, build_gap_free_spec
+from sdip.spec.generator import GapFreeSpec
 from sdip.spec.overrides import SurveyOverride
 
 MIN_SEGY_BYTES = 3600 + 240
@@ -160,7 +161,9 @@ def validate_output_path(output: str | Path) -> None:
     raise PhaseNotAuthorisedError(msg)
 
 
-def validate_source(path: Path) -> SourceLayout:
+def validate_source(
+    path: Path, *, endianness: str | None = None, revision: float | int = 1
+) -> SourceLayout:
     """Validate a SEG-Y source before anything is allocated. Spec §11.4.
 
     Header-declared lengths and counts are attacker-supplied until reconciled with the
@@ -180,6 +183,10 @@ def validate_source(path: Path) -> SourceLayout:
 
     Args:
         path: Source SEG-Y.
+        endianness: The declared byte order, forwarded to layer 3. Without it a declared
+            little-endian source was refused here (D28's regression, D-0087).
+        revision: The declared revision, forwarded to layer 3 for the coordinate-scalar
+            check (D27).
 
     Returns:
         The reconciled layout, whose ``size`` is the size on disk.
@@ -198,7 +205,7 @@ def validate_source(path: Path) -> SourceLayout:
             "(3200 textual + 400 binary + one 240-byte trace header)"
         )
         raise UntrustedInputError(msg)
-    return validate_segy_structure(path, size)
+    return validate_segy_structure(path, size, endianness=endianness, revision=revision)
 
 
 @dataclass(slots=True)
@@ -236,6 +243,8 @@ class IngestResult:
     refuse the ingest and mode 2 would rewrite the header (``DECISIONS.md`` D-0055).
     A store ingested ``"off"`` carries no ``segy_file_header`` variable, so it has no
     parsed views and cannot be exported."""
+    declaration: SurveyDeclaration | None = None
+    """The survey declaration the store was written under; its digest is in the marker."""
 
     @property
     def read_path_intact(self) -> bool:
@@ -257,6 +266,7 @@ class IngestResult:
                 "read_path_intact": self.read_path_intact,
                 "output_path": self.output_path,
                 "template": self.template,
+                "declaration": self.declaration.to_json() if self.declaration else None,
                 "raw_file_headers": self.raw_headers.to_json(),
                 "textual_header_decode": (
                     self.textual_decode.to_json() if self.textual_decode is not None else None
@@ -378,11 +388,7 @@ def ingest(
     """
     assert_main_guarded()
 
-    barred = check_barred_env_vars()
-    if barred:
-        names = ", ".join(f.name for f in barred)
-        msg = f"barred environment variable set: {names} (spec 9.1). Refusing to ingest."
-        raise SdipError(msg)
+    refuse_barred_env_vars("ingest")
 
     # Before `Path(output)` touches it, because `pathlib` is what silently turns
     # `s3://bucket/key` into a relative local path (D-0058).
@@ -390,10 +396,19 @@ def ingest(
 
     source_path = Path(source).resolve()
     output_path = Path(output).resolve()
-    layout = validate_source(source_path)
+    layout = validate_source(
+        source_path,
+        endianness=override.endianness if override is not None else None,
+        revision=revision,
+    )
     before = sha256_file(source_path)
 
-    built = build_gap_free_spec(revision, override=override)
+    # One declaration, built once, and the spec derived FROM it - so what the marker
+    # records and what the ingest actually read cannot be two different things (D-0087).
+    declaration = SurveyDeclaration(
+        revision=revision, template=template, override=override, grid_overrides=grid_overrides
+    )
+    built = declaration.build_spec()
     gate = g1_for_spec(built)
     gate.raise_for_status()
 
@@ -459,10 +474,11 @@ def ingest(
     # after the mitigations it vouches for, so an ingest that dies midway leaves NO
     # marker rather than a marker promising arrays that were never written - the failure
     # mode probe P8 measured, inverted.
-    attach_provenance_marker(output_path)
+    attach_provenance_marker(output_path, declaration=declaration)
 
     after = sha256_file(source_path)
     return IngestResult(
+        declaration=declaration,
         source_path=str(source_path),
         source_sha256=before,
         source_sha256_post_read=after,

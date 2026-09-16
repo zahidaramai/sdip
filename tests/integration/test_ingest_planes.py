@@ -265,7 +265,7 @@ def test_certificate_refuses_a_dirty_tree(ingested, tmp_path):
     """Spec 11.3. There is no --force."""
     source, store, result = ingested
     (tmp_path / "dirty.txt").write_text("x")
-    with pytest.raises(DirtyTreeError, match="no override"):
+    with pytest.raises(DirtyTreeError, match="No flag skips this check"):
         issue(
             result,
             [plane_1(source, store)],

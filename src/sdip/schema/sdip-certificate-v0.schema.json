@@ -135,6 +135,56 @@
         }
       }
     },
+    "declaration": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "title": "Survey declaration binding",
+      "description": "Which reading of the source this certificate covers - revision, template, survey override and grid overrides - identified by digest, and whether the store's own record of the declaration it was written under matches it (DECISIONS.md D-0087). Release readiness requires BOUND.",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "sha256",
+        "summary",
+        "status",
+        "recorded_sha256",
+        "store_template"
+      ],
+      "properties": {
+        "schema": {
+          "const": "sdip.survey-declaration/1"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "BOUND",
+            "UNBOUND",
+            "FOREIGN"
+          ]
+        },
+        "recorded_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "store_template": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
     "output_path": {
       "type": "string"
     },
@@ -636,6 +686,10 @@
               },
               "sha_verification": {
                 "const": "declared-not-runtime-verified"
+              },
+              "release_tag": {
+                "type": "string",
+                "description": "The upstream release tag; commit_sha is the commit it points at (DECISIONS.md D-0087)."
               }
             }
           }
@@ -652,6 +706,13 @@
         "peak_rss_bytes": {
           "type": "integer",
           "minimum": 0
+        },
+        "upstream_settings_recorded": {
+          "type": "object",
+          "description": "Environment variables the pinned upstream reads that SDIP records rather than bars - worker counts, spec 3.4 - as set for this run. Variables that change the reading are barred and refused before a run starts (spec 9.1, DECISIONS.md D-0087).",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },

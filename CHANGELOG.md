@@ -15,6 +15,44 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [Unreleased]
+
+**A store now records the reading of the source that wrote it, and every command that reads a
+store must be handed that same reading.** Root cause of D47; `DECISIONS.md` D-0087.
+
+### Fixed
+
+- **`verify`, `export` and `certify` could not handle a survey that needs an override.** On a
+  byte-correct revision 0 store, `verify` returned FAIL under its defaults and a traceback with
+  the revision given; `export` raised a traceback; `certify` could not accept `--override`. All
+  four store commands now take the same `--revision`, `--template` and `--override`, defined
+  once; ingest records the declaration's digest in the store; a different declaration is
+  refused before any plane runs, with both named, exit 2.
+- **A stray environment variable produced a false PASS.** With `SEGY_OVERRIDE_BINARY_HEADER` set
+  for ingest and verify, 191 of 192 stored samples were wrong and `verify` passed every plane.
+  Every environment variable the pinned upstream reads is now classified; eight are refused
+  before a command reads a byte, including lower-case spellings `segy` honours.
+- **Plane 3 failed correct stores** on 12-16% of coordinate values at a negative scalar: it
+  divided where the writer multiplies by the reciprocal. It now uses each trace's own scalar
+  with the writer's exact arithmetic, and reports the real mismatch count instead of capping it
+  at 20.
+- **Plane 4 failed every correct store whose trace headers carry an interval of 0.** The axis
+  is now rebuilt from the binary header, as the writer builds it; disagreements are named
+  findings, and a nonzero recording delay blocks release.
+- **A declared little-endian file was refused** by the hostile-input preflight, which read the
+  binary header big-endian (a regression of D28 from 2026-08-23).
+- **A zero coordinate scalar crashed ingest with a traceback.** It is now refused with the
+  standard's position, industry practice, and why the pinned writer blocks it (D27).
+- **The declared upstream commit SHAs were one commit past their release tags.** Corrected to
+  the tag commits, with the release tag recorded on every certificate.
+
+### Changed
+
+- Release readiness now requires the certificate's declaration to be `BOUND`, and blocks on any
+  finding marked as blocking release.
+- `sdip doctor` checks the environment-variable registry against the installed upstream.
+- Environment refusals exit 2, not 1: they are not a verdict about data.
+
 ## [1.1.4] — 2026-08-27
 
 **Container only. Supersedes 1.1.3 for image users; the wheel and sdist are unchanged in

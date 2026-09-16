@@ -40,6 +40,7 @@ class EnvironmentCapture:
     machine: str
     packages: dict[str, str | None] = field(default_factory=dict)
     declared_pins: dict[str, dict[str, str]] = field(default_factory=dict)
+    upstream_settings_recorded: dict[str, str] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
         """Certificate-shaped mapping."""
@@ -50,12 +51,16 @@ class EnvironmentCapture:
             "machine": self.machine,
             "packages": dict(self.packages),
             "declared_pins": {k: dict(v) for k, v in self.declared_pins.items()},
+            "upstream_settings_recorded": dict(self.upstream_settings_recorded),
         }
 
 
 def capture_environment() -> EnvironmentCapture:
     """Capture the running environment for the certificate ``env`` block."""
+    from sdip.guard.env import recorded_env_vars
+
     return EnvironmentCapture(
+        upstream_settings_recorded=recorded_env_vars(),
         python=platform.python_version(),
         python_implementation=platform.python_implementation(),
         platform=f"{platform.system()} {platform.release()}",
@@ -67,6 +72,7 @@ def capture_environment() -> EnvironmentCapture:
                 "version": pin.version,
                 "commit_sha": pin.commit_sha,
                 "repository": pin.repository,
+                "release_tag": pin.release_tag,
                 "sha_verification": "declared-not-runtime-verified",
             }
             for pin in PINS

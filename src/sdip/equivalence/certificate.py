@@ -26,6 +26,7 @@ from typing import Any
 
 from sdip import __version__
 from sdip._pins import CERTIFICATE_SCHEMA_VERSION, LOSSY_CODECS, SPEC_VERSION
+from sdip.equivalence.binding import BindingResult
 from sdip.equivalence.closure import ClosureResult
 from sdip.equivalence.determinism import G6Result
 from sdip.equivalence.nonvacuity import G7Result
@@ -170,6 +171,7 @@ def issue(
     closure: ClosureResult | None = None,
     determinism: G6Result | None = None,
     scale: G5Result | None = None,
+    binding: BindingResult | None = None,
     root: str | Path = ".",
     require_clean_tree: bool = True,
     baseline: GitState | None = None,
@@ -194,6 +196,9 @@ def issue(
             array values. Absent means ``NOT_RUN``.
         scale: G5 result — a completed survey-scale run judged against ceilings declared
             **before** it (SP9). Absent means ``NOT_RUN``.
+        binding: Whether the store binds to the survey declaration it was ingested under
+            (D-0087). Recorded as the certificate's ``declaration`` block; release
+            readiness requires ``BOUND``.
         nonvacuity: G7 result. **Absent means ``NOT_RUN``, and the verdict cannot reach
             ``EQUIVALENT``** - a store whose planes pass against an engine never shown
             capable of failing has not been checked.
@@ -230,7 +235,7 @@ def issue(
         msg = (
             f"refusing to issue a certificate from a dirty working tree ({detail}). "
             "A certificate that cannot be reproduced from the committed record is not "
-            "evidence (spec 11.3). There is no override."
+            "evidence (spec 11.3). No flag skips this check."
         )
         raise DirtyTreeError(msg)
 
@@ -241,7 +246,7 @@ def issue(
             "measurements on this certificate were produced by the code at the first "
             "commit, so attesting them to the second would be a false provenance claim. "
             "A clean tree at issue time does not establish that the tree was clean while "
-            "the work was done (spec 11.3). There is no override."
+            "the work was done (spec 11.3). No flag skips this check."
         )
         raise DirtyTreeError(msg)
 
@@ -355,6 +360,7 @@ def issue(
         "roundtrip_closure": closure.to_json() if closure is not None else None,
         "determinism": determinism.to_json() if determinism is not None else None,
         "scale": scale.to_json() if scale is not None else None,
+        "declaration": binding.to_json() if binding is not None else None,
         "transforms_declared": (
             ([exposure.to_json(raw_view_stored=raw_view_present)] if exposure is not None else [])
             + (
@@ -429,6 +435,13 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
         status = planes.get(key, {}).get("status", NOT_RUN)
         if status != "PASS":
             blocking.append(f"{key} is {status}")
+        # D-0087. A plane can pass - the store is exactly what the writer wrote - and still
+        # carry a finding that makes the store unfit to release, such as an axis that
+        # starts where no industry reader starts it. Findings do not bend a verdict; the
+        # ones that block release are consulted here, not merely recorded.
+        for finding in (planes.get(key, {}).get("evidence") or {}).get("findings") or []:
+            if finding.get("blocks_release"):
+                blocking.append(f"{key} finding {finding.get('code')}: {finding.get('message')}")
 
     # D42 / SP11. The controls are consulted, not merely recorded. `g3_control` and
     # `closure_control` each demonstrate that a check is CAPABLE OF FAILING - they
@@ -468,6 +481,22 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
         blocking.append("a declared transform is not provably invertible on this data")
     if payload.get("git", {}).get("dirty"):
         blocking.append("issued from a dirty working tree")
+
+    # D-0087. A certificate names a reading of the source; without a BOUND declaration it
+    # either does not say which, or cannot show the store was written under the one it
+    # names. D47 measured the cost: one byte-correct store, FAIL under one reading and a
+    # traceback under another.
+    declaration = payload.get("declaration")
+    if not declaration:
+        blocking.append(
+            "survey declaration NOT_RECORDED - the certificate does not say which reading "
+            "of the source it covers"
+        )
+    elif declaration.get("status") != "BOUND":
+        blocking.append(
+            f"survey declaration is {declaration.get('status')} - the store could not be "
+            "checked against the declaration the certificate names"
+        )
 
     return {
         "release_ready": not blocking,

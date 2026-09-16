@@ -31,8 +31,8 @@ classifiers = [
 ]
 
 # --- Upstream pins are BINDING. Spec v1.0 section 3.3. -------------------------
-# multidimio 1.2.1  SHA a2895b53088ffacbf4bd1b9e882856cbda78e235
-# segy       0.6.0  SHA 8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78
+# multidimio 1.2.1  SHA 76df396e545017d2a32ee25a5f98989fa37afec4
+# segy       0.6.0  SHA 557bceba4abce09d084a1f0b8ac466382ce5c502
 # Pin BOTH together: the ibm32 header fix straddles the segy 0.6.0 boundary.
 # A bump invalidates every certificate issued under the previous pin and requires
 # a maintainer decision in DECISIONS.md plus a MAJOR release with a migration note:

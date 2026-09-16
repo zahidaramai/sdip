@@ -9,12 +9,13 @@ import pytest
 from click.testing import CliRunner
 
 from sdip.cli.doctor import run_doctor
-from sdip.cli.main import EXIT_FAIL, cli
+from sdip.cli.main import EXIT_FAIL, EXIT_USAGE, cli
 from sdip.cli.main import main as cli_entry
 from sdip.cli.result import Status
 from sdip.errors import (
     BarredEnvironmentError,
     DirtyTreeError,
+    GuardError,
     SdipError,
     SpecCompletenessError,
     UntrustedInputError,
@@ -73,6 +74,7 @@ def test_doctor_runs_every_declared_check(repo_root):
     assert [c.name for c in report.checks] == [
         "python-version",
         "barred-env-vars",
+        "upstream-settings",
         "barred-packages",
         "upstream-pins",
         "runtime-licences",
@@ -113,6 +115,7 @@ def test_doctor_substantive_checks_pass_here(repo_root):
     passing = {c.name for c in report.checks if c.name not in failing}
     assert {
         "barred-env-vars",
+        "upstream-settings",
         "barred-packages",
         "upstream-pins",
         "runtime-licences",
@@ -137,7 +140,9 @@ def test_doctor_json_is_machine_readable(runner, repo_root):
     payload = json.loads(result.output)
     assert payload["command"] == "doctor"
     assert payload["verdict"] in {"PASS", "FAIL"}
-    assert len(payload["checks"]) == 8
+    # Every check the report runs reaches the JSON. The list itself is pinned by name in
+    # test_doctor_runs_every_declared_check; a second hard-coded count here went stale.
+    assert [c["name"] for c in payload["checks"]] == [c.name for c in run_doctor(repo_root).checks]
     assert payload["environment"]["packages"]["multidimio"] == "1.2.1"
 
 
@@ -306,8 +311,34 @@ def test_every_sdip_error_reaches_the_operator_as_a_message_not_a_traceback(monk
         with pytest.raises(SystemExit) as caught:
             cli_entry()
 
-        assert caught.value.code == EXIT_FAIL, f"{type(exc).__name__} must exit non-zero"
+        # Exit 2 for a refusal of the ENVIRONMENT, exit 1 for everything else. A script
+        # reading 1 as "the conversion failed" must not be told that about a stray
+        # variable - confusing an operator error with a verdict is D47's defect.
+        expected = EXIT_USAGE if isinstance(exc, GuardError) else EXIT_FAIL
+        assert caught.value.code == expected, f"{type(exc).__name__} exit code"
         err = capsys.readouterr().err
         assert "Traceback" not in err, f"{type(exc).__name__} leaked a traceback"
         assert type(exc).__name__ in err
         assert str(exc) in err
+
+
+def test_doctor_fails_when_upstream_defines_a_setting_sdip_has_not_classified(monkeypatch):
+    """NEGATIVE CONTROL for ``upstream-settings`` (D-0087).
+
+    The registry is hand-written; this check is what makes it safe. An installed upstream
+    that reads a variable SDIP has never classified must fail doctor, not pass silently.
+    """
+    from sdip.cli import doctor as doctor_module
+
+    monkeypatch.setattr(
+        doctor_module,
+        "classification_gaps",
+        lambda: {
+            "unclassified": ["segy.config.New.field (SEGY_NEW)"],
+            "stale": [],
+            "mismatched": [],
+        },
+    )
+    check = doctor_module._check_upstream_settings()
+    assert check.status.name == "FAIL"
+    assert "SEGY_NEW" in check.summary
