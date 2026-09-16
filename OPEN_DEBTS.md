@@ -1802,3 +1802,239 @@ recorded with the fix (`DECISIONS.md` D-0087).
     unspecified — so *"the gate is right to fail it"* was wrong.
 
 ---
+
+## D47 — CLOSED 2026-09-16 — every command takes the declaration, and the store records it
+
+- **Closes:** D47 above, left unedited (**SP10**) · **Decision:** `DECISIONS.md` D-0087
+
+Measured through the `sdip` executable, not the API: a revision 0 store built with the
+committed override now **verifies PASS** and reports `[BOUND]` when handed the same
+declaration; is **refused, exit 2, no traceback**, naming both declarations, under the old
+defaults and with only `--revision 0`; **exports byte-identically** (G3 PASS); and **certifies**
+to a certificate whose `declaration.status` is `BOUND` with G3 PASS, in 40 s, run from a
+committed repository. A little-endian file declared through an override ingests and verifies
+through the CLI, and is refused without the declaration.
+`tests/integration/test_cli_declaration.py` — 8 of its 8 fast tests fail against the pre-fix
+source and pass after.
+
+---
+
+## D28 — REGRESSED 2026-08-23, CLOSED AGAIN 2026-09-16 — measured through ingest this time
+
+- **Corrects:** the D28 closure above, which was true at 07:44 on 2026-08-23 and false from
+  09:49 the same day (**SP10**) · **Decision:** `DECISIONS.md` D-0087
+
+The hostile-input preflight read the binary header big-endian without being given the
+declaration, so a declared little-endian file was refused with a message saying SDIP does
+not read little-endian. D28's test read headers through `SegyFile` and never ingested, so it
+kept passing. The preflight now reads the declared byte order, delegates `infer` to `segy`'s
+own inference, and names the declaration in its refusal. Measured by
+`tests/unit/test_preflight_declared_byte_order.py` (11 pass; 9 of the first 10 failed pre-fix)
+and through the CLI in `test_cli_declaration.py`.
+
+---
+
+## D22 — REOPENED 2026-09-16 — closed with no mechanism behind it
+
+- **Reopens:** the D22 closure above, left unedited (**SP10**) · **Decision:** `DECISIONS.md` D-0087
+
+The closure said *"a sample format can now be supplied"* and cited D-0044, which is about
+aliasing index bytes and never mentions a sample format. The override schema has no
+sample-format key and SDIP passes nothing upstream. Measured: the committed revision 0
+generator writes format code 1 into bytes 3225-3226; with those two bytes zeroed, `sdip ingest
+--revision 0 --override overrides/segy-rev0-poststack3d.toml` is refused — *"sample-format code
+0, which the pinned segy 0.6.0 does not define"*.
+
+**Not blocked upstream.** `segy` 0.6.0's `SegyHeaderOverrides.binary_header` is applied before
+the format code is parsed, and `mdio` 1.2.1's `segy_to_mdio(segy_header_overrides=...)` passes
+it through — public API. Seismic Unix, Madagascar, OpenVDS and OpendTect all expose a declared
+format. What is unmeasured is the round trip: whether a declared format changes the exported
+binary header and therefore G3. That needs a pre-registration before any run (**SP9**).
+
+**Also withdrawn:** the opening entry's *"the standard never mandated it"*. SEG-Y rev 1 marks
+the field mandatory; rev 0's own marking could not be confirmed from a primary source.
+
+---
+
+## D6 — CORRECTED 2026-09-16 — revision 0 "end to end" was measured through the API
+
+- **Corrects:** D6 NARROWED FURTHER 2026-08-23 (**SP10**) · **Decision:** `DECISIONS.md` D-0087
+
+The revision 0 leg ran `ingest`, the planes and `export` from Python with a hand-built spec, on
+a fixture whose format code the generator had written. Through the CLI, `verify` returned FAIL
+or a traceback and `certify` could not accept the override (D47). As of D-0087 the CLI path is
+measured for a revision 0 file with a valid format code; a revision 0 file with format code 0 is
+still refused (D22). Revisions 2 and 2.1 remain blocked upstream.
+
+---
+
+## D27 — NARROWED 2026-09-16 — refused cleanly and explained; the refusal is upstream's
+
+- **Narrows:** D27 above (**SP10**) · **Decision:** `DECISIONS.md` D-0087
+
+`sdip ingest` on a revision 0 or 1 file whose first trace carries a zero coordinate scalar
+raised `ValueError` from `mdio/segy/scalar.py` as a traceback. The preflight now mirrors
+`mdio`'s rule exactly — trace 0 only; zero accepted from revision 2; any magnitude outside
+1, 10, 100, 1000, 10000 refused — and refuses with the value, the standard's position (rev 2.0
+and 2.1 define zero as 1; rev 1 is silent) and industry practice (segyio, Seismic Unix, OpenVDS
+and OpendTect read zero as 1 at every revision). `tests/unit/test_preflight_coordinate_scalar.py`,
+14 pass. **Still open:** such a file cannot be ingested at revision 0 or 1 while the pinned writer
+refuses it, and SDIP does not route around the writer (§3.3).
+
+---
+
+## D48 — Environment variables changed how a source was read, and none was barred
+
+- **Status:** `CLOSED` (raised and closed 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+The pinned `segy` and `mdio` read twelve environment variables; two were barred, and only
+inside `ingest`. Measured: with `SEGY_OVERRIDE_BINARY_HEADER='{"data_sample_format": 5}'` set for
+ingest and verify, 191 of 192 stored samples were wrong and `sdip verify` reported every plane
+PASS. **Closed:** every upstream setting classified in `sdip._pins.UPSTREAM_SETTINGS` (8 barred,
+2 recorded, 2 allowed), proven against the installed upstream by
+`tests/unit/test_upstream_settings.py` and by the `upstream-settings` check in `sdip doctor`,
+including `segy`'s case-insensitive names; refused at the CLI boundary for `ingest`, `verify`,
+`export` and `certify` with exit 2. Worker-count variables are recorded on the certificate.
+
+---
+
+## D49 — The declared pin SHAs were one commit past their release tags
+
+- **Status:** `CLOSED` (raised and closed 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+`a2895b53` and `8e93e97d` each sit one commit after the mdio v1.2.1 and segy v0.6.0 tags, and
+the installed wheels contain neither commit's change. Every certificate issued before D-0087
+names commits that did not run. **Closed:** SHAs corrected to the tag commits (`76df396e`,
+`557bceba`), `release_tag` recorded on each pin and certificate. The published reference
+certificate is left as issued: editing an issued artifact would forge it. **D9 stands:** a wheel
+does not carry the SHA it was built from, so the SHA remains declared, not runtime-verified.
+
+---
+
+## D50 — The derived-coordinate leg divided where the writer multiplies, and capped its count
+
+- **Status:** `CLOSED` (raised and closed 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+On correct stores covering all 100 final-two-digit residues at two magnitudes (200 cells), the
+leg failed 60, 32, 22 and 65 cells at scalars -10, -100, -1000 and -10000 and reported each as
+20. **Closed:** each trace's own scalar with the writer's exact arithmetic in the stored dtype;
+the real count, with examples capped separately; the difference from the correctly rounded
+quotient recorded. `tests/integration/test_derived_coordinate_specificity.py` — 6 of 7 fail
+pre-fix; after, all residues pass under every scalar, a one-ulp corruption fails, 25 corrupted
+cells count 25, and a varying scalar fails because MDIO applies trace 0's.
+
+---
+
+## D51 — The axis leg rebuilt the axis from a source the writer does not use
+
+- **Status:** `CLOSED` (raised and closed 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+Every store whose trace headers carry a sample interval of 0 failed Plane 4 (`expected 0.0,
+observed 4.0`). **Closed:** the binary-header interval and the writer's arithmetic, from 0; a
+zero or differing trace-header interval is a named finding; a nonzero delay (scaled by bytes
+215-216) is a finding that blocks release; an interval the stored axis cannot represent still
+fails. `tests/integration/test_sample_axis_oracle.py` — 5 fail pre-fix for the right reason,
+8 pass after.
+
+---
+
+## D52 — G7 proves a gate can fail; nothing proves a gate passes correct data
+
+- **Status:** `NARROWED` (raised and narrowed 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+Every control corrupts a store and requires its gate to fail. No control required a gate to
+pass a correct store across the values real data carries, which is how two derived legs shipped
+failing correct data and passed a survey-scale certificate by coincidence. **Narrowed:** the
+coordinate and axis legs now have specificity sweeps. **Still open:** the other legs of G2a-G2e
+have none; the discipline in the operating contract (§5) names only the failing half.
+
+---
+
+## D53 — MDIO starts the sample axis at 0 and ignores the recording delay
+
+- **Status:** `OPEN` (raised 2026-09-16) · **Blocks:** release of any store whose source carries
+  a nonzero delay · **Decision:** `DECISIONS.md` D-0087
+
+SEG-Y bytes 109-110 give the time from source initiation to the first recorded sample; segyio,
+segysak, OpenVDS, OpendTect and Madagascar start the axis there. `mdio` 1.2.1 builds it from 0.
+Plane 4 records `nonzero_recording_delay` and release readiness blocks on it. Upstream's to fix;
+SDIP does not route around the writer.
+
+---
+
+## D54 — MDIO stores the sample axis as int32 milliseconds and truncates finer intervals
+
+- **Status:** `OPEN` (raised 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+A 500 us interval stores `[0, 0, 1, 1, 2, 2, ...]`; 2500 us loses its half milliseconds. Plane 4
+fails such stores, correctly. High-resolution data cannot be certified at the pinned writer.
+
+---
+
+## D55 — MDIO applies the first trace's coordinate scalar to every trace
+
+- **Status:** `OPEN` (raised 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+SEG-Y scales each trace's coordinates by that trace's own bytes 71-72. `mdio` reads trace 0's
+(`mdio/segy/scalar.py`) and applies it to all. Plane 3 fails a store whose scalars vary, which is
+correct; such a survey cannot be certified at the pinned writer.
+
+---
+
+## D56 — Scaled source and group coordinates are not verified
+
+- **Status:** `OPEN` (raised 2026-09-16) · **Blocks:** certifying any geometry below ·
+  **Decision:** `DECISIONS.md` D-0087
+
+`mdio` scales `source_coord_x/y` and `group_coord_x/y` (bytes 73-88) with the same scalar as
+`cdp_x/cdp_y`. Measured against the pinned registry: `ObnReceiverGathers3D`, `ReceiverGathers3D`,
+`ShotReceiverLineGathers3D`, `StreamerFieldRecords3D`, `StreamerShotGathers2D` and
+`StreamerShotGathers3D` carry them. The derived-coordinate leg checks only `cdp_x` and `cdp_y`.
+None of the six can be ingested through SDIP today (D24's name boundary), so no issued store is
+affected — but these are the shot and receiver positions a full-waveform consumer needs.
+
+---
+
+## D57 — The axis oracle does not honour SEG-Y rev 2's extended sample interval or depth units
+
+- **Status:** `OPEN` (raised 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+Rev 2.x binary bytes 3273-3280 carry an IEEE-double interval that overrides 3217-3218 when
+nonzero, and rev 2.x states the interval in metres or feet for depth data where rev 1 knows only
+microseconds. Neither is read. Revision 2 is blocked upstream (D6), so no store reaches this yet.
+
+---
+
+## D58 — Other libraries' configuration read from the environment is unclassified
+
+- **Status:** `OPEN` (raised 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+D48 classifies every setting `segy` and `mdio` read. `zarr`, `numcodecs` and `dask` also read
+configuration from the environment, and whether any of it can change what a store contains is
+unmeasured.
+
+---
+
+## D59 — A file's own revision field is never compared with the declared revision
+
+- **Status:** `OPEN` (raised 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+Binary bytes 3501-3502 are mandatory in every revision and zero means 1975 SEG-Y. SDIP reads the
+revision from the operator's declaration only; a disagreement is not recorded.
+
+---
+
+## D60 — Upstream exceptions still escape as tracebacks where no declaration can be checked
+
+- **Status:** `OPEN` (raised 2026-09-16) · **Decision:** `DECISIONS.md` D-0087
+
+D-0087's binding refuses a mismatched declaration before any plane runs, which removes D47's
+tracebacks for every store `sdip ingest` writes. A store SDIP did not write (`FOREIGN`) or wrote
+before binding (`UNBOUND`) carries no digest to refuse on. Measured on a `FOREIGN` copy of a
+revision 0 store: `sdip verify --revision 0` without the override raises
+`segy.exceptions.NonSpecFieldError` as a traceback; under the defaults it returns `verify: FAIL`,
+with the `[FOREIGN]` line saying only the template could be checked. `main()` translates
+`SdipError`, not upstream's exception families, so §3.6 is still enforced call site by call site
+for these stores.
+
+---

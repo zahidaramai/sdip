@@ -4353,3 +4353,184 @@ published artifact rather than reading the tree that produced it (D-0083, D-0085
 one). The tree has been correct every time. **Publishing is a transformation, and the
 transformation is where the defects are.** Any future release that adds or changes a
 distribution channel should assume the same and check the artifact, not the source.
+
+---
+
+## D-0087 — 2026-09-16 — D47's root cause: nothing bound a store to the reading that wrote it
+
+**D47 looked like a missing option. It was the symptom of a design gap, and the same gap
+had already produced a regressed closure, a closure with no mechanism behind it, and a
+false PASS nobody had measured.** Recorded with the maintainer's rulings, each checked
+against the SEG-Y standard text and against how established readers behave before any
+code changed.
+
+### What D47 was
+
+On one byte-correct revision 0 store, built with the committed generator and override:
+`verify` returned **FAIL** under its defaults, a **traceback** with `--revision 0`, and could
+not be handed the override at all; `export` raised a traceback; `certify` could not parse
+`--override`, and its own ingest and G6 took none. No invocation gave the right answer.
+
+### Root cause 1 — the reading of a source was not a property of the store
+
+Every command rebuilt its interpretation of a SEG-Y from whatever it was handed, with
+silent defaults, and the store recorded nothing a command could check against. Each new
+input to the reading therefore reached some code paths and not others, and the ones it
+missed were silently wrong rather than loudly incapable. Four measured instances:
+
+1. **The CLI.** `8e13c10` (2026-08-23 07:44) added `--override` to `spec build` and `ingest`
+   only. `verify`, `export` and `certify` already existed and were never touched.
+2. **The preflight regressed D28 two hours after it closed.** `020a0eb` (09:49 the same day)
+   added the hostile-input preflight, which read the binary header big-endian without being
+   given the declaration. From then on a declared little-endian file was refused, and the
+   refusal told the operator SDIP did not read little-endian. D28's only test read headers
+   through `SegyFile` directly and never ingested, so nothing failed.
+3. **D22 was recorded CLOSED with no mechanism.** The override schema has no sample-format
+   key and nothing passes one upstream. A file whose binary header carries format code 0 is
+   refused. The revision 0 fixture ingests only because its generator writes code 1.
+4. **The environment — the dangerous one.** The pinned `segy` reads `SEGY_ENDIANNESS`,
+   `SEGY_OVERRIDE_BINARY_HEADER` and `SEGY_OVERRIDE_TRACE_HEADER`; none was barred. Measured:
+   with `SEGY_OVERRIDE_BINARY_HEADER='{"data_sample_format": 5}'` set for ingest and verify,
+   an IBM-float source was decoded as IEEE, **191 of 192 stored samples were wrong, and
+   `sdip verify` reported all five planes PASS** — writer and verifier read the source the
+   same wrong way. `certify` was not fooled (G3, closure and G7 failed; NON-EQUIVALENT), but
+   it blamed its own controls, not the variable. `segy`'s settings are case-insensitive, so
+   `segy_override_binary_header` in lower case does the same.
+
+`spec_sha256` could not have served as the binding: it hashes field names, positions and
+widths, and is measured identical for a big-endian and a little-endian reading of one layout.
+
+### Root cause 2 — the derived checks compared against an oracle nobody specified
+
+Both of D47's plane failures, in the run the consumer drove by hand, were SDIP's verifier
+being wrong. Both legs arrived in `020a0eb`.
+
+* **Plane 3.** The verifier divided (`value / 100`); `mdio` writes `value * abs(1/scalar)`.
+  In float64 they differ by one unit in the last place on 12-16 of every 100 final-two-digit
+  residues at a given magnitude — 16,000 of 100,000 consecutive integers from 43,636,410 at
+  scalar -100. On correct stores covering all 100 residues at two magnitudes (200 cells), the
+  old leg would have failed 60, 32, 22 and 65 cells at scalars -10, -100, -1000 and -10000,
+  and **reported every one as 20**: it appended at most 20 mismatches and reported the length
+  of that list as the count.
+* **Plane 4.** The verifier rebuilt the axis from the trace-header interval plus the delay;
+  the writer uses the binary-header interval and starts at 0. Every store whose trace
+  headers carry an interval of 0 failed.
+
+The survey-scale certificate (ledger row 1) ran the coordinate leg after `020a0eb` and passed
+**0 of 233,064 cells** — not because the leg was right but because that survey's y
+coordinates use only residues {0, 50} and its 32 x residues avoid the disagreeing set.
+**A PASS on real data was not evidence the leg was correct.**
+
+### Why none of it was caught
+
+* **Closures were measured one layer below the product.** D28 through `SegyFile`, D6's
+  revision 0 leg through the Python API, D22 on a fixture patched to work. Every one was
+  false at the CLI. No test drove `certify` through the executable at all.
+* **G7 is one-sided.** Every control proves a gate FAILS a corrupted store. Nothing proved a
+  gate PASSES a correct one across the values real data carries. The coordinate fixture used
+  multiples of 25, on which both formulas agree.
+* **§3.6 was enforced one call site at a time.** Only `ingest` translated upstream exceptions;
+  `verify` and `export` leaked tracebacks, and so did `ingest` itself for a zero scalar (D27).
+* **Barred variables were checked inside `ingest` only.**
+
+### Checked externally before building
+
+**SEG-Y text**, read from archived copies of SEG's official rev 1 (2002), rev 2.0 (2017) and
+rev 2.1 (2023) PDFs:
+
+* Coordinate scalar, bytes 71-72: *"If positive, scalar is used as a multiplier; if negative,
+  scalar is used as divisor."* No rounding rule in any revision. Zero: rev 1 silent; rev 2.0
+  and 2.1, *"A value of zero is assumed to be a scalar value of 1."*
+* Sample interval: binary 3217-3218 *"Mandatory for all data types"* (rev 1); trace 117-118
+  *"Highly recommended"*. Rev 2.x: for a fixed-length file the trace value *"is ignored"*, and
+  zero in a header field indicates *"an unknown or unspecified value"*.
+* Delay, bytes 109-110: time from source initiation to the first recorded sample; bytes
+  215-216 scale bytes 95-114.
+* Byte order: rev 1 — little-endian *"will not be SEG Y rev 1 compatible"*; rev 2.x permits
+  it, indicated by the constant at binary bytes 3297-3300.
+* Format code 0: defined in no revision. Whether rev 0 marked the field mandatory could not
+  be confirmed from a primary source, so D22's "the standard never mandated it" is withdrawn
+  as unverified.
+
+**Industry behaviour**, from source: segyio, Seismic Unix, Madagascar, ObsPy, segysak,
+OpenVDS, OpendTect, and TGS `segy`/`mdio`.
+
+* Negative scalar: mdio, OpenVDS and OpendTect multiply by a reciprocal in double; segysak
+  likewise; Seismic Unix is mixed. The writer's arithmetic is the prevailing implementation.
+* Zero scalar: treated as 1 at every revision by segyio, Seismic Unix, segysak, OpenVDS and
+  OpendTect; mdio alone refuses it below revision 2.
+* Axis: the binary header is authoritative in mdio, segysak, OpenVDS, OpendTect and
+  Madagascar. segyio, segysak, OpenVDS, OpendTect and Madagascar start the axis at the delay;
+  mdio starts at 0 and applies the first trace's coordinate scalar to every trace.
+* Declared sample format: Seismic Unix `format=`, Madagascar `format=`, OpenVDS
+  `--sample-format`, OpendTect; exposed publicly by `segy` and `mdio`.
+* Recording the interpretation in the artifact: OSDU `FileCollection.SEGY` 1.3.0 carries
+  byte order, revision, header byte mapping, scalar override and binary-header overrides;
+  OpenVDS records byte order and format and refuses mismatched header data in multi-file
+  imports. No tool refuses a verifier handed a different interpretation — SDIP is stricter.
+
+**The pins.** `a2895b53` is *"Add single node CRG template (#861)"*, whose parent is the
+mdio **v1.2.1** tag (`76df396e`); `8e93e97d` is *"Infer textual header encoding on open when
+unset (#378)"*, whose parent is the segy **v0.6.0** tag (`557bceba`). The installed wheels
+contain neither change. Every certificate issued so far names commits that did not run.
+The round-trip seed NOTICE attributes has the same git blob at both commits
+(`b950a8f03156`, 14,362 bytes), so the attribution is unchanged in substance.
+
+### Rulings (maintainer)
+
+1. **Binding.** Ingest writes the survey declaration's digest into the provenance marker.
+   Every command that reads a store is handed a declaration, builds its spec from it — never
+   from the store's record, which would let the artifact under test vouch for its own
+   reading — and refuses a mismatch with both declarations named, exit 2. MDIO's own `name`
+   attribute cross-checks the template even on stores SDIP did not write. `UNBOUND` and
+   `FOREIGN` stores are verifiable and say so; release readiness requires `BOUND`.
+2. **Coordinates.** Each trace's own scalar — the standard's semantics — with the writer's
+   exact arithmetic in the stored dtype. The count is the real count. Cells that differ from
+   the correctly rounded quotient are recorded, not failed: the standard sets no rounding rule.
+3. **Axis.** The binary header, the writer's order of operations, from 0. A zero or differing
+   trace-header interval is a named finding. A nonzero delay is a finding that **blocks
+   release**: the store is what the writer wrote, so the verdict stands, but industry readers
+   place every event at a different time. An interval the stored axis cannot represent fails.
+4. **Environment.** Every setting the pinned upstream reads is classified — bar, record or
+   allow — and the registry is proven against the installed upstream by the test suite and by
+   `sdip doctor`, in both directions and including case sensitivity. Barred, adding six to the
+   two of spec 9.1: `SEGY_ENDIANNESS`, `SEGY_OVERRIDE_BINARY_HEADER`,
+   `SEGY_OVERRIDE_TRACE_HEADER`, `MDIO__GRID__SPARSITY_RATIO_LIMIT` (moves D30's refusal),
+   `MDIO__GRID__SPARSITY_RATIO_WARN` (silences a warning SP6 requires recorded),
+   `MDIO__IMPORT__CLOUD_NATIVE` (an unmeasured ingest mode). Recorded on the certificate:
+   `MDIO__IMPORT__CPU_COUNT`, `MDIO__EXPORT__CPU_COUNT` (spec 3.4). Refused once, at the CLI
+   boundary, for every command that reads a source or store, and in `ingest()` and `export()`.
+5. **Pins.** Declared SHAs corrected to the release-tag commits; `release_tag` recorded
+   beside each, on the certificate too, so anyone can re-check with `git rev-parse`. Versions
+   unchanged; no re-certification forced, since the code that ran is unchanged.
+6. **D47's first draft** named a consumer's private repository, a path into its `docs/` and a
+   third-party dataset without attribution, and carried the capped count and the false plane
+   verdicts. It was rewritten before publication with a synthetic reproduction.
+
+### What was built, and the evidence it is not vacuous
+
+Each test was written first and run against the pre-fix source, with only `src/` stashed.
+
+| Change | Tests | Pre-fix | Post-fix |
+|---|---|---|---|
+| Declaration and binding, CLI end to end | `test_cli_declaration.py` | 8 of 8 fail | 8 pass, plus the slow `certify` test: BOUND certificate, G3 PASS, 40 s |
+| Environment guard, CLI | `test_cli_environment_guard.py` | 5 fail, 2 controls pass | 7 pass |
+| Registry against installed upstream | `test_upstream_settings.py` | — | 31 pass: every name sets its field; every case claim true both ways |
+| Coordinate leg, 100-residue sweep | `test_derived_coordinate_specificity.py` | 6 of 7 fail (+10 agrees both ways) | 7 pass; one-ulp corruption still fails; 25 corrupted cells count 25 |
+| Axis leg | `test_sample_axis_oracle.py` | 5 fail for the right reason, 3 correct both ways | 8 pass |
+| Preflight byte order (D28) | `test_preflight_declared_byte_order.py` | 9 of 10 fail | 11 pass, including an uninferable file refused cleanly — the first version of the fix caught `ValueError` where `segy` raises a `SegyError`, which that test found |
+| Zero or invalid scalar (D27) | `test_preflight_coordinate_scalar.py` | CLI: `ValueError` traceback | 14 pass; CLI: typed refusal, no traceback |
+
+All 24 G7 controls still fire. The hostile corpus (272 members) passes against the new preflight.
+
+Two guards found flaws in themselves while this was built. The D-0083 citation guard walked
+the disk, so it failed on a planning file excluded from git and walked `.venv` on every run;
+it now scans what git would publish — tracked files and untracked files not ignored. A test
+pinning exit 1 for every SDIP error now pins exit 2 for environment refusals, because an
+environment SDIP will not run in is not a verdict about data.
+
+### Still open, each recorded as its own debt
+
+D22 (declared sample format; public route exists, pre-registration required), D27 (zero
+scalar below revision 2; upstream), and D48-D60 in `OPEN_DEBTS.md`. Four of them - D27, D53,
+D54 and D55 - are upstream behaviours; issues are drafted and not filed.
