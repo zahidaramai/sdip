@@ -5,6 +5,14 @@
     "bytes",
     "zstd"
   ],
+  "declaration": {
+    "recorded_sha256": "5bc11b36f001b01f3529afde18e989b3df846d7d03d27f4b387e3a37eace6848",
+    "schema": "sdip.survey-declaration/1",
+    "sha256": "5bc11b36f001b01f3529afde18e989b3df846d7d03d27f4b387e3a37eace6848",
+    "status": "BOUND",
+    "store_template": "PostStack3DTime",
+    "summary": "revision 1, template PostStack3DTime, no override"
+  },
   "detected_encoding": {
     "decode_status": "decoded",
     "detail": "SDIP stores the raw 3200 bytes and compares them as bytes; the encoding is recorded, never used to normalise (\u00a74.2).",
@@ -195,18 +203,21 @@
   "env": {
     "declared_pins": {
       "multidimio": {
-        "commit_sha": "a2895b53088ffacbf4bd1b9e882856cbda78e235",
+        "commit_sha": "76df396e545017d2a32ee25a5f98989fa37afec4",
+        "release_tag": "v1.2.1",
         "repository": "https://github.com/TGSAI/mdio-python",
         "sha_verification": "declared-not-runtime-verified",
         "version": "1.2.1"
       },
       "segy": {
-        "commit_sha": "8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78",
+        "commit_sha": "557bceba4abce09d084a1f0b8ac466382ce5c502",
+        "release_tag": "v0.6.0",
         "repository": "https://github.com/TGSAI/segy",
         "sha_verification": "declared-not-runtime-verified",
         "version": "0.6.0"
       }
     },
+    "library_config_recorded": {},
     "machine": "arm64",
     "packages": {
       "dask": "2026.7.1",
@@ -227,7 +238,7 @@
           "multidimio-1.2.1.tar.gz": "sha256:06441b8c1ea4a26ab53bb07b43c94a69a84e767f63872c60e7274522356a62c9"
         },
         "commit_sha_verified": false,
-        "declared_commit_sha": "a2895b53088ffacbf4bd1b9e882856cbda78e235",
+        "declared_commit_sha": "76df396e545017d2a32ee25a5f98989fa37afec4",
         "distribution": "multidimio",
         "expected": "1.2.1",
         "installed": "1.2.1",
@@ -247,7 +258,7 @@
           "segy-0.6.0.tar.gz": "sha256:1ec623361e99ddbf952be286403912e4c50218f49bdddf73a0c907a9a06a74f7"
         },
         "commit_sha_verified": false,
-        "declared_commit_sha": "8e93e97db33ea4b2ce77433f6fdbef5d31ac6e78",
+        "declared_commit_sha": "557bceba4abce09d084a1f0b8ac466382ce5c502",
         "distribution": "segy",
         "expected": "0.6.0",
         "installed": "0.6.0",
@@ -262,9 +273,10 @@
         "ok": true
       }
     ],
-    "platform": "Darwin 25.5.0",
+    "platform": "Darwin 25.6.0",
     "python": "3.12.13",
-    "python_implementation": "CPython"
+    "python_implementation": "CPython",
+    "upstream_settings_recorded": {}
   },
   "gates": {
     "G1": "PASS",
@@ -277,21 +289,21 @@
   },
   "git": {
     "branch": "main",
-    "describe": "v1.1.0-6-g20e5a7a",
+    "describe": "v1.1.4-8-gda411a8",
     "dirty": false,
     "dirty_paths": [],
     "is_repository": true,
-    "sdip_commit": "20e5a7ad35784328cc237765c60d280d9eadd69d",
-    "sdip_version": "1.1.0"
+    "sdip_commit": "da411a8f06d3684f0e4548ec77a52e2cb7efa586",
+    "sdip_version": "1.2.0"
   },
-  "issued_at": "2026-08-25T10:12:50+00:00",
-  "issued_by": "sdip 1.1.0",
+  "issued_at": "2026-09-17T01:07:11+00:00",
+  "issued_by": "sdip 1.2.0",
   "lossy_codec_present": false,
   "nonvacuity": {
     "baseline_clean": true,
-    "bytes_copied": 581753,
+    "bytes_copied": 585433,
     "bytes_hardlinked": 179159,
-    "bytes_if_whole_store_copied_per_control": 760912,
+    "bytes_if_whole_store_copied_per_control": 764592,
     "closure_control": {
       "baseline_clean": true,
       "baseline_detail": "closure PASS: the export re-ingests, all 5 planes hold against it, both raw file headers and all 11 arrays are identical to the original store's",
@@ -322,7 +334,7 @@
     "control_count": 16,
     "controls": [
       {
-        "bytes_copied": 34171,
+        "bytes_copied": 34401,
         "bytes_hardlinked": 13386,
         "clause": "\u00a74.2",
         "description": "One bit flipped in the stored 3200-byte textual header",
@@ -343,7 +355,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 34171,
+        "bytes_copied": 34401,
         "bytes_hardlinked": 13386,
         "clause": "\u00a77 G7 minimum set",
         "description": "Textual header cut from 3200 to 3100 bytes",
@@ -364,7 +376,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 34171,
+        "bytes_copied": 34401,
         "bytes_hardlinked": 13386,
         "clause": "\u00a74.3",
         "description": "One bit flipped in the stored 400-byte binary header",
@@ -385,7 +397,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 36796,
+        "bytes_copied": 37026,
         "bytes_hardlinked": 10761,
         "clause": "\u00a77 G7 minimum set",
         "description": "One trace-header byte incremented (pad_240, first live cell)",
@@ -406,7 +418,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 37248,
+        "bytes_copied": 37478,
         "bytes_hardlinked": 10309,
         "clause": "\u00a77 G7 minimum set",
         "description": "One sample's low mantissa bit flipped",
@@ -427,7 +439,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 34216,
+        "bytes_copied": 34446,
         "bytes_hardlinked": 13341,
         "clause": "\u00a77 G7 minimum set",
         "description": "Live mask flipped on one trace",
@@ -448,7 +460,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 39918,
+        "bytes_copied": 40148,
         "bytes_hardlinked": 7639,
         "clause": "\u00a77 G7 minimum set",
         "description": "One live trace zeroed and removed from the mask",
@@ -475,7 +487,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 38610,
+        "bytes_copied": 38840,
         "bytes_hardlinked": 8947,
         "clause": "probe P4 / DECISIONS D-0047 - the portable copy of the trace headers",
         "description": "One bit flipped in the undecoded uint8 header plane (byte 233)",
@@ -496,7 +508,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 36954,
+        "bytes_copied": 37184,
         "bytes_hardlinked": 10603,
         "clause": "OPEN_DEBTS D1 - the only recoverable copy of the source bits",
         "description": "One bit flipped in the undecoded uint32 sample word",
@@ -517,7 +529,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 39873,
+        "bytes_copied": 40103,
         "bytes_hardlinked": 7684,
         "clause": "\u00a77 G7 minimum set",
         "description": "Two adjacent traces swapped, headers and samples together",
@@ -541,7 +553,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 34252,
+        "bytes_copied": 34482,
         "bytes_hardlinked": 13305,
         "clause": "DECISIONS D-0056 - the declared coordinate-scalar transform's output",
         "description": "One derived world coordinate shifted by one unit (cdp_x)",
@@ -562,7 +574,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 34309,
+        "bytes_copied": 34539,
         "bytes_hardlinked": 13248,
         "clause": "DECISIONS D-0056 - samples are meaningless without their axis",
         "description": "First entry of the sample axis shifted by one unit",
@@ -583,7 +595,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 36954,
+        "bytes_copied": 37184,
         "bytes_hardlinked": 10603,
         "clause": "DECISIONS D-0061 - one chunk failed, the whole array passed",
         "description": "The whole amplitude_raw_ibm32 array removed, as a died ingest leaves it",
@@ -604,7 +616,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 38610,
+        "bytes_copied": 38840,
         "bytes_hardlinked": 8947,
         "clause": "DECISIONS D-0063 ruling 3 - returned, now conditioned on the marker",
         "description": "The whole headers_raw_uint8 array removed from a marked SDIP store",
@@ -625,7 +637,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 37248,
+        "bytes_copied": 37478,
         "bytes_hardlinked": 10309,
         "clause": "SP12 / OPEN_DEBTS D29 - padding is not data, and now it is checked",
         "description": "A real-looking sample written into a cell no source trace maps to",
@@ -646,7 +658,7 @@
         "unexpected_failures": []
       },
       {
-        "bytes_copied": 34252,
+        "bytes_copied": 34482,
         "bytes_hardlinked": 13305,
         "clause": "DECISIONS D-0061 - the declared transform's output must exist",
         "description": "The whole cdp_x array removed",
@@ -1275,7 +1287,7 @@
       "zarr_v3_core_spec": true
     }
   ],
-  "output_bytes": 47557,
+  "output_bytes": 47787,
   "output_path": "/Users/zahidaramai/Local_Sites/seis-mdio-zarr/local/refcert/reference.mdio",
   "output_zarr_format": 3,
   "planes": {
@@ -1294,6 +1306,7 @@
     "plane_2": {
       "evidence": {
         "compared": "raw bytes, source vs store",
+        "findings": [],
         "first_difference": null,
         "n": 400,
         "note": "Raw bytes decide the verdict. The parsed mapping is recorded because \u00a74.3 requires both, but it is not authoritative on conflict.",
@@ -1308,6 +1321,7 @@
       "evidence": {
         "byte_coverage_guaranteed_by": "G1 (gap-free spec: 240 of 240 bytes)",
         "compared": "every declared field, source vs store, array_equal",
+        "derived_coords_arithmetic": "value * abs(1 / scalar) for a negative scalar, value * scalar for a positive one, scalar 0 as 1; value cast to the stored array's dtype first, the factor a Python scalar - multidimio 1.2.1 mdio/segy/scalar.py _apply_coordinate_scalar, the same reciprocal form OpenVDS and OpendTect use",
         "derived_coords_arrays": [
           "cdp_x",
           "cdp_y"
@@ -1316,18 +1330,23 @@
         "derived_coords_first_difference": null,
         "derived_coords_identical": true,
         "derived_coords_mismatch_count": 0,
+        "derived_coords_mismatch_examples": [],
         "derived_coords_n": 336,
-        "derived_coords_note": "Derived-array leg, AND-ed into G2c's verdict. cdp_x and cdp_y are the OUTPUT of the declared coordinate-scalar transform (DECISIONS.md D-0040), and SP1 requires a declared transform to be VERIFIED - a declared transform whose output nothing checks is half-declared. Recomputed here from the source trace headers under the declared semantics (positive scalar multiplies, negative divides) and compared with np.array_equal against the arrays a consumer actually reads (G4, section 10.3). Until 2026-08-23 nothing compared them: an external audit corrupted cdp_x and cdp_y individually and ALL FIVE PLANES still returned PASS (D-0056).",
+        "derived_coords_note": "Derived-array leg, AND-ed into G2c's verdict. cdp_x and cdp_y are the OUTPUT of the declared coordinate-scalar transform (DECISIONS.md D-0040), and SP1 requires a declared transform to be VERIFIED. Recomputed from each trace's OWN header values and OWN scalar - SEG-Y scales every trace by its own bytes 71-72, while MDIO reads trace 0's and applies it to all, so a varying scalar fails here, correctly - using the writer's exact arithmetic (derived_coords_arithmetic), and compared with np.array_equal. SEG-Y defines a negative scalar as a divisor and sets no rounding rule; the writer's reciprocal form differs from the correctly rounded quotient by one unit in the last place on some values, counted in derived_coords_standard_quotient_differences. Until D-0087 this leg divided, and failed correct stores on exactly those values.",
         "derived_coords_present": true,
         "derived_coords_scalar_uniform": true,
         "derived_coords_scalar_values": [
           1
         ],
+        "derived_coords_standard_quotient_differences": 0,
+        "derived_coords_unverified": [],
         "derived_coords_verified": true,
         "field_count": 97,
+        "findings": [],
         "first_difference": null,
         "map_invertible": true,
         "mismatch_count": 0,
+        "mismatch_examples": [],
         "missing_fields_in_store": [],
         "missing_required_arrays": [],
         "n": 168,
@@ -1338,6 +1357,7 @@
         "raw_header_compared": "np.array_equal on uint8 bytes, source vs store - EXACT",
         "raw_header_first_difference": null,
         "raw_header_mismatch_count": 0,
+        "raw_header_mismatch_examples": [],
         "raw_header_n": 168,
         "raw_header_note": "Second leg, ANDed into G2c's verdict. The field-wise comparison above equals byte equality only because G1 proved the gap-free spec covers all 240 bytes; this leg compares the 240 raw bytes in headers_raw_uint8 against the same bytes read from the source by raw byte offset, and has NO spec dependency at all. It exists because probe P4 measured three Zarr readers giving three different answers about the structured array's `struct` data_type - TensorStore accepts it, zarr-java refuses it, zarr-python warns - and `struct` has no Zarr v3 specification, so a reader that declines it is conformant (DECISIONS.md D-0047). The plane is the portable copy, and a portable copy nothing checks is not evidence.",
         "raw_header_plane_present": true,
@@ -1350,18 +1370,21 @@
     "plane_4": {
       "evidence": {
         "compared": "np.array_equal per live trace - EXACT, never allclose",
-        "derived_axis_compared": "np.array_equal, recomputed from source headers - EXACT",
-        "derived_axis_delay_ms": 0,
+        "derived_axis_arithmetic": "(i * interval_us) / 1000 for i in range(samples), from 0",
+        "derived_axis_compared": "np.array_equal against the writer's axis - EXACT",
         "derived_axis_first_difference": null,
         "derived_axis_identical": true,
         "derived_axis_n": 64,
         "derived_axis_name": "time",
-        "derived_axis_note": "Derived-axis leg, AND-ed into G2d's verdict. The sample axis is recomputed from the trace-header sample interval and delay - axis[i] = delay + i * interval/1000 - and compared with np.array_equal against the stored axis. Samples are meaningless without the axis that positions them: a corrupted axis mislabels every sample in depth or time while the sample values themselves compare equal. Until 2026-08-23 nothing compared it (D-0056).",
+        "derived_axis_note": "Derived-axis leg, AND-ed into G2d's verdict. The sample axis is rebuilt the way the writer builds it - from the BINARY header's interval (bytes 3217-3218, mandatory in SEG-Y rev 1) and sample count, axis[i] = (i * interval_us) / 1000, starting at 0 - and compared with np.array_equal against the stored axis. Until D-0087 it was rebuilt from the trace-header interval plus the delay, which MDIO uses for neither, and so failed every correct store whose trace headers carry an interval of 0 (unknown, in rev 2.x). Disagreements between the trace headers and that axis are recorded as named findings, not failures; a nonzero recording delay is a finding that blocks release, because industry readers start the axis at the delay and MDIO does not. An interval the stored int32 axis cannot represent (below 1 ms, or not a whole number of ms) still fails: that store is genuinely wrong.",
         "derived_axis_present": true,
         "derived_axis_sample_interval_us": 4000,
+        "derived_axis_source": "binary header bytes 3217-3218 (interval) and 3221-3222 (samples)",
         "derived_axis_verified": true,
+        "findings": [],
         "first_difference": null,
         "mismatch_count": 0,
+        "mismatch_examples": [],
         "missing_required_arrays": [],
         "n": 168,
         "note": "Grid padding is not data (SP12) and is excluded by the live mask, not compared. No tolerance is applied anywhere in this comparison.",
@@ -2195,11 +2218,11 @@
     ],
     "arrays_compared": 11,
     "check": "roundtrip_closure",
-    "closure_store": "/var/folders/zv/77r6ldb52zd2qt3zx0h053zw0000gn/T/tmp4dk2sqnd/closure/closure.mdio",
+    "closure_store": "/var/folders/zv/77r6ldb52zd2qt3zx0h053zw0000gn/T/tmptt93en2f/closure/closure.mdio",
     "differing_arrays": [],
     "differing_file_headers": [],
     "error": null,
-    "export_path": "/var/folders/zv/77r6ldb52zd2qt3zx0h053zw0000gn/T/tmp4dk2sqnd/roundtrip.sgy",
+    "export_path": "/var/folders/zv/77r6ldb52zd2qt3zx0h053zw0000gn/T/tmptt93en2f/roundtrip.sgy",
     "file_headers": [
       {
         "attribute": "sdipRawTextHeader",
@@ -2247,6 +2270,7 @@
       {
         "evidence": {
           "compared": "raw bytes, source vs store",
+          "findings": [],
           "first_difference": null,
           "n": 400,
           "note": "Raw bytes decide the verdict. The parsed mapping is recorded because \u00a74.3 requires both, but it is not authoritative on conflict.",
@@ -2261,6 +2285,7 @@
         "evidence": {
           "byte_coverage_guaranteed_by": "G1 (gap-free spec: 240 of 240 bytes)",
           "compared": "every declared field, source vs store, array_equal",
+          "derived_coords_arithmetic": "value * abs(1 / scalar) for a negative scalar, value * scalar for a positive one, scalar 0 as 1; value cast to the stored array's dtype first, the factor a Python scalar - multidimio 1.2.1 mdio/segy/scalar.py _apply_coordinate_scalar, the same reciprocal form OpenVDS and OpendTect use",
           "derived_coords_arrays": [
             "cdp_x",
             "cdp_y"
@@ -2269,18 +2294,23 @@
           "derived_coords_first_difference": null,
           "derived_coords_identical": true,
           "derived_coords_mismatch_count": 0,
+          "derived_coords_mismatch_examples": [],
           "derived_coords_n": 336,
-          "derived_coords_note": "Derived-array leg, AND-ed into G2c's verdict. cdp_x and cdp_y are the OUTPUT of the declared coordinate-scalar transform (DECISIONS.md D-0040), and SP1 requires a declared transform to be VERIFIED - a declared transform whose output nothing checks is half-declared. Recomputed here from the source trace headers under the declared semantics (positive scalar multiplies, negative divides) and compared with np.array_equal against the arrays a consumer actually reads (G4, section 10.3). Until 2026-08-23 nothing compared them: an external audit corrupted cdp_x and cdp_y individually and ALL FIVE PLANES still returned PASS (D-0056).",
+          "derived_coords_note": "Derived-array leg, AND-ed into G2c's verdict. cdp_x and cdp_y are the OUTPUT of the declared coordinate-scalar transform (DECISIONS.md D-0040), and SP1 requires a declared transform to be VERIFIED. Recomputed from each trace's OWN header values and OWN scalar - SEG-Y scales every trace by its own bytes 71-72, while MDIO reads trace 0's and applies it to all, so a varying scalar fails here, correctly - using the writer's exact arithmetic (derived_coords_arithmetic), and compared with np.array_equal. SEG-Y defines a negative scalar as a divisor and sets no rounding rule; the writer's reciprocal form differs from the correctly rounded quotient by one unit in the last place on some values, counted in derived_coords_standard_quotient_differences. Until D-0087 this leg divided, and failed correct stores on exactly those values.",
           "derived_coords_present": true,
           "derived_coords_scalar_uniform": true,
           "derived_coords_scalar_values": [
             1
           ],
+          "derived_coords_standard_quotient_differences": 0,
+          "derived_coords_unverified": [],
           "derived_coords_verified": true,
           "field_count": 97,
+          "findings": [],
           "first_difference": null,
           "map_invertible": true,
           "mismatch_count": 0,
+          "mismatch_examples": [],
           "missing_fields_in_store": [],
           "missing_required_arrays": [],
           "n": 168,
@@ -2291,6 +2321,7 @@
           "raw_header_compared": "np.array_equal on uint8 bytes, source vs store - EXACT",
           "raw_header_first_difference": null,
           "raw_header_mismatch_count": 0,
+          "raw_header_mismatch_examples": [],
           "raw_header_n": 168,
           "raw_header_note": "Second leg, ANDed into G2c's verdict. The field-wise comparison above equals byte equality only because G1 proved the gap-free spec covers all 240 bytes; this leg compares the 240 raw bytes in headers_raw_uint8 against the same bytes read from the source by raw byte offset, and has NO spec dependency at all. It exists because probe P4 measured three Zarr readers giving three different answers about the structured array's `struct` data_type - TensorStore accepts it, zarr-java refuses it, zarr-python warns - and `struct` has no Zarr v3 specification, so a reader that declines it is conformant (DECISIONS.md D-0047). The plane is the portable copy, and a portable copy nothing checks is not evidence.",
           "raw_header_plane_present": true,
@@ -2303,18 +2334,21 @@
       {
         "evidence": {
           "compared": "np.array_equal per live trace - EXACT, never allclose",
-          "derived_axis_compared": "np.array_equal, recomputed from source headers - EXACT",
-          "derived_axis_delay_ms": 0,
+          "derived_axis_arithmetic": "(i * interval_us) / 1000 for i in range(samples), from 0",
+          "derived_axis_compared": "np.array_equal against the writer's axis - EXACT",
           "derived_axis_first_difference": null,
           "derived_axis_identical": true,
           "derived_axis_n": 64,
           "derived_axis_name": "time",
-          "derived_axis_note": "Derived-axis leg, AND-ed into G2d's verdict. The sample axis is recomputed from the trace-header sample interval and delay - axis[i] = delay + i * interval/1000 - and compared with np.array_equal against the stored axis. Samples are meaningless without the axis that positions them: a corrupted axis mislabels every sample in depth or time while the sample values themselves compare equal. Until 2026-08-23 nothing compared it (D-0056).",
+          "derived_axis_note": "Derived-axis leg, AND-ed into G2d's verdict. The sample axis is rebuilt the way the writer builds it - from the BINARY header's interval (bytes 3217-3218, mandatory in SEG-Y rev 1) and sample count, axis[i] = (i * interval_us) / 1000, starting at 0 - and compared with np.array_equal against the stored axis. Until D-0087 it was rebuilt from the trace-header interval plus the delay, which MDIO uses for neither, and so failed every correct store whose trace headers carry an interval of 0 (unknown, in rev 2.x). Disagreements between the trace headers and that axis are recorded as named findings, not failures; a nonzero recording delay is a finding that blocks release, because industry readers start the axis at the delay and MDIO does not. An interval the stored int32 axis cannot represent (below 1 ms, or not a whole number of ms) still fails: that store is genuinely wrong.",
           "derived_axis_present": true,
           "derived_axis_sample_interval_us": 4000,
+          "derived_axis_source": "binary header bytes 3217-3218 (interval) and 3221-3222 (samples)",
           "derived_axis_verified": true,
+          "findings": [],
           "first_difference": null,
           "mismatch_count": 0,
+          "mismatch_examples": [],
           "missing_required_arrays": [],
           "n": 168,
           "note": "Grid padding is not data (SP12) and is excluded by the live mask, not compared. No tolerance is applied anywhere in this comparison.",
@@ -2395,17 +2429,17 @@
     "findings": [],
     "gate": "G5",
     "note": "Ceilings are DECLARED BEFORE THE RUN (SP9) and are a required argument with no default. A threshold nobody committed to beforehand is not a threshold. This gate judges measurements the run supplied; it does not take them.",
-    "peak_rss_bytes": 260505600,
+    "peak_rss_bytes": 260538368,
     "planes_passed": true,
-    "prereg": "prereg/P10-scale-recalibration.md@504b308",
+    "prereg": "declared on the command line, not recorded",
     "rss_breach": false,
     "sampling": "exhaustive - every trace, every field, every sample",
     "status": "PASS",
-    "summary": "G5 PASS: 168 traces, peak RSS 0.24 GiB of 8.0 GiB declared, 26s of 1500s",
+    "summary": "G5 PASS: 168 traces, peak RSS 0.24 GiB of 8.0 GiB declared, 28s of 1500s",
     "trace_count": 168,
     "unbounded_growth_observed": false,
     "wall_breach": false,
-    "wall_clock_s": 25.62496091698995
+    "wall_clock_s": 28.17986487504095
   },
   "segy_revision": "1",
   "source_bytes": 86928,
@@ -2557,14 +2591,6 @@
         "kind": "suppression",
         "known_id": "mdio-1.2.1-unstable-structs-v3",
         "message_regex": "The data type \\((.*?)\\) does not have a Zarr V3 specification\\.",
-        "status": "declared"
-      },
-      {
-        "action": "once",
-        "category": "DeprecationWarning",
-        "kind": "deduplication",
-        "known_id": "numcodecs-crc32c-deprecation-once",
-        "message_regex": "crc32c usage is deprecated.*",
         "status": "declared"
       }
     ],

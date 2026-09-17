@@ -201,3 +201,28 @@ fair hit and this is the answer to it.
 
 **Validated against the published schema by plain `jsonschema`, with SDIP never imported
 for the check** — which is the claim the schema exists to support.
+
+---
+
+| # | Issued (UTC) | Source SHA-256 | Source | Spec | Rev | Verdict | Gates G1–G7 | Ready |
+|---|---|---|---|---|---|---|---|---|
+| **3** | 2026-09-17T01:07:11Z | `465297171ccbf63f1f7f71ef0ccdec9f9a72dccc254673b7250706a624086b85` | **SYNTHETIC** · 86,928 B · 168 traces · 12×14×64 | v1.0 | 1 | **EQUIVALENT** | `PPPPPPP` | **`true`** |
+
+**Row 3 — the reference certificate reissued under v1.2.0, replacing row 2's file.**
+
+The same fixture, byte for byte — its regenerated SHA-256 matches row 2's — certified by
+`sdip 1.2.0` at commit `da411a8` from a clean tree. It carries what v1.2.0 added: a **`BOUND`**
+survey declaration, the pins' corrected commit SHAs with their release tags (D49), and a
+release-readiness evaluation that now requires both. G5: peak RSS 0.24 GiB of 8.0 GiB declared,
+28 s of 1,500 s. Validated against the published schema with plain `jsonschema`.
+
+**Row 2's file was removed from `certificates/` by maintainer ruling (`DECISIONS.md` D-0088)**
+and replaced by [`465297171ccb-20260917T010711+0000.json`](certificates/465297171ccb-20260917T010711+0000.json). Row 2 stands as a record of what was issued: that
+certificate names the pin SHAs that did not match the installed code (D49) and predates declaration
+binding, so it could not be issued today. It remains in git history at `da411a8`.
+
+**A first reissue was discarded before commit.** It had been issued from a working directory whose
+path would have been written into `source_path` and `output_path` as an unrelated tooling path; the
+certificate was deleted and reissued from `local/refcert/`, as row 2 was. D46 — a certificate
+records the issuing machine's absolute path — stands.
+

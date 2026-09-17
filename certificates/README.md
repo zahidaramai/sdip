@@ -6,8 +6,8 @@ reader can check it before deciding whether any of this is worth their time.
 
 ## The reference certificate
 
-[`465297171ccb-20260825T101250+0000.json`](./465297171ccb-20260825T101250+0000.json) — **`verdict: EQUIVALENT`**, `release_ready: true`, all seven gates
-`PASS`, issued from a clean working tree.
+[`465297171ccb-20260917T010711+0000.json`](./465297171ccb-20260917T010711+0000.json) — **`verdict: EQUIVALENT`**, `release_ready: true`, all seven gates
+`PASS`, survey declaration `BOUND`, issued by `sdip 1.2.0` from a clean working tree.
 
 | | |
 |---|---|
@@ -48,7 +48,7 @@ by any JSON Schema validator — SDIP is not involved:
 pip install jsonschema
 python -c "
 import json, jsonschema
-cert   = json.load(open('certificates/465297171ccb-20260825T101250+0000.json'))
+cert   = json.load(open('certificates/465297171ccb-20260917T010711+0000.json'))
 schema = json.load(open('src/sdip/schema/sdip-certificate-v0.schema.json'))
 jsonschema.validate(cert, schema)
 print(cert['verdict'], cert['release_readiness']['release_ready'])
