@@ -94,6 +94,10 @@ jobs:
           assert checks['upstream-pins'] == 'PASS', checks
           assert checks['barred-packages'] == 'PASS', checks
           assert checks['runtime-licences'] == 'PASS', checks
+          # D-0087/D-0088: the image's own upstream must match SDIP's classification of every
+          # setting it reads, and zarr/dask must run on their shipped defaults inside it.
+          assert checks['upstream-settings'] == 'PASS', checks
+          assert checks['library-config'] == 'PASS', checks
           print('image verified:', checks['upstream-pins'], checks['runtime-licences'])
           "
 
