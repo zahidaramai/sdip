@@ -2038,3 +2038,92 @@ with the `[FOREIGN]` line saying only the template could be checked. `main()` tr
 for these stores.
 
 ---
+
+## D60 — CLOSED 2026-09-17 — one classified boundary, and the corpus through every command
+
+- **Closes:** D60 above (**SP10**) · **Decision:** `DECISIONS.md` D-0088
+
+The CLI boundary classifies an unhandled exception by the first traceback frame owned by `segy`,
+`mdio` or `sdip`: upstream is a typed refusal (exit 1), anything else an internal error (exit 3,
+traceback under `--debug`). `verify` now runs the hostile-input preflight it had skipped. Measured
+against the previous source with the fuzz corpus extended through `verify`, `export` and
+`certify`: `verify` crashed on 17 of 33 members and `certify` on 4. After: 402 of 402 corpus checks
+pass, with no traceback and no exit 3 on any member through any command. The measured D60 case — a
+foreign store verified under the wrong revision — is now `UpstreamRefusal: NonSpecFieldError`,
+naming the declaration as the likely cause. `tests/integration/test_cli_error_boundary.py`: 4 of 4
+fail against the previous source.
+
+---
+
+## D56 — CLOSED 2026-09-17 — scaled source and group coordinates verified, by maintainer exception
+
+- **Closes:** D56 above (**SP10**) · **Decision:** `DECISIONS.md` D-0088 (an explicit exception to
+  Ruling 7)
+
+The coordinate leg verifies every array the writer scales — `cdp_x/y`, `source_coord_x/y`,
+`group_coord_x/y` — pinned to `mdio.segy.scalar.SCALE_COORDINATE_KEYS` by a drift test. Each array
+is judged on its own; a present but unverifiable one is listed and blocks release. Measured on
+upstream-built prestack stores (`streamer_shot_3d`, `streamer_shot_2d`) at scalars -100 and -1000
+with coordinates spread over residues: 0 mismatches, with the sweep asserting its fixture puts
+values off the correctly rounded quotient; a one-ulp corruption of `group_coord_x` fails.
+`streamer_field_3d` and `obn_receiver_3d` remain refused by Plane 3 as a whole (a calculated grid
+dimension has no coordinate array) — refused, not passed.
+
+---
+
+## D52 — CLOSED 2026-09-17 — both halves, and the audit's four finds fixed
+
+- **Closes:** D52 NARROWED above (**SP10**) · **Decision:** `DECISIONS.md` D-0088
+
+The operating contract §5 now requires a correct-data sweep beside every corruption control for
+any value-dependent check. The audit found and fixed: three more capped counts (raw-header leg,
+Plane 3 fields, Plane 4 samples — 25 corrupted traces reported as 20, and the traces-compared
+counter truncated), and NaN (a byte-correct store carrying NaN failed Plane 4; G6 called two
+identical ingests non-deterministic). Floating values are now compared bit for bit. Sweeps exist
+for every value-dependent check; the preflight, axis-interval, revision and template sweeps found
+nothing further.
+
+---
+
+## D58 — CLOSED 2026-09-17 — zarr and dask configuration classified, from every channel
+
+- **Closes:** D58 above (**SP10**) · **Decision:** `DECISIONS.md` D-0088
+
+Each library's effective configuration is compared with its shipped defaults, so variables, config
+files and inherited configuration are all seen. 0 deviations in a clean run (zarr 48 keys, dask
+30). `ZARR_DEFAULT_ZARR_FORMAT=2` — measured writing a Zarr v2 store — is refused before ingest
+writes anything, from a variable or from a file, and the refusal names the source. Resource and
+formatting settings are recorded on the certificate. `tests/unit/test_library_config_guard.py`
+(12) and `tests/integration/test_cli_library_config_guard.py` (2 of 3 fail against the previous
+source; the third is the control).
+
+---
+
+## D59 — CLOSED 2026-09-17 — the file's revision field is compared, as a non-blocking finding
+
+- **Closes:** D59 above (**SP10**) · **Decision:** `DECISIONS.md` D-0088
+
+Plane 2 records `file_revision_differs` when bytes 3501-3502 disagree with the revision the file
+was read as; it does not block release. Swept across every encoding and declared-revision pair.
+
+---
+
+## D22 — NARROWED 2026-09-17 — refused with its reason, left open by ruling
+
+- **Narrows:** D22 REOPENED above (**SP10**) · **Decision:** `DECISIONS.md` D-0088
+
+Kept open under Ruling 7: no file needing a declared sample format has arrived. An undefined format
+code is now refused with the debt named and the reason no override can supply one yet.
+
+---
+
+## D61 — certify stops at export on a file whose revision word is undefined
+
+- **Status:** `OPEN` (raised 2026-09-17) · **Decision:** `DECISIONS.md` D-0088
+
+The hostile-corpus member `revision_undefined` ingests, and then `sdip certify` stops at export
+with `mdio`'s `InvalidMDIOError: Missing revision keys from binary header`
+(`mdio/segy/compat.py`). Since D60 that is a clean refusal, not a traceback. A round trip that
+cannot run should arguably be recorded on the certificate (G3 unavailable) rather than end the run.
+
+---

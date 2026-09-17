@@ -4534,3 +4534,114 @@ environment SDIP will not run in is not a verdict about data.
 D22 (declared sample format; public route exists, pre-registration required), D27 (zero
 scalar below revision 2; upstream), and D48-D60 in `OPEN_DEBTS.md`. Four of them - D27, D53,
 D54 and D55 - are upstream behaviours; issues are drafted and not filed.
+
+---
+
+## D-0088 — 2026-09-17 — Twelve rulings to close D-0087's open items, and what building them found
+
+The maintainer ruled on every item D-0087 left open, in one sitting, so they could close
+together. Recorded with each ruling and the measurement that closed or narrowed it.
+
+| # | Item | Ruling |
+|---|---|---|
+| 1 | D60 — upstream exceptions still escaped as tracebacks | One classified boundary; internal-error backstop; the fuzz corpus through every store command |
+| 2 | D22 — declared sample format | Keep reopened under Ruling 7; the refusal names D22 and the route |
+| 3 | D56 — scaled source and group coordinates unverified | **Extend the check now — an explicit exception to Ruling 7** |
+| 4 | D52 — G7 proved only the failing half | Amend the operating contract §5; audit every value-dependent check |
+| 5 | D58 — other libraries' configuration | Measure, then classify |
+| 6 | D59 — the file's own revision field | A non-blocking finding |
+| 7 | Governing documents | Amend the specification and the operating contract now |
+| 8 | Upstream issues for D27, D53, D54, D55 | **Do not file**; kept as drafts under `docs/` |
+| 9 | Release | v1.2.0 |
+| 10 | Reference certificate | Reissue and replace the old file |
+| 11 | Tech-debt register | Correct into `docs/`; remove the root copy |
+| 12 | The consumer session | Tell it now not to rebuild its surveys (done; it confirmed) |
+
+### D60 — classified by where an exception was raised, not by its type
+
+A blanket `except ValueError` would have relabelled SDIP's own bugs as upstream refusals. The
+boundary walks the traceback from the deepest frame to the first frame owned by `segy`, `mdio` or
+`sdip`; third-party frames between them are skipped. Raised upstream: a typed refusal naming the
+exception and the line, exit 1. Raised anywhere else: *a defect in SDIP, not a verdict about your
+data*, exit 3, traceback under `--debug`.
+
+**Building it found that `verify` never ran the hostile-input preflight.** It parsed untrusted
+files behind the size envelope alone: a truncated file reached `segy`, and a header declaring a
+negative sample interval was **judged FAIL rather than refused**. It now runs the same preflight
+as `ingest`. The first version of the boundary's hint also blamed the declaration for a truncated
+file (`SegyFileSpecMismatchError` is a size mismatch, not a field name); corrected before it shipped.
+
+**Measured against the previous source, with the corpus extended through every command:** `verify`
+crashed with a traceback on **17 of 33** hostile members and `certify` on **4** (MDIO's three grid
+refusals, and `revision_undefined`); `export` on none. After: 402 of 402 corpus checks pass — no
+traceback and no exit 3 on any member, through any command.
+
+**The full suite then found an ordering defect in that fix.** The preflight added to `verify` ran
+before the binding check, so a little-endian store verified without its override was refused as an
+untrusted file (exit 1) instead of as a declaration mismatch (exit 2) — accurate, but not the root
+error. The binding now runs first: it reads only the store's attribute record, names the
+declaration the store was written under, and the preflight then reads the source under a
+declaration known to match. The suite stood at 1,446 of 1,447 before the reorder.
+
+### D56 — verified, and the fixture made to prove it
+
+Five P7 geometries carry scaled source or group coordinates. Three are mappable (all four arrays
+addressable); two are refused by Plane 3 outright because a calculated grid dimension has no
+coordinate array, so nothing passes silently there. **Every P7 fixture used scalar 1 on round
+coordinates, where no arithmetic can disagree**, so the prestack generator gained an opt-in scalar
+and residue spread computed from each column's own axes; defaults are byte-identical. The leg now
+judges **each array on its own** — before, one unaddressable array returned NOT CHECKED for the
+whole leg, so adding arrays could have silently stopped `cdp_x` being checked — and a present but
+unverifiable array is listed with a finding that blocks release. The sweep asserts its own fixture
+puts values off the correctly rounded quotient, or it would prove nothing.
+
+### D52 — the audit found four more defects
+
+- **The capped count, three more times.** Plane 3's raw-header leg, Plane 3's field comparison and
+  Plane 4's sample comparison each broke out at 20 mismatches and reported 20 — and the break also
+  stopped the traces-compared counter, beside `"sampling": "exhaustive"`. With 25 of 30 traces
+  corrupted, each reported 20. Now 25.
+- **NaN.** Every value comparison was `np.array_equal`, which says NaN != NaN. On an IEEE float32
+  source carrying NaN, a **byte-correct store failed Plane 4** (`expected: nan, observed: nan`) and
+  **G6 called two identical ingests non-deterministic**. `equal_nan=True` would call NaNs with
+  different payloads equal, so floating values are compared **bit for bit** — stricter, and correct
+  on NaN, payloads and the sign of zero. A NaN rewritten with another payload still fails.
+
+Sweeps of correct data now exist for every value-dependent check: sample formats and `ibm32`
+(before), coordinates across residues and scalars, the axis across whole-millisecond intervals,
+preflight across every supported format code, the revision finding across every encoding pair,
+and the template cross-check across all 22 templates. The last four found nothing further.
+
+### D58 — the effective configuration, because files are a channel too
+
+zarr and dask are configured through donfig, which reads variables **and** YAML or JSON files and
+an inherited serialised configuration. A list of names cannot see a file. Measured: in a clean run
+0 of zarr's 48 default keys and 0 of dask's 30 deviate after importing everything a run imports,
+and dask **is** imported on the ingest, verify and export path. `ZARR_DEFAULT_ZARR_FORMAT=2` made
+MDIO write a **Zarr v2 store**. zarr's layout, concurrency, threading, batching and JSON settings
+changed neither chunk bytes nor values on the measured fixture — but that fixture is single-chunk
+and cannot exhibit a layout effect, so layout settings are barred without being claimed harmless;
+the others are recorded. dask's chunk size and scheduler changed neither store nor export:
+recorded. Any zarr key no rule names is barred. A config file is caught as surely as a variable,
+and the refusal names it.
+
+### D59, D22, and one new debt
+
+D59: a disagreeing revision field is a non-blocking finding. D22: the refusal now names the debt
+and the reason no override can supply a format yet. **D61, new:** `certify` on a file whose
+revision word is undefined ingests, then stops at export with MDIO's `InvalidMDIOError: Missing
+revision keys from binary header` — now a clean refusal, where a round trip that cannot run should
+arguably be recorded on the certificate instead.
+
+### Governing documents
+
+The specification gained twelve dated amendment blocks and §6.4.1 (the survey declaration binds to
+the store). The operating contract gained the closure rule — *a user-facing capability closes only
+on a CLI-level measurement* — and both halves of G7. Both are firewalled and never published; this
+entry is the public record of the amendments.
+
+### Also received
+
+The consumer session supplied browser-read measurements of chunk shapes on its surveys (128³ against
+three alternatives). They bear on D4 and on the chunk policy, which SP9 requires to be decided by a
+pre-registered measurement in this repository; recorded here as input, not adopted.
