@@ -13,6 +13,7 @@ it is correct on NaN, on the sign of zero, and on every payload.
 from __future__ import annotations
 
 import numpy as np
+
 from sdip.equivalence.exact import identical
 
 
