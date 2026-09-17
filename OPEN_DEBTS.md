@@ -2127,3 +2127,80 @@ with `mdio`'s `InvalidMDIOError: Missing revision keys from binary header`
 cannot run should arguably be recorded on the certificate (G3 unavailable) rather than end the run.
 
 ---
+
+## D6 — rev 2 and 2.1 leg CLOSED 2026-09-17 — refused cleanly, nothing waits on upstream
+
+- **Closes:** the rev 2 and 2.1 part of D6 (**SP10**) · **Decision:** `DECISIONS.md` D-0089
+
+Measured on the P6 fixtures: `sdip ingest --revision 2` and `--revision 2.1` exit 1 with
+`UpstreamRefusal` naming `mdio/converters/type_converter.py:43`, no traceback, no partial store.
+That refusal is the permanent handling. Revision 0 with format code 0 remains D22's.
+
+---
+
+## D10 — CLOSED 2026-09-17 — the containment is permanent
+
+- **Closes:** D10 and D10 REPORTED above (**SP10**) · **Decision:** `DECISIONS.md` D-0089
+
+The closure D10 named — *"SDIP records that it will not be fixed"* — is taken. `guard/warn.py`
+contains the leaked filter to the guarded call and the certificate records it (D-0004). Nothing
+waits on the filed issue.
+
+---
+
+## D27 — CLOSED 2026-09-17 — the refusal is the handling, not a stopgap
+
+- **Closes:** D27 and D27 NARROWED above (**SP10**) · **Decision:** `DECISIONS.md` D-0089
+
+A zero coordinate scalar below revision 2 is refused by the preflight with the value, the
+standard's position and industry practice; 14 unit tests. The refusal no longer calls the debt
+open. Such a file is not ingestible at the pinned writer, and SDIP does not route around it.
+
+---
+
+## D35 — CLOSED 2026-09-17 — recovered text and a boolean are the end state
+
+- **Closes:** D35 and D35 NARROWED above (**SP10**) · **Decision:** `DECISIONS.md` D-0089
+
+D35 named its own permanent end state if no upstream hook arrived: a recovered line plus a boolean
+saying it is not the object. That is what ships — `stderr_recovered[]` and
+`worker_warnings_captured: false` on every certificate — and it is final.
+
+---
+
+## D53 — CLOSED 2026-09-17 — non-blocking for the project; the store is still not release-ready
+
+- **Closes:** D53 above (**SP10**) · **Decision:** `DECISIONS.md` D-0089
+
+Plane 4 records `nonzero_recording_delay` and release readiness blocks on it for that store. That
+per-store verdict is unchanged; the debt no longer blocks the project.
+
+---
+
+## D54 — CLOSED 2026-09-17 — Plane 4 fails such a store, permanently
+
+- **Closes:** D54 above (**SP10**) · **Decision:** `DECISIONS.md` D-0089
+
+A sub-millisecond interval truncated by the writer fails Plane 4. High-resolution data is not
+certifiable at the pinned writer, and the certificate says why.
+
+---
+
+## D55 — CLOSED 2026-09-17 — Plane 3 fails such a store, permanently
+
+- **Closes:** D55 above (**SP10**) · **Decision:** `DECISIONS.md` D-0089
+
+A survey whose coordinate scalars vary by trace fails Plane 3. It is not certifiable at the pinned
+writer, and the certificate says why.
+
+---
+
+## D57 — CLOSED 2026-09-17 — unreachable while revision 2 is refused
+
+- **Closes:** D57 above (**SP10**) · **Decision:** `DECISIONS.md` D-0089
+
+No revision 2 store can be written through SDIP (D6), so the axis oracle never meets a rev 2
+extended interval or depth unit. A pin under which revision 2 ingests raises this again as a new
+debt.
+
+---

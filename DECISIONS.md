@@ -4645,3 +4645,60 @@ entry is the public record of the amendments.
 The consumer session supplied browser-read measurements of chunk shapes on its surveys (128³ against
 three alternatives). They bear on D4 and on the chunk policy, which SP9 requires to be decided by a
 pre-registered measurement in this repository; recorded here as input, not adopted.
+
+## D-0089 — 2026-09-17 — Nothing is filed upstream; debts that waited on upstream close on SDIP's own handling
+
+**Ruling (maintainer).** SDIP files no issue, pull request or comment with any upstream project.
+Upstream behaviour is recorded in this repository only, and SDIP handles it itself, still through
+the public API alone (the operating contract §3.3 — no monkeypatching, no fork). The upstream drafts
+ruling 8 of D-0088 kept under `docs/` are **discarded**, not kept. This supersedes D-0087's *"issues
+are drafted and not filed"* and ruling 8 of D-0088; both stay as written (**SP10**). The three issues
+filed before this ruling (D-0017, D6) stay as history; nothing further is posted to them and no debt
+waits on them.
+
+**What closes, and on what.** A debt whose only closure path was a change upstream closes as
+**non-blocking**, with SDIP's own handling as the permanent end state. None is claimed fixed at the
+writer.
+
+| Debt | Behaviour at the pinned writer | SDIP's permanent handling |
+|---|---|---|
+| D6, rev 2 and 2.1 leg | Ingest fails inside `mdio` | **Refused cleanly.** Measured 2026-09-17 on the P6 fixtures: `sdip ingest --revision 2` and `--revision 2.1` exit 1 with `UpstreamRefusal` naming `mdio/converters/type_converter.py:43`, 0 tracebacks, no partial store |
+| D10 | A process-global warnings filter is left installed | Contained to the guarded call and recorded on the certificate (D-0004); the containment is permanent |
+| D27 | A zero coordinate scalar is refused below revision 2 | Preflight refusal naming the value, the standard and industry practice; 14 unit tests |
+| D35 | Worker warnings never cross the process boundary as objects | Recovered text plus `worker_warnings_captured: false` on the certificate — the end state D35 named if no hook arrived |
+| D53 | The sample axis starts at 0; the recording delay is ignored | `nonzero_recording_delay` finding; that store is not release-ready |
+| D54 | Sub-millisecond intervals are truncated to int32 milliseconds | Plane 4 fails that store |
+| D55 | Trace 0's coordinate scalar is applied to every trace | Plane 3 fails that store |
+| D57 | (SDIP's axis oracle ignores rev 2's extended interval and depth units) | Unreachable while rev 2 is refused (D6); a pin under which rev 2 ingests raises it again as a new debt |
+
+**What "non-blocking" does not mean.** It is a statement about the project, not about any store.
+Every per-store verdict above is unchanged: a store that meets D53, D54 or D55 still fails or is
+still not release-ready, and the certificate still says why. No gate, tolerance or check changed.
+The one code change is the D27 refusal text, which told the operator the debt was open.
+
+Debts with a closure path inside SDIP — D8's residuals, D9, D22, D61 among them — are not touched by
+this ruling.
+
+---
+
+## D-0090 — 2026-09-17 — `local/` harvested and deleted; its citations resolve to a firewalled record
+
+The maintainer's storage rule for this machine allows one run root per project, harvested into a
+record and then deleted. `local/` — the firewalled work directory of D-0025 — held 1.4 GB across
+nine run roots from 2026-08-22 to 2026-09-17, and was harvested and deleted today.
+
+- **Archived:** 195 files (every receipt, log, certificate and probe script), each hashed at the
+  source and re-verified member by member against the archive before deletion. Archive sha256
+  `687515526bc26415bdfb75c9296abeee5e98b1ec29ae79dcca8532993e08925c`.
+- **Summarised, not archived:** the array chunks of four stores, recorded as per-array sha256 with
+  dtype and shape; one synthetic SEG-Y by sha256 and size; four stale process-id files dropped.
+- **Measured on the way out:** `local/release_cert/06p07ful.mdio` (ledger row 1) and
+  `local/d43/work/s.mdio` (D43's timing runs) — two independent ingests of the same source — are
+  identical on all 11 arrays.
+- **Citations:** every `local/` path in this file, `OPEN_DEBTS.md` and `EQUIVALENCE_LEDGER.md` was
+  checked. All resolve to the archive except `local/refcert/`, the issuing root of ledger row 3,
+  already deleted after issue; its certificate is committed under `certificates/`.
+
+The record stays under `docs/`, never published, for the reason D-0025 gives: most of it derives
+from restricted data. The local CI runner that lived in `local/` moved with it and no longer writes
+into the tree.

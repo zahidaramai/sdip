@@ -367,6 +367,8 @@ def _refuse_a_coordinate_scalar_mdio_refuses(
 ) -> None:
     """OPEN_DEBTS D27: refuse, with the reason, a first-trace scalar MDIO would crash on.
 
+    The refusal is the permanent handling (DECISIONS.md D-0089), not a stopgap awaiting upstream.
+
     Mirrors ``mdio/segy/scalar.py`` exactly - trace 0 only, zero accepted from revision 2,
     any other magnitude outside :data:`MDIO_VALID_COORDINATE_SCALARS` refused - so this
     refuses nothing MDIO accepts. Two bytes at a fixed offset; nothing is allocated.
@@ -389,7 +391,8 @@ def _refuse_a_coordinate_scalar_mdio_refuses(
             "and OpendTect read it that way at any revision; the pinned multidimio 1.2.1 "
             f"accepts it only from revision 2 and refuses it for a revision {revision} file. "
             "SDIP writes through multidimio's public API and does not route around it "
-            "(spec 3.3), so this file cannot be ingested as declared. Open debt D27."
+            "(spec 3.3), so this file cannot be ingested as declared. "
+            "Debt D27, closed as a refusal."
         )
         raise UntrustedInputError(msg)
     if abs(scalar) not in MDIO_VALID_COORDINATE_SCALARS:
