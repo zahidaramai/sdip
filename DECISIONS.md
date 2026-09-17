@@ -4798,3 +4798,28 @@ changed; `ingest()` is unchanged and `ingest_declared()` is new.
 `export()` still takes the `SegySpec`: it is required, so it cannot be omitted silently, and the
 CLI binds before building it. The CLI has no grid-overrides option, so a store written through
 the Python API with grid overrides is refused at the CLI with exit 2 — loud, not silent.
+
+---
+
+## D-0092 — 2026-09-17 — D62 confirmed on the surveys that found it
+
+**Reported by the consumer, not measured in this repository** (**SP8**: recorded as what it is).
+The consumer that found D62 re-certified the same two real revision 0 depth surveys with 1.2.1,
+from a clean clone at tag `v1.2.1` with `sdip doctor` passing 10 checks, under the same command
+and flags as its 1.2.0 run, pre-registered in its own repository before the run.
+
+| | 1.2.0 | 1.2.1 |
+|---|---|---|
+| Declaration | `BOUND` | `BOUND` |
+| Planes 1-5, G1-G7 | PASS, G3 byte-identical | PASS, G3 byte-identical |
+| Round-trip closure | **FAIL** — `depth`/`time`, `headers` | **PASS** — all 11 arrays and both raw file headers identical |
+| Closure control | **FAIL** on a dirty baseline | **PASS** — caught by the file-headers leg and no other |
+| Verdict | `EQUIVALENT` | `EQUIVALENT` |
+| Release readiness | `false`, 2 blocking | **`true`, `blocking: []`** |
+
+On both surveys. The only finding is `trace_interval_unspecified`, non-blocking, as on 1.2.0. G5:
+peak RSS 1.04 and 1.03 GiB of a declared 8.0, 199 s of a declared 1,800 s on each. Each store was
+rewritten to the same size, to the byte, as under 1.2.0 (88,611,404 and 88,615,116 B) — consistent
+with D-0091's statement that nothing about the store changed. The consumer keeps its 1.2.0
+certificates unedited and marked superseded, which is the right handling: they were never wrong
+about the data.
