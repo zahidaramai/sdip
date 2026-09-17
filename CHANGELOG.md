@@ -15,6 +15,35 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [1.2.1] — 2026-09-17
+
+**`certify` now closes the round trip under the declaration the store was written under.**
+Root cause of D62; `DECISIONS.md` D-0091. No gate, comparison or certificate field changed.
+
+### Fixed
+
+- **`certify` blocked correct stores from release for any reading but the defaults.** Round-trip
+  closure and its negative control re-ingested the export as revision 1, `PostStack3DTime`, no
+  override, whatever had been declared. A revision 0 survey, a depth survey or a survey with an
+  override came out `EQUIVALENT` with G3 PASS and `release_ready: false`, blocked by a closure
+  FAIL and a closure-control FAIL. A false block, never a false pass. A 1.2.0 certificate
+  blocked only by those two reasons should be reissued with 1.2.1.
+- **Every correct little-endian revision 1 file was reported as "recording revision 0.1".** The
+  revision check read bytes 3501-3502 in file order whatever byte order was declared. The
+  finding was non-blocking; it is now read in the declared byte order.
+- **Closure handed a declaration the store was not written under** returned a FAIL about
+  correct data. It is now refused, naming both declarations, before anything is written.
+
+### Changed
+
+- The CLI, its exit codes and the certificate schema are unchanged.
+- Python signatures: `roundtrip_closure`, `closure_control`, `g6`, `validate_source`,
+  `marker_attrs` and `attach_provenance_marker` take a required `declaration` and no separate
+  revision, template, override, byte order or spec; `plane_2` takes `declaration=` in place of
+  `declared_revision=`. `ingest()` is unchanged; `ingest_declared()` is new and is what SDIP
+  itself calls.
+- The `certify` test for a non-default declaration asserts release readiness and gates in CI.
+
 ## [1.2.0] — 2026-09-17
 
 **A store now records the reading of the source that wrote it, and every command that reads a
@@ -500,6 +529,7 @@ regression-tested. See D-0018.
   thirty lines below the entry announcing the full command surface was live, and carried
   a near-duplicate copy of its own F3–F7 block. Both corrected here.
 
+[1.2.1]: https://github.com/zahidaramai/sdip/releases/tag/v1.2.1
 [1.2.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.2.0
 [1.1.4]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.4
 [1.1.3]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.3
