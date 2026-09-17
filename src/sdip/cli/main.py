@@ -285,17 +285,10 @@ def ingest_cmd(
     template find index fields the revision standard does not name, such as inline and
     crossline in a rev 0 file. It is applied before G1 and changes no byte content.
     """
-    from sdip.ingest import ingest as run_ingest
+    from sdip.ingest import ingest_declared as run_ingest
 
     declaration = _declaration(revision, template, override_path)
-    result = run_ingest(
-        source,
-        output,
-        revision=declaration.revision,
-        template=declaration.template,
-        overwrite=overwrite,
-        override=declaration.override,
-    )
+    result = run_ingest(source, output, declaration, overwrite=overwrite)
 
     if as_json:
         click.echo(json.dumps(result.to_json(), indent=2, sort_keys=True))
@@ -334,18 +327,20 @@ def ingest_cmd(
     sys.exit(EXIT_OK if result.read_path_intact else EXIT_FAIL)
 
 
-def _declared_revision(spec: object) -> float | None:
-    """The revision a spec was built for (``SegySpec.segy_standard``), or ``None``."""
-    standard = getattr(spec, "segy_standard", None)
-    return float(standard.value) if standard is not None else None
+def _run_planes(
+    source: Path, store: Path, spec: object, *, declaration: SurveyDeclaration, g1_passed: bool
+) -> list[Any]:
+    """The five planes, under the command's one declaration and the spec built from it.
 
-
-def _run_planes(source: Path, store: Path, spec: object, *, g1_passed: bool) -> list[Any]:
+    Plane 2 takes the declaration itself. It was handed a revision recovered from the
+    spec, which carried the revision and left the declared byte order behind, so a correct
+    little-endian file was reported as recording revision 0.1 (OPEN_DEBTS D62's class).
+    """
     from sdip.equivalence import plane_1, plane_2, plane_3, plane_4, plane_5
 
     return [
         plane_1(source, store),
-        plane_2(source, store, declared_revision=_declared_revision(spec)),
+        plane_2(source, store, declaration=declaration),
         plane_3(source, store, spec, g1_passed=g1_passed),
         plane_4(source, store, spec),
         plane_5(source, store, spec),
@@ -423,10 +418,12 @@ def verify_cmd(
     # untrusted source with only the size envelope in front of it: a truncated file reached
     # segy, and a header declaring a negative sample interval was judged FAIL rather than
     # refused. A file that cannot be trusted is refused, never given a verdict.
-    validate_source(source, endianness=declaration.endianness, revision=declaration.revision)
+    validate_source(source, declaration)
     built = declaration.build_spec()
     gate1 = g1_for_spec(built)
-    planes = _run_planes(source, store, built.segy_spec, g1_passed=gate1.passed)
+    planes = _run_planes(
+        source, store, built.segy_spec, declaration=declaration, g1_passed=gate1.passed
+    )
     portability = None if skip_portability else g4(store)
 
     ok = (
@@ -588,7 +585,7 @@ def certify_cmd(
     from sdip.equivalence.determinism import g6
     from sdip.equivalence.nonvacuity import closure_control, g3_control, g7
     from sdip.export import export as run_export
-    from sdip.ingest import ingest as run_ingest
+    from sdip.ingest import ingest_declared as run_ingest
     from sdip.provenance.git import capture_git_state
     from sdip.spec import g1_for_spec
 
@@ -618,14 +615,7 @@ def certify_cmd(
 
     declaration = _declaration(revision, template, override_path)
     started = time.monotonic()
-    result = run_ingest(
-        source,
-        output,
-        revision=declaration.revision,
-        template=declaration.template,
-        overwrite=overwrite,
-        override=declaration.override,
-    )
+    result = run_ingest(source, output, declaration, overwrite=overwrite)
     # The store this run just wrote must bind to the declaration it was written under.
     # Anything else is a defect in the writer, and it is refused here rather than
     # certified - a certificate names a reading of the source, so the reading has to be
@@ -639,7 +629,7 @@ def certify_cmd(
         raise SdipError(msg)
     spec = result.spec.segy_spec
     gate1 = g1_for_spec(result.spec)
-    planes = _run_planes(source, output, spec, g1_passed=gate1.passed)
+    planes = _run_planes(source, output, spec, declaration=declaration, g1_passed=gate1.passed)
     portability = g4(output)
 
     with tempfile.TemporaryDirectory() as scratch:
@@ -656,7 +646,9 @@ def certify_cmd(
         # Arrow 3: the exported SEG-Y validated as an artifact in its own right, not a
         # by-product. G3 proves it is byte-identical to the source; this proves it is a
         # well-formed SEG-Y that re-ingests to the same store (DECISIONS.md D-0031).
-        closure = roundtrip_closure(exported, output, spec, workdir=Path(scratch) / "closure")
+        closure = roundtrip_closure(
+            exported, output, declaration=declaration, workdir=Path(scratch) / "closure"
+        )
         closure_status, closure_summary = closure.status, closure.summary()
 
         # Closure's own negative control (operating contract §5): corrupt one byte of the export's
@@ -666,19 +658,17 @@ def certify_cmd(
         # in as the baseline rather than recomputed: a second re-ingest to learn an answer
         # already on hand is exactly the cost D18 was about.
         closure_check = closure_control(
-            exported, output, spec, baseline=closure, workdir=Path(scratch) / "closure_control"
+            exported,
+            output,
+            declaration=declaration,
+            baseline=closure,
+            workdir=Path(scratch) / "closure_control",
         )
 
         # G6: two INDEPENDENT ingests of the same source, compared on chunk bytes and on
         # array values. Determinism cannot be shown by one run, so this is the only
         # place it can be established.
-        determinism = g6(
-            source,
-            declaration.revision,
-            template=declaration.template,
-            override=declaration.override,
-            workdir=Path(scratch) / "g6",
-        )
+        determinism = g6(source, declaration=declaration, workdir=Path(scratch) / "g6")
         g6_status, g6_summary = determinism.status, determinism.summary()
 
         # G5 only when a ceiling was DECLARED. See the docstring: a default would be a

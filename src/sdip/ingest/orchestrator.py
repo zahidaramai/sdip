@@ -162,9 +162,7 @@ def validate_output_path(output: str | Path) -> None:
     raise PhaseNotAuthorisedError(msg)
 
 
-def validate_source(
-    path: Path, *, endianness: str | None = None, revision: float | int = 1
-) -> SourceLayout:
+def validate_source(path: Path, declaration: SurveyDeclaration) -> SourceLayout:
     """Validate a SEG-Y source before anything is allocated. Spec §11.4.
 
     Header-declared lengths and counts are attacker-supplied until reconciled with the
@@ -184,10 +182,12 @@ def validate_source(
 
     Args:
         path: Source SEG-Y.
-        endianness: The declared byte order, forwarded to layer 3. Without it a declared
-            little-endian source was refused here (D28's regression, D-0087).
-        revision: The declared revision, forwarded to layer 3 for the coordinate-scalar
-            check (D27).
+        declaration: The declaration the source is read under, **required and taken
+            whole**. Layer 3 reads the binary header in its byte order and judges the
+            coordinate scalar by its revision (D27). Both used to be keywords defaulting
+            to big-endian and revision 1, so a caller that omitted them was silently
+            wrong rather than refused - how a declared little-endian source came to be
+            refused here (D28's regression, D-0087), and D62's shape exactly.
 
     Returns:
         The reconciled layout, whose ``size`` is the size on disk.
@@ -206,7 +206,9 @@ def validate_source(
             "(3200 textual + 400 binary + one 240-byte trace header)"
         )
         raise UntrustedInputError(msg)
-    return validate_segy_structure(path, size, endianness=endianness, revision=revision)
+    return validate_segy_structure(
+        path, size, endianness=declaration.endianness, revision=declaration.revision
+    )
 
 
 @dataclass(slots=True)
@@ -286,17 +288,28 @@ class IngestResult:
         )
 
 
-def ingest(
+def ingest_declared(
     source: str | Path,
     output: str | Path,
+    declaration: SurveyDeclaration,
     *,
-    revision: float | int = 1,
-    template: str = "PostStack3DTime",
     overwrite: bool = False,
-    override: SurveyOverride | None = None,
-    grid_overrides: dict[str, Any] | None = None,
 ) -> IngestResult:
-    """Convert a SEG-Y file to an MDIO store against a gap-free spec.
+    """Convert a SEG-Y file to an MDIO store, read as ``declaration`` says. The ingest.
+
+    **The declaration is taken whole and is never taken apart** (OPEN_DEBTS D62,
+    DECISIONS.md D-0091). The preflight, the spec, the template, the grid overrides and
+    the digest the store records are all read off this one object, so the reading that
+    wrote a store and the reading its marker names cannot be two different things
+    (D-0087), and a field added to :class:`SurveyDeclaration` has no list of keywords to
+    be left out of. Every re-ingest SDIP performs on the operator's behalf - ``certify``'s
+    own, the round-trip closure's re-ingest of the export, each of G6's independent runs -
+    comes through here with the declaration the certified store was written under. Until
+    1.2.1 those callers passed the reading as separate keywords that defaulted to revision
+    1, ``PostStack3DTime`` and no override; the closure's passed none of them, and every
+    certificate for any other reading failed closure on a correct store. That was D47's
+    class, one path further in. :func:`ingest` is the keyword form, for a caller who has
+    no declaration yet; it builds one and calls this.
 
     Order of operations is load-bearing:
 
@@ -361,21 +374,21 @@ def ingest(
     Args:
         source: Input SEG-Y.
         output: Output MDIO store path.
-        revision: SEG-Y revision for the base spec.
-        template: Registered MDIO template name.
-        grid_overrides: Passed straight through to ``segy_to_mdio``. Required by the
-            geometries whose grid is sized along a dimension MDIO **calculates** rather
-            than reads, such as ``shot_index``. **There is no default**: an override
-            changes what the store contains, and one this tool chose is not one anybody
-            declared.
+        declaration: How the source is read - **required, with no default**. Its
+            ``revision`` selects the base spec and its ``template`` the registered MDIO
+            template. Its ``override`` is a validated survey override (§6.4) applied over
+            the gap-free base: it renames and retypes bytes the base spec already covered
+            and may declare the byte order - it supplies the names a template binds on,
+            never new content. Its ``grid_overrides`` are passed straight through to
+            ``segy_to_mdio``, as the geometries whose grid is sized along a dimension MDIO
+            **calculates** rather than reads, such as ``shot_index``, require. **SDIP
+            supplies none of its own**: an override changes what the store contains, and
+            one this tool chose is not one anybody declared.
         overwrite: Overwrite an existing store.
-        override: A validated survey override (§6.4), applied over the gap-free base.
-            It renames and retypes bytes the base spec already covered — it supplies the
-            names a template binds on, never new content. Load one with
-            :func:`sdip.spec.overrides.load_override`.
 
     Returns:
-        The ingest result, in certificate shape.
+        The ingest result, in certificate shape. Its ``declaration`` is the object passed
+        in, not a copy rebuilt from its parts.
 
     Raises:
         SpecCompletenessError: If G1 fails. Nothing is read.
@@ -398,18 +411,11 @@ def ingest(
 
     source_path = Path(source).resolve()
     output_path = Path(output).resolve()
-    layout = validate_source(
-        source_path,
-        endianness=override.endianness if override is not None else None,
-        revision=revision,
-    )
+    layout = validate_source(source_path, declaration)
     before = sha256_file(source_path)
 
-    # One declaration, built once, and the spec derived FROM it - so what the marker
-    # records and what the ingest actually read cannot be two different things (D-0087).
-    declaration = SurveyDeclaration(
-        revision=revision, template=template, override=override, grid_overrides=grid_overrides
-    )
+    # One declaration, and the spec derived FROM it - so what the marker records and what
+    # the ingest actually read cannot be two different things (D-0087).
     built = declaration.build_spec()
     gate = g1_for_spec(built)
     gate.raise_for_status()
@@ -443,9 +449,10 @@ def ingest(
         # (OPEN_DEBTS D25). SDIP supplies no default: an override changes what the store
         # CONTAINS, not merely whether it can be written, and a grid this tool chose is
         # not one anybody declared (SP9, the same reasoning as G5's ceilings).
+        grid_overrides = declaration.grid_overrides
         segy_to_mdio(
             segy_spec=built.segy_spec,
-            mdio_template=get_template(template),
+            mdio_template=get_template(declaration.template),
             input_path=source_path,
             output_path=output_path,
             overwrite=overwrite,
@@ -488,7 +495,7 @@ def ingest(
         output_path=str(output_path),
         spec=built,
         g1=gate,
-        template=template,
+        template=declaration.template,
         raw_headers=raw_headers,
         warnings=ledger,
         raw_samples=raw_samples,
@@ -496,6 +503,51 @@ def ingest(
         textual_decode=decode,
         file_header_persistence="strict" if decode.decoded else "off",
     )
+
+
+def ingest(
+    source: str | Path,
+    output: str | Path,
+    *,
+    revision: float | int = 1,
+    template: str = "PostStack3DTime",
+    overwrite: bool = False,
+    override: SurveyOverride | None = None,
+    grid_overrides: dict[str, Any] | None = None,
+) -> IngestResult:
+    """Ingest under a reading given as keywords. The form for a caller with no declaration.
+
+    Builds the one :class:`SurveyDeclaration` these keywords name and hands it to
+    :func:`ingest_declared`, which documents the run. The defaults are the ``sdip``
+    command line's, and they are an **operator's** reading: the store records the
+    declaration's digest, so a store written under the defaults by mistake is refused by
+    the next command that is handed the right one (D-0087).
+
+    **Nothing inside SDIP calls this.** Code that already holds a declaration calls
+    :func:`ingest_declared`; re-typing a declaration as keywords is how the round-trip
+    closure came to re-ingest every export under the defaults (OPEN_DEBTS D62), and
+    ``tests/unit/test_declaration_reaches_every_reingest.py`` fails on an import of this
+    function from outside this package.
+
+    Args:
+        source: Input SEG-Y.
+        output: Output MDIO store path.
+        revision: SEG-Y revision for the base spec.
+        template: Registered MDIO template name.
+        overwrite: Overwrite an existing store.
+        override: A validated survey override (§6.4). Load one with
+            :func:`sdip.spec.overrides.load_override`.
+        grid_overrides: Passed straight through to ``segy_to_mdio``. **There is no
+            default**; see :func:`ingest_declared`.
+
+    Returns:
+        The ingest result, in certificate shape. Refusals are :func:`ingest_declared`'s,
+        unchanged.
+    """
+    declaration = SurveyDeclaration(
+        revision=revision, template=template, override=override, grid_overrides=grid_overrides
+    )
+    return ingest_declared(source, output, declaration, overwrite=overwrite)
 
 
 if __name__ == "__main__":  # pragma: no cover - see spec 11.1

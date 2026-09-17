@@ -14,6 +14,8 @@ import pytest
 
 from sdip.equivalence.planes import _file_revision_finding
 from sdip.ingest.preflight import _supported_format_codes, validate_segy_structure
+from sdip.spec import parse_override
+from sdip.spec.declaration import SurveyDeclaration
 
 
 def _file(
@@ -43,14 +45,38 @@ def test_preflight_accepts_a_well_formed_file_in_every_supported_format(tmp_path
 ENCODINGS = {"0": (0, 0), "1": (1, 0), "2": (2, 0), "2.1": (2, 1)}
 
 
+def _declared(revision: str, byte_order: str | None) -> SurveyDeclaration:
+    number = float(revision) if "." in revision else int(revision)
+    override = None
+    if byte_order is not None:
+        override = parse_override(
+            {
+                "name": f"sweep-{byte_order}",
+                "version": "1",
+                "evidence": "Synthetic header bytes for the revision-word sweep; not real data.",
+                "endianness": byte_order,
+            }
+        )
+    return SurveyDeclaration(revision=number, template="PostStack3DTime", override=override)
+
+
+@pytest.mark.parametrize("byte_order", [None, "big", "little"])
 @pytest.mark.parametrize("declared", ["0", "1", "2", "2.1"])
 @pytest.mark.parametrize("file_revision", list(ENCODINGS))
-def test_the_revision_finding_fires_exactly_on_disagreement(declared, file_revision):
+def test_the_revision_finding_fires_exactly_on_disagreement(declared, file_revision, byte_order):
+    """Revision by revision **by byte order** - the axis this sweep shipped without.
+
+    Below revision 2 the field is one 16-bit word, which a little-endian writer stores
+    swapped; from revision 2 it is two separate bytes, which nobody swaps. Swept big-endian
+    only, the check passed here and reported every correct little-endian revision 1 file as
+    recording revision 0.1 (OPEN_DEBTS D62's class: the byte order never reached it).
+    """
+    major, minor = ENCODINGS[file_revision]
     binary = bytearray(400)
-    binary[300], binary[301] = ENCODINGS[file_revision]
-    number = float(declared) if "." in declared else int(declared)
-    finding = _file_revision_finding(bytes(binary), number)
-    assert (finding is None) is (file_revision == declared), (file_revision, declared)
+    swapped = byte_order == "little" and float(file_revision) < 2
+    binary[300], binary[301] = (minor, major) if swapped else (major, minor)
+    finding = _file_revision_finding(bytes(binary), _declared(declared, byte_order))
+    assert (finding is None) is (file_revision == declared), (file_revision, declared, byte_order)
 
 
 def test_every_registered_template_is_recorded_under_the_name_an_operator_types():

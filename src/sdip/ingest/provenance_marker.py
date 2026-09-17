@@ -85,37 +85,37 @@ MITIGATION_HEADER_PLANE: Final[str] = "headers_raw_uint8"
 
 def marker_attrs(
     *,
+    declaration: SurveyDeclaration,
     mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,),
-    declaration: SurveyDeclaration | None = None,
 ) -> dict[str, Any]:
     """The attribute mapping ``sdip ingest`` writes onto the root group."""
     from sdip import __version__
 
-    attrs: dict[str, Any] = {
+    return {
         ATTR_WRITER: "sdip.ingest",
         ATTR_VERSION: __version__,
         ATTR_PINS: {pin.distribution: pin.version for pin in PINS},
         ATTR_MITIGATIONS: list(mitigations),
+        ATTR_DECLARATION: declaration.to_json(),
     }
-    if declaration is not None:
-        attrs[ATTR_DECLARATION] = declaration.to_json()
-    return attrs
 
 
 def attach_provenance_marker(
     store_path: str | Path,
     *,
+    declaration: SurveyDeclaration,
     mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,),
-    declaration: SurveyDeclaration | None = None,
 ) -> dict[str, Any]:
     """Write the marker onto the store's root group. Stock ``zarr``, no MDIO.
 
     Args:
         store_path: The MDIO store.
+        declaration: The survey declaration the store was written under. **Required.** It
+            was optional, and a writer that left it out produced an ``UNBOUND`` store
+            without a word - one no command can check its declaration against and no
+            certificate can release. ``UNBOUND`` is for stores written before binding
+            existed, not a state this writer can produce (OPEN_DEBTS D62's class).
         mitigations: Which unconditional mitigations this writer attaches.
-        declaration: The survey declaration the store was written under. ``sdip ingest``
-            always passes one; the parameter is optional only so a marker can be written
-            for a store whose declaration is genuinely unknown.
 
     Returns:
         The attributes written.

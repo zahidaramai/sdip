@@ -24,7 +24,10 @@ import zarr
 
 from sdip.equivalence.determinism import _compare_run_pair, g6
 from sdip.ingest import ingest
+from sdip.spec.declaration import SurveyDeclaration
 from tests.fixtures.generators import make_poststack3d
+
+REV1 = SurveyDeclaration(revision=1, template="PostStack3DTime")
 
 pytestmark = pytest.mark.integration
 
@@ -52,7 +55,7 @@ def _copy(src: Path, dst: Path) -> Path:
 def test_g6_passes_on_two_independent_ingests(tmp_path):
     """The positive leg: two real ingests of one source agree at both levels."""
     article = make_poststack3d(tmp_path / "src.sgy")
-    result = g6(article.path, 1, workdir=tmp_path / "work")
+    result = g6(article.path, declaration=REV1, workdir=tmp_path / "work")
 
     assert result.status == "PASS", result.summary()
     assert result.runs == 2
@@ -68,7 +71,7 @@ def test_g6_removes_its_run_directories_but_leaves_the_workdir(tmp_path):
     article = make_poststack3d(tmp_path / "src.sgy")
     work = tmp_path / "work"
     work.mkdir()
-    g6(article.path, 1, workdir=work)
+    g6(article.path, declaration=REV1, workdir=work)
     assert work.is_dir()
     assert list(work.glob("run_*.mdio")) == []
 

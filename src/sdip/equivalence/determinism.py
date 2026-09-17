@@ -65,8 +65,8 @@ from pathlib import Path
 from typing import Any
 
 from sdip.equivalence.exact import identical
-from sdip.ingest import ingest
-from sdip.spec.overrides import SurveyOverride
+from sdip.ingest import ingest_declared
+from sdip.spec.declaration import SurveyDeclaration
 
 METADATA_FILENAME = "zarr.json"
 """The one file the chunk-byte comparison skips. It carries MDIO's ``createdOn``.
@@ -411,12 +411,10 @@ def _compare_run_pair(
 
 def g6(
     source: str | Path,
-    spec_revision: float | int = 1,
     *,
-    template: str = "PostStack3DTime",
+    declaration: SurveyDeclaration,
     workdir: str | Path,
     runs: int = 2,
-    override: SurveyOverride | None = None,
 ) -> G6Result:
     """Ingest one source several times over and compare the stores byte for byte.
 
@@ -437,11 +435,12 @@ def g6(
 
     Args:
         source: The SEG-Y file to ingest repeatedly.
-        spec_revision: SEG-Y revision passed to every run's gap-free spec build.
-        template: Registered MDIO template name, identical for every run.
-        override: The survey override every run is ingested under. Without it a survey
-            that needs one could not reach G6 at all: before D-0087 this function took
-            none, so ``certify`` of such a survey was unreachable even from Python.
+        declaration: The declaration every run is ingested under - revision, template,
+            override and grid overrides - required, with no default. Before D-0087 this
+            took no override, so ``certify`` of a survey needing one could not reach G6;
+            until 1.2.1 it took the pieces separately with defaults, the shape that let
+            closure run under a different reading from the store it judged (OPEN_DEBTS
+            D62).
         workdir: Directory to hold the run stores. Created if absent. Nothing outside it
             is written.
         runs: How many independent ingests to perform. Two is the specified minimum.
@@ -477,14 +476,7 @@ def g6(
                 raise ValueError(msg)
             # Recorded before the ingest so a partially written store is still cleaned up.
             created.append(store)
-            ingest(
-                source_path,
-                store,
-                revision=spec_revision,
-                template=template,
-                overwrite=False,
-                override=override,
-            )
+            ingest_declared(source_path, store, declaration, overwrite=False)
             stores.append(store)
 
         baseline = stores[0]

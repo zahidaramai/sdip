@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import numpy as np
 
@@ -33,10 +33,14 @@ from sdip.ingest.file_headers import (
     read_raw_file_headers,
     read_raw_textual_from_store,
 )
+from sdip.ingest.preflight import resolve_byte_order
 from sdip.ingest.provenance_marker import declared_mitigations
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY
 from sdip.provenance.hashing import sha256_bytes
 from sdip.spec.transforms import COORD_ARRAYS, LOSSY_DECODE_FORMATS, _format_name
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from sdip.spec.declaration import SurveyDeclaration
 
 
 def first_difference(left: bytes, right: bytes) -> dict[str, Any] | None:
@@ -123,21 +127,58 @@ def plane_1(source: str | Path, store: str | Path) -> PlaneResult:
 
 
 BIN_REVISION_OFFSET: Final[int] = 300
-"""Binary header bytes 3501-3502: the revision, as two unsigned bytes (major, minor)."""
+"""Binary header bytes 3501-3502: the file's own revision."""
+
+SPLIT_REVISION_FIELDS_FROM: Final[float] = 2.0
+"""From revision 2 bytes 3501 and 3502 are two unsigned bytes, major then minor. Below it
+they are one 16-bit word - rev 1 writes 1.0 as ``0x0100`` - and a word has a byte order."""
 
 
 def _revision_text(value: float | int) -> str:
     return str(int(value)) if float(value).is_integer() else str(value)
 
 
-def _file_revision_finding(binary: bytes, declared: float | int) -> dict[str, Any] | None:
+def file_revision(binary: bytes, declaration: SurveyDeclaration) -> tuple[int, int]:
+    """The revision a binary header records, read **as the declaration reads the file**.
+
+    Below revision 2 the field is one 16-bit word, so a little-endian file stores rev 1's
+    ``0x0100`` as the bytes ``00 01``. From revision 2 the two bytes are separate fields,
+    and a byte has no byte order.
+
+    Until 1.2.1 the two bytes were read in file order whatever byte order had been
+    declared, and every correct little-endian revision 1 file was reported as recording
+    revision 0.1 - measured through ``sdip verify``. OPEN_DEBTS D62's class: the declared
+    revision reached this check and the declared byte order did not.
+
+    Args:
+        binary: The 400-byte binary header.
+        declaration: The declaration the file is read under. ``infer`` is resolved the way
+            the preflight resolves it.
+
+    Returns:
+        ``(major, minor)``.
+
+    Raises:
+        UntrustedInputError: If the byte order was declared ``infer`` and cannot be
+            inferred for this header - a file the preflight would have refused.
+    """
+    first, second = binary[BIN_REVISION_OFFSET], binary[BIN_REVISION_OFFSET + 1]
+    if float(declaration.revision) >= SPLIT_REVISION_FIELDS_FROM:
+        return first, second
+    if resolve_byte_order(binary, declaration.endianness) == "little":
+        return second, first
+    return first, second
+
+
+def _file_revision_finding(binary: bytes, declaration: SurveyDeclaration) -> dict[str, Any] | None:
     """D59: the file's own revision field against the revision it was read as.
 
-    Rev 1 records 1.0 as 0x0100 (a Q-point between the bytes); rev 2.x records major and minor
-    as unsigned bytes. Both parse the same way. Zero means the 1975 standard. Not blocking:
-    conformant rev 1 files commonly carry 0 here (ruling, DECISIONS.md D-0088).
+    Zero means the 1975 standard. Not blocking: conformant rev 1 files commonly carry 0
+    there (ruling, DECISIONS.md D-0088). The field is read by :func:`file_revision`, in the
+    declared byte order.
     """
-    major, minor = binary[BIN_REVISION_OFFSET], binary[BIN_REVISION_OFFSET + 1]
+    declared = declaration.revision
+    major, minor = file_revision(binary, declaration)
     declared_major, declared_minor = divmod(round(float(declared) * 10), 10)
     if (major, minor) == (declared_major, declared_minor):
         return None
@@ -156,7 +197,7 @@ def _file_revision_finding(binary: bytes, declared: float | int) -> dict[str, An
 
 
 def plane_2(
-    source: str | Path, store: str | Path, *, declared_revision: float | int | None = None
+    source: str | Path, store: str | Path, *, declaration: SurveyDeclaration | None = None
 ) -> PlaneResult:
     """**Plane 2 — binary header.** Gate G2b. Spec §4.3.
 
@@ -167,8 +208,12 @@ def plane_2(
     Args:
         source: The source SEG-Y, read from disk.
         store: The MDIO store.
-        declared_revision: The revision the source was read as. When given, a disagreement
-            with the file's own revision field is recorded as a non-blocking finding (D59).
+        declaration: The declaration the source was read under. When given, a
+            disagreement between its revision and the file's own revision field is
+            recorded as a non-blocking finding (D59). **The whole declaration, not its
+            revision**: reading that field takes the declared byte order as well, and
+            while this took the revision alone the byte order never arrived (OPEN_DEBTS
+            D62's class). ``None`` claims nothing, which is how G7 re-runs this plane.
 
     Returns:
         The plane verdict, with the first differing offset when it fails.
@@ -202,8 +247,8 @@ def plane_2(
             "findings": [
                 f
                 for f in [
-                    _file_revision_finding(expected, declared_revision)
-                    if declared_revision is not None
+                    _file_revision_finding(expected, declaration)
+                    if declaration is not None
                     else None
                 ]
                 if f is not None

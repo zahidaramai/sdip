@@ -17,6 +17,8 @@ import pytest
 from sdip.errors import UntrustedInputError
 from sdip.ingest.orchestrator import validate_source
 from sdip.ingest.preflight import validate_segy_structure
+from sdip.spec import parse_override
+from sdip.spec.declaration import SurveyDeclaration
 from tests.fixtures.generators.irregular import make_byte_swapped
 
 
@@ -80,9 +82,36 @@ def test_an_unknown_byte_order_is_refused_before_anything_is_read(big):
         validate_segy_structure(big.path, _size(big), endianness="middle")
 
 
-def test_the_orchestrator_entry_point_forwards_the_declaration(little):
-    """``validate_source`` is what ``ingest`` calls. The regression lived at this seam."""
-    assert validate_source(little.path, endianness="little").endianness == "little"
+def _declared(endianness: str | None) -> SurveyDeclaration:
+    if endianness is None:
+        return SurveyDeclaration(revision=1, template="PostStack3DTime")
+    override = parse_override(
+        {
+            "name": f"preflight-{endianness}",
+            "version": "1",
+            "evidence": "Synthetic byte-swapped fixture for the preflight tests; not real data.",
+            "endianness": endianness,
+        }
+    )
+    return SurveyDeclaration(revision=1, template="PostStack3DTime", override=override)
+
+
+@pytest.mark.parametrize("endianness", ["little", "infer"])
+def test_the_orchestrator_entry_point_reads_the_declared_byte_order(little, endianness):
+    """``validate_source`` is what ``ingest`` and ``verify`` call; the regression lived here.
+
+    It takes the declaration whole (OPEN_DEBTS D62's class): while the byte order was a
+    keyword defaulting to big-endian, leaving it out was silent.
+    """
+    assert validate_source(little.path, _declared(endianness)).endianness == "little"
+
+
+def test_the_orchestrator_entry_point_refuses_the_file_under_another_declaration(little):
+    """The other half: the declaration is read, not ignored. Nothing is guessed."""
+    with pytest.raises(UntrustedInputError):
+        validate_source(little.path, _declared(None))
+    with pytest.raises(UntrustedInputError):
+        validate_source(little.path, _declared("big"))
 
 
 def test_an_uninferable_byte_order_is_a_clean_refusal_not_a_traceback(tmp_path):

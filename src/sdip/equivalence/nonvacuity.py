@@ -69,6 +69,7 @@ from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from sdip.equivalence.closure import ClosureResult
+    from sdip.spec.declaration import SurveyDeclaration
 
 ALL_GATES: tuple[str, ...] = ("G2a", "G2b", "G2c", "G2d", "G2e", "G3")
 """Every gate G7 audits. §7 G7 names exactly these."""
@@ -1039,8 +1040,8 @@ CLOSURE_CONTROL_NAME: Final[str] = "closure_binary_header_byte"
 def closure_control(
     export_path: str | Path,
     original_store: str | Path,
-    spec: Any,
     *,
+    declaration: SurveyDeclaration,
     baseline: ClosureResult,
     workdir: str | Path,
     offset: int = CLOSURE_CONTROL_OFFSET,
@@ -1084,7 +1085,10 @@ def closure_control(
         export_path: The exported SEG-Y. **Read, copied, never written.**
         original_store: The store the export came from. Opened read-only by closure;
             checked afterwards with the same stat tripwire ``g7`` uses.
-        spec: The gap-free ``SegySpec`` used for the original ingest.
+        declaration: The declaration the store was written under, required - the
+            corrupted copy is re-ingested under it exactly as the clean export was
+            (OPEN_DEBTS D62). It is the only statement of the reading taken here, as in
+            :func:`~sdip.equivalence.closure.roundtrip_closure`.
         baseline: Closure's verdict on the **clean** export. Must be ``PASS`` for the
             control's result to mean anything.
         workdir: Directory for the corrupted copy and its closure store. Temporary.
@@ -1119,7 +1123,7 @@ def closure_control(
     payload[offset] ^= 0x01
     corrupted.write_bytes(bytes(payload))
 
-    result = roundtrip_closure(corrupted, store, spec, workdir=work / "run")
+    result = roundtrip_closure(corrupted, store, declaration=declaration, workdir=work / "run")
 
     export_after = sha256_file(export)
     store_touched = _differences(store_before, _stat_tripwire(store))

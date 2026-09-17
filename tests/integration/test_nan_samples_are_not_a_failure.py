@@ -17,7 +17,10 @@ from sdip.equivalence.determinism import g6
 from sdip.equivalence.planes import plane_4
 from sdip.ingest import ingest
 from sdip.spec import build_gap_free_spec
+from sdip.spec.declaration import SurveyDeclaration
 from tests.fixtures.generators.poststack3d import make_poststack3d
+
+REV1 = SurveyDeclaration(revision=1, template="PostStack3DTime")
 
 N_IL, N_XL, NS = 3, 4, 8
 
@@ -49,7 +52,7 @@ def test_plane_4_passes_a_correct_store_carrying_nan(tmp_path, ieee_specials):
 
 
 def test_g6_calls_two_identical_ingests_identical(tmp_path, ieee_specials):
-    result = g6(ieee_specials, 1, workdir=tmp_path / "g6")
+    result = g6(ieee_specials, declaration=REV1, workdir=tmp_path / "g6")
     assert result.status == "PASS", result.summary()
 
 

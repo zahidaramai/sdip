@@ -139,24 +139,71 @@ def test_a_little_endian_store_verifies_under_its_declaration_and_is_refused_wit
     assert_clean(ok)
     assert ok.returncode == 0, ok.stdout + ok.stderr
     assert "verify: PASS" in ok.stdout
+    # The fixture's revision word is correct: rev 1's 0x0100, stored little-endian as 00 01.
+    # Until 1.2.1 this run reported it as "revision 0.1" - the declared byte order never
+    # reached Plane 2's revision check (OPEN_DEBTS D62's class).
+    assert "file_revision_differs" not in ok.stdout, ok.stdout
 
     refused = run("verify", "--skip-portability", str(source), str(store))
     assert_clean(refused)
     assert refused.returncode == 2
 
 
+def test_a_little_endian_file_whose_revision_word_does_disagree_is_still_named(little):
+    """The failing half of the assertion above, through the same executable.
+
+    The same file with its revision word zeroed, read under the same declaration: the
+    finding is recorded, it does not block, and the verdict is still PASS.
+    """
+    work, source, _, override, _ = little
+    data = bytearray(source.read_bytes())
+    data[3500:3502] = b"\x00\x00"
+    zeroed = work / "little_zero_word.sgy"
+    zeroed.write_bytes(bytes(data))
+    store = work / "little_zero_word.mdio"
+    declared = ["--override", str(override)]
+    assert run("ingest", str(zeroed), str(store), *declared).returncode == 0
+
+    proc = run("verify", "--skip-portability", "--json", str(zeroed), str(store), *declared)
+    assert_clean(proc)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    report = json.loads(proc.stdout)
+    assert report["verdict"] == "PASS"
+    [finding] = report["planes"]["plane_2"]["evidence"]["findings"]
+    assert finding["code"] == "file_revision_differs"
+    assert finding["file_revision"] == "0.0"
+    assert finding["blocks_release"] is False
+
+
 # --- certify ----------------------------------------------------------------------------
 
 
-@pytest.mark.slow
-def test_certify_reaches_a_bound_certificate_for_an_override_survey(rev0, tmp_path):
-    """D47 row 5: ``certify`` could not even parse ``--override``.
+@pytest.mark.parametrize("reading", ["rev0-override-depth", "little-endian-override"])
+def test_certify_is_release_ready_for_a_survey_read_under_a_declaration(
+    reading, rev0, little, tmp_path
+):
+    """D47 row 5, then D62: ``certify`` for any reading other than the defaults.
+
+    D47: ``certify`` could not even parse ``--override``. This test then stopped at a BOUND
+    certificate with G3 PASS - and was marked ``slow``, which CI's integration gate
+    excludes, so it never ran there. Under it, 1.2.0 re-ingested the export for round-trip
+    closure under revision 1 and ``PostStack3DTime`` whatever the survey had been
+    declared, and every such certificate read EQUIVALENT yet not release-ready, blocked by
+    a closure FAIL and a closure-control FAIL on a correct store (OPEN_DEBTS D62, measured
+    first on real revision 0 depth surveys). So the assertion is now the one an operator
+    cares about: **release ready, nothing blocking**, with both ceilings declared so G5
+    runs. Not ``slow``: this is correctness, and it gates in CI.
 
     ``certify`` refuses a dirty tree and reads the git state of its working directory, so
-    it runs from a fresh, committed repository — the same way the container runbook
+    it runs from a fresh, committed repository - the same way the container runbook
     documents it.
     """
-    _, source, _ = rev0
+    if reading == "rev0-override-depth":
+        _, source, _ = rev0
+        declared = [*REV0, "--template", "PostStack3DDepth"]
+    else:
+        _, source, _, override, _ = little
+        declared = ["--override", str(override)]
     repo = tmp_path / "repo"
     repo.mkdir()
     for args in (
@@ -169,15 +216,37 @@ def test_certify_reaches_a_bound_certificate_for_an_override_survey(rev0, tmp_pa
         "certify",
         str(source),
         str(tmp_path / "cert.mdio"),
-        *REV0,
+        *declared,
+        "--rss-ceiling-gib",
+        "8.0",
+        "--wall-ceiling-s",
+        "1800",
         "--certificates",
         str(certs),
         cwd=repo,
     )
     assert_clean(proc)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "[BOUND] declaration" in proc.stdout, proc.stdout + proc.stderr
     [certificate] = list(certs.glob("*.json"))
     payload = json.loads(certificate.read_text())
     assert payload["declaration"]["status"] == "BOUND"
-    assert payload["spec_id"].endswith("+segy-rev0-poststack3d@1")
+    if reading == "rev0-override-depth":
+        assert payload["spec_id"].endswith("+segy-rev0-poststack3d@1")
     assert payload["gates"]["G3"] == "PASS"
+    closure = payload["roundtrip_closure"]
+    assert closure["status"] == "PASS", closure["summary"]
+    assert closure["only_in_original_store"] == [] and closure["only_in_closure_store"] == []
+    # Both files' revision words are correct for their declaration - the little-endian one
+    # included - so neither Plane 2 nor closure's Plane 2, which reads the export under the
+    # same declaration, has a finding to record.
+    assert payload["planes"]["plane_2"]["evidence"]["findings"] == []
+    assert closure["planes"]["plane_2"] == "PASS"
+    assert closure["plane_evidence"][1]["evidence"]["findings"] == []  # planes run in order
+    control = payload["nonvacuity"]["closure_control"]
+    assert control["status"] == "PASS", control.get("failure_reasons")
+    assert control["baseline_clean"] is True
+    assert payload["verdict"] == "EQUIVALENT"
+    readiness = payload["release_readiness"]
+    assert readiness["blocking"] == [], readiness["blocking"]
+    assert readiness["release_ready"] is True

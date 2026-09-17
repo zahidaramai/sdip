@@ -21,6 +21,7 @@ from sdip.errors import DirtyTreeError, UntrustedInputError
 from sdip.ingest import ingest, read_raw_file_headers, validate_source
 from sdip.ingest.file_headers import ATTR_RAW_BINARY, ATTR_RAW_TEXT
 from sdip.provenance.git import capture_git_state
+from sdip.spec.declaration import SurveyDeclaration
 from tests.fixtures.generators import PLANTED_BYTES, make_poststack3d
 
 pytestmark = pytest.mark.integration
@@ -195,12 +196,12 @@ def test_a_too_short_file_is_refused_before_allocation(tmp_path):
     tiny = tmp_path / "tiny.sgy"
     tiny.write_bytes(b"\x00" * 100)
     with pytest.raises(UntrustedInputError, match="cannot be smaller"):
-        validate_source(tiny)
+        validate_source(tiny, SurveyDeclaration(revision=1, template="PostStack3DTime"))
 
 
 def test_a_directory_is_refused(tmp_path):
     with pytest.raises(UntrustedInputError, match="not a regular file"):
-        validate_source(tmp_path)
+        validate_source(tmp_path, SurveyDeclaration(revision=1, template="PostStack3DTime"))
 
 
 def test_a_header_only_file_is_refused_by_the_header_reader(tmp_path):

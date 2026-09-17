@@ -15,11 +15,14 @@ nothing then checks that the exported file is a well-formed SEG-Y, that it parse
 the same gap-free spec, or that it carries the same measured values. A scoped verdict is
 currently a statement about the *source*, not about the *export*.
 
-**Arrow (3) closes the loop.** Re-ingest the export and verify the store that results:
-G1 on the rebuilt spec, all five planes against the exported file, and every array of the
-new store identical to the original store's. That makes the exported SEG-Y a **validated
-artifact in its own right** rather than a by-product, and it closes the loop for
-byte-identical round trips as well as scoped ones.
+**Arrow (3) closes the loop.** Re-ingest the export **under the declaration the original
+store was written under** and verify the store that results: G1 on the rebuilt spec, all
+five planes against the exported file, and every array of the new store identical to the
+original store's. That makes the exported SEG-Y a **validated artifact in its own right**
+rather than a by-product, and it closes the loop for byte-identical round trips as well as
+scoped ones. The declaration is the whole of what arrow (3) knows about the reading: two
+stores are comparable only when one reading wrote both, and until 1.2.1 arrow (3) read
+every export under revision 1 and ``PostStack3DTime`` (OPEN_DEBTS D62).
 
 What this establishes that G3 does not
 --------------------------------------
@@ -74,10 +77,11 @@ from typing import Any
 
 import numpy as np
 
+from sdip.equivalence.binding import check_binding
 from sdip.equivalence.exact import identical
 from sdip.equivalence.planes import PlaneResult, plane_1, plane_2, plane_3, plane_4, plane_5
 from sdip.errors import UntrustedInputError
-from sdip.ingest import ingest
+from sdip.ingest import ingest_declared
 from sdip.ingest.file_headers import (
     ATTR_RAW_BINARY,
     ATTR_RAW_TEXT,
@@ -86,6 +90,7 @@ from sdip.ingest.file_headers import (
 )
 from sdip.provenance.hashing import sha256_bytes
 from sdip.spec import G1Result, g1_for_spec
+from sdip.spec.declaration import SurveyDeclaration
 
 PLANE_KEYS: tuple[str, ...] = ("plane_1", "plane_2", "plane_3", "plane_4", "plane_5")
 """Certificate keys for the five planes, in the order they are run."""
@@ -507,17 +512,28 @@ class ClosureResult:
         }
 
 
-def _run_planes(export: Path, store: Path, spec: Any, *, g1_passed: bool) -> list[PlaneResult]:
+def _run_planes(
+    export: Path, store: Path, spec: Any, *, declaration: SurveyDeclaration, g1_passed: bool
+) -> list[PlaneResult]:
     """Run all five planes of ``store`` against ``export``.
 
     A plane that raises has *detected* something about the exported file; recording that
     as anything other than a failure would be the vacuity the engine exists to avoid. So
     an exception becomes a ``FAIL`` naming the exception, and the remaining planes still
     run — one broken plane must not hide the state of the other four.
+
+    Plane 2 is handed the declaration, as ``verify`` and ``certify`` hand it theirs: the
+    export was read under it, so the evidence recorded about the export's own revision
+    field is the evidence recorded about the source's, not a poorer copy.
     """
     checkers: tuple[tuple[int, str, str, Any], ...] = (
         (1, "G2a", "Textual header preserved verbatim", lambda: plane_1(export, store)),
-        (2, "G2b", "Binary header preserved", lambda: plane_2(export, store)),
+        (
+            2,
+            "G2b",
+            "Binary header preserved",
+            lambda: plane_2(export, store, declaration=declaration),
+        ),
         (
             3,
             "G2c",
@@ -558,10 +574,8 @@ def _run_planes(export: Path, store: Path, spec: Any, *, g1_passed: bool) -> lis
 def roundtrip_closure(
     export_path: str | Path,
     original_store: str | Path,
-    spec: Any,
     *,
-    spec_revision: float | int = 1,
-    template: str = "PostStack3DTime",
+    declaration: SurveyDeclaration,
     workdir: str | Path,
 ) -> ClosureResult:
     """Close the round trip: validate the exported SEG-Y as an artifact in its own right.
@@ -585,10 +599,17 @@ def roundtrip_closure(
     Args:
         export_path: The exported SEG-Y to validate. **Never modified.**
         original_store: The MDIO store the export was produced from. **Never modified.**
-        spec: The gap-free ``SegySpec`` used for the original ingest, for the plane
-            checkers. The closure ingest builds its own spec from ``spec_revision``.
-        spec_revision: SEG-Y revision for the spec the re-ingest builds.
-        template: Registered MDIO template name for the re-ingest.
+        declaration: The declaration ``original_store`` was written under - revision,
+            template, override and grid overrides. **Required, with no default, and the
+            only statement of the reading this function takes.** The export is a file of
+            that same survey, so it is re-ingested under that same reading, and the planes
+            run under the spec that re-ingest built from it; any other reading builds a
+            different store and fails a correct round trip. Until 1.2.1 this took a
+            revision and a template that defaulted to 1 and ``PostStack3DTime``,
+            ``certify`` passed neither, and closure failed every certificate for any other
+            reading (OPEN_DEBTS D62, DECISIONS.md D-0091). It also took the ``SegySpec``
+            separately - a second carrier of the same reading, free to disagree with the
+            first - and no longer does.
         workdir: Directory for the closure store. Should be temporary; everything this
             check creates lives under it, and ``workdir/closure.mdio`` is removed first
             if it already exists.
@@ -596,9 +617,18 @@ def roundtrip_closure(
     Returns:
         The closure verdict. ``PASS`` only when G1 passes on the rebuilt spec, all five
         planes pass, both raw file headers match, and every array matches.
+
+    Raises:
+        DeclarationMismatchError: If ``original_store`` records a different declaration
+            from ``declaration``. Comparing a store with a re-ingest performed under
+            another reading yields a FAIL that says nothing about the export - D62's
+            symptom - so it is refused with both readings named, as every command refuses
+            it (D-0087), and before anything is written. A store that predates binding,
+            or that SDIP did not write, has nothing to compare and proceeds.
     """
     export = Path(export_path)
     original = Path(original_store)
+    check_binding(original, declaration)
     work = Path(workdir)
     work.mkdir(parents=True, exist_ok=True)
 
@@ -613,13 +643,7 @@ def roundtrip_closure(
     )
 
     try:
-        re_ingest = ingest(
-            export,
-            closure_store,
-            revision=spec_revision,
-            template=template,
-            overwrite=False,
-        )
+        re_ingest = ingest_declared(export, closure_store, declaration, overwrite=False)
     except Exception as exc:
         # Not re-raised: an export that will not re-ingest is the finding this check
         # exists to surface, and a traceback out of a certificate run reports nothing.
@@ -629,7 +653,13 @@ def roundtrip_closure(
     # Measured from the rebuilt spec rather than read off the ingest result. The gate is
     # cheap to re-run and a remembered verdict is not evidence about the store on disk.
     result.g1 = g1_for_spec(re_ingest.spec)
-    result.planes = _run_planes(export, closure_store, spec, g1_passed=result.g1.passed)
+    result.planes = _run_planes(
+        export,
+        closure_store,
+        re_ingest.spec.segy_spec,
+        declaration=declaration,
+        g1_passed=result.g1.passed,
+    )
     result.file_headers = _compare_file_headers(original, closure_store)
     result.arrays = _compare_stores(original, closure_store)
     return result

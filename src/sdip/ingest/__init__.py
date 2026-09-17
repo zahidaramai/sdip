@@ -37,6 +37,7 @@ from sdip.ingest.orchestrator import (
     SpawnGuardError,
     assert_main_guarded,
     ingest,
+    ingest_declared,
     validate_output_path,
     validate_source,
 )
@@ -69,6 +70,7 @@ __all__ = [
     "file_headers_not_persisted",
     "file_headers_persisted",
     "ingest",
+    "ingest_declared",
     "open_header_plane",
     "open_raw_sample_view",
     "raw_header_node",

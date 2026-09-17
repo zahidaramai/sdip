@@ -71,8 +71,10 @@ def full_certificate(tmp_path_factory) -> dict[str, Any]:
         roundtrip=roundtrip,
         portability=g4(store),
         nonvacuity=g7(article.path, store, spec, workdir=root / "g7"),
-        closure=roundtrip_closure(exported, store, spec, workdir=root / "closure"),
-        determinism=g6(article.path, 1, workdir=root / "g6"),
+        closure=roundtrip_closure(
+            exported, store, declaration=result.declaration, workdir=root / "closure"
+        ),
+        determinism=g6(article.path, declaration=result.declaration, workdir=root / "g6"),
         scale=g5(
             peak_rss_bytes=1 << 30,
             wall_clock_s=1.0,

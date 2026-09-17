@@ -41,10 +41,15 @@ from sdip.equivalence.nonvacuity import (
 from sdip.export import export
 from sdip.ingest import ingest
 from sdip.ingest.file_headers import ATTR_RAW_BINARY, ATTR_RAW_TEXT
+from sdip.ingest.provenance_marker import ATTR_DECLARATION
 from sdip.provenance.hashing import sha256_file
+from sdip.spec.declaration import SurveyDeclaration
 from tests.fixtures.generators import make_poststack3d
 
 pytestmark = [pytest.mark.negative, pytest.mark.integration]
+
+DECLARATION = SurveyDeclaration(revision=1, template="PostStack3DTime")
+"""The reading the fixture store is written under; every closure here re-ingests under it."""
 
 
 @pytest.fixture(scope="module")
@@ -53,24 +58,27 @@ def exported(tmp_path_factory):
     root = tmp_path_factory.mktemp("closure_control")
     source = make_poststack3d(root / "src.sgy")
     result = ingest(source.path, root / "out.mdio")
+    assert result.declaration.sha256() == DECLARATION.sha256()
     store = root / "out.mdio"
     path = root / "roundtrip.sgy"
     export(store, path, result.spec.segy_spec, source=source.path)
-    return source, store, path, result.spec.segy_spec, root
+    return source, store, path, root
 
 
 @pytest.fixture(scope="module")
 def baseline(exported):
     """Closure on the **clean** export. If this fails, nothing below proves anything."""
-    _source, store, path, spec, root = exported
-    return roundtrip_closure(path, store, spec, workdir=root / "baseline")
+    _source, store, path, root = exported
+    return roundtrip_closure(path, store, declaration=DECLARATION, workdir=root / "baseline")
 
 
 @pytest.fixture(scope="module")
 def control(exported, baseline):
     """The control itself, run once."""
-    _source, store, path, spec, root = exported
-    return closure_control(path, store, spec, baseline=baseline, workdir=root / "control")
+    _source, store, path, root = exported
+    return closure_control(
+        path, store, declaration=DECLARATION, baseline=baseline, workdir=root / "control"
+    )
 
 
 def test_the_baseline_is_clean(baseline):
@@ -123,7 +131,7 @@ def test_the_control_leaves_the_export_and_the_store_alone(control, exported):
     """The corruption goes to a copy under ``workdir``. Measured, not assumed."""
     assert control["export_unmodified"]
     assert control["store_unmodified"]
-    _source, _store, path, _spec, _root = exported
+    _source, _store, path, _root = exported
     assert path.exists()
 
 
@@ -144,15 +152,19 @@ def test_a_dirty_baseline_makes_the_control_fail(exported):
     same discipline, asserted rather than assumed: a baseline built from an unrelated
     export makes the control FAIL even though the corruption is still detected.
     """
-    _source, store, path, spec, root = exported
+    _source, store, path, root = exported
     unrelated = root / "unrelated.sgy"
     payload = bytearray(path.read_bytes())
     payload[3600] ^= 0x01  # a trace-header byte: fails closure on the array leg
     unrelated.write_bytes(bytes(payload))
-    dirty = roundtrip_closure(unrelated, store, spec, workdir=root / "dirty_baseline")
+    dirty = roundtrip_closure(
+        unrelated, store, declaration=DECLARATION, workdir=root / "dirty_baseline"
+    )
     assert not dirty.passed
 
-    check = closure_control(path, store, spec, baseline=dirty, workdir=root / "control_dirty")
+    check = closure_control(
+        path, store, declaration=DECLARATION, baseline=dirty, workdir=root / "control_dirty"
+    )
     assert check["status"] == "FAIL"
     assert not check["baseline_clean"]
     assert any("baseline is not clean" in reason for reason in check["failure_reasons"])
@@ -171,13 +183,15 @@ def test_closure_passed_the_corruption_before_the_file_header_leg(exported):
     It fails loudly if the leg is deleted, because the assertions below then describe the
     live verdict rather than a historical one.
     """
-    _source, store, path, spec, root = exported
+    _source, store, path, root = exported
     corrupted = root / "reproducer.sgy"
     payload = bytearray(path.read_bytes())
     payload[CLOSURE_CONTROL_OFFSET] ^= 0x01
     corrupted.write_bytes(bytes(payload))
 
-    result = roundtrip_closure(corrupted, store, spec, workdir=root / "reproducer_work")
+    result = roundtrip_closure(
+        corrupted, store, declaration=DECLARATION, workdir=root / "reproducer_work"
+    )
 
     # Every pre-D-0067 leg, unchanged.
     assert result.error is None, "the corrupted export still re-ingests"
@@ -193,13 +207,15 @@ def test_closure_passed_the_corruption_before_the_file_header_leg(exported):
 
 def test_the_leg_reports_the_byte_that_moved(exported):
     """A comparison that says only *that* it failed is much less useful than *where*."""
-    _source, store, path, spec, root = exported
+    _source, store, path, root = exported
     corrupted = root / "located.sgy"
     payload = bytearray(path.read_bytes())
     payload[CLOSURE_CONTROL_OFFSET] ^= 0x01
     corrupted.write_bytes(bytes(payload))
 
-    result = roundtrip_closure(corrupted, store, spec, workdir=root / "located_work")
+    result = roundtrip_closure(
+        corrupted, store, declaration=DECLARATION, workdir=root / "located_work"
+    )
     binary = next(h for h in result.file_headers if h.attribute == ATTR_RAW_BINARY)
     expected_byte = CLOSURE_CONTROL_OFFSET - 3200 + 1
     assert f"byte {expected_byte}" in binary.detail, binary.detail
@@ -217,7 +233,7 @@ def test_a_store_with_no_raw_headers_fails_rather_than_raising(exported, tmp_pat
     """
     import zarr
 
-    _source, store, path, spec, _root = exported
+    _source, store, path, _root = exported
     stripped = tmp_path / "stripped.mdio"
     shutil.copytree(store, stripped)
     group = zarr.open_group(str(stripped), mode="r+")
@@ -225,7 +241,7 @@ def test_a_store_with_no_raw_headers_fails_rather_than_raising(exported, tmp_pat
     for attribute in (ATTR_RAW_TEXT, ATTR_RAW_BINARY):
         del node.attrs[attribute]
 
-    result = roundtrip_closure(path, stripped, spec, workdir=tmp_path / "work")
+    result = roundtrip_closure(path, stripped, declaration=DECLARATION, workdir=tmp_path / "work")
     assert not result.passed
     assert result.differing_headers == [ATTR_RAW_TEXT, ATTR_RAW_BINARY]
     for header in result.file_headers:
@@ -234,19 +250,45 @@ def test_a_store_with_no_raw_headers_fails_rather_than_raising(exported, tmp_pat
         assert "the original store" not in header.detail
 
 
+def test_a_store_that_predates_declaration_binding_still_closes(exported, tmp_path):
+    """The pass half of closure's refusal of a declaration the store was not written under.
+
+    That refusal (``test_closure_under_declarations.py``) compares the declaration with the
+    digest the store records. A store written before binding existed records none, so
+    there is nothing to contradict and closure must run - and, under the right reading,
+    pass - rather than refuse every store older than 1.2.0.
+    """
+    import zarr
+
+    _source, store, path, _root = exported
+    unbound = tmp_path / "unbound.mdio"
+    shutil.copytree(store, unbound)
+    del zarr.open_group(str(unbound), mode="r+").attrs[ATTR_DECLARATION]
+
+    result = roundtrip_closure(path, unbound, declaration=DECLARATION, workdir=tmp_path / "work")
+    assert result.passed, result.summary()
+
+
 def test_the_control_does_not_modify_the_export_on_disk(exported, tmp_path):
     """Independent of the control's own self-report: hash the file either side."""
-    _source, store, path, spec, _root = exported
+    _source, store, path, _root = exported
     before = sha256_file(path)
-    base = roundtrip_closure(path, store, spec, workdir=tmp_path / "base")
-    closure_control(path, store, spec, baseline=base, workdir=tmp_path / "ctl")
+    base = roundtrip_closure(path, store, declaration=DECLARATION, workdir=tmp_path / "base")
+    closure_control(path, store, declaration=DECLARATION, baseline=base, workdir=tmp_path / "ctl")
     assert sha256_file(path) == before
 
 
 def test_an_offset_past_the_end_is_refused(exported, tmp_path):
     """Never index into a buffer on an offset nobody checked (§3.6)."""
-    _source, store, path, spec, _root = exported
+    _source, store, path, _root = exported
     size = Path(path).stat().st_size
-    base = roundtrip_closure(path, store, spec, workdir=tmp_path / "base")
+    base = roundtrip_closure(path, store, declaration=DECLARATION, workdir=tmp_path / "base")
     with pytest.raises(IndexError):
-        closure_control(path, store, spec, baseline=base, workdir=tmp_path / "ctl", offset=size + 1)
+        closure_control(
+            path,
+            store,
+            declaration=DECLARATION,
+            baseline=base,
+            workdir=tmp_path / "ctl",
+            offset=size + 1,
+        )
