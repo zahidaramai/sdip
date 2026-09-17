@@ -2204,3 +2204,41 @@ extended interval or depth unit. A pin under which revision 2 ingests raises thi
 debt.
 
 ---
+
+## D62 — `certify` closed the round trip without the declaration, and blocked correct stores
+
+- **Status:** `OPEN` (raised 2026-09-17, by a consumer re-certifying real surveys) ·
+  **Blocks:** release readiness of every certificate for a reading other than revision 1,
+  `PostStack3DTime`, no override · **Decision:** `DECISIONS.md` D-0091
+
+`roundtrip_closure` and `closure_control` re-ingested the export under a revision and template
+that defaulted to 1 and `PostStack3DTime`, with no override; `certify` passed none. Measured
+through `sdip certify` 1.2.0 on synthetic files: revision 1 + `PostStack3DDepth`, revision 0 +
+override, and both together each gave `EQUIVALENT`, G3 PASS, and `release_ready: false` on a
+closure FAIL and a closure-control FAIL. All other arrays identical: a false block, not a false
+pass. **D47's class, one path further in** — a declaration handed over in pieces, each with a
+default.
+
+Looking for the rest of the class found a second instance: Plane 2's revision check (D59) was
+given the declared revision and never the declared byte order, and reported every correct
+little-endian revision 1 file as *"recording revision 0.1"* (non-blocking; measured through
+`sdip verify` 1.2.0).
+
+---
+
+## D62 — CLOSED 2026-09-17 — the declaration is taken whole, everywhere, or the call does not compile
+
+- **Closes:** D62 above (**SP10**) · **Decision:** `DECISIONS.md` D-0091 · **Released:** 1.2.1
+
+Every function that reads, re-reads or records a store takes `declaration` as a required
+argument and no piece of the reading separately; the ingest never takes a declaration apart;
+closure refuses a declaration the store was not written under. Measured through the executable:
+`sdip certify` for revision 0 + override + `PostStack3DDepth` and for a little-endian override
+is `release_ready: true` with nothing blocking, and `sdip verify` on a correct little-endian
+file records no revision finding. Both halves for each check, a reproducer for the old
+defaults, and structural tests on the signatures and imports (`tests/negative/
+test_closure_under_declarations.py`, `tests/unit/test_declaration_reaches_every_reingest.py`,
+`tests/unit/test_file_revision_byte_order.py`). The `certify` test now gates in CI; the one it
+replaces was marked `slow` and never ran there.
+
+---

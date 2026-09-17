@@ -4702,3 +4702,99 @@ nine run roots from 2026-08-22 to 2026-09-17, and was harvested and deleted toda
 The record stays under `docs/`, never published, for the reason D-0025 gives: most of it derives
 from restricted data. The local CI runner that lived in `local/` moved with it and no longer writes
 into the tree.
+
+---
+
+## D-0091 — 2026-09-17 — D62: `certify` closed the round trip under a reading nobody declared
+
+**Reported by a consumer, reproduced here before anything was changed.** Re-certifying two real
+revision 0 depth surveys with 1.2.0 gave, on each: declaration `BOUND`, five planes PASS, G3
+byte-identical, G4-G7 PASS, verdict `EQUIVALENT` — and `release_ready: false`, blocked by
+*"round-trip closure is FAIL"* and *"closure_control is FAIL"*. Reproduced through the `sdip`
+executable on synthetic files:
+
+| Declaration | Closure | What differed |
+|---|---|---|
+| revision 1, `PostStack3DTime` (the defaults) | PASS | — |
+| revision 1, `PostStack3DDepth` | **FAIL** | axis array `depth` in the store, `time` in the re-ingest |
+| revision 0 + override, `PostStack3DTime` | **FAIL** | `headers` array; closure's Plane 3 |
+| revision 0 + override, `PostStack3DDepth` | **FAIL** | both |
+
+Every other array was identical in every case. **It was a false block on correct stores, never
+a false pass.**
+
+### Root cause
+
+`sdip certify` re-ingested its own export for round-trip closure, and again for closure's
+negative control, **without the survey declaration**: `roundtrip_closure` took a revision and a
+template that defaulted to 1 and `PostStack3DTime`, took no override, and nothing required a
+caller to supply them. D-0087 bound the declaration to the store and threaded it through the
+commands; it did not reach this path, and nothing could have noticed, because **the declaration
+was handed over in pieces, each with a default, so a missing piece failed silently.** The only
+`certify` test for a non-default reading asserted `BOUND` and G3, and was marked `slow`, which
+the CI integration gate excludes — so it never ran there.
+
+### The same shape, found by looking for it
+
+- **Plane 2's revision check (D59) received the declared revision and never the declared byte
+  order.** Below revision 2 the field is a 16-bit word, so a little-endian file stores rev 1's
+  `0x0100` as `00 01`. Measured through `sdip verify` on 1.2.0: every correct little-endian
+  revision 1 file was reported as *"bytes 3501-3502 record revision 0.1"*. Non-blocking, and on
+  every such verify and certificate. D-0088's sweep of that check varied the revision and only
+  ever wrote big-endian files.
+- **The hostile-input preflight took byte order and revision as keywords defaulting to
+  big-endian and 1** — the shape D28 regressed through on 2026-08-23.
+- **The provenance marker's declaration was optional**, so a writer that left it out produced
+  an `UNBOUND` store without a word.
+- **Closure took the reading twice** — a `SegySpec` and, after the first fix, a declaration —
+  free to disagree.
+
+### Ruling and fix
+
+Maintainer ruling: fix at the root and release 1.2.1.
+
+1. **The ingest takes the declaration whole and never takes it apart.** `ingest_declared` is
+   the ingest; the keyword `ingest()` builds one declaration and delegates. Nothing inside SDIP
+   calls the keyword form.
+2. **Every function that reads, re-reads or records on the operator's behalf takes
+   `declaration` as a required argument and keeps no piece of the reading of its own** —
+   `roundtrip_closure`, `closure_control`, `g6`, `validate_source`, `attach_provenance_marker`;
+   Plane 2 takes it whole where it takes it at all. Closure runs its planes under the spec its
+   own re-ingest built.
+3. **Closure refuses a declaration the store was not written under**, naming both, before it
+   writes anything — the D-0087 rule. The wrong reading used to produce a FAIL about correct
+   data; a verdict about a comparison that means nothing is worse than a refusal.
+4. **Structural tests make the class unwritable.** Signatures are inspected; an AST scan fails
+   on any import or call of a defaulted keyword form from outside `sdip.ingest`, and is itself
+   tested against six offending and three clean samples.
+
+### Measured
+
+- `sdip certify` for revision 0 + override + `PostStack3DDepth`, and for a little-endian
+  override, both ceilings declared: exit 0, `BOUND`, closure PASS, closure control PASS with a
+  clean baseline, `EQUIVALENT`, `blocking: []`, `release_ready: true`. **These tests gate in
+  CI**; they are not `slow`.
+- Four declarations × closure: a correct export closes; the control is caught by the
+  file-header leg alone; the old defaults are refused; and re-ingesting under the old defaults
+  builds a different store or is refused — the reproducer, so the argument cannot be ignored
+  unnoticed.
+- `sdip verify` on the little-endian fixture: 1.2.0 prints the false finding; this tree prints
+  none. With the byte order ignored again, 4 of 67 tests fail; restored, 67 pass.
+- Suite on this tree: 633 unit (Python 3.12 and 3.13), 389 integration with the 63 latency
+  benchmarks deselected, 518 negative including the fuzz corpus through all four store
+  commands — all pass. No gate, tolerance or comparison changed; no certificate issued under
+  1.2.0 is invalidated — a 1.2.0 certificate that was blocked by closure was blocked wrongly,
+  and one that was release-ready still is.
+
+### What changes for an importer
+
+The CLI, its exit codes and the certificate schema are unchanged. The Python signatures of
+`roundtrip_closure`, `closure_control`, `g6`, `validate_source`, `plane_2`
+(`declaration=` replaces `declared_revision=`), `marker_attrs` and `attach_provenance_marker`
+changed; `ingest()` is unchanged and `ingest_declared()` is new.
+
+### Left as it is, on purpose
+
+`export()` still takes the `SegySpec`: it is required, so it cannot be omitted silently, and the
+CLI binds before building it. The CLI has no grid-overrides option, so a store written through
+the Python API with grid overrides is refused at the CLI with exit 2 — loud, not silent.
