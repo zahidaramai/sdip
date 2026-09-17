@@ -288,7 +288,9 @@ def validate_segy_structure(
         msg = (
             f"binary header (bytes 3225-3226) declares sample-format code {code}, which "
             f"the pinned segy 0.6.0 does not define. Supported codes: "
-            f"{supported}.{_byte_order_hint(binary, order)}"
+            f"{supported}.{_byte_order_hint(binary, order)} A survey override cannot yet "
+            "declare the sample format for such a file: segy and MDIO expose that publicly, "
+            "and SDIP will build it when a file that needs it arrives (OPEN_DEBTS D22)."
         )
         raise UntrustedInputError(msg)
     bytes_per_sample = codes[code]

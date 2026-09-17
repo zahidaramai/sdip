@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from sdip._pins import BARRED_ENV_VARS, BARRED_MODULES, PINS, UPSTREAM_SETTINGS
+from sdip._pins import BAR, BARRED_ENV_VARS, BARRED_MODULES, PINS, UPSTREAM_SETTINGS
 from sdip.cli.result import Check, Report, Status
 from sdip.guard.env import check_barred_env_vars
 from sdip.guard.licences import check_runtime_licences
@@ -124,6 +124,31 @@ def _check_upstream_settings() -> Check:
             else "unclassified upstream settings: " + "; ".join(problems[:4])
         ),
         evidence={"gaps": gaps, "classified": len(UPSTREAM_SETTINGS)},
+    )
+
+
+def _check_library_config() -> Check:
+    """Zarr's and dask's effective configuration against their defaults (D58, D-0088)."""
+    from sdip.guard.library_config import classification_gaps, deviations
+
+    found = deviations()
+    barred = [f"{d['library']} {d['key']}={d['value']!r}" for d in found if d["action"] == BAR]
+    gaps = classification_gaps()
+    ok = not barred and not gaps
+    return Check(
+        name="library-config",
+        status=Status.PASS if ok else Status.FAIL,
+        clause="spec 9.1 (D-0088)",
+        summary=(
+            "zarr and dask run on their shipped defaults"
+            + (f"; {len(found)} recorded setting(s)" if found else "")
+            if ok
+            else "; ".join(
+                ([f"barred: {', '.join(barred)}"] if barred else [])
+                + ([f"unclassified zarr settings: {', '.join(gaps)}"] if gaps else [])
+            )
+        ),
+        evidence={"deviations": [{**d, "value": str(d["value"])} for d in found], "gaps": gaps},
     )
 
 
@@ -376,6 +401,7 @@ def run_doctor(root: str | Path = ".") -> Report:
             _check_python(),
             _check_env(),
             _check_upstream_settings(),
+            _check_library_config(),
             _check_packages(),
             _check_pins(root_path),
             _check_licences(),

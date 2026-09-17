@@ -84,3 +84,14 @@ def test_an_interval_the_stored_axis_cannot_represent_still_fails(tmp_path, inte
     result = _plane4(tmp_path, f"sub{interval_us}", sample_interval_us=interval_us)
     assert result.status == "FAIL"
     assert result.evidence["derived_axis_identical"] is False
+
+
+@pytest.mark.parametrize("interval_us", [1000, 2000, 3000, 8000, 16000, 32000])
+def test_every_whole_millisecond_interval_passes(tmp_path, interval_us):
+    """Specificity sweep (D52): correct stores pass at every whole-millisecond interval.
+
+    Those are the intervals the stored int32 millisecond axis can represent - not only 4 ms.
+    """
+    result = _plane4(tmp_path, f"ms{interval_us}", sample_interval_us=interval_us)
+    assert result.status == "PASS", result.evidence.get("derived_axis_first_difference")
+    assert result.evidence["derived_axis_identical"] is True

@@ -482,8 +482,23 @@ def _axis_indices(geom: PrestackGeometry) -> dict[str, np.ndarray]:
     return {axis.name: grid[:, position] for position, axis in enumerate(geom.axes)}
 
 
-def _columns(geom: PrestackGeometry) -> dict[str, np.ndarray]:
-    """Every trace-header column this geometry writes, as int64 arrays."""
+SCALED_COORDINATE_COLUMNS = frozenset(
+    {"cdp_x", "cdp_y", "source_coord_x", "source_coord_y", "group_coord_x", "group_coord_y"}
+)
+"""The columns MDIO multiplies by the coordinate scalar (``mdio/segy/scalar.py``)."""
+
+RESIDUE_WEIGHTS = (37, 61, 89, 97, 101)
+
+
+def _columns(geom: PrestackGeometry, *, residues: bool = False) -> dict[str, np.ndarray]:
+    """Every trace-header column this geometry writes, as int64 arrays.
+
+    ``residues`` adds ``(sum of index * weight) % 100`` to each scaled coordinate column,
+    computed from THAT column's own axes so the value stays constant within every cell MDIO
+    stores it in. The default coordinates are round multiples, on which dividing by a
+    scalar and multiplying by its reciprocal agree exactly - a sweep on them proves nothing
+    about the arithmetic (D-0087, D-0088).
+    """
     indices = _axis_indices(geom)
     columns: dict[str, np.ndarray] = {}
 
@@ -495,6 +510,11 @@ def _columns(geom: PrestackGeometry) -> dict[str, np.ndarray]:
         total = np.full(geom.trace_count, column.base, dtype=np.int64)
         for axis_name, step in zip(column.axes, column.steps, strict=True):
             total = total + indices[axis_name] * step
+        if residues and column.name in SCALED_COORDINATE_COLUMNS:
+            jitter = np.zeros(geom.trace_count, dtype=np.int64)
+            for axis_name, weight in zip(column.axes, RESIDUE_WEIGHTS, strict=False):
+                jitter = jitter + indices[axis_name] * weight
+            total = total + jitter % 100
         columns[column.name] = total
 
     return columns
@@ -519,6 +539,8 @@ def make_prestack(
     *,
     seed: int = DEFAULT_SEED,
     text: str = DETERMINISTIC_TEXT,
+    coordinate_scalar: int = 1,
+    coordinate_residues: bool = False,
 ) -> PrestackSegy:
     """Write one deterministic synthetic prestack SEG-Y.
 
@@ -526,6 +548,9 @@ def make_prestack(
         geom: The geometry to build.
         path: Where to write the file.
         seed: Seed for the per-trace tag in :data:`PLANT_FIELD`. Fixed and committed.
+        coordinate_scalar: Trace-header bytes 71-72 on every trace. Default 1, as P7 ran.
+        coordinate_residues: Spread the scaled coordinates over final-two-digit residues;
+            see :func:`_columns`. Off by default, so every P7 fixture is byte-identical.
         text: Textual header content. Passing ``None`` is **not** supported: the upstream
             default embeds a timestamp and would make the fixture non-deterministic.
 
@@ -544,7 +569,7 @@ def make_prestack(
     )
 
     n_traces = geom.trace_count
-    columns = _columns(geom)
+    columns = _columns(geom, residues=coordinate_residues)
     amplitudes = _amplitudes(n_traces, geom.n_samples)
 
     rng = np.random.default_rng(seed)
@@ -553,7 +578,7 @@ def make_prestack(
     headers = factory.create_trace_header_template(size=n_traces)
     samples = factory.create_trace_sample_template(size=n_traces)
 
-    headers["coordinate_scalar"][:] = 1
+    headers["coordinate_scalar"][:] = coordinate_scalar
     headers["trace_seq_num_line"][:] = np.arange(1, n_traces + 1)
     headers[PLANT_FIELD][:] = planted
     for name, values in columns.items():

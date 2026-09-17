@@ -25,6 +25,7 @@ from typing import Any, Final
 import numpy as np
 
 from sdip._pins import SEGY_BINARY_HEADER_BYTES, SEGY_TEXTUAL_HEADER_BYTES
+from sdip.equivalence.exact import identical
 from sdip.errors import UntrustedInputError
 from sdip.ingest.file_headers import (
     raw_header_node,
@@ -121,7 +122,42 @@ def plane_1(source: str | Path, store: str | Path) -> PlaneResult:
     )
 
 
-def plane_2(source: str | Path, store: str | Path) -> PlaneResult:
+BIN_REVISION_OFFSET: Final[int] = 300
+"""Binary header bytes 3501-3502: the revision, as two unsigned bytes (major, minor)."""
+
+
+def _revision_text(value: float | int) -> str:
+    return str(int(value)) if float(value).is_integer() else str(value)
+
+
+def _file_revision_finding(binary: bytes, declared: float | int) -> dict[str, Any] | None:
+    """D59: the file's own revision field against the revision it was read as.
+
+    Rev 1 records 1.0 as 0x0100 (a Q-point between the bytes); rev 2.x records major and minor
+    as unsigned bytes. Both parse the same way. Zero means the 1975 standard. Not blocking:
+    conformant rev 1 files commonly carry 0 here (ruling, DECISIONS.md D-0088).
+    """
+    major, minor = binary[BIN_REVISION_OFFSET], binary[BIN_REVISION_OFFSET + 1]
+    declared_major, declared_minor = divmod(round(float(declared) * 10), 10)
+    if (major, minor) == (declared_major, declared_minor):
+        return None
+    return {
+        "code": "file_revision_differs",
+        "blocks_release": False,
+        "file_revision": f"{major}.{minor}",
+        "declared_revision": _revision_text(declared),
+        "message": (
+            f"binary header bytes 3501-3502 record revision {major}.{minor}; the file was read "
+            f"as revision {_revision_text(declared)}. The field is mandatory in every SEG-Y "
+            "revision and zero means the 1975 standard, but conformant rev 1 files commonly "
+            "carry 0 there, so this is recorded rather than refused."
+        ),
+    }
+
+
+def plane_2(
+    source: str | Path, store: str | Path, *, declared_revision: float | int | None = None
+) -> PlaneResult:
     """**Plane 2 — binary header.** Gate G2b. Spec §4.3.
 
     The 400-byte binary file header must be preserved as a parsed mapping **and** as raw
@@ -131,6 +167,8 @@ def plane_2(source: str | Path, store: str | Path) -> PlaneResult:
     Args:
         source: The source SEG-Y, read from disk.
         store: The MDIO store.
+        declared_revision: The revision the source was read as. When given, a disagreement
+            with the file's own revision field is recorded as a non-blocking finding (D59).
 
     Returns:
         The plane verdict, with the first differing offset when it fails.
@@ -161,6 +199,15 @@ def plane_2(source: str | Path, store: str | Path) -> PlaneResult:
             "store_sha256": sha256_bytes(observed),
             "first_difference": difference,
             "parsed_mapping_present": parsed_present,
+            "findings": [
+                f
+                for f in [
+                    _file_revision_finding(expected, declared_revision)
+                    if declared_revision is not None
+                    else None
+                ]
+                if f is not None
+            ],
             "note": (
                 "Raw bytes decide the verdict. The parsed mapping is recorded because "
                 "§4.3 requires both, but it is not authoritative on conflict."
@@ -295,37 +342,40 @@ def _raw_header_evidence(
         }
 
     mismatches: list[dict[str, Any]] = []
+    mismatch_count = 0
     compared = 0
     for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
         compared += 1
         expected = np.asarray(expected_all[ordinal], dtype=np.uint8)
         observed = np.asarray(stored[cell])
-        if not np.array_equal(expected, observed):
+        if not identical(expected, observed):
             differing = np.flatnonzero(expected != observed)
             first = int(differing[0]) if differing.size else None
-            mismatches.append(
-                {
-                    "source_ordinal": ordinal,
-                    "cell": list(cell),
-                    "byte_offset": first,
-                    "expected": None if first is None else int(expected[first]),
-                    "observed": None if first is None else int(observed[first]),
-                    "differing_bytes": int(differing.size),
-                }
-            )
-            if len(mismatches) >= 20:
-                break
+            # Counted in full; only the quoted examples are capped (D52 audit, D-0088).
+            mismatch_count += 1
+            if len(mismatches) < MISMATCH_EXAMPLES:
+                mismatches.append(
+                    {
+                        "source_ordinal": ordinal,
+                        "cell": list(cell),
+                        "byte_offset": first,
+                        "expected": None if first is None else int(expected[first]),
+                        "observed": None if first is None else int(observed[first]),
+                        "differing_bytes": int(differing.size),
+                    }
+                )
 
     return {
         "raw_header_plane_present": True,
         "raw_header_bytes_verified": True,
-        "raw_header_bytes_identical": not mismatches,
+        "raw_header_bytes_identical": mismatch_count == 0,
         "raw_header_compared": "np.array_equal on uint8 bytes, source vs store - EXACT",
         "raw_header_n": compared,
         "raw_header_bytes_per_trace": int(stored.shape[-1]),
         "raw_header_sampling": "exhaustive over live traces",
         "raw_header_first_difference": mismatches[0] if mismatches else None,
-        "raw_header_mismatch_count": len(mismatches),
+        "raw_header_mismatch_count": mismatch_count,
+        "raw_header_mismatch_examples": mismatches,
         "raw_header_note": RAW_HEADER_NOTE,
     }
 
@@ -413,7 +463,7 @@ def correctly_rounded_differences(raw: Any, scalars: Any, dtype: Any) -> int:
             quotient = np.asarray(value).astype(dtype) / np.asarray(-divisor).astype(dtype)
         else:
             quotient = _scale_coordinate(value, divisor, dtype)
-        count += int(not np.array_equal(written, quotient))
+        count += int(not identical(written, quotient))
     return count
 
 
@@ -596,14 +646,31 @@ def _array_dimension_names(group: Any, name: str) -> tuple[str, ...]:
     return tuple(names) if names else ()
 
 
+def _unverified_finding(arrays: list[str], reasons: dict[str, str]) -> dict[str, Any]:
+    return {
+        "code": "derived_coordinate_unverified",
+        "blocks_release": True,
+        "arrays": arrays,
+        "reasons": reasons,
+        "message": (
+            f"scaled coordinate array(s) {arrays} are present in the store but could not be "
+            "verified against the source; NOT CHECKED is never checked-and-passed, so the "
+            "store is not release-ready (OPEN_DEBTS D56)."
+        ),
+    }
+
+
 def _derived_coordinate_evidence(
     source_headers: Any, group: Any, trace_map: Any, grid: tuple[str, ...]
 ) -> dict[str, Any]:
-    """Recompute ``cdp_x``/``cdp_y`` from the source headers and compare, exactly.
+    """Recompute every coordinate array the writer scales and compare, exactly.
 
-    **Absent array means NOT CHECKED, never checked-and-passed** - the same discipline
-    the raw legs use. A store without a coordinate array, or a source whose spec carries
-    no coordinate scalar, yields ``None`` rather than ``True``.
+    The arrays are the ones ``mdio`` multiplies by the coordinate scalar - ``cdp_x/y`` and,
+    in prestack templates, ``source_coord_x/y`` and ``group_coord_x/y`` (D56). **Each array
+    is judged on its own.** Until D-0088 one array the trace map could not address returned
+    NOT CHECKED for the whole leg, so adding an array could silently stop ``cdp_x`` being
+    checked. **Absent means NOT CHECKED, never checked-and-passed**: an array present in the
+    store but not verifiable is listed, and a finding blocks release.
     """
     from sdip.spec.transforms import COORD_ARRAYS, COORD_SCALAR_FIELD, detect_coordinate_scalar
 
@@ -614,17 +681,21 @@ def _derived_coordinate_evidence(
             "derived_coords_present": False,
             "derived_coords_verified": False,
             "derived_coords_identical": None,
+            "findings": [],
             "derived_coords_note": (
-                "store carries no cdp_x/cdp_y array; absence is NOT evidence they match."
+                "store carries no scaled coordinate array; absence is NOT evidence they match."
             ),
         }
 
     transform = detect_coordinate_scalar(source_headers)
     if transform is None or COORD_SCALAR_FIELD not in names:
+        reasons = dict.fromkeys(present, "the spec declares no coordinate scalar")
         return {
             "derived_coords_present": True,
             "derived_coords_verified": False,
             "derived_coords_identical": None,
+            "derived_coords_unverified": present,
+            "findings": [_unverified_finding(present, reasons)],
             "derived_coords_note": (
                 "spec declares no coordinate scalar, so the derivation cannot be "
                 "reconstructed. NOT CHECKED - not checked-and-passed."
@@ -636,36 +707,26 @@ def _derived_coordinate_evidence(
     mismatch_count = 0
     quotient_differences = 0
     compared = 0
+    verified: list[str] = []
+    unverified: dict[str, str] = {}
 
     for array_name in present:
         if array_name not in names:
-            return {
-                "derived_coords_present": True,
-                "derived_coords_verified": False,
-                "derived_coords_identical": None,
-                "derived_coords_note": (
-                    f"source header has no {array_name!r} field; the derivation cannot "
-                    "be reconstructed. NOT CHECKED."
-                ),
-            }
-        stored = np.asarray(group[array_name][:])
-        raw = np.asarray(source_headers[array_name]).ravel()
+            unverified[array_name] = f"the source spec has no {array_name!r} field"
+            continue
         dims = _array_dimension_names(group, array_name)
         projected = {
             ordinal: _project_cell(cell, grid, dims)
             for ordinal, cell in trace_map.ordinal_to_cell.items()
         }
         if not dims or any(v is None for v in projected.values()):
-            return {
-                "derived_coords_present": True,
-                "derived_coords_verified": False,
-                "derived_coords_identical": None,
-                "derived_coords_note": (
-                    f"{array_name} is indexed by {list(dims)}, which the grid "
-                    f"{list(grid)} does not address. NOT CHECKED - not "
-                    "checked-and-passed."
-                ),
-            }
+            unverified[array_name] = (
+                f"indexed by {list(dims)}, which the grid {list(grid)} does not address"
+            )
+            continue
+        stored = np.asarray(group[array_name][:])
+        raw = np.asarray(source_headers[array_name]).ravel()
+        verified.append(array_name)
         for ordinal in sorted(trace_map.ordinal_to_cell):
             index = projected[ordinal]
             compared += 1
@@ -677,7 +738,7 @@ def _derived_coordinate_evidence(
             quotient_differences += correctly_rounded_differences(
                 raw[ordinal : ordinal + 1], scalars[ordinal : ordinal + 1], stored.dtype
             )
-            if not np.array_equal(expected, observed):
+            if not identical(expected, observed):
                 # The COUNT is every mismatch. Only the examples are capped: until D-0087
                 # the list was capped at 20 and its length reported as the count.
                 mismatch_count += 1
@@ -694,11 +755,17 @@ def _derived_coordinate_evidence(
                         }
                     )
 
+    findings = (
+        [_unverified_finding(sorted(unverified), dict(sorted(unverified.items())))]
+        if unverified
+        else []
+    )
     return {
         "derived_coords_present": True,
-        "derived_coords_verified": True,
-        "derived_coords_identical": mismatch_count == 0,
-        "derived_coords_arrays": present,
+        "derived_coords_verified": bool(verified),
+        "derived_coords_identical": (mismatch_count == 0) if verified else None,
+        "derived_coords_arrays": verified,
+        "derived_coords_unverified": sorted(unverified),
         "derived_coords_compared": "np.array_equal, recomputed from source headers - EXACT",
         "derived_coords_arithmetic": COORDINATE_ARITHMETIC,
         "derived_coords_n": compared,
@@ -708,6 +775,7 @@ def _derived_coordinate_evidence(
         "derived_coords_mismatch_count": mismatch_count,
         "derived_coords_mismatch_examples": examples,
         "derived_coords_standard_quotient_differences": quotient_differences,
+        "findings": findings,
         "derived_coords_note": DERIVED_COORD_NOTE,
     }
 
@@ -778,10 +846,10 @@ def _time_axis_evidence(
     # expectation is the TRUE millisecond value, so an axis the store truncated fails.
     expected = np.arange(0, interval_us * samples, interval_us, dtype=np.int64) / 1000
     observed = np.asarray(stored, dtype=np.float64)
-    identical = bool(expected.shape == observed.shape and np.array_equal(expected, observed))
+    axis_identical = bool(expected.shape == observed.shape and identical(expected, observed))
 
     first: dict[str, float] | None = None
-    if not identical:
+    if not axis_identical:
         if expected.shape != observed.shape:
             first = {
                 "expected_length": int(expected.shape[0]),
@@ -854,7 +922,7 @@ def _time_axis_evidence(
         "derived_axis_name": axis,
         "derived_axis_present": True,
         "derived_axis_verified": True,
-        "derived_axis_identical": identical,
+        "derived_axis_identical": axis_identical,
         "derived_axis_compared": "np.array_equal against the writer's axis - EXACT",
         "derived_axis_source": "binary header bytes 3217-3218 (interval) and 3221-3222 (samples)",
         "derived_axis_arithmetic": "(i * interval_us) / 1000 for i in range(samples), from 0",
@@ -937,6 +1005,7 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
     missing_fields = sorted(set(field_names) - set(store_names))
 
     mismatches: list[dict[str, Any]] = []
+    field_mismatch_count = 0
     compared = 0
     for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
         compared += 1
@@ -945,20 +1014,20 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
                 continue
             expected = source_headers[name][ordinal]
             observed = store_headers[name][cell]
-            if not np.array_equal(expected, observed):
-                mismatches.append(
-                    {
-                        "source_ordinal": ordinal,
-                        "cell": list(cell),
-                        "field": name,
-                        "expected": expected.item(),
-                        "observed": observed.item(),
-                    }
-                )
-                if len(mismatches) >= 20:
-                    break
-        if len(mismatches) >= 20:
-            break
+            if not identical(expected, observed):
+                # Counted in full; only the quoted examples are capped (D52 audit, D-0088).
+                # The loop used to break at 20, which also stopped `compared`.
+                field_mismatch_count += 1
+                if len(mismatches) < MISMATCH_EXAMPLES:
+                    mismatches.append(
+                        {
+                            "source_ordinal": ordinal,
+                            "cell": list(cell),
+                            "field": name,
+                            "expected": expected.item(),
+                            "observed": observed.item(),
+                        }
+                    )
 
     # The byte leg is ANDed into the verdict, not merely reported - the same ruling
     # D-0049 made for Plane 4's raw-word leg. `headers_raw_uint8` is the copy of the
@@ -1040,7 +1109,8 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
             "byte_coverage_guaranteed_by": "G1 (gap-free spec: 240 of 240 bytes)",
             "missing_fields_in_store": missing_fields,
             "first_difference": mismatches[0] if mismatches else None,
-            "mismatch_count": len(mismatches),
+            "mismatch_count": field_mismatch_count,
+            "mismatch_examples": mismatches,
             "map_invertible": trace_map.invertible,
             "note": (
                 "Field naming is metadata; byte content is the contract. Field-wise "
@@ -1118,7 +1188,7 @@ def _raw_ibm32_evidence(source: str | Path, group: Any, trace_map: Any) -> dict[
         compared += 1
         expected = np.asarray(words[ordinal], dtype=np.uint32)
         observed = np.asarray(stored[cell])
-        if not np.array_equal(expected, observed):
+        if not identical(expected, observed):
             differing = np.flatnonzero(expected != observed)
             first = int(differing[0]) if differing.size else None
             mismatches.append(
@@ -1199,26 +1269,28 @@ def plane_4(
     trace_map = build_trace_map(source_headers, grid_coordinates(group, dimensions), dimensions)
 
     mismatches: list[dict[str, Any]] = []
+    sample_mismatch_count = 0
     compared = 0
     for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
         compared += 1
         expected = np.asarray(samples[ordinal])
         observed = np.asarray(volume[cell])
-        if not np.array_equal(expected, observed):
+        if not identical(expected, observed):
             differing = np.flatnonzero(expected != observed)
             first = int(differing[0]) if differing.size else None
-            mismatches.append(
-                {
-                    "source_ordinal": ordinal,
-                    "cell": list(cell),
-                    "first_sample": first,
-                    "expected": None if first is None else float(expected[first]),
-                    "observed": None if first is None else float(observed[first]),
-                    "differing_samples": int(differing.size),
-                }
-            )
-            if len(mismatches) >= 20:
-                break
+            # Counted in full; only the quoted examples are capped (D52 audit, D-0088).
+            sample_mismatch_count += 1
+            if len(mismatches) < MISMATCH_EXAMPLES:
+                mismatches.append(
+                    {
+                        "source_ordinal": ordinal,
+                        "cell": list(cell),
+                        "first_sample": first,
+                        "expected": None if first is None else float(expected[first]),
+                        "observed": None if first is None else float(observed[first]),
+                        "differing_samples": int(differing.size),
+                    }
+                )
 
     # The raw-word leg is ANDed into the verdict, not merely reported.
     #
@@ -1275,7 +1347,8 @@ def plane_4(
             "variable": variable,
             "padding_excluded": True,
             "first_difference": mismatches[0] if mismatches else None,
-            "mismatch_count": len(mismatches),
+            "mismatch_count": sample_mismatch_count,
+            "mismatch_examples": mismatches,
             "note": (
                 "Grid padding is not data (SP12) and is excluded by the live mask, not "
                 "compared. No tolerance is applied anywhere in this comparison."

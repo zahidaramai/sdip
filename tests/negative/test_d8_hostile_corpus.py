@@ -48,6 +48,7 @@ from typing import Any
 
 import pytest
 
+from sdip.ingest import ingest
 from tests.fixtures.generators.hostile import (
     CLASSES,
     CORPUS,
@@ -199,13 +200,32 @@ class Run:
         return bool(self.api["outcome"] == "returned")
 
 
-def _run_one(name: str, klass: str, source: Path, root: Path) -> Run:
+def _run_one(name: str, klass: str, source: Path, root: Path, store: Path) -> Run:
     """Run one source through the child and observe the filesystem around it."""
     run_dir = root / "runs" / name
     cwd = run_dir / "cwd"
     output_dir = run_dir / "out"
+    certify_cwd = run_dir / "certify_repo"
     cwd.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
+    certify_cwd.mkdir(parents=True, exist_ok=True)
+    # certify refuses a tree that is not a clean repository before it reads anything, so
+    # without one the phase would measure the git check, not the file (D-0088).
+    for args in (
+        ["init", "-q"],
+        [
+            "-c",
+            "user.name=d8",
+            "-c",
+            "user.email=d8@d8",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "d8",
+        ],
+    ):
+        subprocess.run(["git", *args], cwd=certify_cwd, check=True, capture_output=True)
     report_path = run_dir / "report.json"
 
     before_run = _snapshot(run_dir)
@@ -222,6 +242,10 @@ def _run_one(name: str, klass: str, source: Path, root: Path) -> Run:
             str(report_path),
             "--cwd",
             str(cwd),
+            "--store",
+            str(store),
+            "--certify-cwd",
+            str(certify_cwd),
         ],
         capture_output=True,
         text=True,
@@ -262,10 +286,12 @@ def corpus_runs(tmp_path_factory) -> dict[str, Run]:
     corpus_root = root / "corpus"
     built = build_corpus(corpus_root)
     control = build_positive_control(corpus_root)
+    store = root / "control.mdio"
+    ingest(control, store)
 
-    runs = {"positive_control": _run_one("positive_control", "control", control, root)}
+    runs = {"positive_control": _run_one("positive_control", "control", control, root, store)}
     for member in built:
-        runs[member.name] = _run_one(member.name, member.klass, member.path, root)
+        runs[member.name] = _run_one(member.name, member.klass, member.path, root, store)
     return runs
 
 
@@ -550,3 +576,36 @@ def test_the_measured_outcome_counts_are_the_ones_on_record(corpus_runs):
     assert sorted(converted) == sorted(EXPECTED_INGESTS), converted
     assert sorted(upstream) == sorted(UPSTREAM_TYPED), upstream
     assert len(sdip_typed) == 24, sdip_typed
+
+
+# ---------------------------------------------------------------------------
+# Every command that reads a source, not only ingest (D60, DECISIONS.md D-0088)
+# ---------------------------------------------------------------------------
+
+PHASES = ("verify", "export", "certify")
+
+
+@pytest.mark.parametrize("phase", PHASES)
+@pytest.mark.parametrize("name", ["positive_control", *[f.name for f in CORPUS]])
+def test_no_command_crashes_or_reports_an_internal_defect_on_any_member(corpus_runs, name, phase):
+    """Refused (1), failed (1), mismatched (2) or passed (0) - never a traceback, never 3."""
+    record = corpus_runs[name].report[phase]
+    assert record["escaped"] is None, f"{name} {phase}: escaped {record['escaped']}"
+    assert "Traceback" not in record["stderr"], f"{name} {phase}: {record['stderr'][-800:]}"
+    assert record["exit_code"] in (0, 1, 2), f"{name} {phase}: exit {record['exit_code']}"
+    assert "internal error" not in record["stderr"], f"{name} {phase}: {record['stderr'][-800:]}"
+
+
+def test_the_positive_control_verifies_and_round_trips_through_the_same_harness(corpus_runs):
+    """Non-vacuity for the phases above: the harness CAN return 0."""
+    report = corpus_runs["positive_control"].report
+    assert report["verify"]["exit_code"] == 0, report["verify"]["stdout"][-800:]
+    assert report["export"]["exit_code"] == 0, report["export"]["stdout"][-800:]
+
+
+@pytest.mark.parametrize("name", [f.name for f in CORPUS if f.name not in EXPECTED_INGESTS])
+def test_verify_refuses_every_member_ingest_refuses(corpus_runs, name):
+    """A file ingest will not trust is not one verify may judge."""
+    record = corpus_runs[name].report["verify"]
+    assert record["exit_code"] != 0, name
+    assert "verify: PASS" not in record["stdout"], name

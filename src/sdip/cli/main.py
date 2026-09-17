@@ -33,6 +33,18 @@ from sdip.spec.declaration import SurveyDeclaration
 EXIT_OK = 0
 EXIT_FAIL = 1
 EXIT_USAGE = 2
+EXIT_INTERNAL = 3
+"""A defect in SDIP itself - never a verdict about the data, never blamed on upstream (D-0088)."""
+
+UPSTREAM_OWNERS = frozenset({"segy", "mdio"})
+"""Packages whose exceptions are upstream refusals when they are where an error was raised."""
+
+SPEC_FIELD_ERRORS = frozenset({"NonSpecFieldError", "InvalidFieldError"})
+"""segy errors that mean a field name the declared spec does not define. NOT
+``SegyFileSpecMismatchError``: that is a size mismatch, and blaming the declaration for a
+truncated file sent the operator the wrong way (measured, D-0088)."""
+
+_DEBUG = False
 
 OVERRIDE_HELP = (
     "Survey spec override to apply over the gap-free base (spec 6.4). A committed TOML "
@@ -120,12 +132,19 @@ def _emit(report: Report, *, as_json: bool, extra: Mapping[str, object] | None =
     "--version",
     message=f"sdip %(version)s (specification v{SPEC_VERSION})",
 )
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="On an internal error, show the traceback. Never changes any result.",
+)
 @click.pass_context
-def cli(ctx: click.Context) -> None:
+def cli(ctx: click.Context, debug: bool) -> None:
     """SEG-Y to MDIO/Zarr v3 with a machine-checkable proof of 1-1 equivalence.
 
     The product is not the file. The product is the file plus the proof.
     """
+    global _DEBUG
+    _DEBUG = debug
     # ONE place, before any command that reads a source or a store runs at all. Until
     # D-0087 the barred variables were checked inside ingest only, so `verify`, `export`
     # and `certify`'s own verification ran under whatever the environment said - and a
@@ -133,8 +152,12 @@ def cli(ctx: click.Context) -> None:
     # the environment as it found it.
     if ctx.invoked_subcommand in STORE_COMMANDS:
         from sdip.guard.env import refuse_barred_env_vars
+        from sdip.guard.library_config import refuse_library_config
 
         refuse_barred_env_vars(str(ctx.invoked_subcommand))
+        # zarr and dask read configuration from variables AND files; a variable list cannot
+        # see a file, so their effective configuration is compared with defaults (D58).
+        refuse_library_config(str(ctx.invoked_subcommand))
 
 
 @cli.command()
@@ -311,12 +334,18 @@ def ingest_cmd(
     sys.exit(EXIT_OK if result.read_path_intact else EXIT_FAIL)
 
 
+def _declared_revision(spec: object) -> float | None:
+    """The revision a spec was built for (``SegySpec.segy_standard``), or ``None``."""
+    standard = getattr(spec, "segy_standard", None)
+    return float(standard.value) if standard is not None else None
+
+
 def _run_planes(source: Path, store: Path, spec: object, *, g1_passed: bool) -> list[Any]:
     from sdip.equivalence import plane_1, plane_2, plane_3, plane_4, plane_5
 
     return [
         plane_1(source, store),
-        plane_2(source, store),
+        plane_2(source, store, declared_revision=_declared_revision(spec)),
         plane_3(source, store, spec, g1_passed=g1_passed),
         plane_4(source, store, spec),
         plane_5(source, store, spec),
@@ -373,6 +402,7 @@ def verify_cmd(
     from sdip.equivalence import g4
     from sdip.equivalence.binding import check_binding
     from sdip.equivalence.envelope import envelope_refusal
+    from sdip.ingest.orchestrator import validate_source
     from sdip.spec import g1_for_spec
 
     # Checked BEFORE any read, on the file's size alone - the same fail-before-you-
@@ -383,7 +413,17 @@ def verify_cmd(
         raise UntrustedInputError(refusal)
 
     declaration = _declaration(revision, template, override_path)
+    # Binding FIRST. A declaration that does not match the store is the root error, and the
+    # binding names the declaration the store was written under; it reads only the store's
+    # attribute record, never the untrusted source. Preflight then reads the source under a
+    # declaration known to match - otherwise a little-endian store verified without its
+    # override was refused as an untrusted file (exit 1) instead of as a mismatch (exit 2).
     binding = check_binding(store, declaration)
+    # The same hostile-input preflight ingest runs (§3.6, D8). Until D-0088 verify parsed an
+    # untrusted source with only the size envelope in front of it: a truncated file reached
+    # segy, and a header declaring a negative sample interval was judged FAIL rather than
+    # refused. A file that cannot be trusted is refused, never given a verdict.
+    validate_source(source, endianness=declaration.endianness, revision=declaration.revision)
     built = declaration.build_spec()
     gate1 = g1_for_spec(built)
     planes = _run_planes(source, store, built.segy_spec, g1_passed=gate1.passed)
@@ -718,6 +758,62 @@ def certify_cmd(
     sys.exit(EXIT_OK if certificate.verdict == "EQUIVALENT" else EXIT_FAIL)
 
 
+def _owner(filename: str) -> str | None:
+    """The package a traceback frame belongs to: ``segy``, ``mdio``, ``sdip``, or another."""
+    parts = Path(filename).parts
+    if "site-packages" in parts and parts.index("site-packages") + 1 < len(parts):
+        return parts[parts.index("site-packages") + 1]
+    if "src" in parts and parts.index("src") + 1 < len(parts):
+        return parts[parts.index("src") + 1]
+    return None
+
+
+def _raised_by(exc: BaseException) -> tuple[str | None, str]:
+    """Walk from the deepest frame to the first one owned by segy, mdio or sdip.
+
+    Third-party frames in between - numpy, zarr, fsspec - are skipped, so numpy failing
+    inside an MDIO call is MDIO's refusal and numpy failing inside SDIP's planes is SDIP's
+    defect. Returns the owner and ``path:line`` of that frame.
+    """
+    import traceback
+
+    for frame in reversed(traceback.extract_tb(exc.__traceback__)):
+        owner = _owner(frame.filename)
+        if owner in UPSTREAM_OWNERS or owner == "sdip":
+            relative = frame.filename.split(f"{owner}/", 1)[-1]
+            return owner, f"{owner}/{relative}:{frame.lineno}"
+    return None, "unknown location"
+
+
+def _report_unhandled(exc: Exception) -> int:
+    """§3.6 at ONE boundary (D60, D-0088). Classified by where it was raised, not by type."""
+    owner, where = _raised_by(exc)
+    name = type(exc).__name__
+    if owner in UPSTREAM_OWNERS:
+        hint = ""
+        if name in SPEC_FIELD_ERRORS or "SegySpec requires trace header fields" in str(exc):
+            hint = (
+                " The declaration used (--revision, --template, --override) is probably not the "
+                "one the file or store was written with. A store written by sdip ingest records "
+                "its declaration and would have been refused before this point."
+            )
+        click.echo(
+            f"sdip: UpstreamRefusal: {name} raised in {where}: {exc}.{hint}",
+            err=True,
+        )
+        return EXIT_FAIL
+    click.echo(
+        f"sdip: internal error: {name}: {exc}. This is a defect in SDIP, not a verdict about "
+        "your data. Re-run with --debug for the traceback and report it.",
+        err=True,
+    )
+    if _DEBUG:
+        import traceback
+
+        click.echo("".join(traceback.format_exception(exc)), err=True)
+    return EXIT_INTERNAL
+
+
 def main() -> None:
     """Console-script entry point."""
     try:
@@ -751,6 +847,8 @@ def main() -> None:
     except click.Abort:  # pragma: no cover - user interrupt
         click.echo("sdip: aborted", err=True)
         sys.exit(EXIT_USAGE)
+    except Exception as exc:
+        sys.exit(_report_unhandled(exc))
 
 
 if __name__ == "__main__":  # pragma: no cover

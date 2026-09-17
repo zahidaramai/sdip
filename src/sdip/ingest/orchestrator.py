@@ -30,6 +30,7 @@ from typing import Any
 
 from sdip.errors import PhaseNotAuthorisedError, SdipError, UntrustedInputError
 from sdip.guard.env import refuse_barred_env_vars
+from sdip.guard.library_config import refuse_library_config
 from sdip.guard.warn import (
     WarningLedger,
     recording_log_records,
@@ -389,6 +390,7 @@ def ingest(
     assert_main_guarded()
 
     refuse_barred_env_vars("ingest")
+    refuse_library_config("ingest")
 
     # Before `Path(output)` touches it, because `pathlib` is what silently turns
     # `s3://bucket/key` into a relative local path (D-0058).

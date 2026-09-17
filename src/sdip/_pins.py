@@ -213,6 +213,95 @@ RECORDED_ENV_VARS: Final[dict[str, str]] = {
 }
 """Environment variables recorded on the certificate when set (spec 3.4)."""
 
+
+@dataclass(frozen=True, slots=True)
+class LibraryConfigRule:
+    """How a deviation from a donfig-configured library's shipped defaults is treated."""
+
+    library: str
+    pattern: str
+    action: str
+    reason: str
+
+
+LIBRARY_CONFIG_RULES: Final[tuple[LibraryConfigRule, ...]] = (
+    LibraryConfigRule(
+        "zarr",
+        "default_zarr_format",
+        BAR,
+        "MEASURED: set to 2 through ZARR_DEFAULT_ZARR_FORMAT, MDIO wrote a Zarr v2 store (D-0088).",
+    ),
+    LibraryConfigRule(
+        "zarr",
+        "codecs.*",
+        BAR,
+        "Maps a codec NAME recorded on a store to whatever implementation class the "
+        "configuration names, so a store could declare a lossless codec its bytes never went "
+        "through.",
+    ),
+    LibraryConfigRule(
+        "zarr",
+        "codec_pipeline.path",
+        BAR,
+        "Replaces zarr's codec pipeline implementation.",
+    ),
+    LibraryConfigRule("zarr", "buffer", BAR, "Replaces zarr's buffer implementation class."),
+    LibraryConfigRule(
+        "zarr", "ndbuffer", BAR, "Replaces zarr's array buffer implementation class."
+    ),
+    LibraryConfigRule(
+        "zarr",
+        "array.*",
+        BAR,
+        "On-disk layout or read behaviour: memory order, empty and missing chunks, sharding, "
+        "rectilinear chunks. No effect measured on a single-chunk fixture, which cannot exhibit "
+        "one, so none is claimed harmless.",
+    ),
+    LibraryConfigRule(
+        "zarr",
+        "json_indent",
+        RECORD,
+        "Formatting of zarr.json metadata only; array bytes and values unaffected.",
+    ),
+    LibraryConfigRule(
+        "zarr",
+        "async.*",
+        RECORD,
+        "Concurrency and timeouts. MEASURED: no change to chunk bytes or decoded values.",
+    ),
+    LibraryConfigRule(
+        "zarr",
+        "threading.*",
+        RECORD,
+        "Worker threads. MEASURED: no change to chunk bytes or decoded values.",
+    ),
+    LibraryConfigRule(
+        "zarr",
+        "codec_pipeline.batch_size",
+        RECORD,
+        "Batching. MEASURED: no change to chunk bytes or decoded values.",
+    ),
+    LibraryConfigRule(
+        "zarr",
+        "codec_pipeline.max_workers",
+        RECORD,
+        "Worker count for the codec pipeline.",
+    ),
+    LibraryConfigRule(
+        "dask",
+        "*",
+        RECORD,
+        "dask schedules computation and does not interpret SEG-Y bytes. MEASURED: "
+        "array.chunk-size and scheduler changed neither the store nor the exported SEG-Y.",
+    ),
+)
+"""Classification of donfig configuration deviations (D58, DECISIONS.md D-0088).
+
+zarr and dask read configuration from ``ZARR_*``/``DASK_*`` variables AND from YAML or JSON
+files, so the guard compares each library's effective configuration with its shipped defaults
+instead of listing variable names. A zarr key no rule names is barred: fail closed.
+"""
+
 BARRED_MODULES: Final[dict[str, str]] = {
     "zfpy": (
         "Lossy codec. SP3 permits Blosc family and Zstd only. The multidimio[lossy] "

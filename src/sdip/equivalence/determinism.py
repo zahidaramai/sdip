@@ -64,8 +64,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
+from sdip.equivalence.exact import identical
 from sdip.ingest import ingest
 from sdip.spec.overrides import SurveyOverride
 
@@ -209,7 +208,7 @@ def _compare_values(left: Any, right: Any) -> tuple[bool, str]:
         return False, f"dtype differs: {left.dtype} vs {right.dtype}"
     if left.shape != right.shape:
         return False, f"shape differs: {left.shape} vs {right.shape}"
-    if bool(np.array_equal(left, right)):
+    if bool(identical(left, right)):
         return True, "array_equal - exact, never allclose"
     return False, "values differ under array_equal"
 

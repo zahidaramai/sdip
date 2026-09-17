@@ -420,7 +420,16 @@ def ibm32_blocks_equivalence(segy_spec: Any, *, roundtrip_byte_identical: bool) 
 
 
 COORD_SCALAR_FIELD = "coordinate_scalar"
-COORD_ARRAYS: tuple[str, ...] = ("cdp_x", "cdp_y")
+COORD_ARRAYS: tuple[str, ...] = (
+    "cdp_x",
+    "cdp_y",
+    "source_coord_x",
+    "source_coord_y",
+    "group_coord_x",
+    "group_coord_y",
+)
+"""Every array the pinned writer multiplies by the coordinate scalar. Mirrors
+``mdio.segy.scalar.SCALE_COORDINATE_KEYS``, pinned by a drift test (D56, D-0088)."""
 
 
 @dataclass(frozen=True, slots=True)

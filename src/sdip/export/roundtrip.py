@@ -197,11 +197,13 @@ def export(
             decode (``DECISIONS.md`` D-0055).
     """
     from sdip.guard.env import refuse_barred_env_vars
+    from sdip.guard.library_config import refuse_library_config
 
     # The same refusal ingest makes, for the same reason: a segy override arriving through
     # the environment changes how the store is re-encoded without appearing anywhere the
     # round trip records (D-0087).
     refuse_barred_env_vars("export")
+    refuse_library_config("export")
     store_path, output_path, source_path = Path(store), Path(output), Path(source)
     _assert_exportable(store_path)
     ledger = WarningLedger()

@@ -713,6 +713,13 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "library_config_recorded": {
+          "type": "object",
+          "description": "zarr and dask settings that differ from their shipped defaults and are recorded rather than barred - resources and formatting - as library:key to value (DECISIONS.md D-0088).",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },

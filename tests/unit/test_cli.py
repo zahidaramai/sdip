@@ -75,6 +75,7 @@ def test_doctor_runs_every_declared_check(repo_root):
         "python-version",
         "barred-env-vars",
         "upstream-settings",
+        "library-config",
         "barred-packages",
         "upstream-pins",
         "runtime-licences",
@@ -116,6 +117,7 @@ def test_doctor_substantive_checks_pass_here(repo_root):
     assert {
         "barred-env-vars",
         "upstream-settings",
+        "library-config",
         "barred-packages",
         "upstream-pins",
         "runtime-licences",

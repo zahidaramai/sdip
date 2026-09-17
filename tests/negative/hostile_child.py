@@ -25,7 +25,13 @@ asks are answered at different layers:
     :func:`sdip.cli.main.main` through ``sys.argv`` - does the console entry point exit
     non-zero, and does it do so by reporting rather than by unwinding a traceback?
 
-Both write into the **declared output directory** and nowhere else. The parent watches
+``verify``, ``export``, ``certify``
+    The same member through every other command that reads a source (D60, DECISIONS.md
+    D-0088). Until then the corpus exercised ``ingest`` alone, and ``verify`` parsed a
+    hostile file with no preflight at all. Each must refuse or reach a verdict: never a
+    traceback, and never exit 3, which means a defect in SDIP itself.
+
+All of them write into the **declared output directory** and nowhere else. The parent watches
 the filesystem around the whole run; this file deliberately does no cleanup, so anything
 that escapes is still there to be found.
 """
@@ -120,6 +126,11 @@ def _run_api(source: Path, output: Path) -> dict[str, Any]:
 
 
 def _run_cli(source: Path, output: Path) -> dict[str, Any]:
+    """The ``ingest`` phase."""
+    return _run_argv(["sdip", "ingest", str(source), str(output)])
+
+
+def _run_argv(argv: list[str], cwd: Path | None = None) -> dict[str, Any]:
     """Invoke the console entry point and record its exit code and what escaped it.
 
     ``main`` is called rather than a subprocess so the whole child stays inside one
@@ -129,12 +140,14 @@ def _run_cli(source: Path, output: Path) -> dict[str, Any]:
     """
     from sdip.cli.main import main
 
-    argv = ["sdip", "ingest", str(source), str(output)]
     out, err = io.StringIO(), io.StringIO()
     escaped: dict[str, Any] | None = None
     code: int | None = None
     previous = sys.argv
+    previous_cwd = Path.cwd()
     sys.argv = argv
+    if cwd is not None:
+        os.chdir(cwd)
     try:
         with redirect_stdout(out), redirect_stderr(err):
             try:
@@ -145,6 +158,7 @@ def _run_cli(source: Path, output: Path) -> dict[str, Any]:
                 escaped = _describe(exc)
     finally:
         sys.argv = previous
+        os.chdir(previous_cwd)
     return {
         "exit_code": code,
         "escaped": escaped,
@@ -160,6 +174,8 @@ def main() -> int:
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
     parser.add_argument("--cwd", required=True, type=Path)
+    parser.add_argument("--store", type=Path, default=None)
+    parser.add_argument("--certify-cwd", type=Path, default=None)
     args = parser.parse_args()
 
     os.chdir(args.cwd)
@@ -168,6 +184,24 @@ def main() -> int:
     report: dict[str, Any] = {"source": str(args.source)}
     report["api"] = _run_api(args.source, args.output_dir / "api.mdio")
     report["cli"] = _run_cli(args.source, args.output_dir / "cli.mdio")
+    if args.store is not None:
+        source, store, out = str(args.source), str(args.store), args.output_dir
+        report["verify"] = _run_argv(["sdip", "verify", "--skip-portability", source, store])
+        report["export"] = _run_argv(
+            ["sdip", "export", store, str(out / "export.sgy"), "--source", source]
+        )
+    if args.certify_cwd is not None:
+        report["certify"] = _run_argv(
+            [
+                "sdip",
+                "certify",
+                str(args.source),
+                str(args.output_dir / "certify.mdio"),
+                "--certificates",
+                str(args.output_dir / "certs"),
+            ],
+            cwd=args.certify_cwd,
+        )
     report["peak_rss_bytes"] = _peak_rss_bytes()
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True))
     return EXIT_REPORT_WRITTEN

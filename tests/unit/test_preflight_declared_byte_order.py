@@ -96,3 +96,25 @@ def test_an_uninferable_byte_order_is_a_clean_refusal_not_a_traceback(tmp_path):
     path.write_bytes(bytes(3600 + 240 + 4))
     with pytest.raises(UntrustedInputError, match="infer"):
         validate_segy_structure(path, path.stat().st_size, endianness="infer")
+
+
+def test_an_undefined_sample_format_names_d22_and_why_it_cannot_be_declared_yet(tmp_path):
+    """An undefined format code is refused with D22 named.
+
+    D22 stays open by ruling (Ruling 7: no real file has needed it). The refusal must say so,
+    rather than leave an operator to discover that no override can supply a format.
+    """
+    import struct
+
+    from tests.fixtures.generators.poststack3d import make_poststack3d
+
+    fixture = make_poststack3d(tmp_path / "f.sgy", n_inline=2, n_crossline=2, n_samples=4)
+    data = bytearray(fixture.path.read_bytes())
+    data[3224:3226] = struct.pack(">h", 0)
+    path = tmp_path / "code0.sgy"
+    path.write_bytes(bytes(data))
+    with pytest.raises(UntrustedInputError) as caught:
+        validate_segy_structure(path, path.stat().st_size)
+    message = str(caught.value)
+    assert "D22" in message
+    assert "override" in message

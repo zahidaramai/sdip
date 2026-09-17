@@ -74,6 +74,7 @@ from typing import Any
 
 import numpy as np
 
+from sdip.equivalence.exact import identical
 from sdip.equivalence.planes import PlaneResult, plane_1, plane_2, plane_3, plane_4, plane_5
 from sdip.errors import UntrustedInputError
 from sdip.ingest import ingest
@@ -211,7 +212,7 @@ def _compare_stores(original: Path, closure: Path) -> list[ArrayComparison]:
         elif expected.shape != observed.shape:
             equal, detail = False, f"shape changed: {shapes[0]} -> {shapes[1]}"
         else:
-            equal = bool(np.array_equal(expected, observed))
+            equal = bool(identical(expected, observed))
             detail = "identical" if equal else _difference_detail(expected, observed)
 
         comparisons.append(
