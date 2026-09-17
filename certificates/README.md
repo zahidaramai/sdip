@@ -57,7 +57,7 @@ print(cert['verdict'], cert['release_readiness']['release_ready'])
 
 Installing the package carries the schema too, so a consumer who never clones this
 repository still has the validator. **Not on PyPI** — install from a tag:
-`pip install git+https://github.com/zahidaramai/sdip@v1.1.0`. PyPI is a support
+`pip install git+https://github.com/zahidaramai/sdip@v1.2.0`. PyPI is a support
 commitment, not a checkbox, and an install instruction that 404s is worse than none.
 
 ## What is and is not committed here

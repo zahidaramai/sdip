@@ -15,7 +15,7 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
-## [Unreleased]
+## [1.2.0] — 2026-09-17
 
 **A store now records the reading of the source that wrote it, and every command that reads a
 store must be handed that same reading.** Root cause of D47; `DECISIONS.md` D-0087.
@@ -46,12 +46,37 @@ store must be handed that same reading.** Root cause of D47; `DECISIONS.md` D-00
 - **The declared upstream commit SHAs were one commit past their release tags.** Corrected to
   the tag commits, with the release tag recorded on every certificate.
 
+- **Tracebacks from upstream exceptions.** One boundary now classifies any unhandled exception by
+  where it was raised: inside `segy` or `mdio` it is a typed refusal (exit 1); anywhere else it is
+  an internal error — a defect in SDIP, never a verdict about your data (exit 3, traceback under
+  `--debug`). Measured before: `verify` crashed on 17 of 33 hostile-corpus files, `certify` on 4.
+- **`verify` never ran the hostile-input preflight.** It judged a header declaring a negative
+  sample interval FAIL instead of refusing it. It now runs the same preflight as `ingest`.
+- **NaN.** A byte-correct store from an IEEE float source carrying NaN failed Plane 4, and G6
+  called two identical ingests non-deterministic. Floating values are compared bit for bit —
+  stricter than before, and correct on NaN.
+- **Mismatch counts stopped at 20** in three more checks, and so did the count of traces compared.
+- **A zarr setting could change the store without being noticed.** `ZARR_DEFAULT_ZARR_FORMAT=2`
+  made MDIO write a Zarr v2 store. zarr's and dask's effective configuration — from variables or
+  config files — is now compared with their defaults before a run.
+
+### Added
+
+- Plane 3 verifies the source and group coordinates MDIO scales in prestack templates, each array
+  on its own; a scaled array it cannot verify blocks release.
+- Plane 2 records, as a non-blocking finding, a file whose own revision field disagrees with the
+  revision it was read as.
+- The fuzz corpus runs through `verify`, `export` and `certify`, not only `ingest`.
+- `sdip --debug`.
+
 ### Changed
 
 - Release readiness now requires the certificate's declaration to be `BOUND`, and blocks on any
   finding marked as blocking release.
 - `sdip doctor` checks the environment-variable registry against the installed upstream.
 - Environment refusals exit 2, not 1: they are not a verdict about data.
+- `sdip doctor` also checks zarr's and dask's configuration.
+- An undefined sample-format code is refused with debt D22 named.
 
 ## [1.1.4] — 2026-08-27
 
@@ -475,6 +500,7 @@ regression-tested. See D-0018.
   thirty lines below the entry announcing the full command surface was live, and carried
   a near-duplicate copy of its own F3–F7 block. Both corrected here.
 
+[1.2.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.2.0
 [1.1.4]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.4
 [1.1.3]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.3
 [1.1.2]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.2
