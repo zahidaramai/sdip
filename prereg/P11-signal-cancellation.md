@@ -426,3 +426,50 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 ```
+
+---
+
+## Results — 2026-10-15, Amendment A harness, at `aef434b`
+
+**Run.** Harness `sha256 c39792bc7beeba01…` extracted verbatim from the block above, run
+from a clean worktree at `aef434b` with that worktree's `src` first on `PYTHONPATH`, so
+every `sdip` and every spawned worker ran the registered commit's code. Fixture
+140,403,600 bytes, `sha256 23b843556e883436…`. Baseline ingest: exit 0, **no tagged
+survivor** at +2 s. Receipt `sha256 0c5142915d71…`. 12 of 12 runs triggered; no void runs.
+
+| Cell | `sdip` exit | Tagged alive at +3 s | Tagged alive at +15 s | Parent at +15 s | Store files at +15 s |
+|---|---|---|---|---|---|
+| ingest / SIGTERM | −15, ×3 (killed, no message) | 4, 4, 4 | **4, 4, 4** | **`ppid=1`**, ×3 | 0, ×3 |
+| ingest / SIGINT | **2**, ×3 (`sdip: aborted`) | 2, 2, 2 | 0, 0, 0 | — | 0, ×3 |
+| verify / SIGTERM | −15, ×3 | 0, 0, 0 | 0, 0, 0 | — | unchanged |
+| verify / SIGINT | **2**, ×3 | 0, 0, 0 | 0, 0, 0 | — | unchanged |
+
+The four survivors in every ingest/SIGTERM run are three `spawn_main` workers and one
+`multiprocessing.resource_tracker`. In every run the signal arrived during MDIO's header
+scan (`Scanning SEG-Y for geometry attributes 0/3`), whose pool for this fixture is three
+workers.
+
+**Falsifier: did not fire.** In 3 of 3 triggered ingest/SIGTERM runs, workers were alive
+at +15 s with `ppid=1`. **The orphan half of the issue's claim is confirmed.**
+
+**"Leaves its pool writing" is NOT confirmed.** The orphans were header-scan workers,
+which read the source and write nothing; the store held 0 files at the signal and 0 at
++15 s. A signal during the trace-writing pool was not produced by this method, so whether
+writers outlive `sdip` is unmeasured here.
+
+**SIGINT** to `sdip` alone left no survivor by +15 s, but exited **2**, the usage code: a
+cancellation reported as an operator input error.
+
+**verify / SIGTERM** left no tagged process at +3 s. The G4 grandchild was alive at the
+signal in every run, and gone 3 s later; this method cannot tell whether it was killed or
+had finished, because G4 on this store takes under 3 s. The `leaked semaphore` warning
+in its stderr is the standard library's, from `sdip` dying without cleanup.
+
+**The first attempt** (hung baseline, Amendment A's reason) remains unexplained, N=1: four
+orphans of exactly the ingest/SIGTERM shape, after an ingest no one signalled. A **second
+attempt** under Amendment A was stopped by the session and taken as void, with no result
+used: `src/` was edited while it ran, and `sdip` is installed editable.
+
+**What this measurement licenses:** the fix in D-0093, and its acceptance test
+(`tests/integration/test_spawn_signal_cancellation.py`). That test **fails on `aef434b`**
+(exit −15 for 143, 2 for 130, −15 for 143) and passes on the fix.
