@@ -15,7 +15,7 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
-## [Unreleased]
+## [1.3.0] — 2026-10-15
 
 **A signal stops every child process, and the provenance marker carries a digest of the
 store.** Issue #1; `DECISIONS.md` D-0093. Existing certificates stay valid.
@@ -37,6 +37,9 @@ store.** Issue #1; `DECISIONS.md` D-0093. Existing certificates stay valid.
 - **`zarr>=3.2.0` is declared.** Before 3.2.0 stock `zarr` cannot read MDIO's `struct`-typed
   `headers` array, so listing a store's arrays and `xarray.open_zarr` raise (measured on 3.1.6;
   D-0094). The README names the floor and the route for an older reader. The lock is unchanged.
+- **Python signatures:** `marker_attrs` takes a required `store_digest`;
+  `attach_provenance_marker` computes it itself and its signature is unchanged. `issue` takes an
+  optional `store_digest`. New: `sdip.provenance.store_digest`, `sdip.cli.signals`.
 
 ## [1.2.1] — 2026-09-17
 
