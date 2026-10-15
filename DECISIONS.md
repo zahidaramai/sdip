@@ -5128,6 +5128,8 @@ ruling, and a scoped certificate missing another gate each stay blocked.
 **Existing certificates are unchanged.** Released as a minor version. Closes OPEN_DEBTS D17's
 open half and D65.
 
+---
+
 ## D-0099 — 2026-10-15 — Correcting D-0095: in CI, nothing runs after a failed `sdip doctor`
 
 **A maintainer error in D-0095, corrected here (SP10; D-0095 stands as written).** D-0095 made
@@ -5141,3 +5143,28 @@ the 2026-10-15 documentation audit, before any CI run under the lean layout.
 does not stop the remaining checks. `test_ci_runs_nothing_after_a_failed_doctor` asserts it.
 The `firewall` job stays independent of doctor by design: it must run when the environment is
 broken.
+
+---
+
+## D-0100 — 2026-10-15 — The real delayed survey certifies release-ready; the schema rejected its certificate (D66)
+
+**Measured here** (P12 Amendment A, at `7f6fd72`, N = 1, ceilings declared before the run):
+`sdip certify` on the open poststack survey of D-0097 — 619,101 traces, a constant 4 ms delay, a
+textual header with one non-printable character, coordinate scalar −100 — under D-0098:
+**`EQUIVALENT`, `release_ready: true`, nothing blocking.** G3 `ROUNDTRIP-SCOPED` naming card 6
+column 77; Planes 1-5, G4, G6, G7 PASS; G5 PASS at 2,943 s of 7,200 s and 4.48 GiB of 10.0 GiB;
+store digest `MATCH`; axis origin 4.0 ms. The first real survey to reach release readiness through
+both D-0096 and D-0098.
+
+**D66, found by validating that certificate:** it **failed the published schema.** A survey with
+a non-identity coordinate scalar declares a `transforms_declared` entry carrying
+`applies_to: "derived_arrays"` (since v1.0.0) and `arithmetic` (since v1.2.0); the schema admitted
+neither, so **every such certificate since v1.0.0 has been schema-invalid** — the §4.7 promise that
+a third party can validate SDIP output without running SDIP was false for exactly those surveys.
+The schema test built its certificate from a fixture with scalar 1, which declares no such entry.
+
+**Fixed, additively:** `applies_to` also admits `derived_arrays`; `arithmetic` is declared.
+`test_a_certificate_with_scaled_coordinates_validates` builds a certificate from a scalar −100
+source, requires the entry, and validates it: it fails on the old schema with exactly the two
+violations and passes on the fix. Existing certificates are unchanged; such a certificate now
+validates.

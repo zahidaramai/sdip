@@ -2319,3 +2319,23 @@ byte-identical, G7 FAIL, verdict NON-EQUIVALENT. A false failure, never a false 
 The control raises `ControlNotApplicableError` when the array is absent, as
 `flip_raw_ibm32_word` already did. `certify` on decodable sources in both formats is now
 `EQUIVALENT` and release-ready, a permanent test in each.
+
+---
+
+## D66 — Certificates for surveys with a scaled coordinate failed the published schema
+
+- **Status:** `OPEN` (raised 2026-10-15, P12 Amendment A) · **Decision:** `DECISIONS.md` D-0100
+
+The coordinate-scalar entry in `transforms_declared` carried `applies_to: derived_arrays` (from
+v1.0.0) and `arithmetic` (from v1.2.0), neither admitted by the schema's
+`additionalProperties: false`. Every certificate for a survey with a non-identity coordinate
+scalar was schema-invalid. Found on a real survey with scalar −100.
+
+---
+
+## D66 — CLOSED 2026-10-15 — the schema admits the entry; a scaled-coordinate certificate is tested
+
+- **Closes:** D66 above (**SP10**) · **Decision:** `DECISIONS.md` D-0100
+
+Additive schema change; `test_a_certificate_with_scaled_coordinates_validates` fails on the old
+schema and passes on the new.

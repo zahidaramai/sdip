@@ -35,6 +35,12 @@ float sources certify again.** `DECISIONS.md` D-0098.
   are `NOT_APPLICABLE`; every other gate runs. Under the D-0098 ruling such a certificate can be
   `EQUIVALENT` and release-ready. An `ibm32` source in this case stays `PROVISIONAL`.
 - Certificate schema: `gates.G3` also admits `ROUNDTRIP-SCOPED` (additive).
+- **Certificates for surveys with a scaled coordinate validate against the published schema.**
+  The coordinate-scalar entry's `applies_to: derived_arrays` and `arithmetic` were not admitted,
+  so every such certificate since v1.0.0 failed validation (D-0100, debt D66). Additive.
+
+Measured on a real 619,101-trace survey with a 4 ms delay, one undecodable textual-header
+character and a coordinate scalar of −100: `EQUIVALENT` and release-ready (D-0100).
 
 ## [1.4.0] — 2026-10-15
 
