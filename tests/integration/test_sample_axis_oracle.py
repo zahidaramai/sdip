@@ -9,11 +9,13 @@
   header instead, and failed every correct store whose trace headers carry 0 — which rev
   2.x defines as *unknown*, and which real files commonly carry.
 * **A disagreeing trace-header interval is a finding, not a failure.**
-* **A nonzero recording delay is a finding that blocks release.** Bytes 109-110 are the time
-  from source initiation to the first sample. segyio, segysak, OpenVDS, OpendTect and
-  Madagascar start the axis there; MDIO starts it at 0. The store is what MDIO wrote, so
-  the verdict stands — but a reader would place every event at a different time than the
-  store's axis says, so it cannot be released as-is.
+* **A recording delay starts the axis there, where it is exact (D-0096).** Bytes 109-110 are
+  the time from source initiation to the first sample, and segyio, segysak, OpenVDS,
+  OpendTect and Madagascar start the axis there; MDIO starts it at 0. Until D-0096 every
+  nonzero delay was a finding that blocked release. Now ``sdip ingest`` starts the axis at a
+  constant, whole-millisecond delay and Plane 4 verifies it against the source; a varying or
+  fractional delay, or a depth axis, is still that blocking finding
+  (``test_recording_delay_axis.py``).
 * **Sub-millisecond intervals still fail.** MDIO stores the axis as int32 milliseconds and
   truncates 0.5 ms to 0; that store is genuinely wrong.
 """
@@ -67,15 +69,18 @@ def test_a_differing_trace_header_interval_passes_and_is_named(tmp_path):
 @pytest.mark.parametrize(
     ("raw", "scalar", "effective"), [(100, 0, 100.0), (1000, -10, 100.0), (25, 4, 100.0)]
 )
-def test_a_nonzero_delay_passes_the_plane_and_blocks_release(tmp_path, raw, scalar, effective):
-    """Reported in true milliseconds: bytes 215-216 scale bytes 109-110 (0 means 1)."""
+def test_a_constant_delay_starts_the_axis_in_true_milliseconds(tmp_path, raw, scalar, effective):
+    """Bytes 215-216 scale bytes 109-110 (0 means 1). D-0096: the axis starts there, verified.
+
+    Until D-0096 this asserted the blocking finding with ``delay_ms == [effective]``; the same
+    arithmetic now has to land the stored axis exactly on the effective delay.
+    """
     result = _plane4(
         tmp_path, f"delay{raw}_{scalar}", delay_recording_time_ms=raw, times_scalar=scalar
     )
-    assert result.status == "PASS"
-    finding = _codes(result)["nonzero_recording_delay"]
-    assert finding["blocks_release"] is True
-    assert finding["delay_ms"] == [effective]
+    assert result.status == "PASS", result.evidence.get("derived_axis_first_difference")
+    assert result.evidence["derived_axis_origin_ms"] == effective
+    assert "nonzero_recording_delay" not in _codes(result)
 
 
 @pytest.mark.parametrize("interval_us", [500, 2500])
