@@ -128,6 +128,12 @@ line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
 
+[tool.ruff.format]
+# Pre-registrations are records, not source. A harness in one is cited by the sha256 of
+# its exact bytes (SP9), so a formatter rewriting its code blocks would break the link
+# between the record and the run it governs. ruff formats Markdown code blocks since 0.16.
+exclude = ["prereg/*.md"]
+
 [tool.ruff.lint]
 select = [
     "E", "F", "W",      # pycodestyle / pyflakes
