@@ -20,7 +20,7 @@ publishing.
 
 | Version | Supported |
 |---|---|
-| Latest release (`v1.4.0`) | ✅ |
+| Latest release (`v1.5.0`) | ✅ |
 | `main` | ✅ |
 | Earlier releases | ❌ — fixes are not backported; upgrade to the latest release |
 

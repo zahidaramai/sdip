@@ -15,7 +15,7 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
-## [Unreleased]
+## [1.5.0] — 2026-10-15
 
 **A survey whose textual header does not decode can be certified and released, and IEEE
 float sources certify again.** `DECISIONS.md` D-0098.
