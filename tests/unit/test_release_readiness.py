@@ -170,3 +170,58 @@ def test_a_certificate_issued_before_the_digest_is_not_re_judged():
     payload = _green()
     assert "store_digest" not in payload
     assert release_readiness(payload)["release_ready"] is True
+
+
+def _header_scoped() -> dict[str, Any]:
+    """D-0098's shape: G3 scoped under the ruling, no export, the export checks not applicable."""
+    payload = _green()
+    payload["gates"]["G3"] = "ROUNDTRIP-SCOPED"
+    payload["roundtrip"] = {
+        "performed": False,
+        "byte_identical": False,
+        "status": "ROUNDTRIP-SCOPED",
+        "scoped": {"non_conformance": "textual header", "justification": "x", "ruling": "D-0098"},
+    }
+    payload["roundtrip_closure"] = None
+    payload["nonvacuity"] = {
+        "g3_control": {"status": "NOT_APPLICABLE"},
+        "closure_control": {"status": "NOT_APPLICABLE"},
+    }
+    return payload
+
+
+def test_a_header_scoped_certificate_is_release_ready():
+    """**D-0098.** The baseline for the controls below; without it they assert nothing."""
+    verdict = release_readiness(_header_scoped())
+    assert verdict["blocking"] == [], verdict["blocking"]
+    assert verdict["release_ready"] is True
+
+
+def test_a_scoped_g3_without_the_ruling_still_blocks():
+    payload = _header_scoped()
+    del payload["roundtrip"]["scoped"]["ruling"]
+    assert any("gate G3" in item for item in release_readiness(payload)["blocking"])
+
+
+def test_a_scoped_g3_over_an_export_that_was_made_still_blocks():
+    """The ruling covers a source no export can exist for, not a mismatch with an excuse."""
+    payload = _header_scoped()
+    payload["roundtrip"]["performed"] = True
+    assert any("gate G3" in item for item in release_readiness(payload)["blocking"])
+
+
+def test_not_applicable_export_checks_block_without_the_ruling():
+    payload = _green()
+    payload["nonvacuity"] = {
+        "g3_control": {"status": "NOT_APPLICABLE"},
+        "closure_control": {"status": "NOT_APPLICABLE"},
+    }
+    blocking = release_readiness(payload)["blocking"]
+    assert any("g3_control" in item for item in blocking)
+    assert any("closure_control" in item for item in blocking)
+
+
+def test_a_header_scoped_certificate_still_needs_every_other_gate():
+    payload = _header_scoped()
+    payload["gates"]["G7"] = "NOT_RUN"
+    assert any("gate G7" in item for item in release_readiness(payload)["blocking"])

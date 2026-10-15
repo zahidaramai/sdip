@@ -596,10 +596,12 @@ def certify_cmd(
 
     from sdip.equivalence import g4, g5, issue
     from sdip.equivalence.binding import check_binding
+    from sdip.equivalence.certificate import NOT_APPLICABLE
     from sdip.equivalence.closure import roundtrip_closure
     from sdip.equivalence.determinism import g6
     from sdip.equivalence.nonvacuity import closure_control, g3_control, g7
     from sdip.export import export as run_export
+    from sdip.export.roundtrip import header_scope
     from sdip.ingest import ingest_declared as run_ingest
     from sdip.provenance.git import capture_git_state
     from sdip.provenance.store_digest import check_store_digest
@@ -648,24 +650,47 @@ def certify_cmd(
     planes = _run_planes(source, output, spec, declaration=declaration, g1_passed=gate1.passed)
     portability = g4(output)
 
+    # D-0098. A source whose textual header does not decode is stored without a
+    # segy_file_header variable (D-0055), so no export can be made and byte identity is
+    # impossible: G3 is ROUNDTRIP-SCOPED with the offending characters named, and the
+    # three checks that need an export do not apply. Every other gate still runs.
+    scope = header_scope(result.textual_decode, output)
+    not_applicable = (
+        None
+        if scope is None
+        else {
+            "status": NOT_APPLICABLE,
+            "name": "not applicable",
+            "reason": "no export exists for this source (G3 ROUNDTRIP-SCOPED, D-0098)",
+        }
+    )
+
     with tempfile.TemporaryDirectory() as scratch:
         exported = Path(scratch) / "roundtrip.sgy"
-        roundtrip = run_export(output, exported, spec, source=source)
+        roundtrip = run_export(output, exported, spec, source=source) if scope is None else scope
 
         # G7 runs against the very store being certified, on COPIES of it - never
         # against a fixture from somewhere else. A non-vacuity result imported from
         # another store says nothing about this one.
         nonvacuity = g7(source, output, spec, workdir=Path(scratch) / "g7")
-        g3_check = g3_control(exported)
+        g3_check = g3_control(exported) if not_applicable is None else not_applicable
         g7_status, g7_summary = nonvacuity.status, nonvacuity.summary()
 
         # Arrow 3: the exported SEG-Y validated as an artifact in its own right, not a
         # by-product. G3 proves it is byte-identical to the source; this proves it is a
         # well-formed SEG-Y that re-ingests to the same store (DECISIONS.md D-0031).
-        closure = roundtrip_closure(
-            exported, output, declaration=declaration, workdir=Path(scratch) / "closure"
+        closure = (
+            roundtrip_closure(
+                exported, output, declaration=declaration, workdir=Path(scratch) / "closure"
+            )
+            if scope is None
+            else None
         )
-        closure_status, closure_summary = closure.status, closure.summary()
+        closure_status, closure_summary = (
+            (closure.status, closure.summary())
+            if closure is not None
+            else (NOT_APPLICABLE, "no export to re-ingest (G3 ROUNDTRIP-SCOPED, D-0098)")
+        )
 
         # Closure's own negative control (operating contract §5): corrupt one byte of the export's
         # binary file header - the bytes that live in ATTRIBUTES rather than arrays, and
@@ -673,12 +698,16 @@ def certify_cmd(
         # file-header leg, and only that leg, to catch it. The clean run above is handed
         # in as the baseline rather than recomputed: a second re-ingest to learn an answer
         # already on hand is exactly the cost D18 was about.
-        closure_check = closure_control(
-            exported,
-            output,
-            declaration=declaration,
-            baseline=closure,
-            workdir=Path(scratch) / "closure_control",
+        closure_check = (
+            closure_control(
+                exported,
+                output,
+                declaration=declaration,
+                baseline=closure,
+                workdir=Path(scratch) / "closure_control",
+            )
+            if closure is not None
+            else dict(not_applicable or {})
         )
 
         # G6: two INDEPENDENT ingests of the same source, compared on chunk bytes and on
@@ -740,7 +769,10 @@ def certify_cmd(
     click.echo(f"[{binding.status}] declaration  {binding.describe()}")
     click.echo(f"[{digest.status}] store     {digest.describe()}")
     _print_planes(planes)
-    click.echo(f"[{roundtrip.status}] G3        whole-file SHA-256")
+    click.echo(
+        f"[{roundtrip.status}] G3        "
+        + ("whole-file SHA-256" if scope is None else f"no export: {scope.non_conformance}")
+    )
     click.echo(f"[{portability.status}] G4        stock zarr+xarray without mdio")
     click.echo(f"[{g7_status}] G7        {g7_summary}")
     click.echo(g5_line)
@@ -751,7 +783,7 @@ def certify_cmd(
         + (
             f"caught by the {closure_check['must_fire_leg']} leg and no other"
             if closure_check["status"] == "PASS"
-            else "; ".join(closure_check["failure_reasons"])
+            else closure_check.get("reason") or "; ".join(closure_check.get("failure_reasons", []))
         )
     )
     click.echo("")

@@ -818,7 +818,15 @@
           "$ref": "#/$defs/gate"
         },
         "G3": {
-          "$ref": "#/$defs/gate"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/gate"
+            },
+            {
+              "const": "ROUNDTRIP-SCOPED"
+            }
+          ],
+          "description": "Spec 7 G3. ROUNDTRIP-SCOPED only where the source's non-conformance makes byte-identity impossible, with the justification on the roundtrip block; release readiness accepts it only under DECISIONS.md D-0098 (an undecodable textual header, no export made)."
         },
         "G4": {
           "$ref": "#/$defs/gate"

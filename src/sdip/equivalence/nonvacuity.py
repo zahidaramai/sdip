@@ -297,7 +297,17 @@ def _delete_raw_ibm32_array(store: Path) -> None:
     because an absent array was read as "not checked" rather than "missing". A store
     left this way by an ingest that died between writes certified **EQUIVALENT** while
     missing the only recoverable copy of the source bits (D1).
+
+    **Not applicable to a store built from a source that needs no raw view** (D-0098) —
+    IEEE ``float32``, for one. G7 runs controls only on a store whose clean baseline
+    passes every plane, and Plane 4 FAILs a store whose source format needs this array
+    and lacks it (D-0062). So an array absent here is one the source never needed, and
+    "deleting" it demonstrates nothing. Until D-0098 this raised ``KeyError``, recorded
+    as a control error, and failed G7 - so every IEEE source certified NON-EQUIVALENT.
     """
+    if RAW_IBM32_ARRAY not in _group(store):
+        msg = f"the source needs no raw view, so {RAW_IBM32_ARRAY} is absent; nothing to delete"
+        raise ControlNotApplicableError(msg)
     _delete_array(store, RAW_IBM32_ARRAY)
 
 

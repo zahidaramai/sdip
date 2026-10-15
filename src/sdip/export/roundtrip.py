@@ -118,6 +118,79 @@ class RoundTripResult:
         return payload
 
 
+HEADER_SCOPE_RULING = "D-0098"
+"""The maintainer ruling that accepts :class:`HeaderScopedRoundTrip` for release."""
+
+
+@dataclass(frozen=True, slots=True)
+class HeaderScopedRoundTrip:
+    """G3 for a source whose textual header does not decode: ``ROUNDTRIP-SCOPED``, unexported.
+
+    **DECISIONS.md D-0098, closing OPEN_DEBTS D17's open half.** Such a store is written
+    with the raw 3200 bytes on the root group and no ``segy_file_header`` variable (D-0055),
+    so upstream's exporter cannot run, and could not reproduce the bytes if it did: it
+    sanitises any character that will not encode. Whole-file byte identity is impossible
+    for the source, not merely unattempted - the case §7 G3 reserves ``ROUNDTRIP-SCOPED``
+    for. The justification names every offending character, measured on the file's own
+    bytes, and is only issued when :func:`header_scope` finds exactly this store shape.
+
+    **Never a pass** (``passed`` is False), and never inferred: G3 still FAILs any export
+    that was made and differs. ``performed`` is False on the certificate, so no reader
+    mistakes it for a round trip that happened.
+    """
+
+    non_conformance: str
+    justification: str
+
+    status = "ROUNDTRIP-SCOPED"
+    byte_identical = False
+    passed = False
+
+    def to_json(self) -> dict[str, Any]:
+        """Certificate-shaped ``roundtrip`` block: no export was made."""
+        return {
+            "performed": False,
+            "byte_identical": False,
+            "status": self.status,
+            "first_difference": None,
+            "scoped": {
+                "non_conformance": self.non_conformance,
+                "justification": self.justification,
+                "ruling": HEADER_SCOPE_RULING,
+            },
+        }
+
+
+def header_scope(decode: Any, store: str | Path) -> HeaderScopedRoundTrip | None:
+    """The scoped G3 for ``store``, or ``None`` when it can be exported as usual.
+
+    Only when the ingest MEASURED the textual header as undecodable and the store carries
+    no ``segy_file_header`` variable as a result. Anything else goes through :func:`export`
+    and is judged on its hash.
+    """
+    import zarr
+
+    if decode is None or getattr(decode, "decoded", True):
+        return None
+    if UPSTREAM_FILE_HEADER_VARIABLE in zarr.open_group(str(store), mode="r"):
+        return None
+    cells = ", ".join(f"card {row + 1} column {col + 1}" for row, col in decode.offending[:10])
+    more = "" if len(decode.offending) <= 10 else f" and {len(decode.offending) - 10} more"
+    return HeaderScopedRoundTrip(
+        non_conformance=(
+            f"textual header: {decode.reason} - {cells}{more} (declared {decode.encoding})"
+        ),
+        justification=(
+            "the textual header does not decode to 40 cards of 80 printable characters, so "
+            "the store preserves its raw 3200 bytes and carries no segy_file_header variable "
+            "(D-0055). Upstream's exporter needs that variable and sanitises any character "
+            "that will not encode, so a whole-file byte-identical export is impossible for "
+            "this source. Planes 1-5 verify the store against the source, Plane 1 against the "
+            "raw bytes. Accepted for release by maintainer ruling D-0098."
+        ),
+    )
+
+
 def _region_of(offset: int) -> str:
     """Name the SEG-Y region a byte offset falls in. Turns a number into a diagnosis."""
     if offset < 3200:

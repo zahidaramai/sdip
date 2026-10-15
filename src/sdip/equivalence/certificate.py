@@ -34,7 +34,7 @@ from sdip.equivalence.planes import PlaneResult
 from sdip.equivalence.portability import PortabilityResult
 from sdip.equivalence.scale import G5Result
 from sdip.errors import DirtyTreeError
-from sdip.export.roundtrip import RoundTripResult
+from sdip.export.roundtrip import HEADER_SCOPE_RULING, HeaderScopedRoundTrip, RoundTripResult
 from sdip.guard.pins import check_pins
 from sdip.ingest.orchestrator import IngestResult
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY_NAME
@@ -51,6 +51,8 @@ GATES = ("G1", "G2", "G3", "G4", "G5", "G6", "G7")
 PLANE_KEYS = ("plane_1", "plane_2", "plane_3", "plane_4", "plane_5")
 
 NOT_RUN = "NOT_RUN"
+NOT_APPLICABLE = "NOT_APPLICABLE"
+"""A check that needs an export, on a store D-0098 rules can have none."""
 
 
 def verdict_for(
@@ -59,6 +61,7 @@ def verdict_for(
     *,
     lossy: bool,
     transform_blocked: bool = False,
+    g3_scope_ruled: bool = False,
 ) -> str:
     """Derive the verdict. There is no partial credit (§4.1).
 
@@ -86,9 +89,11 @@ def verdict_for(
         return "NON-EQUIVALENT"
     if transform_blocked:
         return "PROVISIONAL"
-    if gates.get("G3") == "ROUNDTRIP-SCOPED":
+    if gates.get("G3") == "ROUNDTRIP-SCOPED" and not g3_scope_ruled:
         # Permitted only with a written justification naming the non-conformance
-        # (§7 G3). It is not byte-identity, so it is not an unqualified EQUIVALENT.
+        # (§7 G3). It is not byte-identity, so it is not an unqualified EQUIVALENT -
+        # except where a maintainer ruling accepts that justification class (D-0098: a
+        # textual header that does not decode), and then only on the conditions below.
         return "PROVISIONAL"
     if all(planes.get(k) == "PASS" for k in PLANE_KEYS) and gates.get("G7") == "PASS":
         return "EQUIVALENT"
@@ -166,7 +171,7 @@ def issue(
     result: IngestResult,
     planes: list[PlaneResult],
     *,
-    roundtrip: RoundTripResult | None = None,
+    roundtrip: RoundTripResult | HeaderScopedRoundTrip | None = None,
     portability: PortabilityResult | None = None,
     nonvacuity: G7Result | None = None,
     closure: ClosureResult | None = None,
@@ -320,7 +325,11 @@ def issue(
 
     plane_status = {k: v["status"] for k, v in plane_block.items()}
     verdict = verdict_for(
-        plane_status, gate_block, lossy=lossy, transform_blocked=transform_blocked
+        plane_status,
+        gate_block,
+        lossy=lossy,
+        transform_blocked=transform_blocked,
+        g3_scope_ruled=isinstance(roundtrip, HeaderScopedRoundTrip),
     )
 
     store_path = Path(result.output_path)
@@ -431,10 +440,20 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
     gates = payload.get("gates", {})
     planes = payload.get("planes", {})
     blocking: list[str] = []
+    # D-0098. A G3 scoped under the maintainer's ruling for an undecodable textual header:
+    # no export can exist, so G3 counts as met on its written justification, and the three
+    # checks that need an export (closure and the two controls) do not apply. Recognised
+    # only by the ruling the certificate carries; any other ROUNDTRIP-SCOPED still blocks.
+    scoped = (payload.get("roundtrip") or {}).get("scoped") or {}
+    header_scoped = (
+        gates.get("G3") == "ROUNDTRIP-SCOPED"
+        and scoped.get("ruling") == HEADER_SCOPE_RULING
+        and not (payload.get("roundtrip") or {}).get("performed", True)
+    )
 
     for gate in GATES:
         status = gates.get(gate, NOT_RUN)
-        if status != "PASS":
+        if status != "PASS" and not (gate == "G3" and header_scoped):
             blocking.append(f"gate {gate} is {status}")
     for key in PLANE_KEYS:
         status = planes.get(key, {}).get("status", NOT_RUN)
@@ -461,6 +480,8 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
     nonvacuity = payload.get("nonvacuity") or {}
     for control in ("g3_control", "closure_control"):
         outcome = nonvacuity.get(control)
+        if header_scoped and (outcome or {}).get("status") == NOT_APPLICABLE:
+            continue
         if outcome is None:
             blocking.append(
                 f"{control} NOT_RUN - the check it audits has not been shown capable "
@@ -475,7 +496,9 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
             )
 
     closure = payload.get("roundtrip_closure")
-    if closure is None:
+    if closure is None and header_scoped:
+        pass
+    elif closure is None:
         blocking.append("round-trip closure NOT_RUN - the exported SEG-Y is unvalidated")
     elif closure.get("status") != "PASS":
         blocking.append(f"round-trip closure is {closure.get('status')}")

@@ -105,6 +105,7 @@ def make_undecodable_textual_header(
     n_inline: int = 3,
     n_crossline: int = 4,
     n_samples: int = 16,
+    sample_format: str = "ibm32",
 ) -> UndecodableSegy:
     """Write a deterministic SEG-Y whose textual header cannot be decoded.
 
@@ -116,13 +117,18 @@ def make_undecodable_textual_header(
         n_inline: Inline count.
         n_crossline: Crossline count.
         n_samples: Samples per trace.
+        sample_format: Passed to :func:`make_poststack3d`.
 
     Returns:
         The file, plus the conforming header it was derived from.
     """
     target = Path(path)
     article = make_poststack3d(
-        target, n_inline=n_inline, n_crossline=n_crossline, n_samples=n_samples
+        target,
+        n_inline=n_inline,
+        n_crossline=n_crossline,
+        n_samples=n_samples,
+        sample_format=sample_format,
     )
     conforming = article.textual_header
 

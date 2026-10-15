@@ -147,6 +147,7 @@ def make_poststack3d(
     text: str = DETERMINISTIC_TEXT,
     delay_recording_time: int | tuple[int, ...] = 0,
     times_scalar: int = 0,
+    sample_format: str = "ibm32",
 ) -> SyntheticSegy:
     """Write a deterministic synthetic 3D poststack SEG-Y file.
 
@@ -166,6 +167,9 @@ def make_poststack3d(
         delay_recording_time: Bytes 109-110 for every trace, or one value per trace in
             trace order (D-0096). Defaults to 0, which is what the A.1 article carries.
         times_scalar: Bytes 215-216 for every trace, scaling the delay. 0 means 1.
+        sample_format: The trace sample format, a ``segy`` ``ScalarType`` value. Defaults
+            to the revision standard's ``ibm32``; ``"float32"`` writes IEEE samples
+            (format code 5). The standard spec is copied, never mutated.
         text: Textual header content. Defaults to :data:`DETERMINISTIC_TEXT`. Passing
             ``None`` explicitly is **not** supported: the upstream default embeds a
             timestamp and would make the fixture non-deterministic.
@@ -175,6 +179,11 @@ def make_poststack3d(
     """
     target = Path(path)
     spec = get_segy_standard(revision)
+    if sample_format != "ibm32":
+        from segy.schema.format import ScalarType
+
+        spec = spec.model_copy(deep=True)
+        spec.trace.data.format = ScalarType(sample_format)
     factory = SegyFactory(spec, sample_interval=sample_interval_us, samples_per_trace=n_samples)
 
     inlines = tuple(range(inline_start, inline_start + n_inline))
