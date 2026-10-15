@@ -79,6 +79,25 @@ verifying the store against it would be circular — the artifact under test vou
 how it should be read — and was ruled out for that reason.
 """
 
+ATTR_STORE_DIGEST: Final[str] = "sdipStoreDigest"
+"""Digest of everything else in the store, taken when the write finished (D-0093).
+
+Computed by :func:`attach_provenance_marker` immediately before the marker is written, over
+every node and the root metadata less the marker's own keys
+(:mod:`sdip.provenance.store_digest`). ``verify`` recomputes it: a store changed after
+ingest finished fails, a store that predates the digest is ``ABSENT`` and says so.
+"""
+
+MARKER_KEYS: Final[tuple[str, ...]] = (
+    ATTR_WRITER,
+    ATTR_VERSION,
+    ATTR_PINS,
+    ATTR_MITIGATIONS,
+    ATTR_DECLARATION,
+    ATTR_STORE_DIGEST,
+)
+"""Every attribute the marker writes. The store digest excludes exactly these."""
+
 MITIGATION_HEADER_PLANE: Final[str] = "headers_raw_uint8"
 """Written unconditionally by ``sdip ingest`` (D-0051)."""
 
@@ -86,6 +105,7 @@ MITIGATION_HEADER_PLANE: Final[str] = "headers_raw_uint8"
 def marker_attrs(
     *,
     declaration: SurveyDeclaration,
+    store_digest: dict[str, Any],
     mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,),
 ) -> dict[str, Any]:
     """The attribute mapping ``sdip ingest`` writes onto the root group."""
@@ -97,6 +117,7 @@ def marker_attrs(
         ATTR_PINS: {pin.distribution: pin.version for pin in PINS},
         ATTR_MITIGATIONS: list(mitigations),
         ATTR_DECLARATION: declaration.to_json(),
+        ATTR_STORE_DIGEST: store_digest,
     }
 
 
@@ -119,10 +140,16 @@ def attach_provenance_marker(
 
     Returns:
         The attributes written.
+
+    The store digest is taken here, after every other write and immediately before the
+    marker, so it covers everything the marker vouches for and nothing written later.
     """
     import zarr
 
-    attrs = marker_attrs(mitigations=mitigations, declaration=declaration)
+    from sdip.provenance.store_digest import compute_store_digest
+
+    digest = compute_store_digest(store_path, marker_keys=MARKER_KEYS)
+    attrs = marker_attrs(mitigations=mitigations, declaration=declaration, store_digest=digest)
     zarr.open_group(str(store_path), mode="r+").attrs.update(attrs)
     return attrs
 
@@ -141,6 +168,14 @@ def recorded_declaration(group: Any) -> dict[str, Any] | None:
     if not written_by_sdip(group):
         return None
     block = dict(group.attrs).get(ATTR_DECLARATION)
+    return dict(block) if isinstance(block, dict) else None
+
+
+def recorded_store_digest(group: Any) -> dict[str, Any] | None:
+    """The store digest this store records, or ``None`` if it predates the digest."""
+    if not written_by_sdip(group):
+        return None
+    block = dict(group.attrs).get(ATTR_STORE_DIGEST)
     return dict(block) if isinstance(block, dict) else None
 
 

@@ -231,6 +231,10 @@ def test_certify_is_release_ready_for_a_survey_read_under_a_declaration(
     [certificate] = list(certs.glob("*.json"))
     payload = json.loads(certificate.read_text())
     assert payload["declaration"]["status"] == "BOUND"
+    # D-0093: nothing in the whole chain - planes, G3, G4, G6, G7, closure - may write to the
+    # store it certifies, or the digest the certificate carries would not be the store's.
+    assert payload["store_digest"]["status"] == "MATCH", payload["store_digest"]
+    assert "[MATCH] store" in proc.stdout
     if reading == "rev0-override-depth":
         assert payload["spec_id"].endswith("+segy-rev0-poststack3d@1")
     assert payload["gates"]["G3"] == "PASS"

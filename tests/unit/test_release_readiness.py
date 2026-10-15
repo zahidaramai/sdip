@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from sdip.equivalence.certificate import GATES, PLANE_KEYS, release_readiness
 
 
@@ -144,4 +146,27 @@ def test_a_non_blocking_finding_does_not_block_release():
             {"code": "trace_interval_unspecified", "blocks_release": False, "message": "zero"}
         ]
     }
+    assert release_readiness(payload)["release_ready"] is True
+
+
+@pytest.mark.parametrize("status", ["MISMATCH", "ABSENT", "FOREIGN"])
+def test_a_store_digest_other_than_match_blocks_release(status):
+    """**D-0093.** A certificate names a store; it must be the store ``sdip ingest`` wrote."""
+    payload = _green()
+    payload["store_digest"] = {"status": status}
+    verdict = release_readiness(payload)
+    assert verdict["release_ready"] is False
+    assert any("store digest" in item and status in item for item in verdict["blocking"])
+
+
+def test_a_matching_store_digest_does_not_block_release():
+    payload = _green()
+    payload["store_digest"] = {"status": "MATCH"}
+    assert release_readiness(payload)["release_ready"] is True
+
+
+def test_a_certificate_issued_before_the_digest_is_not_re_judged():
+    """**D-0093.** Existing certificates stay valid: they never claimed a digest."""
+    payload = _green()
+    assert "store_digest" not in payload
     assert release_readiness(payload)["release_ready"] is True

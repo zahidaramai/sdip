@@ -405,6 +405,7 @@ def verify_cmd(
     from sdip.equivalence.binding import check_binding
     from sdip.equivalence.envelope import envelope_refusal
     from sdip.ingest.orchestrator import validate_source
+    from sdip.provenance.store_digest import check_store_digest
     from sdip.spec import g1_for_spec
 
     # Checked BEFORE any read, on the file's size alone - the same fail-before-you-
@@ -432,11 +433,16 @@ def verify_cmd(
         source, store, built.segy_spec, declaration=declaration, g1_passed=gate1.passed
     )
     portability = None if skip_portability else g4(store)
+    # D-0093. Last, after every read: is this still the store sdip ingest finished writing?
+    # A store changed since is a fact about the store and fails; one that predates the
+    # digest is ABSENT and says so, verdict unchanged.
+    digest = check_store_digest(store)
 
     ok = (
         gate1.passed
         and all(p.passed for p in planes)
         and (portability is None or portability.passed)
+        and digest.passed
     )
 
     if as_json:
@@ -448,6 +454,7 @@ def verify_cmd(
                     "G1": gate1.to_json(),
                     "planes": {f"plane_{p.plane}": p.to_json() for p in planes},
                     "G4": portability.to_json() if portability else None,
+                    "store_digest": digest.to_json(),
                     "verdict": "PASS" if ok else "FAIL",
                 },
                 indent=2,
@@ -464,6 +471,7 @@ def verify_cmd(
                 f"imported: {portability.mdio_absent}; non-core dtypes: "
                 f"{', '.join(portability.non_core_arrays) or 'none'}"
             )
+        click.echo(f"[{digest.status}] store     {digest.describe()}")
         click.echo("")
         click.echo(f"verify: {'PASS' if ok else 'FAIL'}")
 
@@ -594,6 +602,7 @@ def certify_cmd(
     from sdip.export import export as run_export
     from sdip.ingest import ingest_declared as run_ingest
     from sdip.provenance.git import capture_git_state
+    from sdip.provenance.store_digest import check_store_digest
     from sdip.spec import g1_for_spec
 
     # The tree check runs BEFORE any work, not only at issue time. `issue` refuses from
@@ -700,6 +709,10 @@ def certify_cmd(
             )
         )
 
+        # D-0093. After every read of the store and before the certificate names it: the
+        # digest the certificate carries is the store as it stood when the chain finished.
+        digest = check_store_digest(output)
+
         issued_at = _dt.datetime.now(tz=_dt.UTC).isoformat(timespec="seconds")
         certificate = issue(
             result,
@@ -714,6 +727,7 @@ def certify_cmd(
             determinism=determinism,
             scale=scale,
             binding=binding,
+            store_digest=digest,
             issued_at=issued_at,
             issued_by=f"sdip {__version__}",
         )
@@ -724,6 +738,7 @@ def certify_cmd(
     path.write_text(json.dumps(certificate.payload, indent=2, sort_keys=True))
 
     click.echo(f"[{binding.status}] declaration  {binding.describe()}")
+    click.echo(f"[{digest.status}] store     {digest.describe()}")
     _print_planes(planes)
     click.echo(f"[{roundtrip.status}] G3        whole-file SHA-256")
     click.echo(f"[{portability.status}] G4        stock zarr+xarray without mdio")

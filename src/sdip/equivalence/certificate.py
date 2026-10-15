@@ -40,6 +40,7 @@ from sdip.ingest.orchestrator import IngestResult
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY_NAME
 from sdip.provenance.environment import capture_environment
 from sdip.provenance.git import GitState, capture_git_state
+from sdip.provenance.store_digest import StoreDigestResult
 from sdip.spec.transforms import (
     detect_coordinate_scalar,
     detect_lossy_decode,
@@ -172,6 +173,7 @@ def issue(
     determinism: G6Result | None = None,
     scale: G5Result | None = None,
     binding: BindingResult | None = None,
+    store_digest: StoreDigestResult | None = None,
     root: str | Path = ".",
     require_clean_tree: bool = True,
     baseline: GitState | None = None,
@@ -199,6 +201,8 @@ def issue(
         binding: Whether the store binds to the survey declaration it was ingested under
             (D-0087). Recorded as the certificate's ``declaration`` block; release
             readiness requires ``BOUND``.
+        store_digest: The store recomputed against the digest its marker records (D-0093),
+            after the chain finished reading it. Release readiness requires ``MATCH``.
         nonvacuity: G7 result. **Absent means ``NOT_RUN``, and the verdict cannot reach
             ``EQUIVALENT``** - a store whose planes pass against an engine never shown
             capable of failing has not been checked.
@@ -361,6 +365,7 @@ def issue(
         "determinism": determinism.to_json() if determinism is not None else None,
         "scale": scale.to_json() if scale is not None else None,
         "declaration": binding.to_json() if binding is not None else None,
+        "store_digest": store_digest.to_json() if store_digest is not None else None,
         "transforms_declared": (
             ([exposure.to_json(raw_view_stored=raw_view_present)] if exposure is not None else [])
             + (
@@ -496,6 +501,16 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
         blocking.append(
             f"survey declaration is {declaration.get('status')} - the store could not be "
             "checked against the declaration the certificate names"
+        )
+
+    # D-0093. A certificate carries the digest of the store it names, recomputed after the
+    # chain finished reading it. Blocks on anything but MATCH. A certificate issued before
+    # the digest existed has no block and is NOT re-judged here: it never claimed one.
+    digest = payload.get("store_digest")
+    if digest is not None and digest.get("status") != "MATCH":
+        blocking.append(
+            f"store digest is {digest.get('status')} - the store cannot be shown to be the "
+            "one sdip ingest wrote"
         )
 
     return {
