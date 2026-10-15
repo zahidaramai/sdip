@@ -174,3 +174,31 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 ```
+
+---
+
+## Results — 2026-10-15, at `1572925`, N = 3 per case
+
+Harness `sha256 c8fd6d9812080e03…`, extracted verbatim; receipt `sha256 4a38426001e67c1d…`. Every ingest
+exited 0.
+
+| Case | Chunk files | Chunk files differing | Metadata keys differing |
+|---|---|---|---|
+| `ibm32` | 10 | **none** | root `attributes/createdOn` (+ the store digest's own `root`, `sha256`) |
+| `float32` | 9 | **none** | the same |
+| `delay4` | 10 | **none** | the same |
+| `undecodable` | 10 | **none** | the same |
+| `rev0` | 10 | **none** | the same |
+
+**Falsifier: did not fire.** No chunk byte differed in any case; G6 holds on all five.
+
+**Exactly one key varies: MDIO's root `createdOn`.** Every array's `zarr.json` — dtype, shape,
+chunks, codecs, attributes, SDIP's raw file headers on `segy_file_header` — is identical across
+ingests in every case. `sdipStoreDigest/root` and `/sha256` vary only because they digest the
+root metadata that contains `createdOn`. No path, identifier or other per-run artefact was found,
+so rule 3 does not stop the build.
+
+**Under the pre-registered rule**, the content digest excludes the root attribute `createdOn`
+and the marker's own attributes, and nothing else.
+
+Run root deleted after this record (Storage Law).
