@@ -179,6 +179,7 @@ def issue(
     scale: G5Result | None = None,
     binding: BindingResult | None = None,
     store_digest: StoreDigestResult | None = None,
+    content_digest: StoreDigestResult | None = None,
     root: str | Path = ".",
     require_clean_tree: bool = True,
     baseline: GitState | None = None,
@@ -208,6 +209,8 @@ def issue(
             readiness requires ``BOUND``.
         store_digest: The store recomputed against the digest its marker records (D-0093),
             after the chain finished reading it. Release readiness requires ``MATCH``.
+        content_digest: The same for the content digest (D-0101): the value a re-ingest of
+            this source must reproduce. Release readiness requires ``MATCH``.
         nonvacuity: G7 result. **Absent means ``NOT_RUN``, and the verdict cannot reach
             ``EQUIVALENT``** - a store whose planes pass against an engine never shown
             capable of failing has not been checked.
@@ -375,6 +378,7 @@ def issue(
         "scale": scale.to_json() if scale is not None else None,
         "declaration": binding.to_json() if binding is not None else None,
         "store_digest": store_digest.to_json() if store_digest is not None else None,
+        "content_digest": content_digest.to_json() if content_digest is not None else None,
         "transforms_declared": (
             ([exposure.to_json(raw_view_stored=raw_view_present)] if exposure is not None else [])
             + (
@@ -534,6 +538,12 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
         blocking.append(
             f"store digest is {digest.get('status')} - the store cannot be shown to be the "
             "one sdip ingest wrote"
+        )
+    content = payload.get("content_digest")
+    if content is not None and content.get("status") != "MATCH":
+        blocking.append(
+            f"content digest is {content.get('status')} - a re-ingest could not be shown to "
+            "reproduce this store"
         )
 
     return {

@@ -234,6 +234,55 @@
         }
       }
     },
+    "content_digest": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "title": "Content digest",
+      "description": "The store digest less the per-ingest metadata (MDIO's root createdOn, the only key probe P13 measured varying between ingests), recomputed after the chain against the value sdip ingest recorded (DECISIONS.md D-0101). Two ingests of one source under one declaration give the same value. Release readiness requires MATCH. Absent on certificates issued before 1.6.0.",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "scheme",
+        "recorded_sha256",
+        "computed_sha256",
+        "changed"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "MATCH",
+            "MISMATCH",
+            "ABSENT",
+            "FOREIGN"
+          ]
+        },
+        "scheme": {
+          "const": "sdip-content-digest/1"
+        },
+        "recorded_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "computed_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "changed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "output_path": {
       "type": "string"
     },

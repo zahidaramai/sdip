@@ -95,6 +95,13 @@ Says which convention the writer followed, never the value Plane 4 checks agains
 derives the delay from the source itself (:mod:`sdip.ingest.sample_axis`).
 """
 
+ATTR_CONTENT_DIGEST: Final[str] = "sdipContentDigest"
+"""The store digest less per-ingest metadata (D-0101, scheme ``sdip-content-digest/1``).
+
+Two ingests of one source under one declaration give the same value, so a consumer can show a
+re-ingest reproduced a store. ``sdipStoreDigest`` still says whether THIS store changed.
+"""
+
 MARKER_KEYS: Final[tuple[str, ...]] = (
     ATTR_WRITER,
     ATTR_VERSION,
@@ -103,6 +110,7 @@ MARKER_KEYS: Final[tuple[str, ...]] = (
     ATTR_DECLARATION,
     ATTR_STORE_DIGEST,
     ATTR_SAMPLE_AXIS_ORIGIN,
+    ATTR_CONTENT_DIGEST,
 )
 """Every attribute the marker writes. The store digest excludes exactly these."""
 
@@ -114,6 +122,7 @@ def marker_attrs(
     *,
     declaration: SurveyDeclaration,
     store_digest: dict[str, Any],
+    content_digest: dict[str, Any],
     sample_axis_origin: dict[str, Any] | None,
     mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,),
 ) -> dict[str, Any]:
@@ -127,6 +136,7 @@ def marker_attrs(
         ATTR_MITIGATIONS: list(mitigations),
         ATTR_DECLARATION: declaration.to_json(),
         ATTR_STORE_DIGEST: store_digest,
+        ATTR_CONTENT_DIGEST: content_digest,
     } | ({ATTR_SAMPLE_AXIS_ORIGIN: sample_axis_origin} if sample_axis_origin else {})
 
 
@@ -160,13 +170,15 @@ def attach_provenance_marker(
     """
     import zarr
 
-    from sdip.provenance.store_digest import compute_store_digest
+    from sdip.provenance.store_digest import CONTENT_SCHEME, compute_store_digest
 
     digest = compute_store_digest(store_path, marker_keys=MARKER_KEYS)
+    content = compute_store_digest(store_path, marker_keys=MARKER_KEYS, scheme=CONTENT_SCHEME)
     attrs = marker_attrs(
         mitigations=mitigations,
         declaration=declaration,
         store_digest=digest,
+        content_digest=content,
         sample_axis_origin=sample_axis_origin,
     )
     zarr.open_group(str(store_path), mode="r+").attrs.update(attrs)
@@ -195,6 +207,14 @@ def recorded_store_digest(group: Any) -> dict[str, Any] | None:
     if not written_by_sdip(group):
         return None
     block = dict(group.attrs).get(ATTR_STORE_DIGEST)
+    return dict(block) if isinstance(block, dict) else None
+
+
+def recorded_content_digest(group: Any) -> dict[str, Any] | None:
+    """The content digest this store records, or ``None`` if it predates it (before 1.6.0)."""
+    if not written_by_sdip(group):
+        return None
+    block = dict(group.attrs).get(ATTR_CONTENT_DIGEST)
     return dict(block) if isinstance(block, dict) else None
 
 

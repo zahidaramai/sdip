@@ -15,6 +15,19 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [Unreleased]
+
+**A content digest: two ingests of one source record the same value.** `DECISIONS.md` D-0101.
+
+### Added
+
+- **`sdipContentDigest` in the provenance marker** (scheme `sdip-content-digest/1`): the store
+  digest's coverage less MDIO's root `createdOn` — the only key that differs between ingests,
+  measured across five store shapes (probe P13). `verify` and `certify` report it; the
+  certificate gains an additive `content_digest` block. `sdipStoreDigest` is unchanged.
+- **Python:** `marker_attrs` takes a required `content_digest`; `compute_store_digest` takes an
+  optional `scheme`; new `check_content_digest`.
+
 ## [1.5.0] — 2026-10-15
 
 **A survey whose textual header does not decode can be certified and released, and IEEE

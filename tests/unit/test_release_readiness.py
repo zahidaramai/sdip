@@ -225,3 +225,18 @@ def test_a_header_scoped_certificate_still_needs_every_other_gate():
     payload = _header_scoped()
     payload["gates"]["G7"] = "NOT_RUN"
     assert any("gate G7" in item for item in release_readiness(payload)["blocking"])
+
+
+@pytest.mark.parametrize("status", ["MISMATCH", "ABSENT", "FOREIGN"])
+def test_a_content_digest_other_than_match_blocks_release(status):
+    """**D-0101.** The certificate's content digest is the value a re-ingest must reproduce."""
+    payload = _green()
+    payload["content_digest"] = {"status": status}
+    blocking = release_readiness(payload)["blocking"]
+    assert any("content digest" in item and status in item for item in blocking)
+
+
+def test_a_certificate_issued_before_the_content_digest_is_not_re_judged():
+    payload = _green()
+    payload["content_digest"] = None
+    assert release_readiness(payload)["release_ready"] is True

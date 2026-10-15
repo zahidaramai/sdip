@@ -5168,3 +5168,34 @@ The schema test built its certificate from a fixture with scalar 1, which declar
 source, requires the entry, and validates it: it fails on the old schema with exactly the two
 violations and passes on the fix. Existing certificates are unchanged; such a certificate now
 validates.
+
+---
+
+## D-0101 — 2026-10-15 — A content digest beside the store digest, excluding exactly what P13 measured
+
+**Owner's ruling, 2026-10-15: accept a consumer's request for a content-only store digest,
+measure first.** `sdipStoreDigest` (D-0093) covers every node's metadata, so two ingests of one
+source differ — a consumer can show a store is unchanged since it was written, not that a
+re-ingest reproduced it. The store digest is **unchanged**.
+
+**Measured first (P13, pre-registered at `1572925`, results `1728496`):** five store shapes —
+ibm32, IEEE, a 4 ms delay, an undecodable textual header, rev 0 with its override — three fresh
+ingests each. **Every chunk byte identical** (the falsifier did not fire; G6 holds on all five);
+**every array's `zarr.json` identical**; **the only varying key is MDIO's root `createdOn`**.
+
+**Built:** marker attribute `sdipContentDigest`, scheme `sdip-content-digest/1`
+(`sdip.provenance.store_digest`): the store digest's coverage less the root attribute
+`createdOn` — exactly P13's finding, nothing excluded on reasoning alone. Computed with the store
+digest, immediately before the marker is written. `verify` and `certify` report it (`MATCH`,
+`MISMATCH` fails, `ABSENT` before 1.6.0, `FOREIGN`); the certificate gains an additive
+`content_digest` block, and release readiness requires `MATCH` when present.
+
+**Both halves, through the executable** (`tests/integration/test_content_digest.py`): in each of
+the five shapes, two ingests record the **same** content digest and **different** store digests;
+a new `createdOn` moves the store digest and not the content digest; a flipped chunk byte, an
+edited raw textual header, any other root attribute, and a removed array each change the content
+digest and name the change; a pre-1.6.0 store is `ABSENT` and its store digest still `MATCH`es.
+
+**Scope.** One machine, one environment: a key that varies only across machines or library
+versions was not measurable here; the scheme name versions the definition so a measured addition
+is a new scheme, never an edit. Existing stores and certificates are unchanged.

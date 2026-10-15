@@ -48,6 +48,24 @@ from sdip.provenance.hashing import sha256_bytes, sha256_file
 SCHEME: Final[str] = "sdip-store-digest/1"
 """Names the definition above. A change to what is covered is a new scheme, never an edit."""
 
+CONTENT_SCHEME: Final[str] = "sdip-content-digest/1"
+"""The **content** digest (D-0101): the store digest less the per-ingest metadata.
+
+The store digest proves a store is unchanged since it was written; it cannot show a re-ingest
+reproduced it, because MDIO writes a creation time into the root metadata. The content digest
+covers exactly what the store digest covers except :data:`CONTENT_EXCLUDED_ROOT_ATTRIBUTES`, so
+two ingests of one source under one declaration give the same value.
+"""
+
+CONTENT_EXCLUDED_ROOT_ATTRIBUTES: Final[tuple[str, ...]] = ("createdOn",)
+"""Exactly the keys probe P13 measured varying between ingests, and nothing else.
+
+Five store shapes (ibm32, IEEE, a recording delay, an undecodable textual header, rev 0), three
+fresh ingests each: every chunk byte and every array's ``zarr.json`` identical; MDIO's root
+``createdOn`` the only key that differed (``prereg/P13-store-content-variance.md``). A key is
+added here only on a measurement of the same kind, as a new scheme.
+"""
+
 METADATA_FILENAME: Final[str] = "zarr.json"
 
 MATCH: Final[str] = "MATCH"
@@ -79,12 +97,16 @@ def _array_digest(array_dir: Path) -> str:
     return hashlib.sha256("".join(lines).encode()).hexdigest()
 
 
-def compute_store_digest(store: str | Path, *, marker_keys: tuple[str, ...]) -> dict[str, Any]:
-    """The digest of ``store`` under :data:`SCHEME`.
+def compute_store_digest(
+    store: str | Path, *, marker_keys: tuple[str, ...], scheme: str = SCHEME
+) -> dict[str, Any]:
+    """The digest of ``store`` under :data:`SCHEME`, or :data:`CONTENT_SCHEME`.
 
     Args:
         store: A Zarr v3 store on local disk.
         marker_keys: Root attributes excluded from the digest - the marker's own.
+        scheme: :data:`SCHEME` (the default) or :data:`CONTENT_SCHEME`, which also excludes
+            :data:`CONTENT_EXCLUDED_ROOT_ATTRIBUTES` from the root metadata.
 
     Returns:
         ``{"scheme", "nodes": {path: sha256}, "root": sha256, "sha256": ...}``. ``sha256``
@@ -101,8 +123,12 @@ def compute_store_digest(store: str | Path, *, marker_keys: tuple[str, ...]) -> 
             nodes[str(member.path)] = _array_digest(node_dir)
         else:
             nodes[str(member.path) + "/"] = sha256_file(node_dir / METADATA_FILENAME)
-    root_digest = sha256_bytes(_canonical(_root_document(root, marker_keys)))
-    body = {"scheme": SCHEME, "nodes": dict(sorted(nodes.items())), "root": root_digest}
+    if scheme not in (SCHEME, CONTENT_SCHEME):
+        msg = f"unknown digest scheme {scheme!r}"
+        raise ValueError(msg)
+    excluded = marker_keys + (CONTENT_EXCLUDED_ROOT_ATTRIBUTES if scheme == CONTENT_SCHEME else ())
+    root_digest = sha256_bytes(_canonical(_root_document(root, excluded)))
+    body = {"scheme": scheme, "nodes": dict(sorted(nodes.items())), "root": root_digest}
     return body | {"sha256": sha256_bytes(_canonical(body))}
 
 
@@ -114,6 +140,7 @@ class StoreDigestResult:
     recorded: str | None = None
     computed: str | None = None
     changed: tuple[str, ...] = field(default_factory=tuple)
+    scheme: str = SCHEME
 
     @property
     def passed(self) -> bool:
@@ -122,22 +149,23 @@ class StoreDigestResult:
 
     def describe(self) -> str:
         """One line for the operator."""
+        what = "content" if self.scheme == CONTENT_SCHEME else "store"
         if self.status == MATCH:
             return f"sha256 {(self.computed or '')[:12]}, as sdip ingest recorded it"
         if self.status == MISMATCH:
             return (
-                "the store differs from what sdip ingest recorded when it finished writing: "
+                f"the {what} differs from what sdip ingest recorded when it finished writing: "
                 f"{', '.join(self.changed) or 'unlocated'}"
             )
         if self.status == ABSENT:
-            return "the store predates the store digest, so whether it changed cannot be checked"
+            return f"the store predates the {what} digest, so it cannot be checked"
         return "the store was not written by sdip ingest; no digest to compare"
 
     def to_json(self) -> dict[str, Any]:
-        """Certificate-shaped ``store_digest`` block."""
+        """Certificate-shaped ``store_digest`` or ``content_digest`` block."""
         return {
             "status": self.status,
-            "scheme": SCHEME,
+            "scheme": self.scheme,
             "recorded_sha256": self.recorded,
             "computed_sha256": self.computed,
             "changed": list(self.changed),
@@ -146,20 +174,33 @@ class StoreDigestResult:
 
 def check_store_digest(store: str | Path) -> StoreDigestResult:
     """Recompute ``store``'s digest and compare it with the one its marker records."""
+    from sdip.ingest.provenance_marker import recorded_store_digest
+
+    return _check(store, SCHEME, recorded_store_digest)
+
+
+def check_content_digest(store: str | Path) -> StoreDigestResult:
+    """Recompute ``store``'s content digest and compare it with the one its marker records."""
+    from sdip.ingest.provenance_marker import recorded_content_digest
+
+    return _check(store, CONTENT_SCHEME, recorded_content_digest)
+
+
+def _check(store: str | Path, scheme: str, read_recorded: Any) -> StoreDigestResult:
     import zarr
 
-    from sdip.ingest.provenance_marker import MARKER_KEYS, recorded_store_digest, written_by_sdip
+    from sdip.ingest.provenance_marker import MARKER_KEYS, written_by_sdip
 
     group = zarr.open_group(str(store), mode="r")
     if not written_by_sdip(group):
-        return StoreDigestResult(FOREIGN)
-    recorded = recorded_store_digest(group)
+        return StoreDigestResult(FOREIGN, scheme=scheme)
+    recorded = read_recorded(group)
     if recorded is None:
-        return StoreDigestResult(ABSENT)
-    computed = compute_store_digest(store, marker_keys=MARKER_KEYS)
-    if recorded.get("scheme") == SCHEME and recorded.get("sha256") == computed["sha256"]:
-        return StoreDigestResult(MATCH, recorded.get("sha256"), computed["sha256"])
-    if recorded.get("scheme") != SCHEME:
+        return StoreDigestResult(ABSENT, scheme=scheme)
+    computed = compute_store_digest(store, marker_keys=MARKER_KEYS, scheme=scheme)
+    if recorded.get("scheme") == scheme and recorded.get("sha256") == computed["sha256"]:
+        return StoreDigestResult(MATCH, recorded.get("sha256"), computed["sha256"], scheme=scheme)
+    if recorded.get("scheme") != scheme:
         changed: tuple[str, ...] = (f"recorded under scheme {recorded.get('scheme')!r}",)
     else:
         before = dict(recorded.get("nodes") or {})
@@ -174,4 +215,6 @@ def check_store_digest(store: str | Path) -> StoreDigestResult:
         )
         if recorded.get("root") != computed["root"]:
             changed = (*changed, "root metadata changed")
-    return StoreDigestResult(MISMATCH, recorded.get("sha256"), computed["sha256"], changed)
+    return StoreDigestResult(
+        MISMATCH, recorded.get("sha256"), computed["sha256"], changed, scheme=scheme
+    )

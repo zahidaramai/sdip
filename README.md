@@ -322,6 +322,9 @@ verdict is reached; a store being written then carries no provenance marker.
 `verify` also checks the store against the **digest its provenance marker recorded** when
 `sdip ingest` finished writing it: `MATCH`, or `MISMATCH` (fails — the store changed after it
 was written), or `ABSENT` for a store written before 1.3.0, which is reported but not failed.
+Since 1.6.0 the marker also records a **content digest** (`sdipContentDigest`): the same
+coverage less MDIO's creation timestamp, so **two ingests of one source give the same value** —
+record it to show a re-ingest reproduced a store. `verify` checks both.
 
 **In the container, `certify` needs a git working tree** — it refuses to issue from one
 that is dirty or absent, so mount a repository if you want a certificate. `ingest`,
