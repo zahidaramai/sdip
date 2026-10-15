@@ -76,7 +76,7 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy
 
 **The checks those files encode are still binding on you.** They are the reviewable
 statement of the §7.8 job table — the forbid-list `ast` scans, the publication-firewall
-history scan, the licence scan, the self-arming gate jobs, the DCO check. A PR is
+history scan, the licence scan, the full test suite, the DCO check. A PR is
 reviewed against them whether or not a runner has executed them. Until the workflows are
 back under `.github/workflows/`, run the equivalent locally before you open a PR:
 
@@ -108,7 +108,7 @@ Four layers enforce it, and only the first one *prevents* anything:
 | 1 | `.githooks/pre-commit` | staged paths | **before the commit exists** |
 | 2 | `.gitignore` | an accidental `git add -A` | at `git add` |
 | 3 | `sdip doctor` → `publication-firewall` | index **and** `HEAD` | on demand |
-| 4 | CI `firewall` job (`.github/workflows/ci.yml`) | **any commit, any ref** | every PR and push |
+| 4 | CI `firewall` job (`.github/workflows/ci.yml`) | **any commit, any ref** | every PR and every manual run (not on push, D-0095) |
 
 Layers 2–4 only *detect*. Once a path is in a commit the remedy is a history rewrite,
 because a clone receives history — `git rm --cached` removes a file from the index and
@@ -166,7 +166,7 @@ in `tests/negative/`. A failed configuration becomes the permanent negative cont
 its fix.
 
 **A gate a corrupted store passes is not a gate.** A PR that adds an engine check
-without its negative control fails the `negative` CI job (`ci/ci.yml`), by design.
+without its negative control fails CI's test suite (`.github/workflows/ci.yml`), by design.
 
 ---
 
@@ -221,7 +221,7 @@ MDIO's header parser uses a **`spawn`** multiprocessing context. **Every entry p
 that can trigger ingestion must be guarded by `if __name__ == "__main__":`.** Without
 it the child process re-executes the ingest and dies with `BrokenProcessPool`. This is
 measured (Appendix A.5), not theoretical. There is a regression test and a
-`spawn-guard` CI job (`ci/ci.yml`); do not delete either.
+run of it in CI's test suite (`.github/workflows/ci.yml`); do not delete either.
 
 ---
 

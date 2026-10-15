@@ -1,18 +1,21 @@
-# CI to specification v1.0 section 7.8: every job on every PR, any failure blocks merge.
+# CI, lean by ruling (DECISIONS.md D-0095). Two jobs, run only when asked for.
 #
-# Jobs whose subject does not exist yet are declared and FAIL LOUDLY with the roadmap
-# phase, rather than being silently absent. An absent job looks like a passing one on a
-# green check, which is the whole failure mode this project exists to prevent.
+# It does NOT run on push. Work is committed locally and pushed rarely; a run is started
+# deliberately - `gh workflow run ci` before a release, or by a pull request from a
+# contributor. Every check the old sixteen-job layout made is still made, once, in one
+# job with one dependency install: the full test suite covers the gates (G1-G7, the
+# negative controls, spawn-guard, portability, determinism) in a single pytest run
+# instead of five filtered re-runs of the same tests.
+#
+# Each step runs even when an earlier one failed (`!cancelled()`), so one red check
+# never hides another, and the job fails if any of them did.
 #
 # CI has no network access except the pinned package index.
 name: ci
 
 on:
-  # Manual trigger, so a run can be re-fired without an empty commit.
   workflow_dispatch:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -27,152 +30,18 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # doctor runs first. If doctor fails, nothing else runs.
-  # ---------------------------------------------------------------------------
-  doctor:
-    name: doctor
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-      - run: uv sync --all-extras --dev
-      - name: Install the publication firewall hook
-        run: git config core.hooksPath .githooks
-      - name: sdip doctor
-        run: uv run sdip doctor
-      - name: Publish the doctor report as an artifact
-        if: always()
-        run: uv run sdip doctor --json > doctor-report.json || true
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: doctor-report
-          path: doctor-report.json
-
-  lint:
-    name: lint / type
-    needs: doctor
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-      - run: uv sync --all-extras --dev
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run mypy
-
-  unit:
-    name: unit (py${{ matrix.python }})
-    needs: doctor
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # The pins intersect at >=3.12,<3.14. See DECISIONS.md D-0001.
-        python: ["3.12", "3.13"]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-      - run: uv sync --all-extras --dev --python ${{ matrix.python }}
-      - run: uv run pytest tests/unit -v
-
-  # ---------------------------------------------------------------------------
-  # Forbid-list enforcement, asserted independently of the Python guard so a bug in
-  # the guard cannot hide a violation from CI. Spec section 9.
-  # ---------------------------------------------------------------------------
-  forbid-list:
-    name: forbid-list
-    needs: doctor
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-      - run: uv sync --all-extras --dev
-
-      - name: Barred environment variables are absent (spec 9.1)
-        run: |
-          for v in MDIO_IGNORE_CHECKS MDIO__IMPORT__RAW_HEADERS; do
-            if printenv "$v" >/dev/null 2>&1; then
-              echo "::error::barred environment variable $v is set (spec 9.1)"; exit 1
-            fi
-          done
-
-      # Parsed, not grepped. A grep for these names flags the guard's own docstring,
-      # this workflow, and every doc that explains why they are barred - and a gate
-      # that fires on prose is a gate that gets switched off (DECISIONS.md D-0005).
-      - name: SDIP never sets a barred variable
-        run: |
-          uv run python - <<'PY'
-          import sys
-          from pathlib import Path
-          from sdip.guard import scan_source_for_barred_assignments
-          findings = scan_source_for_barred_assignments(Path("src"))
-          findings += scan_source_for_barred_assignments(Path("tests"))
-          for f in findings:
-              print(f"::error::{f}")
-          sys.exit(1 if findings else 0)
-          PY
-
-      - name: zfpy is not importable (spec 9.2 / SP3)
-        run: |
-          uv run python - <<'PY'
-          import importlib.util, sys
-          if importlib.util.find_spec("zfpy") is not None:
-              sys.exit("::error::zfpy is installed - SP3 bars lossy codecs")
-          print("zfpy absent")
-          PY
-
-      - name: No tolerance-based comparison in the engine (spec 4.5 / 9.5)
-        run: uv run pytest tests/unit/test_repository_contract.py -k tolerance -v
-
-      - name: No suppressed warnings (SP6)
-        run: uv run pytest tests/unit/test_repository_contract.py -k suppress -v
-
-      - name: The forbid-list detectors have been shown to fire (SP11)
-        run: uv run pytest tests/unit -k "actually_detects or negative" -v
-
-  licence:
-    name: licence
-    needs: doctor
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-      - run: uv sync --all-extras --dev
-      - name: No GPL or AGPL in the runtime dependency tree (spec 3.6 / 9.4)
-        run: |
-          uv run python - <<'PY'
-          import json, sys
-          from sdip.guard.licences import check_runtime_licences
-          scan = check_runtime_licences()
-          print(json.dumps(scan.to_json(), indent=2))
-          if not scan.ok:
-              sys.exit("::error::runtime dependency tree blocks Apache-2.0 distribution")
-          print(f"{len(scan.records)} runtime distributions scanned, clean")
-          PY
-
-  # ---------------------------------------------------------------------------
   # Publication firewall. This repository is public. docs/ and every AI-assistant
   # artifact are maintained outside it and must never appear in the index or in
   # ANY commit reachable from any ref.
   #
-  # This job does not depend on `doctor`, and does not depend on Python. It must
-  # still run when the environment is broken, because a broken environment is
-  # exactly when someone force-adds a file to make a check go away.
+  # Its own job, with no Python: it must still run when the environment is broken,
+  # because a broken environment is exactly when someone force-adds a file to make a
+  # check go away. Git only; seconds.
   # ---------------------------------------------------------------------------
   firewall:
     name: firewall
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -207,13 +76,80 @@ jobs:
           fi
           echo "firewall intact across all history"
 
-  fixture-policy:
-    name: fixture-policy
-    needs: doctor
+  # ---------------------------------------------------------------------------
+  # Everything else, in one job. `sdip doctor` first: if it fails, the job is red
+  # whatever follows.
+  # ---------------------------------------------------------------------------
+  check:
+    name: check
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+      - name: Install the publication firewall hook
+        run: git config core.hooksPath .githooks
+
+      - name: sdip doctor
+        run: uv run sdip doctor
+
+      - name: Lint, format, types
+        if: ${{ !cancelled() }}
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run mypy
+
+      # Asserted independently of the Python guard, so a bug in the guard cannot hide a
+      # violation from CI. Spec section 9.
+      - name: Barred environment variables are absent (spec 9.1)
+        if: ${{ !cancelled() }}
+        run: |
+          for v in MDIO_IGNORE_CHECKS MDIO__IMPORT__RAW_HEADERS; do
+            if printenv "$v" >/dev/null 2>&1; then
+              echo "::error::barred environment variable $v is set (spec 9.1)"; exit 1
+            fi
+          done
+
+      # Parsed, not grepped. A grep for these names flags the guard's own docstring,
+      # this workflow, and every doc that explains why they are barred - and a gate
+      # that fires on prose is a gate that gets switched off (DECISIONS.md D-0005).
+      - name: SDIP never sets a barred variable; zfpy is not importable (9.1, 9.2 / SP3)
+        if: ${{ !cancelled() }}
+        run: |
+          uv run python - <<'PY'
+          import importlib.util, sys
+          from pathlib import Path
+          from sdip.guard import scan_source_for_barred_assignments
+          findings = scan_source_for_barred_assignments(Path("src"))
+          findings += scan_source_for_barred_assignments(Path("tests"))
+          for f in findings:
+              print(f"::error::{f}")
+          if importlib.util.find_spec("zfpy") is not None:
+              findings.append("zfpy is installed - SP3 bars lossy codecs")
+              print("::error::zfpy is installed - SP3 bars lossy codecs")
+          sys.exit(1 if findings else 0)
+          PY
+
+      - name: No GPL or AGPL in the runtime dependency tree (spec 3.6 / 9.4)
+        if: ${{ !cancelled() }}
+        run: |
+          uv run python - <<'PY'
+          import json, sys
+          from sdip.guard.licences import check_runtime_licences
+          scan = check_runtime_licences()
+          if not scan.ok:
+              print(json.dumps(scan.to_json(), indent=2))
+              sys.exit("::error::runtime dependency tree blocks Apache-2.0 distribution")
+          print(f"{len(scan.records)} runtime distributions scanned, clean")
+          PY
+
       - name: No proprietary or unattributed data in tests/fixtures (spec 6.6)
+        if: ${{ !cancelled() }}
+        shell: bash
         run: |
           test -f tests/fixtures/PROVENANCE.md \
             || { echo "::error::tests/fixtures/PROVENANCE.md is mandatory"; exit 1; }
@@ -228,33 +164,15 @@ jobs:
           done < <(git ls-files tests/fixtures)
           exit $undeclared
 
-  publication-readiness:
-    name: publication-readiness
-    needs: doctor
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - name: No unresolved placeholder may reach a public repository
+        if: ${{ !cancelled() }}
         run: |
-          # OPEN_DEBTS D12. The copyright holder and IP provenance are unresolved and
-          # are blocking for the first public push. This job is the mechanism that
-          # stops the repository being published with the placeholder still in it.
+          # OPEN_DEBTS D12; DECISIONS.md D-0054. Strict tokens everywhere; example.com
+          # only where it would be a real defect - machine-read metadata.
           if grep -rn 'UNRESOLVED-COPYRIGHT-HOLDER' NOTICE CITATION.cff ; then
             echo "::error::NOTICE/CITATION.cff carry an unresolved placeholder - OPEN_DEBTS D12"
             exit 1
           fi
-          # `zahidaramai/sdip` was a PLACEHOLDER when this guard was written at F0,
-          # before the repository existed. The repository was then created at exactly
-          # that name, which made the placeholder real while the guard kept failing on
-          # the correct value. Replaced with patterns that are placeholders in every
-          # world - including the one that actually bit us: the certificate schema
-          # shipped with a literal OWNER in its $id (DECISIONS.md D-0054), which this
-          # shape of check would have caught and the old one could not.
-          # Split deliberately. A documented EXAMPLE is not an unresolved placeholder:
-          # CONTRIBUTING.md teaches the DCO format with `Your Name <you@example.com>`,
-          # which is correct prose and must not fail this gate. So the strict tokens are
-          # checked everywhere, and `example.com` only where it would be a real defect -
-          # machine-read metadata that something resolves against.
           if grep -rInE '(\bOWNER\b|YOUR[-_]ORG|<owner>|XXX-PLACEHOLDER|UNRESOLVED-)' \
                README.md CITATION.cff pyproject.toml CONTRIBUTING.md SECURITY.md \
                src/sdip/schema/*.json ; then
@@ -265,169 +183,20 @@ jobs:
             echo "::error::example.com reached machine-read metadata"
             exit 1
           fi
-
-          # The canonical URL must name a repository that resolves, not merely be
-          # non-placeholder. Checked without network: it must match the git remote.
+          # The canonical URL must match the git remote; checked without network.
           REMOTE=$(git config --get remote.origin.url | sed -E 's#.*github\.com[:/]##; s#\.git$##')
           if [ -n "$REMOTE" ] && ! grep -q "$REMOTE" pyproject.toml ; then
             echo "::error::pyproject Homepage does not match the git remote ($REMOTE)"
             exit 1
           fi
 
-  # ---------------------------------------------------------------------------
-  # Gate jobs. Each one ARMS ITSELF: it looks for its own subject in the tree and
-  # either runs the real check or reports NOT_RUN with its roadmap phase.
-  #
-  # Why not simply fail while unbuilt. Spec 7.8 says any failure blocks merge, so a
-  # job that always fails blocks every PR forever - including the PR that would
-  # build it. That is not strictness, it is a broken gate, and a broken gate gets
-  # deleted or bypassed, which is worse than a missing one (SP11).
-  #
-  # Why not simply omit them. An absent job renders as a green check and nobody
-  # ever notices the gate does not exist.
-  #
-  # So: the job exists, runs on every PR, states its status in the run summary, and
-  # starts ENFORCING the moment its subject appears - no one has to remember to
-  # switch it on. Green here means "everything that exists passes", never "the gates
-  # pass". What has and has not been measured is in README.md and OPEN_DEBTS.md D11.
-  # ---------------------------------------------------------------------------
-  gates:
-    name: gates
-    needs: doctor
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - gate: integration
-            phase: F3
-            subject: tests/integration/test_*.py
-            # -m 'not slow' removes EXACTLY the 63 P7 latency benchmarks and
-            # nothing else - verified against the collected set. They assert a
-            # chunk shape beats the default at MILLISECOND scale, which is a real
-            # comparison on a quiet machine and noise on a shared runner (D39).
-            # A flaky gate teaches people to re-run rather than read, so the
-            # benchmark runs locally and the correctness legs gate here. The other
-            # two `slow` suites - P2 ibm32 fidelity and the D8 hostile corpus - are
-            # correctness, live under tests/unit and tests/negative, and still run.
-            command: uv run pytest tests/integration -m 'not slow' -v
-            note: Lifted round-trip fixture extended to the 240-byte plane; SHA-256 assertion.
-          - gate: negative-G7
-            phase: F4
-            subject: tests/negative/test_*.py
-            command: uv run pytest tests/negative -v
-            note: >-
-              Non-vacuity. Until G7 passes, every certificate the engine issues is
-              unvalidated. OPEN_DEBTS D11.
-          - gate: portability-G4
-            phase: F3
-            # Points at tests that EXIST. The old subject, test_portability*.py, has
-            # never matched a file, so this gate reported NOT_RUN permanently while G4
-            # was in fact covered by 21 tests under other names (D-0079).
-            subject: tests/integration/test_p4_crossimpl.py
-            command: uv run pytest tests/integration -k 'portability or crossimpl or g4' -v
-            note: Store must open with stock zarr and xarray asserting 'mdio' not in sys.modules.
-          - gate: spawn-guard
-            phase: F2
-            subject: tests/integration/test_spawn_guard*.py
-            command: uv run pytest tests/integration -k spawn -v
-            note: >-
-              MDIO's header parser uses a spawn context; a missing __main__ guard kills
-              the pool with BrokenProcessPool.
-          - gate: determinism-G6
-            phase: F3
-            # ARMED 2026-08-24. The subject now exists - test_determinism_g6.py, written
-            # for D44 precisely because this gate had nothing to point at. It was left
-            # deliberately unmatched until then rather than aimed at the incidental
-            # coverage inside the certificate test, which would have reported a gate as
-            # armed while nothing tested its subject directly.
-            subject: tests/integration/test_determinism*.py
-            command: uv run pytest tests/integration -k determinism -v
-            note: Two ingests must produce identical chunk bytes AND values; controls break each level.
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
-      - name: Is this gate armed?
-        id: arm
-        run: |
-          # shellcheck disable=SC2086
-          if compgen -G "${{ matrix.subject }}" > /dev/null; then
-            echo "armed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "armed=false" >> "$GITHUB_OUTPUT"
-          fi
-        shell: bash
-
-      - name: Report NOT_RUN
-        if: steps.arm.outputs.armed == 'false'
-        run: |
-          {
-            echo "### ${{ matrix.gate }} — \`NOT_RUN\` (roadmap phase ${{ matrix.phase }})"
-            echo
-            echo "No file matches \`${{ matrix.subject }}\`, so this gate has nothing to run."
-            echo
-            echo "> ${{ matrix.note }}"
-            echo
-            echo "It arms itself the moment that file appears. Green on this job means"
-            echo "*everything that exists passes* — it does **not** mean the gate passes."
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo "::notice title=${{ matrix.gate }} NOT_RUN::roadmap phase ${{ matrix.phase }} — no subject in tree"
-
-      - name: Run the gate
-        if: steps.arm.outputs.armed == 'true'
-        run: |
-          uv sync --all-extras --dev
-          ${{ matrix.command }}
-
-  # Makes the unbuilt gates visible in every run rather than only in a job that
-  # printed a notice and went green.
-  roadmap:
-    name: roadmap
-    needs: gates
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Summarise what has and has not been measured
-        run: |
-          # DERIVED, never hard-coded. The previous version of this block printed
-          # "Current phase: F0" and all seven gates "NOT BUILT" into EVERY run summary,
-          # months after they were built - the loudest text in CI, and false. A table
-          # somebody has to remember to update is a table that goes stale, so this one
-          # reads the tree.
-          {
-            echo "## SDIP gate status"
-            echo
-            echo "Derived from the tree on every run. Nothing here is hard-coded."
-            echo
-            echo "| Gate | Subject in tree | State |"
-            echo "|---|---|---|"
-            for row in \
-              "G1 spec completeness|src/sdip/spec/gate.py" \
-              "G2 five planes|src/sdip/equivalence/planes.py" \
-              "G3 round trip|src/sdip/export/roundtrip.py" \
-              "G4 portability|src/sdip/equivalence/portability.py" \
-              "G5 scale|src/sdip/equivalence/scale.py" \
-              "G6 determinism|src/sdip/equivalence/determinism.py" \
-              "G7 non-vacuity|src/sdip/equivalence/nonvacuity.py"; do
-              IFS='|' read -r gate subject <<< "$row"
-              if [ -e "$subject" ]; then
-                echo "| $gate | \`$subject\` | BUILT |"
-              else
-                echo "| $gate | \`$subject\` | NOT BUILT |"
-              fi
-            done
-            echo
-            CONTROLS=$(grep -c 'Corruption(' src/sdip/equivalence/nonvacuity.py || echo 0)
-            echo "**G7 ships $CONTROLS permanent negative controls**, each required to fail"
-            echo "exactly the gates it declares and no others."
-            echo
-            echo "**Green here means every check that exists passes. It does NOT mean the"
-            echo "Equivalence Contract holds on your data** - these jobs run against committed"
-            echo "synthetic fixtures, while a certificate is issued against a specific store"
-            echo "from a specific source. CI cannot certify anything; \`EQUIVALENCE_LEDGER.md\`"
-            echo "indexes what was actually certified."
-          } >> "$GITHUB_STEP_SUMMARY"
+      # ONE run of the whole suite, unfiltered by -k or -m: unit, integration and
+      # negative, which is every gate's tests (G1-G7, G7's controls, spawn-guard,
+      # portability, determinism), the forbid-list detectors, and the `slow` correctness
+      # suites (P2 ibm32 fidelity, the D8 hostile corpus). The one file left out is the
+      # 63 P7 latency benchmarks: a millisecond comparison that is noise on a shared
+      # runner (D39). They run locally. NOT `-m 'not slow'`, which would also drop P2
+      # and D8.
+      - name: Test suite - every gate, every negative control
+        if: ${{ !cancelled() }}
+        run: uv run pytest tests -q --ignore=tests/integration/test_p7_latency.py

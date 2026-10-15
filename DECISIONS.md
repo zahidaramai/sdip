@@ -4944,3 +4944,40 @@ on the store's identity, like the declaration binding, not a sixth plane.
    readers.
 4. **Release 1.3.0, and push `main` and the tag.** Owner's command in this conversation. A
    GitHub Release (which runs `publish.yml`) is a separate act and is not made here.
+
+---
+
+## D-0095 — 2026-10-15 — CI runs only when asked for, as two jobs
+
+**Owner's ruling, 2026-10-15:** GitHub Actions use must be lean; CI must not run all the time.
+Accounts on this owner's workspace keep reaching their Actions limit.
+
+**Before:** every push to `main` and every pull request started about sixteen jobs —
+`doctor`, `lint / type`, `unit` on Python 3.12 and 3.13, `forbid-list`, `licence`,
+`firewall`, `fixture-policy`, `publication-readiness`, six self-arming `gates` and `roadmap`
+— each paying its own checkout and full dependency install, and the gate jobs re-running
+slices of the same integration tests through `-k` filters.
+
+**After (`.github/workflows/ci.yml`):**
+
+- **Triggers: `workflow_dispatch` and `pull_request` only.** No run on push. Work is
+  committed locally and pushed rarely; a run is started deliberately before a release.
+- **Two jobs.** `firewall`, git only and independent of the Python environment, unchanged in
+  substance. `check`: one install, then `sdip doctor`, lint/format/types, the forbid-list,
+  licence, fixture-policy and publication-readiness checks, and **one run of the whole test
+  suite** — every check the old jobs made. Each step runs even after an earlier failure.
+- **What the suite covers is unchanged:** unit, integration and negative, including the
+  `slow` correctness suites (P2 ibm32, D8 hostile corpus). Only the 63 P7 latency benchmarks
+  stay local, as before (D39). Not `-m 'not slow'`, which would have dropped P2 and D8.
+- **Dropped:** the Python 3.13 unit lane (3.12 is the supported interpreter the doctor
+  checks), the self-arming `NOT_RUN` machinery (every gate is built), and the `roadmap`
+  summary job. Every job carries a timeout.
+- `dco.yml` (pull requests only) and `publish.yml` (a published GitHub Release only) were
+  already on demand and are unchanged.
+
+**Spec §7.8 ("every job on every PR, any failure blocks merge")** still holds for pull
+requests, with the job table consolidated. The contract tests now assert the two-job layout,
+the two triggers, the timeouts, and that the suite runs unfiltered but for the P7 benchmarks.
+
+**Noted, not relied on:** `zahidaramai/sdip` is a public repository, and GitHub does not bill
+standard-runner minutes for public repositories. The ruling stands regardless.

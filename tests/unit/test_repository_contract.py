@@ -362,7 +362,7 @@ def test_all_four_firewall_layers_declare_the_same_set(repo_root):
     gitignore = (repo_root / ".gitignore").read_text()
     hook = (repo_root / ".githooks" / "pre-commit").read_text()
     ci = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
-    firewall_job = ci.split("  firewall:", 1)[1].split("\n  fixture-policy:", 1)[0]
+    firewall_job = ci.split("  firewall:", 1)[1].split("\n  check:", 1)[0]
 
     for pattern in NEVER_PUBLISH:
         assert pattern in gitignore, f".gitignore is missing {pattern}"
@@ -453,36 +453,32 @@ def test_gitignore_has_no_negation_for_an_unpublishable_path(repo_root):
         assert not any(pattern in line for pattern in NEVER_PUBLISH), line
 
 
-def test_every_gate_has_a_ci_job_that_arms_itself(repo_root):
-    """Spec 7.8. Every gate is represented, and none blocks merge while unbuilt.
+def test_every_gate_runs_in_ci_in_one_unfiltered_suite(repo_root):
+    """Spec 7.8 under D-0095: every gate's tests run, once, in one job.
 
-    An absent job renders as a green check, so the job must exist. A job that always
-    fails blocks every PR forever, including the PR that would build it, so it must
-    not fail while unbuilt. It therefore looks for its own subject and starts
-    enforcing the moment that subject appears.
+    The old layout ran each gate as its own job re-running a ``-k`` slice of the same
+    tests. The lean layout runs the whole suite once, so the guarantee becomes: nothing
+    is filtered out of it but the P7 latency benchmarks (D39). A ``-k`` or ``-m`` on the
+    suite could silently drop a gate's tests - ``-m 'not slow'`` alone would drop the P2
+    ibm32 and D8 hostile-corpus correctness suites.
     """
     ci = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
-    for gate in (
-        "integration",
-        "negative-G7",
-        "portability-G4",
-        "spawn-guard",
-        "determinism-G6",
-    ):
-        assert f"gate: {gate}" in ci, gate
-    assert "steps.arm.outputs.armed" in ci, "gates must self-arm on their subject"
-    assert "NOT_RUN" in ci
+    [suite] = [line.strip() for line in ci.splitlines() if "uv run pytest" in line]
+    assert suite == "run: uv run pytest tests -q --ignore=tests/integration/test_p7_latency.py"
+    for directory in ("tests/unit", "tests/integration", "tests/negative"):
+        assert (repo_root / directory).is_dir(), directory
 
 
-def test_unbuilt_gates_do_not_hard_fail_the_build(repo_root):
-    """NEGATIVE CONTROL for the design above.
+def test_ci_runs_only_when_asked_for(repo_root):
+    """D-0095, the owner's ruling: no CI run on push. Manual dispatch and pull requests."""
+    import yaml
 
-    A leftover `exit 1` in a gate job would silently reintroduce the always-red
-    build that cannot be merged out of.
-    """
-    ci = (repo_root / ".github" / "workflows" / "ci.yml").read_text()
-    gates_block = ci.split("  gates:", 1)[1].split("\n  roadmap:", 1)[0]
-    assert "exit 1" not in gates_block
+    workflow = yaml.safe_load((repo_root / ".github" / "workflows" / "ci.yml").read_text())
+    triggers = workflow[True] if True in workflow else workflow["on"]
+    assert set(triggers) == {"workflow_dispatch", "pull_request"}, triggers
+    assert set(workflow["jobs"]) == {"firewall", "check"}, set(workflow["jobs"])
+    for job in workflow["jobs"].values():
+        assert job.get("timeout-minutes"), "every job carries a timeout"
 
 
 def test_firewall_is_enforced_in_ci_independently_of_doctor(repo_root):
