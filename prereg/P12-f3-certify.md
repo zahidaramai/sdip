@@ -65,3 +65,34 @@ tree stays certifiable. N = 1.
 - **It does not commit the certificate.** It carries the operator's local source path. Its
   `sha256` and its gate table are recorded here; the store and certificate are then deleted.
 - One file, one machine, one run: no statement about other surveys or about variance.
+
+---
+
+## Results — 2026-10-15, at `8d3ab26`, N = 1
+
+**Not release-ready, and not because of the delay: `certify` refused before issuing a
+certificate.** Started 14:02:41Z, exited 14:06:42Z (241.21 s), exit 1, peak RSS of the `sdip`
+process 4,588,404,736 B (4.27 GiB) by `/usr/bin/time -l`. No certificate was written; G5 was
+never judged, so neither ceiling was reached or tested.
+
+```
+sdip: RoundTripUnavailableError: cannot export .../f3.mdio: it carries no `segy_file_header`
+variable, so MDIO's exporter has no textual or binary header to write. ...
+```
+
+**The cause, measured with SDIP's own classifier on the file's first 3,200 bytes:** the textual
+header is EBCDIC and conforms except for **one character, at row 5, column 76**, which is
+non-printable after the declared EBCDIC decode. Under D-0055 such a source is ingested with
+its raw 3,200 bytes preserved on the root group (raw header `sha256 601efd5d24b71feb…`) and no
+`segy_file_header` variable, Plane 1 checks the raw bytes, and **G3 is unreachable**: upstream's
+exporter would sanitise that character, so whole-file byte identity is impossible.
+
+The store itself was as D-0097 reported: marker present, `sdipVersion` 1.4.0,
+`sdipSampleAxisOrigin.origin_ms` 4.0, nine arrays.
+
+**This is OPEN_DEBTS D17's open half, now measured on a real legacy vintage for the first
+time** (D17 recorded it as unmeasured on one). What G3 reports for such a source —
+`FAIL`, or `ROUNDTRIP-SCOPED` with the non-conformance named — is a gate ruling for the
+maintainer, and `certify` cannot complete on this survey until it is made.
+
+Run root harvested and deleted after this record.
