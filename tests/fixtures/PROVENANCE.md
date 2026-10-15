@@ -12,7 +12,7 @@ Every fixture is one of exactly two things:
 
 **Large open datasets are fetched at test time by checksum, never vendored.**
 
-The `fixture-policy` CI job fails on any file in `tests/fixtures/` that has no entry in
+CI's fixture-policy check (a step of the `check` job) fails on any file in `tests/fixtures/` that has no entry in
 this file.
 
 ---

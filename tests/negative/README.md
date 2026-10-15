@@ -41,8 +41,8 @@ never been shown to fail, and say so in any report touching certificates.
    half that catches an over-broad check.
 4. Name what it defends in the docstring, citing the specification clause.
 
-A PR that adds an engine check without its negative control fails the `negative` CI job.
-That is by design and is not a bug in the job.
+A PR that adds an engine check without its negative control fails CI's test suite (the
+`check` job). That is by design and is not a bug in the job.
 
 ## Why "only its gate" matters
 

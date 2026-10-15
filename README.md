@@ -314,6 +314,15 @@ Everything measured is recorded in [`DECISIONS.md`](DECISIONS.md); everything no
 | `sdip export` | **MDIO → SEG-Y** |
 | `sdip certify` | The full chain, ending in a certificate |
 
+**Exit status**, the same for every command: **0** pass · **1** fail, or refused input ·
+**2** usage or environment · **3** an internal defect in SDIP, never a verdict about your
+data · **130 / 143** stopped by SIGINT / SIGTERM — every child process is stopped first and no
+verdict is reached; a store being written then carries no provenance marker.
+
+`verify` also checks the store against the **digest its provenance marker recorded** when
+`sdip ingest` finished writing it: `MATCH`, or `MISMATCH` (fails — the store changed after it
+was written), or `ABSENT` for a store written before 1.3.0, which is reported but not failed.
+
 **In the container, `certify` needs a git working tree** — it refuses to issue from one
 that is dirty or absent, so mount a repository if you want a certificate. `ingest`,
 `verify` and `export` need nothing but the data. For the same reason `doctor` reports two

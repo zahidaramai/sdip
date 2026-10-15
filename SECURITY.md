@@ -20,10 +20,12 @@ publishing.
 
 | Version | Supported |
 |---|---|
-| `main` (pre-release, phases F0–F7 built) | ✅ |
-| Tagged releases | none yet |
+| Latest release (`v1.4.0`) | ✅ |
+| `main` | ✅ |
+| Earlier releases | ❌ — fixes are not backported; upgrade to the latest release |
 
-Until the first tagged release, `main` is the only supported version.
+A fix ships in a new release. An upstream pin bump is a major release with a migration note
+(CHANGELOG 1.0.0), because it invalidates every certificate issued under the previous pin.
 
 ## Why this project has a real attack surface
 
@@ -40,9 +42,11 @@ The binding rules (specification §11.4):
   until it has been reconciled with the file on disk.
 - **Output paths are confined. No path is ever derived from file content.** A textual
   header, a survey name, or a field value must not reach a filesystem path.
-- **A fuzz corpus for the header parser is part of the test suite.** Tracked as **D8**
-  in [`OPEN_DEBTS.md`](OPEN_DEBTS.md) — it is not built yet, and that debt is open
-  against public release.
+- **A fuzz corpus for the header parser is part of the test suite.**
+  `tests/fixtures/generators/hostile.py` writes 33 malformed SEG-Y files across 9 hostility
+  classes from a fixed seed, run through `ingest`, `verify`, `export` and `certify`
+  (`tests/negative/test_d8_hostile_corpus.py`); none may crash or exit 3. Its residual is
+  tracked as **D8** in [`OPEN_DEBTS.md`](OPEN_DEBTS.md).
 
 ## Scope
 
