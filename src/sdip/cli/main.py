@@ -17,6 +17,7 @@ import click
 
 from sdip import __version__
 from sdip._pins import SPEC_VERSION
+from sdip.cli import signals
 from sdip.cli.doctor import environment_block, run_doctor
 from sdip.cli.result import Report, Status
 from sdip.equivalence.envelope import DEFAULT_ENVELOPE_GIB
@@ -35,6 +36,7 @@ EXIT_FAIL = 1
 EXIT_USAGE = 2
 EXIT_INTERNAL = 3
 """A defect in SDIP itself - never a verdict about the data, never blamed on upstream (D-0088)."""
+# 130 (SIGINT) and 143 (SIGTERM): terminated by a signal, no verdict. See sdip.cli.signals.
 
 UPSTREAM_OWNERS = frozenset({"segy", "mdio"})
 """Packages whose exceptions are upstream refusals when they are where an error was raised."""
@@ -139,9 +141,14 @@ def _emit(report: Report, *, as_json: bool, extra: Mapping[str, object] | None =
 )
 @click.pass_context
 def cli(ctx: click.Context, debug: bool) -> None:
-    """SEG-Y to MDIO/Zarr v3 with a machine-checkable proof of 1-1 equivalence.
+    r"""SEG-Y to MDIO/Zarr v3 with a machine-checkable proof of 1-1 equivalence.
 
     The product is not the file. The product is the file plus the proof.
+
+    \b
+    Exit status: 0 pass; 1 fail or refused input; 2 usage or environment;
+    3 internal defect in SDIP; 130 / 143 terminated by SIGINT / SIGTERM, with
+    every child process stopped and no verdict reached.
     """
     global _DEBUG
     _DEBUG = debug
@@ -806,8 +813,20 @@ def _report_unhandled(exc: Exception) -> int:
 
 def main() -> None:
     """Console-script entry point."""
+    # D-0093. Installed here and only here: spawn children never run main(), so the
+    # handlers belong to the parent, which is the process that owns the children.
+    signals.install()
     try:
         cli.main(standalone_mode=False)
+    except signals.TerminatedBySignal as exc:
+        # 128 + signal number, outside every verdict code. The children are already
+        # stopped; a store being written carries no marker, so it reads as incomplete.
+        click.echo(
+            f"sdip: terminated by {exc}; child processes stopped. No verdict was reached. "
+            "A store being written is incomplete and carries no provenance marker.",
+            err=True,
+        )
+        sys.exit(exc.exit_code)
     except PhaseNotAuthorisedError as exc:
         click.echo(f"sdip: {exc}", err=True)
         sys.exit(EXIT_USAGE)
