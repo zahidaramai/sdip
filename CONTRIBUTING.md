@@ -58,35 +58,33 @@ flag — see [`DECISIONS.md`](DECISIONS.md) D-0007.
 
 ## Continuous integration
 
-The workflows live in [`.github/workflows/`](../.github/workflows/) and **run on every
-push and pull request**. Any failure blocks merge.
+The workflows live in [`.github/workflows/`](.github/workflows/). **CI runs on pull requests
+and when a maintainer starts it by hand — never on push** (`DECISIONS.md` D-0095), as two
+jobs: `firewall` (git only, scans every ref's history) and `check` (`sdip doctor`, lint,
+format, types, the forbid-list scans, the licence scan, fixture policy, the placeholder check,
+and one run of the whole test suite). `dco` checks sign-off on pull requests. A failure on a
+pull request blocks its merge.
 
-Run them locally before you push — it is faster than a round trip, and it is how three
-defects were found that CI had never been able to show:
+Run the same checks locally before you push — it is faster than a round trip, and it is how
+three defects were found that CI had never been able to show:
 
 ```bash
 uv run sdip doctor
-uv run pytest
 uv run ruff check . && uv run ruff format --check . && uv run mypy
+uv run pytest --ignore=tests/integration/test_p7_latency.py
 ```
+
+The ignored file is the 63 P7 latency benchmarks: a millisecond comparison that is noise on a
+shared runner (D39). Run it on a quiet machine when you touch chunking.
 
 > **`ruff format` also formats fenced Python inside Markdown.** A README code block with
-> aligned inline comments will fail `--check`. This is not hypothetical; it turned the
-> `lint` job red once.
+> aligned inline comments will fail `--check`. This is not hypothetical; it turned CI red
+> on the 1.3.0 release commit. Pre-registrations (`prereg/*.md`) are excluded, because a
+> harness in one is cited by the hash of its exact bytes.
 
-**The checks those files encode are still binding on you.** They are the reviewable
-statement of the §7.8 job table — the forbid-list `ast` scans, the publication-firewall
-history scan, the licence scan, the full test suite, the DCO check. A PR is
-reviewed against them whether or not a runner has executed them. Until the workflows are
-back under `.github/workflows/`, run the equivalent locally before you open a PR:
-
-```bash
-uv run sdip doctor
-uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
-```
-
-`tests/unit/test_repository_contract.py` asserts on the contents of `ci/ci.yml`
-directly, so the job definitions stay under test while unexecuted.
+`tests/unit/test_repository_contract.py` asserts on `.github/workflows/ci.yml` directly —
+the two jobs, the two triggers, the timeouts, and that the suite runs unfiltered but for the
+P7 benchmarks — so the CI definition cannot drift unnoticed.
 
 ---
 

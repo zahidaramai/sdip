@@ -72,8 +72,8 @@ def assert_main_guarded() -> None:
     happening at import time of that script rather than inside its ``__main__`` block.
 
     A false negative is possible — this cannot see every caller — so it is a guard, not
-    a proof. The CI ``spawn-guard`` job runs a real unguarded script and is the check
-    that actually settles it.
+    a proof. ``tests/integration/test_spawn_guard.py``, which CI's test suite runs, invokes
+    a real unguarded script and is the check that actually settles it.
 
     Raises:
         SpawnGuardError: If the hazard is detected.

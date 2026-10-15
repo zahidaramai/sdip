@@ -7,8 +7,9 @@
 # negative controls, spawn-guard, portability, determinism) in a single pytest run
 # instead of five filtered re-runs of the same tests.
 #
-# Each step runs even when an earlier one failed (`!cancelled()`), so one red check
-# never hides another, and the job fails if any of them did.
+# `sdip doctor` runs first and gates the rest: if doctor fails, nothing else runs (the
+# operating contract §7). After it, each step runs even when an earlier one failed, so one
+# red check never hides another, and the job fails if any of them did.
 #
 # CI has no network access except the pinned package index.
 name: ci
@@ -77,8 +78,7 @@ jobs:
           echo "firewall intact across all history"
 
   # ---------------------------------------------------------------------------
-  # Everything else, in one job. `sdip doctor` first: if it fails, the job is red
-  # whatever follows.
+  # Everything else, in one job. `sdip doctor` first: if it fails, nothing after it runs.
   # ---------------------------------------------------------------------------
   check:
     name: check
@@ -94,10 +94,11 @@ jobs:
         run: git config core.hooksPath .githooks
 
       - name: sdip doctor
+        id: doctor
         run: uv run sdip doctor
 
       - name: Lint, format, types
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.doctor.outcome == 'success' }}
         run: |
           uv run ruff check .
           uv run ruff format --check .
@@ -106,7 +107,7 @@ jobs:
       # Asserted independently of the Python guard, so a bug in the guard cannot hide a
       # violation from CI. Spec section 9.
       - name: Barred environment variables are absent (spec 9.1)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.doctor.outcome == 'success' }}
         run: |
           for v in MDIO_IGNORE_CHECKS MDIO__IMPORT__RAW_HEADERS; do
             if printenv "$v" >/dev/null 2>&1; then
@@ -118,7 +119,7 @@ jobs:
       # this workflow, and every doc that explains why they are barred - and a gate
       # that fires on prose is a gate that gets switched off (DECISIONS.md D-0005).
       - name: SDIP never sets a barred variable; zfpy is not importable (9.1, 9.2 / SP3)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.doctor.outcome == 'success' }}
         run: |
           uv run python - <<'PY'
           import importlib.util, sys
@@ -135,7 +136,7 @@ jobs:
           PY
 
       - name: No GPL or AGPL in the runtime dependency tree (spec 3.6 / 9.4)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.doctor.outcome == 'success' }}
         run: |
           uv run python - <<'PY'
           import json, sys
@@ -148,7 +149,7 @@ jobs:
           PY
 
       - name: No proprietary or unattributed data in tests/fixtures (spec 6.6)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.doctor.outcome == 'success' }}
         shell: bash
         run: |
           test -f tests/fixtures/PROVENANCE.md \
@@ -165,7 +166,7 @@ jobs:
           exit $undeclared
 
       - name: No unresolved placeholder may reach a public repository
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.doctor.outcome == 'success' }}
         run: |
           # OPEN_DEBTS D12; DECISIONS.md D-0054. Strict tokens everywhere; example.com
           # only where it would be a real defect - machine-read metadata.
@@ -198,5 +199,5 @@ jobs:
       # runner (D39). They run locally. NOT `-m 'not slow'`, which would also drop P2
       # and D8.
       - name: Test suite - every gate, every negative control
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.doctor.outcome == 'success' }}
         run: uv run pytest tests -q --ignore=tests/integration/test_p7_latency.py

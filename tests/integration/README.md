@@ -22,7 +22,7 @@ That extension is the contribution. The seed is TGS's.
 ## Rules that bind here specifically
 
 - **Exact equality only.** No `allclose`, no `rtol`, no `atol`. A tolerance-based
-  comparison is a specification defect (§4.5), and the `forbid-list` CI job greps for it.
+  comparison is a specification defect (§4.5), and CI's forbid-list checks catch it.
 - **`__main__` guard.** Any test that triggers ingestion must run behind one, or the
   `spawn` child re-executes the ingest and the pool dies with `BrokenProcessPool`
   (§11.1, Appendix A.5).

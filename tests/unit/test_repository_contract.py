@@ -481,6 +481,25 @@ def test_ci_runs_only_when_asked_for(repo_root):
         assert job.get("timeout-minutes"), "every job carries a timeout"
 
 
+def test_ci_runs_nothing_after_a_failed_doctor(repo_root):
+    """The operating contract §7: doctor runs first, and if it fails nothing else runs.
+
+    Every step after ``sdip doctor`` in the ``check`` job is conditioned on doctor's success,
+    while still running after any OTHER failure, so one red check never hides another.
+    """
+    import yaml
+
+    workflow = yaml.safe_load((repo_root / ".github" / "workflows" / "ci.yml").read_text())
+    steps = workflow["jobs"]["check"]["steps"]
+    names = [step.get("name") or step.get("run") or step.get("uses") for step in steps]
+    at = next(i for i, step in enumerate(steps) if step.get("run") == "uv run sdip doctor")
+    assert steps[at].get("id") == "doctor"
+    after = steps[at + 1 :]
+    assert after, names
+    for step in after:
+        assert step.get("if") == "${{ !cancelled() && steps.doctor.outcome == 'success' }}", step
+
+
 def test_firewall_is_enforced_in_ci_independently_of_doctor(repo_root):
     """The firewall job must not be gated on the environment being healthy.
 

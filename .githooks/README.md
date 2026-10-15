@@ -14,7 +14,7 @@ One command, run once per clone. `CONTRIBUTING.md` lists it in the setup block a
 | **`.githooks/pre-commit`** | **before it exists** | at `git commit` |
 | `.gitignore` | an accidental `git add -A` | at `git add` |
 | `sdip doctor` → `publication-firewall` | index and `HEAD` | on demand |
-| CI `firewall` job | any commit, any ref | on every PR and push |
+| CI `firewall` job | any commit, any ref | on every PR and every manual run (not on push, D-0095) |
 
 Only the hook prevents the leak. Every other layer *reports* one that has already
 happened, and once a path is in a commit the remedy is a history rewrite — cheap while

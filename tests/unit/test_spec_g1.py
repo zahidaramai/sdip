@@ -4,8 +4,8 @@
 ``tests/negative/``. G1 is pre-flight: it runs before a single trace is read, so no
 store exists to corrupt. Its controls construct a *defective specification* instead,
 which is a unit-level object, so they live here. Putting them in ``tests/negative/``
-would arm the ``negative-G7`` CI job on content that is not G7 and make an unbuilt gate
-look built.
+would file content that is not G7 under G7's controls and make the suite overstate what
+G7 covers.
 
 Every control below asserts two things: the target condition **fails**, and the other
 conditions **still pass**. The second half is the one people skip, and it is the half

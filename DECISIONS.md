@@ -5127,3 +5127,17 @@ ruling, and a scoped certificate missing another gate each stay blocked.
 
 **Existing certificates are unchanged.** Released as a minor version. Closes OPEN_DEBTS D17's
 open half and D65.
+
+## D-0099 — 2026-10-15 — Correcting D-0095: in CI, nothing runs after a failed `sdip doctor`
+
+**A maintainer error in D-0095, corrected here (SP10; D-0095 stands as written).** D-0095 made
+every step of the `check` job run even after an earlier failure, so one red check would not
+hide another. That included the steps after `sdip doctor` — contradicting the operating
+contract §7 and runbook RB01: *doctor runs first, and if it fails, nothing else runs.* Found by
+the 2026-10-15 documentation audit, before any CI run under the lean layout.
+
+**Fixed:** the doctor step carries `id: doctor`, and every later step runs on
+`!cancelled() && steps.doctor.outcome == 'success'`. After a passing doctor, a failure still
+does not stop the remaining checks. `test_ci_runs_nothing_after_a_failed_doctor` asserts it.
+The `firewall` job stays independent of doctor by design: it must run when the environment is
+broken.
