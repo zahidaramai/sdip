@@ -5042,3 +5042,24 @@ standing: a delay varying across traces, a 1.5 ms delay, a depth axis.
 
 **Specification:** §4's Plane 4 axis amendment (D-0087) amended in place. **Release:** minor
 (1.4.0) — store content changes for delayed sources only, additively declared.
+
+---
+
+## D-0097 — 2026-10-15 — D-0096 confirmed on the real survey that asked for it
+
+**Reported by the consumer, not measured in this repository** (**SP8**: recorded as what it is).
+The consumer whose request D-0096 granted re-ingested its survey — an open poststack volume,
+651 × 951 traces, 462 samples at 4 ms, IEEE float, a constant 4 ms recording delay — with
+`sdip` at `c305479` (v1.4.0), the checkout's porcelain empty before and after every run.
+
+| | 1.3.0 | 1.4.0 |
+|---|---|---|
+| Stored `time` | 0, 4, … 1844 ms | **4, 8, … 1848 ms**, 462 samples |
+| `sdipSampleAxisOrigin` | absent | `origin_ms` 4.0, decision D-0096 |
+| Planes 1-5, G1, G4 | PASS | PASS; declaration `BOUND`; store digest `MATCH` |
+| Plane 4 | PASS + `nonzero_recording_delay`, blocking | PASS, `derived_axis_origin_ms` 4.0, **no delay finding** |
+| Other findings | `file_revision_differs` (non-blocking) | the same, and nothing else |
+
+Eight of the nine arrays equal the 1.3.0 store's; only `time` differs, plus the root's
+creation timestamp. **`sdip certify` was not run**, so release readiness on this survey is not
+established; on the synthetic 4 ms survey it is (`test_recording_delay_axis.py`).
