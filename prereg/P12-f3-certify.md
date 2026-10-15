@@ -96,3 +96,23 @@ time** (D17 recorded it as unmeasured on one). What G3 reports for such a source
 maintainer, and `certify` cannot complete on this survey until it is made.
 
 Run root harvested and deleted after this record.
+
+---
+
+## Amendment A — 2026-10-15, before the rerun it governs
+
+**Why.** The first run stopped at the export (D17). D-0098 ruled G3 `ROUNDTRIP-SCOPED` for this
+case and fixed D65, which would otherwise have failed G7 on this IEEE source. The rerun asks
+the same question under that code.
+
+**Unchanged:** the article, the declaration, **both ceilings (7,200 s, 10.0 GiB)**, N = 1,
+store and certificate outside the repository, and the outcomes.
+
+**Changed:** run from a clean worktree at the commit that registers this amendment, on branch
+`d17-roundtrip-scoped`, with that worktree's `src` first on `PYTHONPATH`. The certificate's
+`git.sdip_commit` names that commit; its `issued_by` reads the installed distribution's
+version, 1.4.0, which is the release this branch is built on.
+
+**Expected if D-0098 holds on this file:** G3 `ROUNDTRIP-SCOPED` naming card 6 column 77,
+closure and export controls `NOT_APPLICABLE`, every other gate PASS, verdict `EQUIVALENT`,
+release-ready. Anything else is reported as found.
