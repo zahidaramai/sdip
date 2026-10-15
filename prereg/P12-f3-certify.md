@@ -116,3 +116,38 @@ version, 1.4.0, which is the release this branch is built on.
 **Expected if D-0098 holds on this file:** G3 `ROUNDTRIP-SCOPED` naming card 6 column 77,
 closure and export controls `NOT_APPLICABLE`, every other gate PASS, verdict `EQUIVALENT`,
 release-ready. Anything else is reported as found.
+
+---
+
+## Amendment A — results, 2026-10-15, at `7f6fd72`, N = 1
+
+**Release-ready.** Started 14:39:54Z, exited 15:29:08Z (2,954.05 s by `/usr/bin/time`), exit 0,
+peak RSS of the `sdip` process 4,924,882,944 B. Certificate `sha256 a69467411143bde2…`,
+`git.sdip_commit` `7f6fd72`, `dirty: false`, `issued_by: sdip 1.4.0` (the installed
+distribution; the code is the branch's, as Amendment A declared).
+
+| | |
+|---|---|
+| Declaration | `BOUND` |
+| Store digest | `MATCH` |
+| Planes 1-5 | PASS; Plane 2's non-blocking `file_revision_differs` (bytes 3501-3502 record 0.0) |
+| Plane 4 axis | origin 4.0 ms (D-0096) |
+| G3 | **`ROUNDTRIP-SCOPED`** — "1 character(s) are non-ASCII or non-printable after the declared ebcdic decode - card 6 column 77" (D-0098) |
+| G4 | PASS |
+| G5 | **PASS** — 619,101 traces, peak RSS 4.48 GiB of 10.0 GiB declared, 2,943 s of 7,200 s |
+| G6 | PASS — 2 independent ingests, 9 arrays, chunk bytes and values identical |
+| G7 | PASS — 13 controls each failing exactly their gates; 3 not applicable (`flipped_raw_ibm32_word`, `deleted_raw_ibm32_array`, `fabricated_value_in_padding`) |
+| Closure, closure control, G3 control | `NOT_APPLICABLE` (D-0098) |
+| Verdict | **`EQUIVALENT`**, `release_ready: true`, `blocking: []` |
+
+**Both ceilings held**, with margin: 41 % of the wall clock and 45 % of the memory declared.
+The trace-scaled time estimate was conservative by a factor of 2.4.
+
+**A finding about the certificate, not the store:** it **does not validate against the
+published schema.** Its coordinate-scalar transform entry (scalar −100 on this survey) carries
+`arithmetic` and `applies_to: derived_arrays`, which `transforms_declared` does not admit. Every
+certificate for a survey with a non-identity coordinate scalar has carried that entry since
+D-0087; the schema test used a scalar of 1, which declares none. Raised as debt D66.
+
+Store and certificate deleted after this record (Storage Law); the certificate carried the
+operator's local source path and was not committed.
