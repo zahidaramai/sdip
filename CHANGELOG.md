@@ -15,7 +15,7 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
-## [Unreleased]
+## [1.6.0] — 2026-10-16
 
 **A content digest: two ingests of one source record the same value.** `DECISIONS.md` D-0101.
 
