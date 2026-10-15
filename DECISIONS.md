@@ -5183,9 +5183,22 @@ ibm32, IEEE, a 4 ms delay, an undecodable textual header, rev 0 with its overrid
 ingests each. **Every chunk byte identical** (the falsifier did not fire; G6 holds on all five);
 **every array's `zarr.json` identical**; **the only varying key is MDIO's root `createdOn`**.
 
-**Built:** marker attribute `sdipContentDigest`, scheme `sdip-content-digest/1`
-(`sdip.provenance.store_digest`): the store digest's coverage less the root attribute
-`createdOn` — exactly P13's finding, nothing excluded on reasoning alone. Computed with the store
+**Built:** a content digest, scheme `sdip-content-digest/1` (`sdip.provenance.store_digest`):
+the store digest's coverage less the root attribute `createdOn` — exactly P13's finding, nothing
+excluded on reasoning alone. **Recorded inside the existing marker key**, as
+`sdipStoreDigest.content` (`scheme`, `root`, `sha256`), **not as a new root attribute.** A first
+build added `sdipContentDigest` beside it, and the full suite caught what that does: a verifier
+excludes only the marker keys it knows, so SDIP 1.5.0 digested the new attribute as root content
+and reported a correct 1.6.0 store as MISMATCH. Every SDIP since 1.3.0 excludes `sdipStoreDigest`
+and compares only its `scheme` and `sha256`, so a field inside it is invisible to them.
+`test_a_verifier_from_before_the_content_digest_still_matches_the_store` pins it. **The rule
+from here: new marker data nests inside an existing marker key; it never adds one.**
+
+**The same defect already shipped once (debt D67).** 1.4.0 added the root attribute
+`sdipSampleAxisOrigin`; under SDIP 1.3.0's rule a delayed store written by 1.4.0 or later reads
+MISMATCH — measured by applying 1.3.0's key set to the digest function on such a store (MISMATCH;
+1.4.0's key set: MATCH), not by running the 1.3.0 executable. It cannot be fixed in a shipped
+release; verify a store with the release that wrote it, or later. Computed with the store
 digest, immediately before the marker is written. `verify` and `certify` report it (`MATCH`,
 `MISMATCH` fails, `ABSENT` before 1.6.0, `FOREIGN`); the certificate gains an additive
 `content_digest` block, and release readiness requires `MATCH` when present.
@@ -5194,7 +5207,8 @@ digest, immediately before the marker is written. `verify` and `certify` report 
 the five shapes, two ingests record the **same** content digest and **different** store digests;
 a new `createdOn` moves the store digest and not the content digest; a flipped chunk byte, an
 edited raw textual header, any other root attribute, and a removed array each change the content
-digest and name the change; a pre-1.6.0 store is `ABSENT` and its store digest still `MATCH`es.
+digest and name the change; a pre-1.6.0 store is `ABSENT` and its store digest still `MATCH`es;
+a verifier knowing only the 1.3.0-1.5.0 marker keys still `MATCH`es a 1.6.0 store.
 
 **Scope.** One machine, one environment: a key that varies only across machines or library
 versions was not measurable here; the scheme name versions the definition so a measured addition

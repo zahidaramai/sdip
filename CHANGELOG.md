@@ -21,10 +21,18 @@ contradicts the pin policy.
 
 ### Added
 
-- **`sdipContentDigest` in the provenance marker** (scheme `sdip-content-digest/1`): the store
+- **A content digest, `sdipStoreDigest.content`** (scheme `sdip-content-digest/1`): the store
   digest's coverage less MDIO's root `createdOn` — the only key that differs between ingests,
   measured across five store shapes (probe P13). `verify` and `certify` report it; the
-  certificate gains an additive `content_digest` block. `sdipStoreDigest` is unchanged.
+  certificate gains an additive `content_digest` block. The store digest's `scheme` and
+  `sha256` are unchanged, and **SDIP 1.3.0-1.5.0 still verify a 1.6.0 store as MATCH**: the
+  content digest is nested inside the existing marker key rather than added beside it.
+
+### Known
+
+- **SDIP 1.3.0 reports a false store-digest MISMATCH on a store with a recording-delay origin**
+  written by 1.4.0 or later: it does not know to exclude `sdipSampleAxisOrigin` (debt D67).
+  Verify with the release that wrote the store, or later.
 - **Python:** `marker_attrs` takes a required `content_digest`; `compute_store_digest` takes an
   optional `scheme`; new `check_content_digest`.
 

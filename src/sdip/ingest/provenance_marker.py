@@ -95,11 +95,16 @@ Says which convention the writer followed, never the value Plane 4 checks agains
 derives the delay from the source itself (:mod:`sdip.ingest.sample_axis`).
 """
 
-ATTR_CONTENT_DIGEST: Final[str] = "sdipContentDigest"
-"""The store digest less per-ingest metadata (D-0101, scheme ``sdip-content-digest/1``).
+CONTENT_DIGEST_FIELD: Final[str] = "content"
+"""Where the content digest lives: **inside** ``sdipStoreDigest``, not as a root attribute.
 
-Two ingests of one source under one declaration give the same value, so a consumer can show a
-re-ingest reproduced a store. ``sdipStoreDigest`` still says whether THIS store changed.
+D-0101, scheme ``sdip-content-digest/1``: the store digest less per-ingest metadata, so two
+ingests of one source under one declaration give the same value. **Nested deliberately.** A
+verifier excludes exactly the marker keys IT knows from the root metadata it digests; a new root
+attribute would be digested by every older verifier and read as a changed store. Every SDIP
+since 1.3.0 excludes ``sdipStoreDigest`` and compares only its ``scheme`` and ``sha256``, so a
+field inside it is invisible to them. Measured: a 1.5.0 verifier on a store carrying a root
+``sdipContentDigest`` reported MISMATCH (D67). **New marker data nests; it never adds a key.**
 """
 
 MARKER_KEYS: Final[tuple[str, ...]] = (
@@ -110,7 +115,6 @@ MARKER_KEYS: Final[tuple[str, ...]] = (
     ATTR_DECLARATION,
     ATTR_STORE_DIGEST,
     ATTR_SAMPLE_AXIS_ORIGIN,
-    ATTR_CONTENT_DIGEST,
 )
 """Every attribute the marker writes. The store digest excludes exactly these."""
 
@@ -135,8 +139,10 @@ def marker_attrs(
         ATTR_PINS: {pin.distribution: pin.version for pin in PINS},
         ATTR_MITIGATIONS: list(mitigations),
         ATTR_DECLARATION: declaration.to_json(),
-        ATTR_STORE_DIGEST: store_digest,
-        ATTR_CONTENT_DIGEST: content_digest,
+        ATTR_STORE_DIGEST: store_digest
+        | {
+            CONTENT_DIGEST_FIELD: {key: content_digest[key] for key in ("scheme", "root", "sha256")}
+        },
     } | ({ATTR_SAMPLE_AXIS_ORIGIN: sample_axis_origin} if sample_axis_origin else {})
 
 
@@ -211,11 +217,16 @@ def recorded_store_digest(group: Any) -> dict[str, Any] | None:
 
 
 def recorded_content_digest(group: Any) -> dict[str, Any] | None:
-    """The content digest this store records, or ``None`` if it predates it (before 1.6.0)."""
-    if not written_by_sdip(group):
+    """The content digest this store records, or ``None`` if it predates it (before 1.6.0).
+
+    Returned with the store digest's per-node digests, which it shares: the two schemes cover
+    the same nodes and differ only in the root metadata.
+    """
+    store = recorded_store_digest(group) or {}
+    content = store.get(CONTENT_DIGEST_FIELD)
+    if not isinstance(content, dict):
         return None
-    block = dict(group.attrs).get(ATTR_CONTENT_DIGEST)
-    return dict(block) if isinstance(block, dict) else None
+    return dict(content) | {"nodes": dict(store.get("nodes") or {})}
 
 
 def recorded_sample_axis_origin(group: Any) -> dict[str, Any] | None:

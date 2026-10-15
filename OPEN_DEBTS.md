@@ -2339,3 +2339,16 @@ scalar was schema-invalid. Found on a real survey with scalar −100.
 
 Additive schema change; `test_a_certificate_with_scaled_coordinates_validates` fails on the old
 schema and passes on the new.
+
+---
+
+## D67 — SDIP 1.3.0 reads a delayed 1.4.0+ store as a changed store
+
+- **Status:** `OPEN`, not fixable in a shipped release (raised 2026-10-15) · **Decision:**
+  `DECISIONS.md` D-0101
+
+A verifier excludes from the store digest only the marker keys it knows. 1.4.0 added the root
+attribute `sdipSampleAxisOrigin`, which 1.3.0 digests as root content, so 1.3.0 reports a correct
+delayed store as `MISMATCH`. Measured with 1.3.0's key set on the digest function, not the 1.3.0
+executable. Mitigation: verify with the writing release or later. Prevention, from 1.6.0: new
+marker data nests inside an existing marker key (the content digest does), with a permanent test.

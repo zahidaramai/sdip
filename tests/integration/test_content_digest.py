@@ -1,7 +1,8 @@
 """The content digest: two ingests of one source agree; a change of content does not (D-0101).
 
 **Passing half (D-0088), through the ``sdip`` executable.** Across the five store shapes probe
-P13 measured, two independent ingests record the same ``sdipContentDigest`` and different
+P13 measured, two independent ingests record the same content digest
+(``sdipStoreDigest.content``) and different
 ``sdipStoreDigest`` values - the store digest still tells the two stores apart, the content
 digest shows they hold the same content. Changing MDIO's root ``createdOn``, the one key P13
 found varying, moves the store digest and not the content digest.
@@ -22,7 +23,7 @@ from typing import Any
 import pytest
 import zarr
 
-from sdip.ingest.provenance_marker import ATTR_CONTENT_DIGEST, ATTR_STORE_DIGEST
+from sdip.ingest.provenance_marker import ATTR_STORE_DIGEST, CONTENT_DIGEST_FIELD
 from sdip.provenance.store_digest import (
     ABSENT,
     MATCH,
@@ -70,7 +71,10 @@ def test_two_ingests_record_the_same_content_and_different_stores(tmp_path, case
     source, flags = _source(case, tmp_path / f"{case}.sgy")
     first = _ingest(source, tmp_path / "a.mdio", flags)
     second = _ingest(source, tmp_path / "b.mdio", flags)
-    assert first[ATTR_CONTENT_DIGEST]["sha256"] == second[ATTR_CONTENT_DIGEST]["sha256"]
+    content = CONTENT_DIGEST_FIELD
+    assert (
+        first[ATTR_STORE_DIGEST][content]["sha256"] == second[ATTR_STORE_DIGEST][content]["sha256"]
+    )
     assert first[ATTR_STORE_DIGEST]["sha256"] != second[ATTR_STORE_DIGEST]["sha256"], (
         "the store digest must still tell two stores apart"
     )
@@ -136,14 +140,38 @@ def test_a_removed_array_changes_the_content(copy):
 
 def test_a_store_written_before_the_content_digest_is_absent_not_failed(copy):
     group = zarr.open_group(str(copy), mode="r+")
-    attrs = dict(group.attrs)
-    attrs.pop(ATTR_CONTENT_DIGEST)
-    group.attrs.clear()
-    group.attrs.update(attrs)
+    block = dict(group.attrs[ATTR_STORE_DIGEST])
+    block.pop(CONTENT_DIGEST_FIELD)
+    group.attrs.update({ATTR_STORE_DIGEST: block})
     result = check_content_digest(copy)
     assert result.status == ABSENT
     assert result.passed
     assert check_store_digest(copy).status == MATCH, "the old digest is unaffected"
+
+
+def test_a_verifier_from_before_the_content_digest_still_matches_the_store(written):
+    """D67's lesson, as a permanent control: new marker data must not break older verifiers.
+
+    SDIP 1.3.0-1.5.0 exclude exactly these root keys and compare the store digest's ``scheme``
+    and ``sha256``. A 1.6.0 store must MATCH under that rule, which it does only because the
+    content digest is nested inside ``sdipStoreDigest`` rather than added beside it.
+    """
+    from sdip.provenance.store_digest import compute_store_digest
+
+    _source_path, store = written
+    keys_through_1_5 = (
+        "sdipWriter",
+        "sdipVersion",
+        "sdipUpstreamPins",
+        "sdipMitigations",
+        "sdipDeclaration",
+        "sdipStoreDigest",
+        "sdipSampleAxisOrigin",
+    )
+    recorded = dict(zarr.open_group(str(store), mode="r").attrs)[ATTR_STORE_DIGEST]
+    computed = compute_store_digest(store, marker_keys=keys_through_1_5)
+    assert recorded["scheme"] == computed["scheme"]
+    assert recorded["sha256"] == computed["sha256"]
 
 
 def test_verify_reports_both_digests_through_the_executable(written):
