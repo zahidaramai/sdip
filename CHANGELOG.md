@@ -15,6 +15,27 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [Unreleased]
+
+**A survey whose textual header does not decode can be certified and released, and IEEE
+float sources certify again.** `DECISIONS.md` D-0098.
+
+### Fixed
+
+- **`certify` called every IEEE float32 source NON-EQUIVALENT.** G7's
+  `deleted_raw_ibm32_array` control errored on a store with no raw IBM view, which an IEEE
+  store correctly lacks. It is now reported as not applicable. A false failure, never a false
+  pass; re-certify any IEEE source certified NON-EQUIVALENT on G7 alone.
+
+### Changed
+
+- **G3 is `ROUNDTRIP-SCOPED` for a source whose textual header does not decode**, instead of
+  `certify` stopping at the export. No export can reproduce such a header byte for byte. The
+  certificate names every offending character; round-trip closure and the two export controls
+  are `NOT_APPLICABLE`; every other gate runs. Under the D-0098 ruling such a certificate can be
+  `EQUIVALENT` and release-ready. An `ibm32` source in this case stays `PROVISIONAL`.
+- Certificate schema: `gates.G3` also admits `ROUNDTRIP-SCOPED` (additive).
+
 ## [1.4.0] — 2026-10-15
 
 **A survey with a recording delay converts to a release-ready store.** `DECISIONS.md` D-0096.

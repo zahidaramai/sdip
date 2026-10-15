@@ -5063,3 +5063,67 @@ The consumer whose request D-0096 granted re-ingested its survey — an open pos
 Eight of the nine arrays equal the 1.3.0 store's; only `time` differs, plus the root's
 creation timestamp. **`sdip certify` was not run**, so release readiness on this survey is not
 established; on the synthetic 4 ms survey it is (`test_recording_delay_axis.py`).
+
+---
+
+## D-0098 — 2026-10-15 — G3 for an undecodable textual header: ROUNDTRIP-SCOPED, release-ready; and every IEEE source had been failing G7
+
+**Maintainer ruling, 2026-10-15**, on the question D-0055 left open and P12 measured on a real
+survey: what G3 reports for a source whose textual header does not decode. **Ruled:
+`ROUNDTRIP-SCOPED`, and such a store can be released.** Options declined: scoped but never
+release-ready; G3 FAIL; leaving it open.
+
+### Why the round trip is impossible, not merely unattempted
+
+Such a store keeps the raw 3200 bytes on the root group and carries no `segy_file_header`
+variable (D-0055). Upstream's exporter needs that variable, and sanitises any character that
+will not encode, so no export can reproduce the source byte for byte — the case §7 G3 reserves
+`ROUNDTRIP-SCOPED` for. P12 measured it on a real legacy survey: one character fails the
+declared EBCDIC decode, at 0-based `(5, 76)` — **card 6, column 77**. (P12's text gives the
+0-based pair as "row 5, column 76"; this is the 1-based position. P12 stands as written.)
+
+### What `certify` now does (`sdip.export.roundtrip.header_scope`)
+
+Only when the ingest **measured** the header as undecodable **and** the store has no
+`segy_file_header`: no export is attempted; G3 is `ROUNDTRIP-SCOPED` with `performed: false`
+and a `scoped` block naming **every offending character** (1-based card and column) and the
+ruling `D-0098`; round-trip closure and the two export controls are `NOT_APPLICABLE` with
+that reason. G1, Planes 1-5 (Plane 1 against the raw bytes), G4, G5, G6, G7 and the store
+digest all run as before.
+
+**Accepted narrowly.** `verdict_for` reaches `EQUIVALENT` on a scoped G3 only under this
+ruling, and still only on all five planes and G7 PASS; release readiness accepts the scoped
+G3 and the `NOT_APPLICABLE` checks only when the certificate carries `ruling: D-0098` and
+`performed: false`. Any other `ROUNDTRIP-SCOPED` stays `PROVISIONAL` and blocked; an export
+that was made and differs is still a G3 FAIL. **P2's rule is untouched**: an `ibm32` source
+with no byte-identical round trip stays `PROVISIONAL` on `transform_scope_blocks_equivalence`.
+
+**Schema, additive:** `gates.G3` now also admits `ROUNDTRIP-SCOPED`. The shared gate type
+never did, so a scoped certificate could not have validated — the path had never been reached.
+
+### Found on the way: G7 failed every IEEE source
+
+Building the IEEE fixture for this ruling's test showed that **`sdip certify` 1.4.0 calls an
+ordinary IEEE float32 source NON-EQUIVALENT**: measured through the executable on a decodable
+synthetic file, G3 PASS byte-identical and **G7 FAIL** —
+`deleted_raw_ibm32_array errored: could not apply: KeyError: 'amplitude_raw_ibm32 absent'`.
+The control assumed the raw view exists; an IEEE store correctly has none (D-0062). **A false
+NON-EQUIVALENT on correct stores, never a false pass** (debt D65). The control now reports
+**not applicable** when the array is absent — safe because G7 runs controls only on a store
+whose clean baseline passes every plane, and Plane 4 fails a store whose source needs the
+array and lacks it. Its sibling `flip_raw_ibm32_word` already did exactly this.
+
+### Both halves (D-0088), through the executable
+
+`tests/integration/test_header_scoped_certify.py`: an IEEE source with an undecodable header
+certifies `EQUIVALENT`, G3 scoped with every cell named, closure and controls not applicable,
+every other gate PASS, release-ready, and the certificate validates against the published
+schema; the same with `ibm32` samples stays `PROVISIONAL` on P2's rule; decodable sources in
+**both** formats round-trip byte-identically, G7 PASS, release-ready, and the IEEE one names
+the raw-view control as not applicable. `tests/unit/test_header_scope.py` and
+`test_release_readiness.py`: the scope is issued for exactly one store shape; an unruled
+scoped G3, a scoped G3 over an export that was made, `NOT_APPLICABLE` checks without the
+ruling, and a scoped certificate missing another gate each stay blocked.
+
+**Existing certificates are unchanged.** Released as a minor version. Closes OPEN_DEBTS D17's
+open half and D65.

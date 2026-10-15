@@ -2287,3 +2287,35 @@ For a constant, nonzero, whole-millisecond delay on a time axis, `sdip ingest` s
 axis at the delay, records the origin in the marker, and Plane 4 verifies it against the source.
 A varying, fractional or depth-axis delay keeps the `nonzero_recording_delay` finding, and that
 store is still not release-ready. The pinned writer's behaviour is unchanged.
+
+---
+
+## D17 — CLOSED 2026-10-15 — G3 is ROUNDTRIP-SCOPED for an undecodable textual header
+
+- **Closes:** the half "STILL OPEN — `sdip certify` on such a source" above (**SP10**) ·
+  **Decision:** `DECISIONS.md` D-0098
+
+Measured first on a real legacy survey (P12). `certify` no longer stops at the export: G3 is
+`ROUNDTRIP-SCOPED` with every offending character named, the export-dependent checks are not
+applicable, and the certificate can be release-ready under the ruling.
+
+---
+
+## D65 — `certify` called every IEEE float32 source NON-EQUIVALENT
+
+- **Status:** `OPEN` (raised 2026-10-15) · **Decision:** `DECISIONS.md` D-0098
+
+G7's `deleted_raw_ibm32_array` raised `KeyError` on a store with no `amplitude_raw_ibm32` —
+which is every store of a source whose format needs no raw view — and a control error fails
+G7. Measured on 1.4.0 through `sdip certify` on a decodable synthetic IEEE file: G3 PASS
+byte-identical, G7 FAIL, verdict NON-EQUIVALENT. A false failure, never a false pass.
+
+---
+
+## D65 — CLOSED 2026-10-15 — the control is not applicable where there is nothing to delete
+
+- **Closes:** D65 above (**SP10**) · **Decision:** `DECISIONS.md` D-0098
+
+The control raises `ControlNotApplicableError` when the array is absent, as
+`flip_raw_ibm32_word` already did. `certify` on decodable sources in both formats is now
+`EQUIVALENT` and release-ready, a permanent test in each.
