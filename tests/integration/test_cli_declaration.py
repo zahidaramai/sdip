@@ -6,7 +6,8 @@ one was false at the CLI. So these tests run the console script as a subprocess 
 what an operator sees: the exit code, the verdict line, and the absence of a traceback.
 
 Exit codes: 0 PASS, 1 a failed verdict, 2 an operator error — which a mismatched
-declaration is; 3 an internal defect, 130/143 a signal (D-0093). Reporting it as 1 would tell a script a correct conversion was corrupt.
+declaration is; 3 an internal defect, 130/143 a signal (D-0093). Reporting a mismatched
+declaration as 1 would tell a script a correct conversion was corrupt.
 """
 
 from __future__ import annotations
