@@ -414,7 +414,8 @@
           "applies_to": {
             "enum": [
               "samples",
-              "header_fields"
+              "header_fields",
+              "derived_arrays"
             ]
           },
           "field_names": {
@@ -458,6 +459,10 @@
           },
           "operation": {
             "type": "string"
+          },
+          "arithmetic": {
+            "type": "string",
+            "description": "How the scaled values were computed, stated so a reader can reproduce them (DECISIONS.md D-0087)."
           },
           "uniform_across_traces": {
             "type": "boolean"

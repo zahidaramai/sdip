@@ -111,6 +111,37 @@ def test_a_real_certificate_validates_against_the_published_schema(full_certific
     )
 
 
+def test_a_certificate_with_scaled_coordinates_validates(tmp_path):
+    """D66: the coordinate-scalar transform entry must be admitted by the published schema.
+
+    Every survey with a non-identity coordinate scalar declares this entry, and it carried
+    ``applies_to: derived_arrays`` from v1.0.0 and ``arithmetic`` from v1.2.0, neither of
+    which the schema admitted - found on a real survey with scalar -100 (P12). The fixture
+    above uses scalar 1, which declares nothing, so it could not see it.
+    """
+    from tests.fixtures.generators.irregular import make_coord_scalar_neg
+
+    article = make_coord_scalar_neg(tmp_path / "scaled.sgy")
+    store = tmp_path / "scaled.mdio"
+    result = ingest(article.path, store)
+    certificate = issue(
+        result,
+        [plane_1(article.path, store), plane_2(article.path, store)],
+        require_clean_tree=False,
+        issued_at="2026-10-15T00:00:00Z",
+        issued_by="test",
+    )
+    payload = certificate.payload
+    payload["git"] = dict(payload["git"]) | {"dirty": False}
+    [entry] = [t for t in payload["transforms_declared"] if t["applies_to"] == "derived_arrays"]
+    assert entry["coordinate_scalar"] == -100
+    validator = jsonschema.Draft202012Validator(load_schema())
+    errors = sorted(validator.iter_errors(payload), key=lambda e: list(e.path))
+    assert errors == [], "\n".join(
+        f"  {'/'.join(str(p) for p in e.path) or '<root>'}: {e.message}" for e in errors
+    )
+
+
 def test_the_schema_is_itself_a_valid_json_schema():
     """A malformed schema would make the test above vacuously pass."""
     jsonschema.Draft202012Validator.check_schema(load_schema())
