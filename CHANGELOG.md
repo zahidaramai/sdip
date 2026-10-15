@@ -15,7 +15,7 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
-## [Unreleased]
+## [1.4.0] — 2026-10-15
 
 **A survey with a recording delay converts to a release-ready store.** `DECISIONS.md` D-0096.
 
