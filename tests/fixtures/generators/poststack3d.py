@@ -145,6 +145,8 @@ def make_poststack3d(
     revision: int = 1,
     seed: int = DEFAULT_SEED,
     text: str = DETERMINISTIC_TEXT,
+    delay_recording_time: int | tuple[int, ...] = 0,
+    times_scalar: int = 0,
 ) -> SyntheticSegy:
     """Write a deterministic synthetic 3D poststack SEG-Y file.
 
@@ -161,6 +163,9 @@ def make_poststack3d(
         sample_interval_us: Sample interval in microseconds.
         revision: SEG-Y revision to write.
         seed: Seed for the planted header bytes. Fixed and committed.
+        delay_recording_time: Bytes 109-110 for every trace, or one value per trace in
+            trace order (D-0096). Defaults to 0, which is what the A.1 article carries.
+        times_scalar: Bytes 215-216 for every trace, scaling the delay. 0 means 1.
         text: Textual header content. Defaults to :data:`DETERMINISTIC_TEXT`. Passing
             ``None`` explicitly is **not** supported: the upstream default embeds a
             timestamp and would make the fixture non-deterministic.
@@ -196,6 +201,12 @@ def make_poststack3d(
             headers["cdp_y"][index] = 2_000_000 + inline * 25
             headers["coordinate_scalar"][index] = 1
             headers["trace_seq_num_line"][index] = index + 1
+            headers["delay_recording_time"][index] = (
+                delay_recording_time[index]
+                if isinstance(delay_recording_time, tuple)
+                else delay_recording_time
+            )
+            headers["times_scalar"][index] = times_scalar
             samples[index] = amplitudes[i, j]
             index += 1
 

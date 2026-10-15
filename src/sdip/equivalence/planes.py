@@ -455,8 +455,13 @@ DERIVED_TIME_NOTE = (
     "from the trace-header interval plus the delay, which MDIO uses for neither, and so "
     "failed every correct store whose trace headers carry an interval of 0 (unknown, in "
     "rev 2.x). Disagreements between the trace headers and that axis are recorded as "
-    "named findings, not failures; a nonzero recording delay is a finding that blocks "
-    "release, because industry readers start the axis at the delay and MDIO does not. "
+    "named findings, not failures. Since D-0096, when the recording delay (bytes 109-110 "
+    "scaled by 215-216) is one exact whole-millisecond value on every trace and the axis "
+    "is time, sdip ingest starts the axis at that delay, as industry readers do, and its "
+    "marker says so: the expectation is then delay + (i * interval_us) / 1000, the delay "
+    "derived here from the source, never taken from the marker, and a claim the source "
+    "does not support fails. Any other nonzero delay leaves the axis from 0 and is a "
+    "finding that blocks release (derived_axis_origin_ms, derived_axis_origin_rule). "
     "An interval the stored int32 axis cannot represent (below 1 ms, or not a whole "
     "number of ms) still fails: that store is genuinely wrong."
 )
@@ -846,20 +851,6 @@ def _sample_axis_name(group: Any, variable: str, grid: tuple[str, ...]) -> str |
     return extra[-1] if extra else None
 
 
-def _effective_delays_ms(raw: Any, scalars: Any) -> list[float]:
-    """Delay recording time in true milliseconds. Bytes 215-216 scale bytes 95-114.
-
-    SEG-Y: a positive scalar multiplies, a negative one divides, and zero means one.
-    """
-    effective: set[float] = set()
-    for value, scalar in zip(np.ravel(raw), np.ravel(scalars), strict=True):
-        s = int(scalar)
-        if s == 0:
-            s = 1
-        effective.add(float(value) * s if s > 0 else float(value) / abs(s))
-    return sorted(effective)
-
-
 def _time_axis_evidence(
     source_headers: Any, binary_header: Any, group: Any, axis: str | None
 ) -> dict[str, Any]:
@@ -882,19 +873,43 @@ def _time_axis_evidence(
             "derived_axis_note": f"store carries no {axis!r} array; NOT CHECKED.",
         }
 
+    from sdip.ingest.provenance_marker import recorded_sample_axis_origin
+    from sdip.ingest.sample_axis import axis_origin, source_delays_ms
+
     interval_us = int(np.asarray(binary_header["sample_interval"]).reshape(-1)[0])
     samples = int(np.asarray(binary_header["samples_per_trace"]).reshape(-1)[0])
     stored = np.asarray(group[axis][:])
 
-    # The writer: segy's sample labels are arange(0, interval * samples, interval) in
-    # microseconds; MDIO divides by 1000 and stores the template's dimension dtype. The
-    # expectation is the TRUE millisecond value, so an axis the store truncated fails.
-    expected = np.arange(0, interval_us * samples, interval_us, dtype=np.int64) / 1000
-    observed = np.asarray(stored, dtype=np.float64)
-    axis_identical = bool(expected.shape == observed.shape and identical(expected, observed))
+    # D-0096. Which convention did the writer follow? The marker says only that; the
+    # origin itself is derived HERE, from the source, by the same rule the writer applies.
+    # A claimed origin the source does not support, or one that differs from the source's,
+    # fails - and so does a shifted axis whose claim was removed, because the expectation
+    # then reverts to the writer's axis from 0.
+    recorded = recorded_sample_axis_origin(group)
+    decision = axis_origin(source_headers, axis, stored.dtype)
+    claim_ok = recorded is None or (
+        decision.applies and float(recorded.get("origin_ms", float("nan"))) == decision.origin_ms
+    )
+    origin_ms = decision.origin_ms if (recorded is not None and decision.applies) else 0.0
 
-    first: dict[str, float] | None = None
-    if not axis_identical:
+    # The writer: segy's sample labels are arange(0, interval * samples, interval) in
+    # microseconds; MDIO divides by 1000 and stores the template's dimension dtype; SDIP
+    # adds the origin when it applied one. The expectation is the TRUE millisecond value,
+    # so an axis the store truncated fails.
+    expected = np.arange(0, interval_us * samples, interval_us, dtype=np.int64) / 1000 + origin_ms
+    observed = np.asarray(stored, dtype=np.float64)
+    axis_identical = bool(
+        claim_ok and expected.shape == observed.shape and identical(expected, observed)
+    )
+
+    first: dict[str, Any] | None = None
+    if not claim_ok:
+        first = {
+            "marker_origin_ms": (recorded or {}).get("origin_ms"),
+            "source_origin_ms": decision.origin_ms if decision.applies else None,
+            "source_rule": decision.reason,
+        }
+    elif not axis_identical:
         if expected.shape != observed.shape:
             first = {
                 "expected_length": int(expected.shape[0]),
@@ -939,29 +954,24 @@ def _time_axis_evidence(
                     ),
                 }
             )
-    if "delay_recording_time" in names:
-        scalars = (
-            np.asarray(source_headers["times_scalar"])
-            if "times_scalar" in names
-            else np.zeros_like(np.asarray(source_headers["delay_recording_time"]))
+    delays = source_delays_ms(source_headers)
+    if delays is not None and delays != [0.0] and origin_ms == 0.0:
+        findings.append(
+            {
+                "code": "nonzero_recording_delay",
+                "blocks_release": True,
+                "delay_ms": delays[:10],
+                "message": (
+                    f"delay recording time (bytes 109-110, scaled by 215-216) is {delays[:10]} "
+                    "ms. SEG-Y defines it as the time from source initiation to the first "
+                    "recorded sample, and segyio, segysak, OpenVDS, OpendTect and Madagascar "
+                    "start the axis there. The stored axis starts at 0 because the pinned "
+                    "multidimio ignores the delay, so a reader using the stored axis places "
+                    "every event earlier than those readers do. Not release-ready as stored. "
+                    f"SDIP did not move the axis: {decision.reason} (D-0096)."
+                ),
+            }
         )
-        delays = _effective_delays_ms(np.asarray(source_headers["delay_recording_time"]), scalars)
-        if delays != [0.0]:
-            findings.append(
-                {
-                    "code": "nonzero_recording_delay",
-                    "blocks_release": True,
-                    "delay_ms": delays[:10],
-                    "message": (
-                        f"delay recording time (bytes 109-110, scaled by 215-216) is {delays[:10]} "
-                        "ms. SEG-Y defines it as the time from source initiation to the first "
-                        "recorded sample, and segyio, segysak, OpenVDS, OpendTect and Madagascar "
-                        "start the axis there. The stored axis starts at 0 because the pinned "
-                        "multidimio ignores the delay, so a reader using the stored axis places "
-                        "every event earlier than those readers do. Not release-ready as stored."
-                    ),
-                }
-            )
 
     return {
         "derived_axis_name": axis,
@@ -970,7 +980,14 @@ def _time_axis_evidence(
         "derived_axis_identical": axis_identical,
         "derived_axis_compared": "np.array_equal against the writer's axis - EXACT",
         "derived_axis_source": "binary header bytes 3217-3218 (interval) and 3221-3222 (samples)",
-        "derived_axis_arithmetic": "(i * interval_us) / 1000 for i in range(samples), from 0",
+        "derived_axis_arithmetic": (
+            "(i * interval_us) / 1000 for i in range(samples), from 0"
+            if origin_ms == 0.0
+            else f"{origin_ms:g} + (i * interval_us) / 1000 for i in range(samples)"
+        ),
+        "derived_axis_origin_ms": origin_ms,
+        "derived_axis_origin_rule": decision.reason,
+        "derived_axis_origin_recorded": recorded,
         "derived_axis_n": int(stored.shape[0]),
         "derived_axis_sample_interval_us": interval_us,
         "derived_axis_first_difference": first,

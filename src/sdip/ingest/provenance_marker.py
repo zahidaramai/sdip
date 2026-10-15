@@ -88,6 +88,13 @@ every node and the root metadata less the marker's own keys
 ingest finished fails, a store that predates the digest is ``ABSENT`` and says so.
 """
 
+ATTR_SAMPLE_AXIS_ORIGIN: Final[str] = "sdipSampleAxisOrigin"
+"""Present only when this writer moved the ``time`` axis to the recording delay (D-0096).
+
+Says which convention the writer followed, never the value Plane 4 checks against: Plane 4
+derives the delay from the source itself (:mod:`sdip.ingest.sample_axis`).
+"""
+
 MARKER_KEYS: Final[tuple[str, ...]] = (
     ATTR_WRITER,
     ATTR_VERSION,
@@ -95,6 +102,7 @@ MARKER_KEYS: Final[tuple[str, ...]] = (
     ATTR_MITIGATIONS,
     ATTR_DECLARATION,
     ATTR_STORE_DIGEST,
+    ATTR_SAMPLE_AXIS_ORIGIN,
 )
 """Every attribute the marker writes. The store digest excludes exactly these."""
 
@@ -106,6 +114,7 @@ def marker_attrs(
     *,
     declaration: SurveyDeclaration,
     store_digest: dict[str, Any],
+    sample_axis_origin: dict[str, Any] | None,
     mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,),
 ) -> dict[str, Any]:
     """The attribute mapping ``sdip ingest`` writes onto the root group."""
@@ -118,13 +127,14 @@ def marker_attrs(
         ATTR_MITIGATIONS: list(mitigations),
         ATTR_DECLARATION: declaration.to_json(),
         ATTR_STORE_DIGEST: store_digest,
-    }
+    } | ({ATTR_SAMPLE_AXIS_ORIGIN: sample_axis_origin} if sample_axis_origin else {})
 
 
 def attach_provenance_marker(
     store_path: str | Path,
     *,
     declaration: SurveyDeclaration,
+    sample_axis_origin: dict[str, Any] | None,
     mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,),
 ) -> dict[str, Any]:
     """Write the marker onto the store's root group. Stock ``zarr``, no MDIO.
@@ -136,6 +146,10 @@ def attach_provenance_marker(
             without a word - one no command can check its declaration against and no
             certificate can release. ``UNBOUND`` is for stores written before binding
             existed, not a state this writer can produce (OPEN_DEBTS D62's class).
+        sample_axis_origin: The block :class:`sdip.ingest.sample_axis.AxisOrigin` gives
+            when the writer moved the time axis to the recording delay, else ``None``.
+            **Required, with no default** (D62): an omission must be a decision, not an
+            accident that leaves a shifted store without its declaration.
         mitigations: Which unconditional mitigations this writer attaches.
 
     Returns:
@@ -149,7 +163,12 @@ def attach_provenance_marker(
     from sdip.provenance.store_digest import compute_store_digest
 
     digest = compute_store_digest(store_path, marker_keys=MARKER_KEYS)
-    attrs = marker_attrs(mitigations=mitigations, declaration=declaration, store_digest=digest)
+    attrs = marker_attrs(
+        mitigations=mitigations,
+        declaration=declaration,
+        store_digest=digest,
+        sample_axis_origin=sample_axis_origin,
+    )
     zarr.open_group(str(store_path), mode="r+").attrs.update(attrs)
     return attrs
 
@@ -176,6 +195,14 @@ def recorded_store_digest(group: Any) -> dict[str, Any] | None:
     if not written_by_sdip(group):
         return None
     block = dict(group.attrs).get(ATTR_STORE_DIGEST)
+    return dict(block) if isinstance(block, dict) else None
+
+
+def recorded_sample_axis_origin(group: Any) -> dict[str, Any] | None:
+    """The axis-origin block an SDIP writer recorded, or ``None`` if it applied none."""
+    if not written_by_sdip(group):
+        return None
+    block = dict(group.attrs).get(ATTR_SAMPLE_AXIS_ORIGIN)
     return dict(block) if isinstance(block, dict) else None
 
 

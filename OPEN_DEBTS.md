@@ -2275,3 +2275,15 @@ only, so it could not see this, and the README's portability statement named no 
 
 `zarr>=3.2.0` is declared in `pyproject.toml`. The README names the floor and the route for an
 older reader: arrays by path, trace headers from `headers_raw_uint8`.
+
+---
+
+## D53 — HANDLING SUPERSEDED 2026-10-15 — SDIP starts the axis at the delay where it is exact
+
+- **Supersedes:** the handling in "D53 — CLOSED 2026-09-17" above (**SP10**) · **Decision:**
+  `DECISIONS.md` D-0096
+
+For a constant, nonzero, whole-millisecond delay on a time axis, `sdip ingest` starts the stored
+axis at the delay, records the origin in the marker, and Plane 4 verifies it against the source.
+A varying, fractional or depth-axis delay keeps the `nonzero_recording_delay` finding, and that
+store is still not release-ready. The pinned writer's behaviour is unchanged.

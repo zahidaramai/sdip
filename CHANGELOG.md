@@ -15,6 +15,22 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [Unreleased]
+
+**A survey with a recording delay converts to a release-ready store.** `DECISIONS.md` D-0096.
+
+### Changed
+
+- **The stored `time` axis starts at the recording delay** (bytes 109-110, scaled by 215-216)
+  when the delay is the same on every trace and a whole number of milliseconds, as segyio and
+  the other industry readers start it. Before, the axis started at 0 and the store was refused
+  release on `nonzero_recording_delay`. The provenance marker records the origin
+  (`sdipSampleAxisOrigin`) and Plane 4 verifies it against the source. A varying or fractional
+  delay, or a depth axis, is unchanged and still blocks release, now saying why.
+- Stores written by 1.3.0 and earlier are judged as before; re-ingest to gain the axis.
+- **Python:** `marker_attrs` and `attach_provenance_marker` take a required `sample_axis_origin`
+  (`None` when no origin was applied). New: `sdip.ingest.sample_axis`.
+
 ## [1.3.0] — 2026-10-15
 
 **A signal stops every child process, and the provenance marker carries a digest of the

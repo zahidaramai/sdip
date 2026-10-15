@@ -50,6 +50,7 @@ from sdip.ingest.header_plane import HeaderPlane, attach_header_plane
 from sdip.ingest.preflight import SourceLayout, validate_segy_structure
 from sdip.ingest.provenance_marker import attach_provenance_marker
 from sdip.ingest.raw_samples import RawSampleView, attach_raw_sample_view
+from sdip.ingest.sample_axis import apply_axis_origin, decide_for_store
 from sdip.provenance.hashing import sha256_file
 from sdip.spec.declaration import SurveyDeclaration
 from sdip.spec.gate import G1Result, g1_for_spec
@@ -459,6 +460,17 @@ def ingest_declared(
             grid_overrides=GridOverrides(**grid_overrides) if grid_overrides else None,
         )
 
+    # D-0096. The writer starts the axis at 0 whatever the recording delay says; segyio and
+    # the other industry readers start it at the delay. Where the delay is one exact value
+    # on a time axis, the axis is moved there, from the source's own bytes, and the marker
+    # says so. Anything else is left as written and Plane 4's finding still blocks release.
+    from segy import SegyFile
+
+    origin = decide_for_store(
+        output_path, SegyFile(str(source_path), spec=built.segy_spec).header[:]
+    )
+    apply_axis_origin(output_path, origin)
+
     # SDIP's own authoritative copy. Upstream's parsed view is kept alongside it;
     # these bytes are the ones Planes 1 and 2 are checked against (§4.3).
     attach_raw_file_headers(output_path, raw_headers)
@@ -483,7 +495,9 @@ def ingest_declared(
     # after the mitigations it vouches for, so an ingest that dies midway leaves NO
     # marker rather than a marker promising arrays that were never written - the failure
     # mode probe P8 measured, inverted.
-    attach_provenance_marker(output_path, declaration=declaration)
+    attach_provenance_marker(
+        output_path, declaration=declaration, sample_axis_origin=origin.marker_block()
+    )
 
     after = sha256_file(source_path)
     return IngestResult(

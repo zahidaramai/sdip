@@ -4981,3 +4981,64 @@ the two triggers, the timeouts, and that the suite runs unfiltered but for the P
 
 **Noted, not relied on:** `zahidaramai/sdip` is a public repository, and GitHub does not bill
 standard-runner minutes for public repositories. The ruling stands regardless.
+
+---
+
+## D-0096 — 2026-10-15 — The stored time axis starts at the recording delay, when it can exactly
+
+**Ruled on the owner's instruction of 2026-10-15** ("Rule it and next appropriately"), taking
+up the request D-0094 parked. **It supersedes D53's handling as D-0089 made it permanent**, for
+the cases below; D53's finding remains for every other case.
+
+### The request, and why it was granted
+
+A consumer's survey with a constant 4 ms delay passed every plane and gate and was refused
+release on `nonzero_recording_delay` alone, because the stored axis starts at 0 while segyio,
+segysak, OpenVDS, OpendTect and Madagascar start it at the delay. Every reader of such a store
+places every event early. **No SDIP option could fix a correct conversion of a common survey
+property.**
+
+**Upstream cannot be asked to do it** (D-0089) **and offers no way to.** Measured at the pins:
+`segy` 0.6.0's `SegyFile.sample_labels` is `np.arange(0, interval * samples, interval)`, and
+`mdio` 1.2.1's `segy_to_mdio` takes no origin. **An offset attribute that readers apply was
+rejected**: a stock `xarray` reader would not apply it, which is the defect itself.
+**Leaving it parked** leaves every delayed survey unreleasable. So SDIP writes the axis.
+
+### The rule (`sdip.ingest.sample_axis`)
+
+`sdip ingest` adds the delay to the stored `time` axis when the delay is **nonzero**, **the same
+on every trace**, the axis is **`time`**, and the result is **exact** — a whole number of
+milliseconds on the integer axis, in range. Otherwise the axis stays as the writer built it and
+`nonzero_recording_delay` still blocks release, now naming which condition failed. The marker
+gains `sdipSampleAxisOrigin`, **present only when the origin was applied**.
+
+**Not a transform of data (SP1), not fabrication (SP12).** No sample, header byte or file
+header changes; the labels are re-derived from the source's own bytes 109-110 and 215-216.
+`mdio_to_segy` rebuilds traces from the stored headers and the binary header and never reads
+the axis, so G3 is untouched — measured: `certify` on a delayed survey has G3 PASS and
+round-trip closure PASS.
+
+### How Plane 4 judges it — fail-safe both ways
+
+Plane 4 derives the origin **from the source** by the same rule and expects the writer's axis
+plus that origin **only where the marker says the writer applied one**. The marker selects the
+convention; it never supplies the value (the D-0087 reasoning against a store vouching for how
+it should be read). Removing the claim from a shifted store, changing it, resetting the axis
+under it, or forging it onto an undelayed store each **fail Plane 4 and only Plane 4**
+(`tests/negative/test_axis_origin_controls.py`).
+
+**Existing stores and certificates are not re-judged.** A store written before 1.4.0 carries no
+claim, so its expectation is unchanged: axis from 0, the finding blocks release as before.
+Re-ingest under 1.4.0 to gain the shifted axis. A 1.4.0 store of a delayed survey differs from
+a 1.3.0 store of the same file in its `time` array only.
+
+### Both halves (D-0088), through the executable
+
+Passing (`tests/integration/test_recording_delay_axis.py`): delays 4, 100 and −8 ms; a scalar
+that multiplies (2 × 2) and one that divides (8 ÷ 2); intervals 4 and 2 ms — each axis starts
+at the delay, the claim is recorded, Plane 4 PASS with no finding; a zero delay changes
+nothing; `certify` on a 4 ms survey is release-ready with nothing blocking. Not applied, finding
+standing: a delay varying across traces, a 1.5 ms delay, a depth axis.
+
+**Specification:** §4's Plane 4 axis amendment (D-0087) amended in place. **Release:** minor
+(1.4.0) — store content changes for delayed sources only, additively declared.
