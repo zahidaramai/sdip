@@ -4823,3 +4823,92 @@ rewritten to the same size, to the byte, as under 1.2.0 (88,611,404 and 88,615,1
 with D-0091's statement that nothing about the store changed. The consumer keeps its 1.2.0
 certificates unedited and marked superseded, which is the right handling: they were never wrong
 about the data.
+
+---
+
+## D-0093 — 2026-10-15 — Issue #1: a signal stops every child and exits 128 + N; the marker carries a store digest
+
+**Owner's instruction, 2026-10-15: build issue #1, both parts.** Two choices the issue left open
+were made in building it and are named here so the maintainer can confirm or supersede them:
+the exit codes (**130 / 143**, below) and what the digest covers (**every node, metadata
+included**, below). Nothing is pushed; issue #1 is not answered from here.
+
+### Part (a) — measured first
+
+Pre-registered as P11 (`3e39240`, Amendment A `aef434b`) and run at `aef434b` from a clean
+worktree, N=3 per cell, 12 of 12 triggered (`e6b9b43`, results in the pre-registration):
+
+| | before | after |
+|---|---|---|
+| ingest / SIGTERM | `sdip` killed (−15, no message); **3 pool workers and the resource tracker alive at +15 s with `ppid=1`, 3 of 3** | **143**, no child alive |
+| ingest / SIGINT | **2**, the usage code; children gone by +15 s | **130**, no child alive |
+| verify / SIGTERM | −15; G4 grandchild gone by +3 s (killed or finished: not distinguishable) | **143**, no child alive |
+
+The issue's orphan claim is confirmed. Its "leaves the pool **writing**" is not: in every
+measured run the signal landed in MDIO's header scan, whose workers write nothing.
+
+**Ruling and fix (`sdip.cli.signals`).** SIGTERM and SIGINT to `sdip` terminate every child
+process the run started, wait, kill any left after 5 s, and exit **128 + N** — the shell's own
+convention, outside every verdict code (0, 1, 2, 3). Handlers are installed by the console entry
+point only; spawn children never run it.
+
+**The order is the fix.** MDIO enters its pools with `with ProcessPoolExecutor(...)`, and an
+exception unwinding through that block waits in `shutdown(wait=True)` for every queued block —
+a cancelled ingest would have gone on writing. So the handler first terminates the children
+through the standard library's own record of them (`multiprocessing.active_children`), then
+raises a `BaseException` that no `except Exception` can turn into a verdict. Upstream is not
+touched (§3.3). The G4 grandchild is killed by `subprocess.run` as the exception passes.
+
+**Acceptance, through the executable** (`tests/integration/test_spawn_signal_cancellation.py`,
+4 tests, in CI's integration and spawn-guard lanes): ingest SIGTERM → 143 and ingest SIGINT →
+130, signalled in the header scan; ingest SIGTERM → 143 signalled **after amplitude chunks are on
+disk**, the case the ordering exists for; verify SIGTERM → 143, signalled while the G4
+grandchild is live. Each asserts no process carrying the run's tag survives, and that a store cut
+short carries no marker. **Three of the four were run against `aef434b` and failed** (−15, 2,
+−15); the writing-pool case was not run there.
+
+### Part (b) — the store digest
+
+**A store-format change, additive.** The marker gains `sdipStoreDigest`, scheme
+`sdip-store-digest/1` (`sdip.provenance.store_digest`), computed by `attach_provenance_marker`
+immediately before the marker is written, so the marker is still last and a partly written
+store still has none.
+
+**What it covers.** Every node stock `zarr` lists: for an array, every file under its
+directory **including its `zarr.json`**; for a nested group, its `zarr.json`; and the root
+metadata as canonical JSON, less the marker's own six attributes. **G6's definition was not
+reused**, deliberately: G6 skips every `zarr.json` because MDIO writes a timestamp there, and
+SDIP's authoritative raw textual and binary headers live in the attributes of
+`segy_file_header` — a chunk-only digest would leave out the bytes Planes 1 and 2 certify. A
+file under the store that belongs to no node is not covered: no reader sees it.
+
+**Checked by `verify` and `certify`** after every read of the store: `MATCH`; **`MISMATCH`
+fails** `verify` (exit 1) and blocks release, naming each node changed, removed or added and
+whether the root metadata changed; `ABSENT` (an SDIP store written before this) and `FOREIGN`
+do not fail and say so. The certificate gains an additive `store_digest` block; schema version
+unchanged, as for D-0087's additions. **It is not a signature**: whoever can rewrite a store can
+rewrite its marker.
+
+**Both halves (D-0088).** Passing: correct stores of revisions 0 and 1 (the two the pinned
+writer ingests; 2 and 2.1 are refused upstream before a store exists) MATCH, a copy and a full
+read leave the digest unmoved, a rewritten marker attribute moves nothing. Failing
+(`tests/negative/test_store_digest_controls.py`): **one chunk of `amplitude` re-encoded with
+identical values** — all five planes PASS and `sdip verify` exits 1 on the digest alone; a
+flipped chunk byte; an edited raw textual header in `segy_file_header`'s metadata; an array
+removed; an array added; root metadata edited. Each is named in the mismatch.
+
+### What changes for existing certificates and stores
+
+**Existing certificates stay valid.** They carry no `store_digest` block and are not re-judged;
+release readiness blocks only on a block that is present and not `MATCH`. **Existing stores**
+read `ABSENT`, verdict unchanged; re-ingest to gain a digest. **The CLI contract changes in one
+place:** SIGINT exited 2 and now exits 130; SIGTERM killed the process and now exits 143.
+Additive, so a minor release (1.3.0) when the maintainer releases.
+
+**Specification:** §4.7's certificate fields and §11.3 amended in place, as D-0087's additive
+changes were. No change to §4's contract, §5's mechanism or §7's gates: the digest is a check
+on the store's identity, like the declaration binding, not a sixth plane.
+
+**Not measured:** the digest's cost at survey scale (debt D63).
+
+**Commits:** part (a) `cee3fee`, part (b) `7a05843`; P11 `3e39240`, `aef434b`, `e6b9b43`.

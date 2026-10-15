@@ -2242,3 +2242,15 @@ test_closure_under_declarations.py`, `tests/unit/test_declaration_reaches_every_
 replaces was marked `slow` and never ran there.
 
 ---
+
+---
+
+## D63 — The store digest's cost at survey scale is unmeasured
+
+- **Status:** `OPEN` (raised 2026-10-15) · **Blocks:** nothing · **Decision:** `DECISIONS.md`
+  D-0093
+
+D-0093 reads every file of a store once more at ingest and once more at `verify`, and
+`certify` once more after its chain. Measured only on fixtures of at most 140 MB. P10's
+wall-clock ceiling was calibrated without it, so the next survey-scale `certify` should report
+the digest's share of the time before any ceiling is judged against it.

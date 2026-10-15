@@ -15,6 +15,26 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [Unreleased]
+
+**A signal stops every child process, and the provenance marker carries a digest of the
+store.** Issue #1; `DECISIONS.md` D-0093. Existing certificates stay valid.
+
+### Added
+
+- **`sdipStoreDigest` in the provenance marker** (scheme `sdip-store-digest/1`): every array's
+  files, metadata included, and the root metadata less the marker, taken immediately before the
+  marker is written. `verify` and `certify` recompute it: `MATCH`; `MISMATCH` fails `verify` and
+  blocks release; `ABSENT` for stores written before this, verdict unchanged.
+- **`store_digest` on the certificate**, additive. Schema version unchanged.
+
+### Changed
+
+- **SIGTERM and SIGINT** terminate every child process the run started — MDIO's worker pools
+  and `verify`'s G4 grandchild — and exit **143** and **130**, never a verdict. Before, SIGTERM
+  killed `sdip` and left a SIGTERMed ingest's pool workers running with `ppid=1` (measured,
+  `prereg/P11-signal-cancellation.md`), and SIGINT exited 2, the usage code.
+
 ## [1.2.1] — 2026-09-17
 
 **`certify` now closes the round trip under the declaration the store was written under.**
