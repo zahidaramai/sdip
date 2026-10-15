@@ -46,6 +46,11 @@ dependencies = [
     # this adds nothing to the tree being scanned.
     "packaging>=24.2",
     "click>=8.4.2",
+    # A floor, not a new dependency: zarr already arrives through multidimio. Below
+    # 3.2.0 stock zarr cannot read the `struct` data type of MDIO's `headers` array,
+    # so listing a store's arrays and `xarray.open_zarr` both raise (measured 3.1.6 vs
+    # 3.2.0, DECISIONS.md D-0094, OPEN_DEBTS D64). G4 is only as good as this floor.
+    "zarr>=3.2.0",
 ]
 
 [project.optional-dependencies]

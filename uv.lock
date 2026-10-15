@@ -1878,6 +1878,7 @@ dependencies = [
     { name = "multidimio" },
     { name = "packaging" },
     { name = "segy" },
+    { name = "zarr" },
 ]
 
 [package.optional-dependencies]
@@ -1903,6 +1904,7 @@ requires-dist = [
     { name = "multidimio", extras = ["cloud"], marker = "extra == 'cloud'", specifier = "==1.2.1" },
     { name = "packaging", specifier = ">=24.2" },
     { name = "segy", specifier = "==0.6.0" },
+    { name = "zarr", specifier = ">=3.2.0" },
 ]
 provides-extras = ["cloud"]
 

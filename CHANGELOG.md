@@ -34,6 +34,9 @@ store.** Issue #1; `DECISIONS.md` D-0093. Existing certificates stay valid.
   and `verify`'s G4 grandchild — and exit **143** and **130**, never a verdict. Before, SIGTERM
   killed `sdip` and left a SIGTERMed ingest's pool workers running with `ppid=1` (measured,
   `prereg/P11-signal-cancellation.md`), and SIGINT exited 2, the usage code.
+- **`zarr>=3.2.0` is declared.** Before 3.2.0 stock `zarr` cannot read MDIO's `struct`-typed
+  `headers` array, so listing a store's arrays and `xarray.open_zarr` raise (measured on 3.1.6;
+  D-0094). The README names the floor and the route for an older reader. The lock is unchanged.
 
 ## [1.2.1] — 2026-09-17
 

@@ -201,6 +201,8 @@ uv run sdip verify survey.sgy survey.mdio
 
 The output is **plain Zarr v3**. Neither SDIP nor MDIO is needed to read it — that portability is a gate the engine enforces, not a hope.
 
+> **Use `zarr` 3.2.0 or later.** MDIO stores the `headers` array with a `struct` data type that is outside the Zarr v3 core specification. Before 3.2.0, stock `zarr` cannot read it, and listing the store's arrays or calling `xr.open_zarr` raises `ValueError: No Zarr data type found that matches {'name': 'struct', ...}` (measured on 3.1.6). With an older `zarr`, open each array by path, `zarr.open_array("survey.mdio", path="amplitude")`, and read the trace headers from `headers_raw_uint8`: each trace's 240 raw header bytes, undecoded, as plain `uint8`.
+
 **With `xarray`:**
 
 ```python
@@ -326,7 +328,7 @@ not your environment.
 No. There is no filtering, scaling, resampling, regridding, muting, interpolation or denoising anywhere in it. It is an identity map — the format changes, the values do not — and the certificate is the proof.
 
 **Do I need SDIP or MDIO installed to read the output?**
-No. The output is standard **Zarr v3**. It opens with stock `zarr` and `xarray`, and the core arrays read from C++ through `TensorStore`. That the store opens with MDIO *uninstalled* is a gate the engine enforces on every certified run.
+No. The output is standard **Zarr v3**. It opens with stock `zarr` (3.2.0 or later — see above) and `xarray`, and the core arrays read from C++ through `TensorStore`. That the store opens with MDIO *uninstalled* is a gate the engine enforces on every certified run.
 
 **Is this lossless? Can I get my original SEG-Y back?**
 Yes — `sdip export` writes MDIO back to SEG-Y, and `sdip certify` compares the round-tripped file to the source by **SHA-256** over the whole file. Compression uses lossless codecs only; MDIO's `lossy` extra (`zfpy`) is barred outright.

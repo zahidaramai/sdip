@@ -2254,3 +2254,24 @@ D-0093 reads every file of a store once more at ingest and once more at `verify`
 `certify` once more after its chain. Measured only on fixtures of at most 140 MB. P10's
 wall-clock ceiling was calibrated without it, so the next survey-scale `certify` should report
 the digest's share of the time before any ceiling is judged against it.
+
+---
+
+## D64 — Stock `zarr` before 3.2.0 cannot open an SDIP store as a group
+
+- **Status:** `OPEN` (raised 2026-10-15, reported by a consumer, reproduced here) ·
+  **Blocks:** nothing · **Decision:** `DECISIONS.md` D-0094
+
+MDIO's `headers` array has a `struct` data type outside the Zarr v3 core specification. Under
+`zarr` 3.1.6 listing the store's arrays and `xarray.open_zarr` raise on it; 10 of 11 arrays
+still open by path. 3.2.0, 3.2.1 and 3.3.0 read everything. G4 runs at the installed `zarr`
+only, so it could not see this, and the README's portability statement named no version.
+
+---
+
+## D64 — CLOSED 2026-10-15 — a declared floor and a documented route
+
+- **Closes:** D64 above (**SP10**) · **Decision:** `DECISIONS.md` D-0094 · **Released:** 1.3.0
+
+`zarr>=3.2.0` is declared in `pyproject.toml`. The README names the floor and the route for an
+older reader: arrays by path, trace headers from `headers_raw_uint8`.

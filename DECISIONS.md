@@ -4912,3 +4912,35 @@ on the store's identity, like the declaration binding, not a sixth plane.
 **Not measured:** the digest's cost at survey scale (debt D63).
 
 **Commits:** part (a) `cee3fee`, part (b) `7a05843`; P11 `3e39240`, `aef434b`, `e6b9b43`.
+
+---
+
+## D-0094 — 2026-10-15 — Owner's rulings: D-0093's choices kept, the delay axis parked, a zarr floor, 1.3.0
+
+**Maintainer rulings, 2026-10-15, given in answer to the questions D-0093 left open.**
+
+1. **D-0093's two choices are confirmed:** exit codes **130 / 143** for a run stopped by a
+   signal, and a store digest that **covers each array's `zarr.json`**, so the raw file headers
+   are inside it.
+2. **A request to start the stored sample axis at the recording delay is parked.** It came
+   from a consumer whose survey carries a constant 4 ms delay: every plane and gate PASS, and
+   the store is not release-ready on `nonzero_recording_delay` alone. Granting it means either
+   rewriting an array the pinned writer produced or a new marker field that readers apply, and
+   either reverses D53's handling as made permanent by D-0089. **That handling is unchanged.**
+   Parked is not declined: the request stands for a later ruling.
+3. **A floor of `zarr>=3.2.0`** (debt D64, raised and closed below). Measured on a store
+   `sdip ingest` wrote at `ffb3a46`, through stock `zarr` and `xarray` 2026.7.0 with `mdio`
+   never imported, after a consumer reported it:
+
+   | `zarr` | list the store's arrays / `xarray.open_zarr` | each array opened by path |
+   |---|---|---|
+   | 3.1.6 | **raise** `ValueError: No Zarr data type found that matches {'name': 'struct', ...}` | 10 of 11; `headers` raises |
+   | 3.2.0, 3.2.1, 3.3.0 | read; full Dataset | 11 of 11 |
+
+   `zarr` already arrives through `multidimio`; the floor declares it, and the lock is
+   unchanged at 3.3.0. **G4 measures portability at the installed `zarr` only**, so the
+   README's "opens with stock `zarr`" was true at 3.3.0 and false at 3.1.6 without saying
+   which; it now names 3.2.0, and the per-array route through `headers_raw_uint8` for older
+   readers.
+4. **Release 1.3.0, and push `main` and the tag.** Owner's command in this conversation. A
+   GitHub Release (which runs `publish.yml`) is a separate act and is not made here.
