@@ -1,8 +1,9 @@
 # Integration tests
 
-**Status: phase F3.** The seed for this directory is the upstream round-trip test:
+SDIP's round-trip driver (`src/sdip/export/roundtrip.py`) is seeded from the upstream
+round-trip test, `tests/integration/test_segy_roundtrip_teapot.py` **in `mdio-python`** — not
+a file in this repository:
 
-    tests/integration/test_segy_roundtrip_teapot.py
     https://github.com/TGSAI/mdio-python/blob/76df396e545017d2a32ee25a5f98989fa37afec4/tests/integration/test_segy_roundtrip_teapot.py
 
 Apache-2.0, © TGS. **Attribution in `NOTICE` is a legal obligation and must survive

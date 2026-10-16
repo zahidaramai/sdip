@@ -8,6 +8,10 @@ fixed. A failed configuration becomes the permanent negative control for its fix
 
 ## The minimum set (§7 G7)
 
+The table is the specification's minimum. The full set is
+`sdip.equivalence.nonvacuity.CONTROLS` (16 corruptions), plus the G3 and round-trip closure
+controls.
+
 Each corruption must fail **its** gate and **only** its gate. A corruption that fails
 the wrong gate is as much a G7 failure as one that passes.
 
@@ -23,14 +27,12 @@ the wrong gate is as much a G7 failure as one that passes.
 
 ## Status
 
-**Empty. `NOT_RUN`.**
+**Built, and run as a gate (F4).** Every control in `CONTROLS` fails exactly the gates it
+declares and no others, on every `sdip certify`; **D11** in `OPEN_DEBTS.md` is closed.
 
-No control exists because no gate exists: the Equivalence Engine is roadmap phase F3
-and this suite is **F4**. Recorded as **D11** in `OPEN_DEBTS.md`.
-
-**F4 is not optional and is not last.** Until G7 passes, every certificate the engine
-issues is unvalidated. Do not publish certificates from an engine whose gates have
-never been shown to fail, and say so in any report touching certificates.
+**The rule that made F4 first-class still holds.** A certificate from an engine whose
+gates have never been shown to fail is unvalidated; a new check ships with its control in
+the same commit, or it does not ship.
 
 ## Adding a control
 

@@ -585,8 +585,8 @@ def certify_cmd(
     blocking.
 
     EQUIVALENT is reachable. G7 exists and runs as a gate (F4), so a store's planes
-    are judged by an engine that has been shown capable of failing: 10 negative
-    controls, each failing exactly the gates it declares and no others. D11 is closed.
+    are judged by an engine that has been shown capable of failing: every negative
+    control, each failing exactly the gates it declares and no others. D11 is closed.
 
     EQUIVALENT is not the release bar. ``release_readiness`` on the certificate is
     stricter - every gate PASS with none NOT_RUN, plus round-trip closure on the

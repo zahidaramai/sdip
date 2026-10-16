@@ -619,6 +619,10 @@ regression-tested. See D-0018.
   thirty lines below the entry announcing the full command surface was live, and carried
   a near-duplicate copy of its own F3–F7 block. Both corrected here.
 
+[1.6.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.6.0
+[1.5.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.5.0
+[1.4.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.4.0
+[1.3.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.3.0
 [1.2.1]: https://github.com/zahidaramai/sdip/releases/tag/v1.2.1
 [1.2.0]: https://github.com/zahidaramai/sdip/releases/tag/v1.2.0
 [1.1.4]: https://github.com/zahidaramai/sdip/releases/tag/v1.1.4

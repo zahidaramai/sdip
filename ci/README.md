@@ -19,8 +19,9 @@ or started by hand (`gh workflow run ci`). Never on push.
 One dependency install, then: `sdip doctor`; `ruff check`, `ruff format --check`, `mypy`;
 the forbid-list scans (barred variables, `zfpy`); the runtime licence scan; fixture policy;
 the unresolved-placeholder check; and **one run of the whole test suite** — unit,
-integration and negative, every gate's tests and every negative control. Each step runs even
-after an earlier one failed, so one red check never hides another.
+integration and negative, every gate's tests and every negative control. `sdip doctor` runs
+first, and if it fails nothing after it runs (D-0099). After a passing doctor, each step runs
+even after an earlier one failed, so one red check never hides another.
 
 The suite ignores one file, `tests/integration/test_p7_latency.py`: the **63 P7 latency
 benchmarks**, which assert that a chunk shape built for an access pattern beats the default

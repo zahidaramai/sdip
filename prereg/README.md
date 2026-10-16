@@ -27,13 +27,18 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | Probe | Question | Status | Blocks | Debt |
 |---|---|---|---|---|
 | [P1](P1-gap-free-spec.md) | Is a gap-free 240-byte spec viable end to end? | **PASSED** 2026-08-22 | — | — |
-| [P2](P2-ibm32-fidelity.md) | Is `ibm32 → float32` exactly invertible? | `REGISTERED` | any `ibm32`-bearing production spec | D1 |
-| [P3](P3-scale.md) | Does ingestion hold at survey scale? | `REGISTERED` | production | D2 |
-| [P4](P4-portability.md) | Can a non-Python Zarr read the `headers` array? | `REGISTERED` | non-Python consumers | D3 |
-| [P5](P5-irregular-geometry.md) | Does irregular geometry survive intact? | `REGISTERED` | any real survey | D5 |
-| [P6](P6-revision-coverage.md) | Do rev 0/1/2/2.1 each ingest and round trip? | `REGISTERED` | legacy vintages | D6 |
-| [P7](P7-prestack-chunking.md) | What is the right prestack chunking? | `REGISTERED` | prestack workflows | D4 |
-| [P8](P8-cloud-object-store.md) | Does the cloud path hold? | `REGISTERED` | cloud deployment | D7 |
+| [P2](P2-ibm32-fidelity.md) | Is `ibm32 → float32` exactly invertible? | **FIRED** — 2,447 of 4,103 words fail | any `ibm32`-bearing production spec | D1 |
+| [P3](P3-scale.md) | Does ingestion hold at survey scale? | **PASSED** 2026-08-22 | production | D2 |
+| [P4](P4-portability.md) | Can a non-Python Zarr read the `headers` array? | did not fire; partly executed — see *Scope* | non-Python consumers | D3 |
+| [P5](P5-irregular-geometry.md) | Does irregular geometry survive intact? | did not fire | any real survey | D5 |
+| [P6](P6-revision-coverage.md) | Do rev 0/1/2/2.1 each ingest and round trip? | **FIRED** for rev 0, 2, 2.1 | legacy vintages | D6 |
+| [P7](P7-prestack-chunking.md) | What is the right prestack chunking? | **FIRED** (clause 1) | prestack workflows | D4 |
+| [P8](P8-cloud-object-store.md) | Does the cloud path hold? | **FIRED** (Amendment A, local object store) | cloud deployment | D7 |
+| [P9](P9-sample-format-sweep.md) | Does every sample format decode exactly? | **FIRED** — five formats alter values | — | — |
+| [P10](P10-scale-recalibration.md) | What wall-clock ceiling does the chain need? | Amendment C **ADOPTED** | — | — |
+| [P11](P11-signal-cancellation.md) | What does a signal to `ingest`/`verify` leave running? | did not fire; orphans confirmed (D-0093) | — | — |
+| [P12](P12-f3-certify.md) | Does a real delayed survey certify? | Amendment A: **release-ready** (D-0100) | — | — |
+| [P13](P13-store-content-variance.md) | Which store bytes differ between ingests? | did not fire; only root `createdOn` (D-0101) | — | — |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a
