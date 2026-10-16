@@ -5213,3 +5213,22 @@ a verifier knowing only the 1.3.0-1.5.0 marker keys still `MATCH`es a 1.6.0 stor
 **Scope.** One machine, one environment: a key that varies only across machines or library
 versions was not measurable here; the scheme name versions the definition so a measured addition
 is a new scheme, never an edit. Existing stores and certificates are unchanged.
+
+---
+
+## D-0102 — 2026-10-16 — Owner rulings: exit 1 stays as is, D63 waits for the next survey, support policy stands
+
+**Exit 1 is kept and documented, not split.** Exit 1 means a failing verdict *or* a refused
+input. A separate refusal code was offered and declined: it would change an interface that
+consumers already branch on. Measured through the executable instead: `sdip ingest` on 5,000
+random bytes with `--json` exits 1, writes **0 bytes** to standard output, and writes one line
+to standard error, `sdip: UntrustedInputError: binary header (bytes 3221-3222) declares -28042
+samples per trace; ...`. A verdict prints its report (`verdict`, `failed`, `checks`) on standard
+output through `_emit`. The README now says how to tell the two apart.
+
+**D63 is measured on the next survey-scale `certify`**, not by a dedicated probe. That run
+reports the store and content digests' share of the wall clock before any ceiling is judged
+against it. D63 stays `OPEN` until then.
+
+**SECURITY.md support policy confirmed:** the latest release plus `main`. It was a maintainer
+default (2026-10-15); it is now the owner's ruling.
