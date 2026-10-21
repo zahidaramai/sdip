@@ -2352,3 +2352,16 @@ attribute `sdipSampleAxisOrigin`, which 1.3.0 digests as root content, so 1.3.0 
 delayed store as `MISMATCH`. Measured with 1.3.0's key set on the digest function, not the 1.3.0
 executable. Mitigation: verify with the writing release or later. Prevention, from 1.6.0: new
 marker data nests inside an existing marker key (the content digest does), with a permanent test.
+
+---
+
+## D40 — CLOSED (recorded 2026-10-22, by the D-0175 reviewed sweep) — the closure of 2026-08-23 had no ledger entry
+
+- **Closes:** D40 above (**SP10**) · **Decision:** `DECISIONS.md` D-0063 ruling 3, D-0064
+
+The mechanism this entry named as "what would close it" was built and ruled closed on
+2026-08-23: a group-level provenance marker written by `sdip ingest` (commit `28b1589`,
+`src/sdip/ingest/provenance_marker.py`), `DECISIONS.md` D-0064 "D40 closed". The ledger never
+received its closing entry; this is it. Test:
+`tests/integration/test_header_plane.py::test_an_absent_plane_fails_a_marked_store_and_not_an_unmarked_one`.
+Found by the sweep, not by a new measurement; the suite result for this commit is in its message.
