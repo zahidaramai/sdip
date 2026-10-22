@@ -2365,3 +2365,20 @@ The mechanism this entry named as "what would close it" was built and ruled clos
 received its closing entry; this is it. Test:
 `tests/integration/test_header_plane.py::test_an_absent_plane_fails_a_marked_store_and_not_an_unmarked_one`.
 Found by the sweep, not by a new measurement; the suite result for this commit is in its message.
+
+---
+
+## D20 — SUPERSEDED (recorded 2026-10-22) — the release bar is `release_readiness`, not the verdict
+
+- **Supersedes:** D20 above (**SP10**) · **Ruling:** owner, GeoSuite D-176, 2026-10-22
+
+D20 asked that `verdict_for` turn any `NOT_RUN` gate into `PROVISIONAL`. The release bar was
+built elsewhere: `release_readiness` (`src/sdip/equivalence/certificate.py:414`) blocks release
+for every gate that is not `PASS` (loop at `certificate.py:458-461`, `gate {gate} is {status}`,
+covering G5 and G6 as members of `GATES`), and the `sdip certify` summary prints `NOT READY` with
+the blocking count (`src/sdip/cli/main.py:797-802`). `verdict_for` still returns `EQUIVALENT`
+with G5/G6 `NOT_RUN`, deliberately; the documented release bar is `release_ready`, not the verdict.
+Test evidence, stated at its true scope: `tests/unit/test_release_readiness.py::test_a_header_scoped_certificate_still_needs_every_other_gate`
+(line 224) sets a gate to `NOT_RUN` and asserts release is blocked, and
+`test_an_absent_control_blocks_rather_than_being_treated_as_passing` (line 67) covers `NOT_RUN`
+controls. G5 and G6 are now covered by name: `tests/unit/test_release_readiness.py::test_an_unrun_g5_or_g6_makes_the_certificate_not_release_ready` (parametrised G5, G6; each `NOT_RUN` alone gives `release_ready` False with `gate G5 is NOT_RUN` / `gate G6 is NOT_RUN` blocking).
