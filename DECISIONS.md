@@ -5232,3 +5232,43 @@ against it. D63 stays `OPEN` until then.
 
 **SECURITY.md support policy confirmed:** the latest release plus `main`. It was a maintainer
 default (2026-10-15); it is now the owner's ruling.
+
+---
+
+## D-0103 — 2026-10-25 — Answers to GeoAIBrain's TD-411 (1) and TD-413, on GeoSuite's work order (D-196 (3))
+
+GeoSuite relayed the owner's order (GeoSuite D-196 (3)): each engine answers the requests
+GeoAIBrain drafted, built or declined with the reason, in its own register. Read at HEAD
+`a0607df` (GeoAIBrain read-only at `09a72666`). No source changed; this entry records answers.
+
+**TD-411 (1): no SDIP item is unanswered.** The one SDIP item it names is SDIP-MDIO-01.
+- **SDIP-MDIO-01 — BUILT.** (a) signals: `cee3fee` (D-0093; probe P11); (b) store digest:
+  `7a05843`; released in 1.3.0 (`8ec3201`); issue #1 closed 2026-10-15 with the answer. Re-run at
+  `a0607df`, clean tree before and after: the signal, store-digest, content-digest and
+  axis-origin suites (`tests/integration/test_spawn_signal_cancellation.py`,
+  `test_store_digest.py`, `test_content_digest.py`, `test_sample_axis_oracle.py`,
+  `tests/negative/test_store_digest_controls.py`, `test_axis_origin_controls.py`):
+  **50 passed, 0 failed**, 592 s, N = 1 run.
+- **SDIP-DELAY-01** (drafted under the same TD-411): **BUILT**, D-0096, released 1.4.0. Covered by
+  the same run.
+- GeoAIBrain's G-1 to G-8 rows (its SDIP GAPS dossier) were never sent to SDIP and are not
+  answered here.
+
+**TD-413: the commit to name is `a0607df`** (the installed one: the bound executable is an
+editable install of this checkout, `sdip 1.6.0 (specification v1.0)`). `src/` there equals
+v1.6.0 (`444f8ec`) except one line of `certify`'s docstring. Read against GeoAIBrain's five
+`sdip.cli.*` records (reviewed at `2eb674f`), through `--help` and the source:
+- **ingest:** options hold. **Stale:** "a nonzero recording delay is stored with the axis
+  starting at 0" is false since 1.4.0 for a uniform, whole-millisecond delay on a `time` axis
+  (`sample_axis.py`), and still true otherwise. Not stated: `sdipStoreDigest` with `content`
+  nested (`sdip-content-digest/1`), `sdipSampleAxisOrigin` (only when the axis moved), exits
+  130 and 143, SDIP stopping its own children. The mode-0 finding holds; its consequence is now
+  G3 `ROUNDTRIP-SCOPED` (D-0098), not a block on release; its line citations moved slightly.
+- **verify:** options hold; G7 is still not run by verify. Not stated: the `store_digest` and
+  `content_digest` report blocks. **Stale:** "certificates are unvalidated until G7 passes" —
+  G7 runs as a gate in `certify` (D11 closed).
+- **export:** holds (`--json`, `--source`).
+- **certify:** "no `--json`" and "refuses a dirty tree" hold; the tree is the *working
+  directory's* (`capture_git_state(".")`), and certificates default to a relative
+  `certificates/`. The ingest/materialisation count was not re-measured.
+- **doctor:** holds but names 4 of the 10 checks it runs (10/10 PASS through the executable).
