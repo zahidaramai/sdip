@@ -39,6 +39,7 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | [P11](P11-signal-cancellation.md) | What does a signal to `ingest`/`verify` leave running? | did not fire; orphans confirmed (D-0093) | — | — |
 | [P12](P12-f3-certify.md) | Does a real delayed survey certify? | Amendment A: **release-ready** (D-0100) | — | — |
 | [P13](P13-store-content-variance.md) | Which store bytes differ between ingests? | did not fire; only root `createdOn` (D-0101) | — | — |
+| [P14](P14-poststack-chunking.md) | Does any of three poststack chunk shapes beat 128³ on Volve? | **REGISTERED** 2026-10-30, not run | — | D4 |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a
