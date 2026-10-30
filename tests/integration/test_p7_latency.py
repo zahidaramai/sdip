@@ -527,19 +527,19 @@ def test_no_barred_variable_is_set_for_any_of_it(bench):
 # ---------------------------------------------------------------------------
 
 
-def test_sdip_ingest_offers_no_way_to_choose_a_chunk_shape():
-    """**The finding that put this benchmark outside ``sdip ingest``**.
+def test_sdip_ingest_now_takes_a_declared_chunk_shape():
+    """The finding that put this benchmark outside ``sdip ingest``, closed by D-0112.
 
-    ``ingest()`` takes a template *name* and resolves it internally, so there is no
-    object on which a caller could set ``full_chunk_shape`` and no parameter that would
-    carry one. Every SDIP store therefore ships whatever shape the template chose, and
-    nothing on the certificate records which shape that was — so a store that is
-    unusable for its access pattern is indistinguishable from one that is not.
+    Until D-0112 ``ingest()`` took a template *name* only, so no caller could choose a
+    chunk shape and nothing recorded which one a store had (P7 F12). The shape is now
+    part of the survey declaration; this pins that it stays reachable from the keyword
+    form. The executable, the manifest and the refusals are measured in
+    ``tests/integration/test_chunk_shape.py``.
     """
     parameters = inspect.signature(ingest).parameters
     assert "template" in parameters
     assert parameters["template"].annotation == "str"
-    assert not [p for p in parameters if "chunk" in p or "shape" in p]
+    assert [p for p in parameters if "chunk" in p or "shape" in p] == ["chunk_shape"]
 
 
 @pytest.mark.parametrize("geometry", GEOMETRIES)
