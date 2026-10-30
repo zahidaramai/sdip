@@ -5461,3 +5461,30 @@ Status is store / content digest. "decl." = source named by the run's `ingest-de
   consumer's.
 
 **Scope.** N = 1 recompute per store; one machine. SDIP rules on no CRS.
+
+---
+
+## D-0106 — 2026-10-30 — Owner rulings on ten open debts (relayed by GeoSuite)
+
+**Provenance, stated as it is.** The owner answered GeoSuite's questions on 2026-10-30 (GeoSuite
+owner order D-216); GeoSuite relayed each answer to this session with the owner's words quoted.
+The owner did not give them in this session. Recorded verbatim; each debt's work cites this
+entry. GeoSuite's own recommendations, sent earlier the same day, were **not** acted on until
+these answers arrived.
+
+| Debt | Owner's answer (verbatim) | What it authorises |
+|---|---|---|
+| D4 | "Pre-register now"; then "Both: P7 prestack criterion + P14 poststack probe" | P7 Amendment B: a *relative* prestack chunk criterion (P7 F9). New P14: a poststack chunk probe on the Volve stores, shapes 128³, 128×128×64, 64×256×64, 64³ (SFM's measured set). Consumer numbers are input to the choice of candidates, never the result. Each runs only after its pre-registration is committed and pushed (SP9) |
+| D13 | "Build a check that every cited section resolves" (spec stays private) | A committed index from each `§N` cited in a public file to a public restatement, and a test |
+| D14 | "Confirm both" (with D67) | Close: every gate arms (D44); the "green is not equivalence" warning stays |
+| D67 | "Confirm both" (with D14) | Close as permanent: unfixable in a shipped release; prevention shipped in 1.6.0 |
+| D32 | "Accept and close, record the limit" | Close; zarr-java's listing limit recorded; `segy_file_header` unchanged |
+| D36 | "Sparse view of only the at-risk words" | A raw view holding only the `ibm32` words the `float32` decode cannot reproduce; G3 byte-identity proof kept |
+| D37 | "Add a --consumer mode that skips the two and says so" | `sdip doctor --consumer`: `working-tree` and `git-hooks` reported `NOT_RUN` with the reason; default unchanged |
+| D39 | "Move it out of the gate into a benchmark with medians" (P7's pre-registration amended) | The P7 wall-clock assertion leaves the gating suite; P7 amended before any rerun |
+| D46 | "Add a repo-relative path field" (absolute stays as provenance) | An additive certificate field; schema minor |
+| D61 | "ROUNDTRIP-SCOPED with the reason named" | G3 for a source whose undefined revision word stops the export: `ROUNDTRIP-SCOPED`, the reason named, as D-0098 did for an undecodable textual header |
+
+**What none of them changes:** no tolerance, no barred variable, no pin. D36 and D61 touch the
+gates (§9), which is why they waited for the owner: each ships with its negative controls and the
+sweep of correct data (D-0088) in the same commit.

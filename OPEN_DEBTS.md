@@ -2433,3 +2433,54 @@ an upstream exception is a typed refusal (exit 1), and the corpus through `inges
 `export` and `certify` gave 402 of 402 checks with no traceback and no exit 3. The library still
 raises the types P5 measured. **Residuals 2 (no stanza-terminated rev 2 member), 3 (structural,
 not combinatorial) and 4 (one platform) stand; D8 stays open.**
+
+---
+
+## D14 — CLOSED 2026-10-30 — every gate arms; the warning is kept, not the debt
+
+- **Closes:** D14 and D14 NARROWED above (**SP10**) · **Decision:** `DECISIONS.md` D-0080, D-0081, D-0106
+
+D14 NARROWED named D44 as the one thing left; D44 closed on 2026-08-24 (G6 has its own test and
+its gate arms). CI has since become two jobs on pull requests and manual dispatch (D-0095,
+D-0099), with one unfiltered pytest run covering every gate suite, so no gate can be selected
+out. **The warning stands in the README and the ledger:** a green build means everything that
+exists passes; it does not certify any store. Closed by the owner's ruling (D-0106).
+
+---
+
+## D67 — CLOSED 2026-10-30 — permanent: unfixable in a shipped release, prevented since 1.6.0
+
+- **Closes:** D67 above (**SP10**) · **Decision:** `DECISIONS.md` D-0101, D-0106
+
+Nothing can change how SDIP 1.3.0 reads a store. The mitigation stays documented (verify with the
+writing release or later), and the prevention shipped in 1.6.0 with a permanent test: new marker
+data nests inside an existing marker key
+(`test_a_verifier_from_before_the_content_digest_still_matches_the_store`). Closed as permanent
+by the owner's ruling (D-0106), on the D10/D35 precedent (D-0089).
+
+---
+
+## D32 — CLOSED 2026-10-30 — accepted: zarr-java cannot list a store; the limit is recorded
+
+- **Closes:** D32 above (**SP10**) · **Decision:** `DECISIONS.md` D-0106
+
+**The limit, as measured by P4 leg 2:** zarr-java's `Group.list()` fails on an SDIP store,
+because `segy_file_header` (written by MDIO) has data type `fixed_length_utf32`, which zarr-java
+cannot parse, and listing opens every child. A zarr-java consumer can still open each array by
+name. The authoritative bytes of both file headers are root JSON attributes
+(`sdipRawTextHeader`, `sdipRawBinaryHeader`), readable by any JSON reader. **SDIP does not
+change `segy_file_header`.** Closed by the owner's ruling (D-0106).
+
+---
+
+## D41 — NARROWED 2026-10-30 — legs 1 and 3 built; legs 2 and 4 wait for a real file
+
+- **Narrows:** D41 above (**SP10**) · **Decision:** `DECISIONS.md` D-0062, D-0063 ruling 1
+
+Built in `3957741` (2026-08-23) and never recorded here: **leg 1**, `detect_lossy_decode`
+(`src/sdip/spec/transforms.py`), which classifies all eleven formats and declares every decode
+on the certificate, closing the SP1(a) gap for the five that declared nothing; **leg 3**,
+`lossy_decode_blocks_equivalence`, which blocks all six lossy formats (and any unclassified one)
+unless G3 is byte-identical. **Legs 2 (a format-parameterised raw view) and 4 (its G7
+controls) stay open:** D-0063 ruling 1 builds them only when a real file in such a format
+arrives.
