@@ -559,3 +559,262 @@ trigger is dropped. GeoSuite is asked to pause the suite's heavy jobs for the ti
 
 A run above the gate is still void and is not judged. If both runs are void, the timing leg is
 NOT EVALUABLE, the default stays 128³, and only the precondition and structure are recorded.
+
+---
+
+## Amendment D — 2026-10-31, before any F3 timing: the harness builds through SDIP's own ingest
+
+**What happened (no measurement).** Under Amendment C the harness started at 07:44:52 at `ea439a4`
+(load 12.43) and stopped at 07:45:04 during its first F3 build:
+`ValueError: Invalid text header characters: non-ASCII or non-printable at row 5`.
+- **The cause is this probe's harness, not SDIP.** The harness called upstream directly with
+  file-header persistence forced to STRICT (mode 1). F3's textual header does not decode (P12
+  recorded this). SDIP's own ingest handles that case by choosing mode 0 and preserving the raw
+  3,200 bytes (D-0055); the harness skipped that step.
+- The harness also skipped SDIP's recording-delay axis step (D-0096). F3 carries a constant 4 ms
+  delay; neither Volve store does.
+- Nothing was built, timed or judged. This should have been caught at registration from P12's
+  record, and was not.
+
+**Changed:** `_build` only. Each store is now built by `sdip.ingest.orchestrator.ingest_declared`,
+with the shape as the declaration's `chunk_shape` (D-0112), and `None` for 128³. That is the path
+`sdip ingest --chunks` takes. The full harness, as it will run:
+
+```python p14d
+"""P14 harness (Amendment D): poststack chunk shape against read cost.
+
+Usage: python p14_harness.py RUN_ROOT REPO_ROOT CASES_JSON > receipt.json
+
+CASES_JSON lists the articles: [{"name", "source", "sha256", "revision", "template",
+"override"}]. RUN_ROOT must not exist; the caller harvests the receipt and deletes it.
+Must run from a clean worktree at the commit that registers P14 (SP9).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import platform
+import statistics
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+SHAPES: dict[str, tuple[int, int, int] | None] = {
+    "128^3": None,  # the template's own shape, untouched: what every SDIP store ships
+    "128x128x64": (128, 128, 64),
+    "64x256x64": (64, 256, 64),
+    "64^3": (64, 64, 64),
+}
+PATTERNS = ("full_inline", "full_crossline", "sample_slice", "window")
+REPETITIONS = 5
+RUNS = ("A", "B")
+LOAD_LIMIT_FRACTION = 0.25  # a run starts only when the 1-min load <= cores x this
+LOAD_ATTEMPTS = 3
+LOAD_WAIT_S = 60
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _index(pattern: str, shape: tuple[int, ...]) -> tuple[Any, ...]:
+    n_il, n_xl, n_s = shape
+    if pattern == "full_inline":
+        return (n_il // 2, slice(None), slice(None))
+    if pattern == "full_crossline":
+        return (slice(None), n_xl // 2, slice(None))
+    if pattern == "sample_slice":
+        return (slice(None), slice(None), n_s // 2)
+    return (
+        slice(n_il // 4, 3 * n_il // 4),
+        slice(n_xl // 4, 3 * n_xl // 4),
+        slice(n_s // 3, 2 * n_s // 3),
+    )
+
+
+def _chunks_touched(index: tuple[Any, ...], shape: tuple[int, ...], chunks: tuple[int, ...]):
+    """Chunk grid coordinates a read touches. Structural: no timer, no cache."""
+    ranges = []
+    for sel, n, c in zip(index, shape, chunks, strict=True):
+        if isinstance(sel, int):
+            ranges.append(range(sel // c, sel // c + 1))
+        else:
+            start, stop, _ = sel.indices(n)
+            ranges.append(range(start // c, (stop - 1) // c + 1))
+    return [(i, j, k) for i in ranges[0] for j in ranges[1] for k in ranges[2]]
+
+
+def _build(case: dict[str, Any], store: Path, requested: tuple[int, int, int] | None) -> None:
+    """Amendment D: build through SDIP's own ingest, the shape on the declaration (D-0112)."""
+    from sdip.ingest.orchestrator import ingest_declared
+    from sdip.spec.declaration import SurveyDeclaration
+    from sdip.spec.overrides import load_override
+
+    override = load_override(Path(case["override"])) if case.get("override") else None
+    declaration = SurveyDeclaration(
+        revision=case["revision"],
+        template=case["template"],
+        override=override,
+        chunk_shape=requested,
+    )
+    ingest_declared(Path(case["source"]), store, declaration)
+
+
+def _planes(case: dict[str, Any], store: Path) -> dict[str, str]:
+    from sdip.equivalence import plane_1, plane_2, plane_3, plane_4, plane_5
+    from sdip.spec.declaration import SurveyDeclaration
+    from sdip.spec.gate import g1
+    from sdip.spec.overrides import load_override
+
+    override = load_override(Path(case["override"])) if case.get("override") else None
+    spec = (
+        SurveyDeclaration(revision=case["revision"], template=case["template"], override=override)
+        .build_spec()
+        .segy_spec
+    )
+    source = Path(case["source"])
+    gate = g1(spec.trace.header.fields, dtype=spec.trace.header.dtype)
+    results = {
+        "plane_1": plane_1(source, store),
+        "plane_2": plane_2(source, store),
+        "plane_3": plane_3(source, store, spec, g1_passed=gate.passed),
+        "plane_4": plane_4(source, store, spec),
+        "plane_5": plane_5(source, store, spec),
+    }
+    return {k: v.status for k, v in results.items()}
+
+
+def _structure(store: Path, pattern: str) -> dict[str, Any]:
+    import zarr
+
+    array = zarr.open_group(str(store), mode="r")["amplitude"]
+    shape, chunks = tuple(array.shape), tuple(array.chunks)
+    touched = _chunks_touched(_index(pattern, shape), shape, chunks)
+    compressed = 0
+    for i, j, k in touched:
+        chunk_file = store / "amplitude" / "c" / str(i) / str(j) / str(k)
+        compressed += chunk_file.stat().st_size if chunk_file.exists() else 0
+    per_chunk = int(chunks[0] * chunks[1] * chunks[2] * array.dtype.itemsize)
+    return {
+        "chunks": list(chunks),
+        "chunks_touched": len(touched),
+        "compressed_bytes": compressed,
+        "decoded_bytes": len(touched) * per_chunk,
+    }
+
+
+def _time(store: Path, pattern: str) -> list[float]:
+    import numpy as np
+    import zarr
+
+    samples = []
+    for _ in range(REPETITIONS):
+        start = time.perf_counter()
+        array = zarr.open_group(str(store), mode="r")["amplitude"]
+        block = np.asarray(array[_index(pattern, tuple(array.shape))])
+        samples.append(time.perf_counter() - start)
+        del block, array
+    return samples
+
+
+def _wait_for_quiet() -> dict[str, Any]:
+    limit = (os.cpu_count() or 1) * LOAD_LIMIT_FRACTION
+    for attempt in range(1, LOAD_ATTEMPTS + 1):
+        load = os.getloadavg()[0]
+        if load <= limit:
+            return {"load_1min": load, "limit": limit, "attempt": attempt, "void": False}
+        time.sleep(LOAD_WAIT_S)
+    return {"load_1min": os.getloadavg()[0], "limit": limit, "attempt": LOAD_ATTEMPTS, "void": True}
+
+
+def main() -> None:
+    import numpy as np
+    import zarr
+
+    from sdip.guard.env import check_barred_env_vars
+
+    run_root, repo, cases_path = (Path(a).resolve() for a in sys.argv[1:4])
+    if run_root.exists():
+        raise SystemExit(f"RUN_ROOT {run_root} exists; P14 writes only into a fresh one")
+    findings = check_barred_env_vars()
+    if findings:
+        raise SystemExit(f"barred variables set: {findings}")
+    run_root.mkdir(parents=True)
+    cases = json.loads(cases_path.read_text())
+    receipt: dict[str, Any] = {
+        "probe": "P14",
+        "repo": str(repo),
+        "python": platform.python_version(),
+        "machine": platform.platform(),
+        "cpu_count": os.cpu_count(),
+        "cases": [],
+    }
+    for case in cases:
+        source = Path(case["source"])
+        observed = _sha256(source)
+        entry: dict[str, Any] = {"name": case["name"], "source_sha256": observed, "stores": {}}
+        if observed != case["sha256"]:
+            entry["stopped"] = f"source sha256 {observed} != declared {case['sha256']}"
+            receipt["cases"].append(entry)
+            continue
+        decoded_hash: dict[str, str] = {}
+        for shape_name, requested in SHAPES.items():
+            store = run_root / f"{case['name']}.{shape_name.replace('^', 'c')}.mdio"
+            _build(case, store, requested)
+            planes = _planes(case, store)
+            amplitude = np.asarray(zarr.open_group(str(store), mode="r")["amplitude"][:])
+            decoded_hash[shape_name] = hashlib.sha256(amplitude.tobytes()).hexdigest()
+            del amplitude
+            entry["stores"][shape_name] = {
+                "planes": planes,
+                "amplitude_sha256": decoded_hash[shape_name],
+                "store_bytes": sum(f.stat().st_size for f in store.rglob("*") if f.is_file()),
+                "structure": {p: _structure(store, p) for p in PATTERNS},
+            }
+        entry["precondition"] = {
+            "all_planes_pass": all(
+                s["planes"][k] == "PASS" for s in entry["stores"].values() for k in s["planes"]
+            ),
+            "amplitude_identical_across_shapes": len(set(decoded_hash.values())) == 1,
+        }
+        if all(entry["precondition"].values()):
+            entry["runs"] = {}
+            for run in RUNS:
+                quiet = _wait_for_quiet()
+                order = list(SHAPES) if run == "A" else list(reversed(SHAPES))
+                timings = {
+                    s: {
+                        p: _time(run_root / f"{case['name']}.{s.replace('^', 'c')}.mdio", p)
+                        for p in PATTERNS
+                    }
+                    for s in order
+                }
+                entry["runs"][run] = {
+                    "load": quiet,
+                    "median_s": {
+                        s: {p: statistics.median(v) for p, v in t.items()}
+                        for s, t in timings.items()
+                    },
+                    "samples_s": timings,
+                }
+        receipt["cases"].append(entry)
+    json.dump(receipt, sys.stdout, indent=1, sort_keys=True)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**Unchanged:** everything else:
+- the article, shapes, patterns, N = 5, two runs;
+- the per-run load gate, the precondition and the stop conditions;
+- the 1.25 ratio, the decision rule and its consequence;
+- Amendment C's start rule: the harness starts at once, at the commit registering this
+  amendment, once that commit is on `origin`.
