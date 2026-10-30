@@ -76,7 +76,19 @@ def test_the_marker_records_every_array_and_the_root(rev1):
     group = zarr.open_group(str(store), mode="r")
     recorded = dict(group.attrs)[ATTR_STORE_DIGEST]
     assert recorded["scheme"] == SCHEME
-    assert set(recorded["nodes"]) == {str(a.path) for _, a in group.members(max_depth=None)}
+    # sdip-store-digest/1 records an array under its path and a group under its path plus
+    # "/" (compute_store_digest). D-0110 made the raw view the first nested group: the group
+    # node and both of its arrays must be covered.
+    expected = {
+        str(node.path) + ("/" if isinstance(node, zarr.Group) else "")
+        for _, node in group.members(max_depth=None)
+    }
+    assert set(recorded["nodes"]) == expected
+    assert {
+        "amplitude_raw_ibm32/",
+        "amplitude_raw_ibm32/index",
+        "amplitude_raw_ibm32/words",
+    } <= expected
     # The raw file headers live in this array's metadata; it must be a covered node.
     assert "segy_file_header" in recorded["nodes"]
     assert len(recorded["sha256"]) == 64
