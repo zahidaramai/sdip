@@ -355,3 +355,53 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 ```
+
+---
+
+## Results — run 2026-10-31, at `a891bf6`, N = 1 build per (case, shape)
+
+| Field | Value |
+|---|---|
+| Run | 00:11:41-00:37:21 MYT, clean detached worktree at the registration commit `a891bf6` (on `origin`), harness extracted verbatim (sha256 equal to the registered text) |
+| Environment | CPython 3.12.13, 14 cores, the pins, no barred variable (checked by the harness first) |
+| Sources | both sha256 equal to the article table (the harness checked; neither case stopped) |
+| Receipt | `prereg/P14-receipt-2026-10-31.json` (local paths removed; raw receipt sha256 `aa7df2442afbb3a4…`). Run root deleted after this record (Storage Law) |
+| Verdict | **Precondition PASS on both cases. Timing leg NOT EVALUABLE: all four runs void.** Falsifier not evaluated |
+
+**Precondition.** Every store, at every shape, Planes 1-5 PASS, and the decoded `amplitude` sha256
+is identical across the four shapes (`volve_time` `b04aaa7dc2…`, `volve_depth` `1c0635f0c8…`).
+Changing the chunk shape changed nothing a store holds.
+
+**Structure** (deterministic; per pattern: chunks touched · compressed MiB read · decoded MiB):
+
+| Case | Shape | Store bytes | full inline | full crossline | sample slice | window |
+|---|---|---|---|---|---|---|
+| `volve_time` | 128^3 | 1,577,867,483 | 42 · 243.9 · 336.0 | 28 · 135.9 · 224.0 | 24 · 118.0 · 192.0 | 36 · 239.4 · 288.0 |
+| `volve_time` | 128x128x64 | 1,572,783,653 | 84 · 243.2 · 336.0 | 56 · 135.5 · 224.0 | 24 · 59.1 · 96.0 | 60 · 199.5 · 240.0 |
+| `volve_time` | 64^3 | 1,571,080,332 | 168 · 121.4 · 168.0 | 98 · 67.4 · 98.0 | 84 · 59.1 · 84.0 | 140 · 116.2 · 140.0 |
+| `volve_time` | 64x256x64 | 1,574,340,712 | 42 · 121.6 · 168.0 | 98 · 271.5 · 392.0 | 21 · 59.1 · 84.0 | 60 · 187.0 · 240.0 |
+| `volve_depth` | 128^3 | 88,610,958 | 18 · 42.9 · 144.0 | 9 · 27.2 · 72.0 | 2 · 4.9 · 16.0 | 8 · 19.6 · 64.0 |
+| `volve_depth` | 128x128x64 | 88,360,939 | 36 · 42.8 · 144.0 | 18 · 27.1 · 72.0 | 2 · 2.4 · 8.0 | 14 · 17.1 · 56.0 |
+| `volve_depth` | 64^3 | 88,157,296 | 72 · 42.7 · 72.0 | 18 · 13.5 · 18.0 | 4 · 2.4 · 4.0 | 21 · 16.2 · 21.0 |
+| `volve_depth` | 64x256x64 | 88,328,400 | 18 · 42.8 · 72.0 | 18 · 42.8 · 72.0 | 1 · 2.4 · 4.0 | 7 · 17.1 · 28.0 |
+Read as the registered structure leg, nothing more. On decoded bytes, `64^3` is lowest or tied
+lowest on every pattern of both cases (tied with `64x256x64` on `full_inline` in both cases and on
+`sample_slice`); it decodes 2.1x to 4.0x less than `128^3` on `full_crossline` and `window`, and
+touches 2.0x to 3.9x more chunks. `64x256x64` decodes the most on `volve_time`'s `full_crossline`
+(392 MiB against 224 MiB for `128^3`) and ties `128^3` there on `volve_depth`. `128x128x64` halves
+`sample_slice` against `128^3` on both. No shape decodes less than `128^3` on every pattern *and*
+touches fewer chunks: smaller chunks trade decoded bytes for chunk count. The `volve_depth` `128^3` full-inline compressed figure, 45,007,663 B, equals the
+consumer's figure for its 128³ re-encode of the same survey to the byte (consistency, not
+evidence).
+
+**Timing: void, not judged.** Each run's 1-minute load at its third check: `volve_time` A 4.80,
+B 4.53; `volve_depth` A 12.27, B 4.90 — all above the declared 0.25 × 14 = 3.5, so every run is
+void as the method requires. The harness still recorded the samples; they are in the receipt with
+`"void": true` and are **not** evidence of anything. With both runs void on both cases, the
+timing leg is NOT EVALUABLE and, as registered, only the structure is reported. **D4's poststack
+question stays open.** A rerun of the timing leg alone needs its own amendment registered before
+it (a quiet window; nothing else changed).
+
+### Recorded in
+
+`OPEN_DEBTS.md` D4 (unchanged: open) · this file
