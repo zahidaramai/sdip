@@ -2614,3 +2614,32 @@ says. One disagreement found while building it is reported, not resolved here: t
 CHANGELOG (corrected at 1.0.0) says a pin bump is a **major** release, while specification §12.4
 and the operating contract §3.2 still say **minor**; the governing documents are the owner's to
 amend.
+
+---
+
+## D36 — CLOSED 2026-10-30 — the raw sample view is sparse: 0.77× the source, recoverability kept
+
+- **Closes:** D36 above (**SP10**) · **Decision:** `DECISIONS.md` D-0106 (owner: *"Sparse view of
+  only the at-risk words"*), design D-0110
+
+Built as registered: `amplitude_raw_ibm32` is a `sparse/1` group of `index` and `words` holding
+only the live words whose stored float32 does not re-encode to the source word; Plane 4 rebuilds
+every live trace's words and compares them exactly; older dense stores are still verified.
+
+**Measured through the executable, on the Volve time survey** (source 1,050,849,760 B,
+`f902e2bd…`, 288,694 live traces, N = 1, warm machine, `sdip ingest` then `sdip verify`):
+ingest exit 0 in 122 s; **0 entries**; `verify` PASS, the raw leg identical over all 288,694 live
+traces. Store **789,088 KiB**, of which the view is 12 KiB — against **1,541,704 KiB** for the
+same survey's 1.6.0 store with the dense view (752,628 KiB of it). **0.77× the source, where it was
+1.50×.** The run root was deleted after this record (Storage Law).
+
+**Both halves** (`tests/integration/test_sparse_raw_view.py`, 12 passed): a source planted with
+one word from each of P2's six regimes stores exactly the five that do not round-trip, Plane 4
+PASS; each stored word corrupted fails G2d with the decoded leg untouched; an unsorted,
+out-of-range, length-mismatched or padding entry fails; a dense store still passes, and fails when
+corrupted. The G7 control `flipped_raw_ibm32_word` bites on an empty view by inserting a spurious
+entry. TensorStore reads the new arrays bit-identically (P4).
+
+**Cost, as D-0110 stated:** recovering source words now needs an `ieee2ibm` (the pinned `segy`, or
+the documented algorithm). P2's rule is unchanged: an `ibm32` store is `EQUIVALENT` only with a
+byte-identical round trip.
