@@ -5347,3 +5347,117 @@ cites must carry its own digest; this one is the record, not a live store.
 
 **Scope.** N = 1 read of one file; header fields only. No CRS ruling is SDIP's: SDIP reports the
 bytes; "ED50 / UTM zone 31N" and EPSG 23031 are GeoSuite's (D-205, D-209).
+
+---
+
+## D-0105 — 2026-10-30 — Store receipt for GeoCRS: every Volve and F3 store on record
+
+GeoSuite's order (owner D-216, plan item 2): for every Volve and F3 store on record, the store
+digest, content digest, source sha256 and header CRS lines, read-only, from kept markers, saying
+which were recomputed. At HEAD `1bb99b1`, clean tree. **No store was written or modified.**
+
+**Method.** Every `zarr.json` under `Local_Sites/` (depth ≤ 10) whose root carries
+`sdipStoreDigest`: 40 markers, 21 distinct store digests. Where chunks are present (19 store
+digests at 22 paths, plus the 2 pre-digest depth stores) both digests were **recomputed** with `sdip.provenance.store_digest.check_store_digest`
+and `check_content_digest`, the functions `sdip verify` calls (not through the executable).
+Where only metadata is kept (ExS harvest receipts), the digest is **read from the marker only**.
+Sources were re-hashed today; header bytes read as in D-0104. Timings (0.1-3.9 s per store)
+were taken with files in the page cache and do not bear on D63.
+
+### Sources
+
+| Key | File | Bytes | sha256 | Text header sha256 |
+|---|---|---|---|---|
+| F3 | `Dutch Government_F3_entire_8bit seismic.segy` | 1,292,686,488 | `b36494f4e9bed7216228124f43ff8901168bff8bebd4e4c4dabb80a68d568dab` | `601efd5d24b71feb3d6d8077f28cbee29353c439f08bd43685bba58042fc1505` |
+| V-T | `ST10010ZC11_PZ_PSDM_KIRCH_FULL_T.segy` | 1,050,849,760 | `f902e2bdaa277caf93a32e5f35eae653eb8b923138db0efc1e91918ef6757b2e` | `208aa388b68c3344cd9086c6e929ab8a48ad822bfab7f01c44fbaf4643a75adb` |
+| V-base | `volve_base_2002_ST0202ZDC12.sgy` | 58,409,880 | `8bd0fc8ef159bc5ee74ee4420f066ac538b92ef9f23e540648442a18882d70f2` | `4e893afcc3fae8ab664cd80d9c5ff290b76af241bf89dab36a35da396af41be4` |
+| V-mon | `volve_mon_2010_ST10010ZDC12.sgy` | 58,409,880 | `f249c2656a7549fbdcef04248c6bcdfe270df5bd4bb25d8684ce3e4cad2e24b3` | `bc76870e8d9242437380788422041d4bb11f5f8eb81c6b4b7eba58063b095a4e` |
+
+All four are held outside this repository (paths given to GeoSuite, not published).
+
+**F3 header CRS lines:** D-0104 (card C6, "UTM Zone 31 on ED50 Datum"; metres from binary
+3255-3256 only).
+
+**V-T header CRS lines**, verbatim (EBCDIC cp037, trailing blanks dropped):
+
+```
+C02 AREA   : VOLVE, BLOCK 15/9,  NORTH SEA - ST10010     SURVEY: 3D 4C 0BC
+C09 GEODECTIC DATUM:  ED50      SPHEROID: INTERNAT 1924     PROJECTION: UTM
+C10  UTM ZONE: 31 N
+C11 FIRST SAMPLE: 4 MS     LAST SAMPLE: 3400 MS     SAMPLE INTERVAL: 4 MS
+C27 INLINE  BIN SIZE: 12.5M   CROSSLINE BIN SIZE: 12.5M  AZIMUTH: 284 DEGREES
+C29 PG1   X: 439272.97   Y: 6475068.89   IL:   9961   XL: 1881
+C30 PG2   X: 429582.21   Y: 6477485.37   IL:   9961   XL: 2680
+C31 PG3   X: 440588.57   Y: 6480344.84   IL: 10396   XL: 1881
+C32 PG4   X: 430897.81   Y: 6482761.32   IL: 10396   XL: 2680
+C38 ALL COORDINATE VALUES ARE MULTIPLIED BY 100
+```
+
+Unlike F3, this header states datum, spheroid, projection, zone **and hemisphere**. No EPSG
+code and no vertical datum. Binary: 3217-3218 = 4000 µs, 3221-3222 = 850, 3225-3226 = 1 (IBM
+float), **3255-3256 = 1 (metres)**, 3501-3502 = `0x0100` (rev 1), 3503-3504 = 1. Trace 1:
+scalar −100, CDP X/Y 438278.41 / 6475316.82.
+
+**V-base and V-mon headers state no CRS at all.** They are derived files (C1 "VOLVE 4D
+CO-PROCESSED PAIR (ZDC12) - BUILT BY build_volve_zdc12.py"); their 15 cards carry provenance,
+grid and licence, and no datum, projection or zone. Verbatim, the cards bearing on units:
+
+```
+C 3 SOURCE: ST0202ZDC12.POST_STACK.segy
+C 4 VERTICAL AXIS IS DEPTH IN METRES, 4 M SAMPLING, 1125 SAMPLES
+C 5 THE CHAIN'S MS FIELDS CARRY METRES FOR THIS DATASET, ONE TO ONE
+```
+
+(V-base; V-mon's C3 reads `C 3 SOURCE: volve10r12-full-z-sub3d.sgy`, C4-C5 identical.)
+Binary: 3255-3256 = **0 (undeclared)**, 3225-3226 = 1, 3217-3218 = 4000, 3221-3222 = 1125, rev 0.
+Trace 1: scalar −100, CDP X/Y 436400.49 / 6477447.15. A CRS for these two is not readable from
+their headers; it can only be carried from their stated sources.
+
+### Stores
+
+Status is store / content digest. "decl." = source named by the run's `ingest-declaration.json`;
+"by content digest" = inferred from a content digest equal to a declared store's.
+
+| Source | Store digest (`sdip-store-digest/1`) | Content digest (`sdip-content-digest/1`) | SDIP | Declaration | Status | Held at |
+|---|---|---|---|---|---|---|
+| F3 | `9203d42081a1ae305c405b17fd56e711fb3b9acdd0b84539a0ba235884fd0b65` | — (pre-1.6.0) | 1.4.0 | rev 1, Time | **marker only**, not recomputed (chunks deleted) | AI-ML-Seismic-Zahid-V1:docs/receipts/2026-10-15-exs-mdio-01-f3-agreement-PASS @ `1f17ac8` (and 8 ExS worktree copies) |
+| F3 | `00acb1dbede4036d51cfac17652368f0ca71b66a4f72aee573c7705fe30cd3fd` | — (pre-1.6.0) | 1.4.0 | rev 1, Time | **marker only**, not recomputed (chunks deleted) | …/2026-10-15-exs-mdio-01-f3-agreement-FAIL (9 copies) |
+| F3 | `905301e2327c3a4f41336dd9ab7efff735bf33e52e82afe7c116333e457b02dd` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | ExS-qi7f3-wt:data/raw/f3_sdip/f3.mdio |
+| F3 | `2c383321f5b26069efd77ada664ccbb665e1c68c61ce70bc497c4b6e7a7922c0` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/scratch/sdip/f3-store/ab066698; geoaibrain:.external/runs/demo/run_ab066698 |
+| F3 | `1c5915f0ca93435ed624853244f58f98f3d2b8a8394d76c44a4cdc6658fabe41` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/scratch/sdip/f3-store/cd526e9e |
+| V-mon (decl.) | `607a3605d85ebeee06c29c30f70f6d25f7b5ea843ea55e2a0c5cdaae1e3578d9` | `34dcd6fc1b4ac6278adbb6f94b9259b92cfcc8e5bcc2717bc53f863c153eddfc` | 1.6.0 | rev 1, Depth | **recomputed** MATCH / MATCH | geoaibrain:.external/scratch/sdip/volve-store/demo/078b9cde; geoaibrain:.external/runs/demo/run_078b9cde |
+| V-base (decl.) | `461494a12ff7e6d81a823964f338ac8759825e50665eaef09dc4379b62ce1ce9` | `4cdc0ff14f735347a61fa93bef43989ae9371f945666340bb0918706ae55aafd` | 1.6.0 | rev 1, Depth | **recomputed** MATCH / MATCH | geoaibrain:.external/scratch/sdip/volve-store/demo/e319342f; geoaibrain:.external/runs/demo/run_e319342f |
+| V-base (by content digest) | `039bdc25973285ecd0457b2efdffe354e12195ddcf6c82c05c8a41347daa41b7` | `4cdc0ff14f735347a61fa93bef43989ae9371f945666340bb0918706ae55aafd` | 1.6.0 | rev 1, Depth | **recomputed** MATCH / MATCH | geoaibrain:.external/scratch/sdip/volve-store/sfmext/2705584f |
+| V-mon (by content digest) | `b3e00ebedce66e3d5b34b7c42667e325c0672e81bb9092d79839a711ef48a7d8` | `34dcd6fc1b4ac6278adbb6f94b9259b92cfcc8e5bcc2717bc53f863c153eddfc` | 1.6.0 | rev 1, Depth | **recomputed** MATCH / MATCH | geoaibrain:.external/scratch/sdip/volve-store/sfmext/6de89d38 |
+| F3 | `6f2992bd3de58310291ea246272b35cf1d0cca54b36f1c076cff38d935d8ddd3` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_75e30f43 |
+| F3 | `f9a6e55f50405c5e01a38880d4406c0433ea89b58aad4841b05e5325549e13a2` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_2c5a63f7 |
+| F3 | `c16fd69ccac5316e699ea871966b398e7a84457ce9570c6f5e0c34b4623d78a2` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_5fe88f89 |
+| F3 | `db42c9faa79738b2a08ac2a86445f3f50ad27002f0f14f25257e8f3a4208ca6b` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_e056b706 |
+| F3 | `ab343f6485d32bcfbf61792384b5f4684338b3338891a0bbd71d54fcec1a6fc8` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_036874c3 |
+| V-base | `72d6e11ae816865f21b1298649a8205ef457305f87c19fedfb93be3dd3b1bcf3` | `cb4aff14d49c2b2bb3060ae9697be22435009bb67f1e89b884dcf0876ddbeeb4` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_bd5bc558 |
+| V-base | `e7fa8488a376b0681c262635ec86534fc30a41542488d587952c5962a71958f2` | `cb4aff14d49c2b2bb3060ae9697be22435009bb67f1e89b884dcf0876ddbeeb4` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_880462ab |
+| F3 | `31b7feff27f72716d8734d9f0972aa8df9d0adddf782df9fc37bd438f0fec684` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_07537a85 |
+| F3 | `3cecedd5c7909d26a8082a84a82a30626fa66cd3892d26b91fc2363d63bfd8a8` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_b226c7c9 |
+| V-mon | `1dfc37d8def357a12284d5ac74fdcb75f56e31b2a60a8f9ab0ed9b18b247cd13` | `452d9c65eb348d11e9086e7c3e0be745639e5dc0fdd10c0fa6307d851c33605d` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_87b8bba2 |
+| F3 | `d71a1482776f18d3d207b56a92b711eca7ee98576ed4a885a8ef043fa5804d87` | `3aa3c34200d22771575d4f2d208073a3b6f784e4d7525d3fa3f589bd0e9a542f` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | geoaibrain:.external/runs/demo/run_4d373919 |
+| V-T | `68fd9bb43c3e5b967a63ac9d03d319212821b9499030f8b5509635f461060d5f` | `3ee9a463f81857312fec8cda5de3f8bf4b7dfbe42506acc662faefa7096976bf` | 1.6.0 | rev 1, Time | **recomputed** MATCH / MATCH | ExS-qi6-wt:data/raw/volve_sdip/ST10010ZC11_PZ_T.mdio |
+| V-base | `— (none; pre-1.3.0)` | `—` | 1.2.1 | rev 0, Depth, override segy-rev0-poststack3d@1 | ABSENT / ABSENT (nothing to recompute) | AI-ML-Seismic-Zahid-V1:…/pair_depth_zdc12_2002_2010/volve_base_2002_ST0202ZDC12.mdio |
+| V-mon | `— (none; pre-1.3.0)` | `—` | 1.2.1 | rev 0, Depth, override segy-rev0-poststack3d@1 | ABSENT / ABSENT (nothing to recompute) | AI-ML-Seismic-Zahid-V1:…/pair_depth_zdc12_2002_2010/volve_mon_2010_ST10010ZDC12.mdio |
+
+**Findings.**
+- Every live store: store and content digest **recomputed MATCH** (22 paths, 19 store digests). No MISMATCH.
+- **All 12 F3 store paths at 1.6.0 share one content digest, `3aa3c342…542f`**, across 11 store
+  digests written 2026-10-16 to 2026-10-26 by two consumers: a re-ingest reproduces the content,
+  as D-0101 designed. Both 1.4.0 F3 markers carry F3's text and binary header hashes.
+- The Volve time store GeoSuite named, **`68fd9bb4…0d5f`, recomputes MATCH**, content
+  `3ee9a463…76bf`; its source is V-T by ExS's `ingest.log` (sha256 equal to today's re-hash).
+- **The Volve depth pair on record (SDIP 1.2.1, 2026-09-17) has no digest**: it predates the
+  store digest (1.3.0), so it is `ABSENT` and cannot be checked. A store cited by a map should
+  be re-ingested by ≥ 1.6.0 to carry one.
+- GeoAIBrain ingested the depth-pair files under two declarations: `PostStack3DDepth` and, in
+  three runs, `PostStack3DTime`, while their headers say "VERTICAL AXIS IS DEPTH IN METRES". The
+  two declarations give different content digests for one source (`4cdc0ff1…` vs `cb4aff14…`
+  for V-base; `34dcd6fc…` vs `452d9c65…` for V-mon). Recorded as found; the declaration is the
+  consumer's.
+
+**Scope.** N = 1 recompute per store; one machine. SDIP rules on no CRS.
