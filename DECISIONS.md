@@ -5488,3 +5488,56 @@ these answers arrived.
 **What none of them changes:** no tolerance, no barred variable, no pin. D36 and D61 touch the
 gates (§9), which is why they waited for the owner: each ships with its negative controls and the
 sweep of correct data (D-0088) in the same commit.
+
+---
+
+## D-0107 — 2026-10-30 — `sdip receipt`: the header-receipt contract, registered before any code
+
+**Owner's ruling, relayed by GeoSuite (2026-10-30):** *"Yes, add the header-receipt report"* — a
+read-only CLI capability that turns a source (and optionally its store) into the evidence set of
+D-0104/D-0105, for consumers to attach to their own handoffs; SDIP files it itself for the
+ingests it runs (P14, `certify`). Request GEOCRS-SDIP-01. This entry is the contract; the code
+must meet it, and a test checks the output against it.
+
+**Command.** `sdip receipt SOURCE [STORE] [--json] [--markdown PATH]`. Text summary by default;
+`--json` prints the receipt on standard output; `--markdown PATH` also writes the same receipt as
+Markdown to `PATH` (refused if it exists, and never inside `SOURCE`'s or `STORE`'s directory).
+
+**Read-only, enforced.** Opens `SOURCE` and `STORE` for reading only; writes nothing but
+`PATH`. Runs the hostile-input preflight before reading (§3.6). Barred variables refused as for
+every store command.
+
+**Receipt schema `sdip-header-receipt/1`** (JSON keys; the Markdown carries the same):
+
+| Key | Content |
+|---|---|
+| `source` | `path` (absolute, resolved), `path_repo_relative` (as D46), `bytes`, `sha256` |
+| `textual_header` | `sha256` of bytes 1-3200; `encoding` as SDIP's classifier measured it; `cards`: 40 entries `{card, text, nonprintable: [{column, byte}]}`, text verbatim after the declared decode with each non-printable character shown as `?` and listed by 1-based column and raw byte |
+| `binary_header` | `sha256` of bytes 3201-3600; `fields`: `{bytes, name, value, raw_hex}` for at least 3217-3218 sample interval, 3221-3222 samples per trace, 3225-3226 format code, 3255-3256 measurement system, 3501-3502 revision, 3503-3504 fixed-length flag, 3505-3506 extended textual headers; `measurement_system` decoded per the standard only (1 metres, 2 feet, anything else `undeclared`) |
+| `first_trace` | coordinate scalar (71-72), coordinate units (89-90), CDP X/Y (181-188) raw and scaled, delay (109-110), inline/crossline as the declaration reads them |
+| `mentions` | for each of `datum`, `projection`, `zone`, `hemisphere`, `linear_units`, `vertical_datum`: the **declared keyword list** used and the cards (number + verbatim text) containing any of them, or `[]`. A mechanical text match, never an interpretation: SDIP names no CRS, grades nothing, and states no EPSG code |
+| `not_stated` | the topics whose `mentions` list is empty, by name |
+| `store` (when `STORE` given) | path and repo-relative path; `sdip_version`; `store_digest` and `content_digest` **recomputed** (`MATCH`/`MISMATCH`/`ABSENT`/`FOREIGN`, recorded and computed sha256); `raw_headers_bind`: the marker's `sdipRawTextHeaderSha256` / `sdipRawBinaryHeaderSha256` (or the raw bytes held on the store) compared with the two hashes above, `MATCH`/`MISMATCH`/`ABSENT` |
+| `issued` | `sdip_version`, `sdip_commit` and `dirty` of the working tree it ran in, UTC timestamp |
+
+**Keyword lists, fixed here** (case-insensitive whole words on the decoded cards):
+`datum` — DATUM, ED50, ED-50, WGS84, WGS-84, WGS 84, ETRS89, NAD27, NAD83, SPHEROID, ELLIPSOID;
+`projection` — PROJECTION, UTM, TRANSVERSE MERCATOR, LAMBERT, CRS; `zone` — ZONE;
+`hemisphere` — NORTH, SOUTH, the token `N` or `S` immediately after a zone number;
+`linear_units` — METRE, METRES, METER, METERS, FEET, FOOT, FT; `vertical_datum` — MSL, MEAN SEA
+LEVEL, VERTICAL DATUM, SEISMIC REFERENCE DATUM, SRD. Changing a list is a new schema version.
+**A match is not a statement:** "NORTH" also matches "NORTH SEA", so every match is quoted with
+its card for the reader to judge; `not_stated` is reliable only in the direction it is named —
+no card contains any keyword for that topic. (`LAT`, lowest astronomical tide, is left out: it
+matches "Lat min" on F3's card 10.)
+
+**Exit status.** 0: receipt produced and, with a store, both digests `MATCH` (or `ABSENT` on a
+pre-1.6.0 store, which the receipt says) and the raw headers bind. 1: a digest `MISMATCH`, raw
+headers that do not bind, or a refused input (no receipt on standard output, one line on standard
+error). 2: usage.
+
+**Acceptance, measured through the executable:** on the F3 and Volve time sources and stores on
+record, the receipt reproduces D-0104's and D-0105's hashes, cards and fields exactly; on the
+depth pair it lists `datum`, `projection`, `zone`, `hemisphere` and `vertical_datum` as not
+stated; on a synthetic source with one flipped header byte against its store, `raw_headers_bind`
+is `MISMATCH` and the exit is 1; GeoCRS `check` passes on a declaration built from one receipt.
