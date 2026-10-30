@@ -169,6 +169,27 @@ def _store_block(store: Path, text_sha: str, binary_sha: str) -> dict[str, Any]:
     }
 
 
+def _sdip_installation() -> dict[str, Any]:
+    """The commit and state of the SDIP that produced the receipt, not the caller's cwd (D-0111).
+
+    The git checkout containing the imported ``sdip`` package; an installed distribution with no
+    checkout says so, with commit and dirty ``None`` rather than a guess.
+    """
+    import sdip
+    from sdip.provenance.git import capture_git_state, repository_root
+
+    package = Path(sdip.__file__).resolve().parent
+    top = repository_root(package)
+    if top is None:
+        return {
+            "sdip_source": "installed distribution (no checkout)",
+            "sdip_commit": None,
+            "dirty": None,
+        }
+    git = capture_git_state(top)
+    return {"sdip_source": str(top), "sdip_commit": git.commit, "dirty": git.dirty}
+
+
 def build_receipt(
     source: str | Path, text_spec: Any, store: str | Path | None = None
 ) -> dict[str, Any]:
@@ -178,15 +199,23 @@ def build_receipt(
     """
     from sdip import __version__
     from sdip.ingest.file_headers import classify_textual_header, read_raw_file_headers
-    from sdip.provenance.git import capture_git_state, repo_relative, repository_root
+    from sdip.provenance.git import repo_relative, repository_root
 
     source_path = Path(source).resolve()
     raw = read_raw_file_headers(source_path)
     decode = classify_textual_header(raw.textual, text_spec)
     cards = _cards(raw.textual, decode.encoding)
     mentions = _mentions(cards)
+    # D-0111: the binary header states linear units when 3255-3256 is 1 or 2; no other topic
+    # has a binary field in SEG-Y.
+    units_code = _i16(raw.binary, 3255 - 3200)
+    stated_by_binary = (
+        {"linear_units": f"binary bytes 3255-3256 = {units_code} ({_MEASUREMENT[units_code]})"}
+        if units_code in _MEASUREMENT
+        else {}
+    )
     measurement = _i16(raw.binary, 3255 - 3200)
-    git = capture_git_state(".")
+    issued_by = _sdip_installation()
     receipt: dict[str, Any] = {
         "schema": SCHEMA,
         "source": {
@@ -216,11 +245,15 @@ def build_receipt(
         },
         "first_trace": _first_trace(source_path, raw.binary),
         "mentions": mentions,
-        "not_stated": [topic for topic, m in mentions.items() if not m["cards"]],
+        "stated_by_binary": stated_by_binary,
+        "not_stated": [
+            topic
+            for topic, m in mentions.items()
+            if not m["cards"] and topic not in stated_by_binary
+        ],
         "issued": {
             "sdip_version": __version__,
-            "sdip_commit": git.commit,
-            "dirty": git.dirty,
+            **issued_by,
             "at": _dt.datetime.now(tz=_dt.UTC).isoformat(timespec="seconds"),
         },
     }
@@ -249,7 +282,8 @@ def to_markdown(receipt: dict[str, Any]) -> str:
         f"# Header receipt — `{Path(src['path']).name}`",
         "",
         f"Schema `{receipt['schema']}` · sdip {receipt['issued']['sdip_version']} at "
-        f"`{receipt['issued']['sdip_commit']}` (dirty: {receipt['issued']['dirty']}) · "
+        f"`{receipt['issued']['sdip_commit']}` (dirty: {receipt['issued']['dirty']}; "
+        f"{receipt['issued']['sdip_source']}) · "
         f"{receipt['issued']['at']}",
         "",
         "## Source",
@@ -297,7 +331,10 @@ def to_markdown(receipt: dict[str, Any]) -> str:
     for topic, m in receipt["mentions"].items():
         cards = "; ".join(f"card {c['card']}: `{c['text']}`" for c in m["cards"]) or "none"
         lines.append(f"- **{topic}**: {cards}")
-    lines += ["", f"**No card mentions:** {', '.join(receipt['not_stated']) or 'nothing listed'}"]
+    for topic, how in receipt["stated_by_binary"].items():
+        lines.append(f"- **{topic}** stated by the binary header: {how}")
+    not_stated = ", ".join(receipt["not_stated"]) or "nothing listed"
+    lines += ["", f"**Not stated by any card or binary field:** {not_stated}"]
     store = receipt.get("store")
     if store:
         lines += [

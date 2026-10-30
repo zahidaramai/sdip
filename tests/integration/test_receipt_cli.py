@@ -111,9 +111,47 @@ def test_markdown_is_refused_inside_the_source_directory_or_the_store(pair, wher
     assert not target.exists()
 
 
-def test_the_mentions_are_a_keyword_match_and_not_stated_is_their_complement(pair):
+def test_not_stated_is_exactly_the_topics_no_card_and_no_binary_field_states(pair):
+    """D-0111 corrected the definition: a binary field states a topic too."""
     receipt = json.loads(_run(pair[0], "--json").stdout)
     for topic in receipt["not_stated"]:
         assert receipt["mentions"][topic]["cards"] == []
+        assert topic not in receipt["stated_by_binary"]
     stated = set(receipt["mentions"]) - set(receipt["not_stated"])
-    assert all(receipt["mentions"][t]["cards"] for t in stated)
+    assert all(receipt["mentions"][t]["cards"] or t in receipt["stated_by_binary"] for t in stated)
+
+
+# --- D-0111: issuing commit from the SDIP installation; binary-stated units ---------------
+
+
+def test_the_receipt_names_sdips_own_commit_from_outside_any_repository(pair, tmp_path):
+    """Run from a directory that is no git repository: the commit is SDIP's, not null."""
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    proc = subprocess.run(
+        [SDIP, "receipt", str(pair[0]), "--json"],
+        cwd=outside, capture_output=True, text=True, check=False,
+    )  # fmt: skip
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    issued = json.loads(proc.stdout)["issued"]
+    repo = Path(__file__).resolve().parents[2]
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    assert issued["sdip_commit"] == head
+    assert issued["sdip_source"] == str(repo)
+    assert isinstance(issued["dirty"], bool)
+
+
+@pytest.mark.parametrize(("code", "stated"), [(1, True), (2, True), (0, False), (3, False)])
+def test_linear_units_are_stated_by_the_binary_measurement_system(tmp_path, code, stated):
+    """Both halves: 1 (metres) or 2 (feet) states linear units; anything else does not."""
+    source = make_poststack3d(tmp_path / "u.sgy", sample_format="float32").path
+    payload = bytearray(source.read_bytes())
+    payload[3254:3256] = code.to_bytes(2, "big")
+    source.write_bytes(bytes(payload))
+    receipt = json.loads(_run(source, "--json").stdout)
+    assert ("linear_units" in receipt["stated_by_binary"]) is stated
+    assert ("linear_units" not in receipt["not_stated"]) is (
+        stated or bool(receipt["mentions"]["linear_units"]["cards"])
+    )

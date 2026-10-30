@@ -601,7 +601,7 @@ def receipt_cmd(
         click.echo(
             f"binary   {binary['sha256']}  measurement system {binary['measurement_system']}"
         )
-        click.echo(f"no card mentions: {', '.join(receipt['not_stated']) or 'nothing listed'}")
+        click.echo(f"not stated: {', '.join(receipt['not_stated']) or 'nothing listed'}")
         if store is not None:
             st = receipt["store"]
             click.echo(f"[{st['store_digest']['status']}] store digest")
