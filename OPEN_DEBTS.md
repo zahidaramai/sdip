@@ -2643,3 +2643,25 @@ entry. TensorStore reads the new arrays bit-identically (P4).
 **Cost, as D-0110 stated:** recovering source words now needs an `ieee2ibm` (the pinned `segy`, or
 the documented algorithm). P2's rule is unchanged: an `ibm32` store is `EQUIVALENT` only with a
 byte-identical round trip.
+
+---
+
+## D4 — FALSIFIERS FIRED 2026-10-31 — the shipped chunk is dominated, prestack and poststack; owner ruling asked
+
+- **Updates:** D4 above and its 2026-08-22 narrowing (**SP10**) · **Status:** `OPEN`, awaiting an owner ruling
+- **Probes:** P7 Amendment B/D (prestack) and P14 Amendment A (poststack), both registered and pushed before their runs
+
+**Prestack (P7 Amendment D results, at `d09cb4c`, two valid runs at load 2.19 and 2.65).** Each purpose-built
+shape beat the default on its matched pattern in both runs, on both evaluable geometries. Default/matched ranged
+from 3.34 to 6.69, against a threshold of 1.25, so all four pairs beat the default and the falsifier fires.
+Synthetic, 24-144 traces.
+
+**Poststack (P14 Amendment A results, at `b9f0577`, four valid runs at load 2.25-2.75, Volve time and depth).**
+`64^3` beats 128³ on crossline, sample slice and window in both cases (1.27 to 3.25) and loses on nothing.
+`128x128x64` beats it on sample slice (1.74 to 1.85) and loses on nothing. On both cases a shape dominates, so
+the falsifier fires. Every precondition was met: Planes 1-5 PASS and the amplitude was identical across shapes.
+
+**Consequence, as both probes registered:** nothing changes in SDIP on these records. The owner is asked for a
+store-layout ruling. The choices are whether `sdip ingest` accepts a chunk shape, whether the certificate records
+a chunk manifest (P7 F12), and whether the poststack default changes. Any of them is a store-format and
+certificate change. D4 stays open until that ruling.

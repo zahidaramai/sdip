@@ -426,3 +426,66 @@ else void), the 1.25 "beats/loses" ratio, the falsifier and its consequence. The
 the stores, so the precondition and the structure are measured again; **they must equal the
 results above**, and any difference is reported as a finding before any timing is read. Every
 void run is recorded. Run root harvested and deleted (Storage Law).
+
+---
+
+## Amendment A — results, 2026-10-31, at `b9f0577`: the falsifier fires
+
+| Field | Value |
+|---|---|
+| Run | 02:23:28-02:38:21 MYT, started by the detached watcher after 10 consecutive minutes at load ≤ 3.5, from a clean detached worktree at the registration commit `b9f0577` (on `origin`), harness unchanged |
+| Sources | both sha256 equal to the article table (the harness checked; neither case stopped) |
+| Receipt | `prereg/P14-receipt-2026-10-31-A.json` (local path removed; raw receipt sha256 `beab3c2a50f5ed22…`). Run root deleted after this record (Storage Law) |
+| Verdict | **Precondition PASS on both cases; structure equal to the first run on every compared field; all four timing runs valid; the falsifier fires** |
+
+**Finding, reported first as the amendment requires: total store bytes differ from the first run; nothing the
+probe compares does.** Every amplitude sha256, every plane status, and every chunks-touched, compressed-bytes and
+decoded-bytes figure for every (case, shape, pattern) equals the first run's. The only field that differs is each
+store's total size, which is about 0.51 of the first run's:
+
+| Case | Shape | First run (`a891bf6`) | This run (`b9f0577`) |
+|---|---|---|---|
+| `volve_time` | 128^3 / 128x128x64 / 64^3 / 64x256x64 | 1,577,867,483 / 1,572,783,653 / 1,571,080,332 / 1,574,340,712 | 807,520,006 / 805,073,934 / 804,412,031 / 805,580,425 |
+| `volve_depth` | same order | 88,610,958 / 88,360,939 / 88,157,296 / 88,328,400 | 45,198,423 / 45,089,653 / 44,989,123 / 45,046,716 |
+
+The cause is D36, merged between the two runs (`7f1c5ec`). The raw `ibm32` view became sparse (D-0110), and on
+Volve time it now holds 0 entries where it held one word per cell (OPEN_DEBTS D36 CLOSED: 752,628 KiB of view
+before, 12 KiB after). The structure table above counts `amplitude` reads only, so it does not change. This
+amendment was registered after that merge and should have expected the change; it did not, and that is recorded
+here. The structure comparison and the timing were computed in the same pass; the difference does not reach
+any timed quantity.
+
+**Load at each run's start:** `volve_time` A 2.75 (3rd check), B 2.75 (1st check); `volve_depth` A 2.25 (3rd
+check), B 2.47 (1st check). All four are ≤ 3.5, so all four runs are valid. Each figure is a fresh
+`os.getloadavg()` read. The two equal `volve_time` values (5629/2048) were read seconds apart, inside the same
+5-second load update.
+
+**median(128³) / median(S), N = 5, runs A / B** (BEATS: ≥ 1.25 in both; LOSES: S slower by ≥ 1.25 in both):
+
+| Case | Shape | full inline | full crossline | sample slice | window |
+|---|---|---|---|---|---|
+| `volve_time` | 128x128x64 | 1.00 / 1.02 | 0.98 / 1.20 | **1.74 / 1.83 BEATS** | 1.18 / 1.14 |
+| `volve_time` | 64^3 | 1.28 / 1.23 | **1.34 / 1.76 BEATS** | **1.36 / 1.34 BEATS** | **1.38 / 1.33 BEATS** |
+| `volve_time` | 64x256x64 | **1.81 / 1.89 BEATS** | **0.55 / 0.72 LOSES** | **1.77 / 1.84 BEATS** | 1.22 / 1.17 |
+| `volve_depth` | 128x128x64 | 0.93 / 0.91 | 0.92 / 0.92 | **1.85 / 1.81 BEATS** | 1.01 / 0.98 |
+| `volve_depth` | 64^3 | 0.96 / 0.92 | **1.62 / 1.66 BEATS** | **3.08 / 3.25 BEATS** | **1.27 / 1.37 BEATS** |
+| `volve_depth` | 64x256x64 | **1.49 / 1.47 BEATS** | 0.87 / 0.85 | **1.71 / 1.65 BEATS** | **1.56 / 1.52 BEATS** |
+
+**Verdict: the falsifier fires.** On both cases a single shape beats 128³ on at least one pattern and loses on
+none, and this holds for two shapes:
+
+- **`64^3`** beats 128³ on 3 of 4 patterns in each case (crossline, sample slice and window) and loses on none.
+  Full inline is not decided (1.28/1.23 and 0.96/0.92).
+- **`128x128x64`** beats 128³ on sample slice in both cases and loses on none.
+
+`64x256x64` does not qualify, because it loses on `volve_time` full crossline. The hypothesis "the shipped 128³ is
+not dominated on these stores" is falsified. As registered, OPEN_DEBTS D4 records the dominating shapes and the
+owner is asked for a store-layout ruling (a chunk choice is a store change with a certificate consequence, F12).
+Nothing changes in SDIP on this probe alone.
+
+**Scope, as registered:** two stores, one machine, local disk, warm cache, absolute medians of 2.6-58 ms. This is
+not a claim about cold reads, object stores or every poststack survey.
+
+### Recorded in
+
+`OPEN_DEBTS.md` D4 (falsifiers fired; owner ruling asked) · this file

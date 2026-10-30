@@ -631,3 +631,35 @@ No warning is suppressed: the incompatibility is removed at its cause, and SP6's
 stays. **Unchanged:** Amendment B's criterion, threshold, load gate, geometries, N and falsifier;
 Amendments A and C. The rerun is from a clean worktree at the commit that registers this
 amendment, once it is on `origin`.
+
+---
+
+## Amendment D — results, 2026-10-31, at `d09cb4c`: the falsifier fires
+
+| Run | Start (MYT) | 1-min load | Outcome |
+|---|---|---|---|
+| A | 01:42:37 | 2.19 (1st check) | valid: 4 passed, 24.5 s |
+| B | 01:43:03 | 2.65 (1st check) | valid: 4 passed, 24.0 s |
+
+Both runs started from a clean detached worktree at the registration commit `d09cb4c` (on `origin`), with the
+command as Amendment D registered it. A detached watcher started them after 10 consecutive minutes at load ≤ 3.5.
+Receipts: `prereg/P7B-receipt-2026-10-31-A.xml` (sha256 `e4443529a3320a53…`) and `-B.xml`
+(`414f7e795d4a7613…`). Each holds the junit XML as written, with no local paths in it.
+
+**Default / matched, median of 5** (matched pattern medians in ms in brackets):
+
+| Geometry | Shape vs default, on its matched pattern | Run A | Run B | Beats (≥ 1.25 in both) |
+|---|---|---|---|---|
+| `streamer_shot_3d` | gather-contiguous, `single gather` | 5.59 (1.015 vs 5.674) | 5.24 (1.065 vs 5.583) | yes |
+| `streamer_shot_3d` | time-slice-contiguous, `time slice` | 6.69 (0.961 vs 6.424) | 6.14 (0.965 vs 5.922) | yes |
+| `cdp_offset_3d` | gather-contiguous, `single gather` | 3.34 (0.981 vs 3.276) | 3.45 (1.039 vs 3.590) | yes |
+| `cdp_offset_3d` | time-slice-contiguous, `time slice` | 3.39 (0.950 vs 3.222) | 3.36 (1.075 vs 3.614) | yes |
+
+**Verdict: the falsifier fires.** All four (geometry, shape) pairs beat the default in both runs. The smallest
+ratio is 3.34, against a threshold of 1.25. The hypothesis "the template default is adequate for prestack at this
+scale" is falsified. As registered, D4 records that SDIP ships a dominated prestack chunk without saying so. The
+owner is asked whether `sdip ingest` should accept a chunk shape and the certificate record a chunk manifest (F12).
+This record changes nothing in SDIP.
+
+**Scope, unchanged:** synthetic fixtures of 24-144 traces, warm cache, one machine; relative behaviour only. The
+other two geometries stay NOT EVALUABLE (F7). The run root was deleted after this record (Storage Law).
