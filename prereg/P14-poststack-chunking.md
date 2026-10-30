@@ -405,3 +405,24 @@ it (a quiet window; nothing else changed).
 ### Recorded in
 
 `OPEN_DEBTS.md` D4 (unchanged: open) · this file
+
+---
+
+## Amendment A — 2026-10-31, before the run it governs: the timing leg, rerun in a quiet window
+
+**Why.** The 2026-10-31 run met its precondition and recorded the structure, but all four timing
+runs were void (load 4.53-12.27 against 3.5), so the timing leg was NOT EVALUABLE. Those void runs
+stand as recorded above. Other sessions' critical work keeps the machine busy (GeoSuite D-222), so
+no session is paused for this; the rerun waits for a quiet window instead.
+
+**Changed — only when the run starts.** The harness is started automatically by a detached
+watcher, at the commit that registers this amendment (once on `origin`), only after the 1-minute
+load average has been **≤ 3.5 for 10 consecutive minutes** (sampled every 60 s). The watcher
+stays armed until **2026-11-01 18:00 MYT**; if no window comes, that is recorded and nothing runs.
+
+**Unchanged:** the harness (verbatim, as registered), the articles, the shapes, the patterns,
+N = 5, two runs, the per-run load gate (≤ 0.25 × cores at each run's start, 3 checks 60 s apart,
+else void), the 1.25 "beats/loses" ratio, the falsifier and its consequence. The harness rebuilds
+the stores, so the precondition and the structure are measured again; **they must equal the
+results above**, and any difference is reported as a finding before any timing is read. Every
+void run is recorded. Run root harvested and deleted (Storage Law).
