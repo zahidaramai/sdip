@@ -5272,3 +5272,78 @@ v1.6.0 (`444f8ec`) except one line of `certify`'s docstring. Read against GeoAIB
   directory's* (`capture_git_state(".")`), and certificates default to a relative
   `certificates/`. The ingest/materialisation count was not re-measured.
 - **doctor:** holds but names 4 of the 10 checks it runs (10/10 PASS through the executable).
+
+---
+
+## D-0104 — 2026-10-30 — F3 header receipt for GeoSuite D-205 (the CRS read from the headers)
+
+GeoSuite's read-only order: D-205 adopted "ED50 / UTM zone 31N" for F3 "from the SEG-Y headers
+as SDIP read them", and its record has no source fields. This entry is the receipt. Read at
+HEAD `1917290`, clean tree; **no store was written or modified, no source changed.** Bytes read
+directly from the file (big-endian, text decoded as EBCDIC cp037, SDIP's declared decode).
+
+**Source.** The survey of D-0097 / P12: file name `Dutch Government_F3_entire_8bit seismic.segy`
+(held outside this repository; the full local path is given to GeoSuite, not published, as for
+P12's certificate), **1,292,686,488 B, `sha256
+b36494f4e9bed7216228124f43ff8901168bff8bebd4e4c4dabb80a68d568dab`** — re-hashed today, equal to
+P12's Article. Despite the name it is IEEE float32 (format code 5, below).
+
+**Textual header** (3,200 B, `sha256 601efd5d24b71feb3d6d8077f28cbee29353c439f08bd43685bba58042fc1505`).
+The lines that state CRS, extent, units or format, verbatim (card number = line):
+
+```
+C 1 SEGY OUTPUT FROM Petrel 2016.3 (64-bit) Tuesday, September 05 2017 15:04:17
+C 2 Name: Holland_demodata Type: 3D seismic
+C 6 CRS: PowerPlan:NS-31 (MENTOR:PowerPlan:NS-31:UTM Zone 31 on ED50 Datum) ?SIS
+C 7 X min: 605368.97 max: 629589.09 delta: 24220.13
+C 8 Y min: 6073543.66 max: 6090475.84 delta: 16932.19
+C 9 Time min: -1850.00 max: -2.00 delta: 1848.00
+C10 Lat min: 54.47'28.0831"N max: 54.56'56.0365"N delta: 0.09'27.9534"
+C11 Long min: 4.38'20.1218"E max: 5.01'22.8455"E delta: 0.23'2.7237"
+C15 Trace sample format: IEEE floating point
+C16 Coordinate scale factor: 100.00000
+C26 Coordinate scale factor     : bytes 71-72
+C27 X coordinate                : bytes 73-76
+C28 Y coordinate                : bytes 77-80
+```
+
+`?` on C6 is column 77, raw byte `0xAD`, non-printable under cp037 (it decodes to `Ý`): the one
+character behind G3 `ROUNDTRIP-SCOPED` (D-0098). Trailing blanks dropped.
+
+What the text **states**: projection "UTM Zone 31", datum "ED50", a Petrel/PowerPlan CRS name
+"NS-31". What it **does not state**: a hemisphere letter (C10 gives latitudes in N; "31N" is
+an inference from that), an EPSG code, linear units, or a vertical datum. C16 gives the scale
+factor unsigned; the trace headers carry −100 (divide by 100, SEG-Y convention).
+
+**Binary header** (400 B, bytes 3201-3600, `sha256
+8156aaf86ce574b6ad139eb5cf2210bc7dfc4f563c64466815d315a42a7a147f`):
+
+| Bytes | Field | Value |
+|---|---|---|
+| 3217-3218 | sample interval | 4000 µs (`0fa0`) |
+| 3221-3222 | samples per trace | 462 (`01ce`) |
+| 3225-3226 | sample format code | 5, IEEE float32 (`0005`) |
+| 3229-3230 | trace sorting | 4 (`0004`) |
+| 3255-3256 | measurement system | **1, metres** (`0001`) |
+| 3501-3502 | SEG-Y revision | 0 (`0000`; Plane 2's `file_revision_differs`) |
+| 3503-3504 | fixed-length flag | 0 |
+| 3505-3506 | extended textual headers | 0 |
+
+**Linear units come from the binary header only** (3255-3256 = 1, metres). First trace, for
+context: coordinate scalar (71-72) −100, coordinate units (89-90) 1 = length, CDP X/Y (181-188)
+60583550 / 607355650 → 605835.50 / 6073556.50 m, delay (109-110) 4 ms, inline 100, xline 300.
+
+**Store digest they belong to.** SDIP holds no F3 store: P12's store and certificate were
+deleted under the Storage Law and P12 recorded no store digest. The one F3 store whose marker is
+on record is ExS's EXS-MDIO-01 re-run, ingested by `sdip 1.4.0` on 2026-10-15 (`createdOn`
+14:46:03Z), its run root deleted, its metadata kept in
+`AI-ML-Seismic-Zahid-V1:docs/receipts/2026-10-15-exs-mdio-01-f3-agreement-PASS/f3.mdio/zarr.json`
+@ `1f17ac8`: **`sdipStoreDigest` scheme `sdip-store-digest/1`, `sha256
+9203d42081a1ae305c405b17fd56e711fb3b9acdd0b84539a0ba235884fd0b65`**, no content digest (pre-1.6.0,
+`ABSENT`). It belongs to this source: its `sdipRawTextHeaderSha256` and `sdipRawBinaryHeaderSha256`
+equal the two header hashes above, measured today against the file. **Not re-verified:** that
+store's chunks are gone, so its digest was read from the marker, not recomputed. A store any map
+cites must carry its own digest; this one is the record, not a live store.
+
+**Scope.** N = 1 read of one file; header fields only. No CRS ruling is SDIP's: SDIP reports the
+bytes; "ED50 / UTM zone 31N" and EPSG 23031 are GeoSuite's (D-205, D-209).
