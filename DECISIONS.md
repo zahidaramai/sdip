@@ -5541,3 +5541,36 @@ record, the receipt reproduces D-0104's and D-0105's hashes, cards and fields ex
 depth pair it lists `datum`, `projection`, `zone`, `hemisphere` and `vertical_datum` as not
 stated; on a synthetic source with one flipped header byte against its store, `raw_headers_bind`
 is `MISMATCH` and the exit is 1; GeoCRS `check` passes on a declaration built from one receipt.
+
+---
+
+## D-0108 — 2026-10-30 — A pin bump is a MAJOR release: specification and operating contract amended
+
+**Owner's ruling, relayed by GeoSuite (2026-10-30), then given directly in this session:**
+*"MAJOR, amend spec and contract"* and *"Make edit, thats my highest ruling."* Found by D13's
+citation index: the public CHANGELOG has said **MAJOR** since 1.0.0 (a release that voids every
+existing certificate is not backward-compatible), while specification §12.4 and the operating
+contract §3.2 still said *minor*. Both are amended to MAJOR — §12.4 by a dated amendment block, the
+contract in place — and both stay off the published repository (D-0010). No release and no pin
+change follows from this entry.
+
+---
+
+## D-0109 — 2026-10-30 — `sdip receipt` built to D-0107
+
+Built as registered. Measured through the executable, read-only, at the commit of this entry's
+parent: on the F3 source and its live 1.6.0 store the receipt reproduces D-0104's 13 quoted cards
+exactly, names card 6 column 77 (`0xad`), and gives store and content digests `MATCH` and raw
+headers binding `MATCH`, exit 0; on the Volve time source and store, D-0105's hashes with all three
+`MATCH` (the binding read from the raw bytes held on the store, since a decodable source carries
+no hash attributes); on the Volve depth base source, `not_stated` = datum, projection, zone,
+hemisphere, vertical datum, as D-0107's acceptance requires. Tests
+(`tests/integration/test_receipt_cli.py`): a synthetic source and its store bind and match, exit 0,
+both unchanged after; one flipped textual-header byte does not bind, exit 1; a source alone has no
+store block; Markdown never overwrites and is refused inside the source's directory or the store;
+`not_stated` is exactly the topics with no matching card.
+
+**Refinement of the contract, stated:** the command also takes `--revision/--template/--override`
+like every command that reads a source (D-0087 parity), so the preflight and the text decode use
+the declared reading; and `raw_headers_bind.from` names where the store's raw headers were read.
+GeoCRS `check` on a declaration built from a receipt is GeoCRS's to run; the receipt is ready for it.

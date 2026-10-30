@@ -57,7 +57,7 @@ OVERRIDE_HELP = (
     "Pass the same override to every command that reads that store."
 )
 
-STORE_COMMANDS = frozenset({"ingest", "verify", "export", "certify"})
+STORE_COMMANDS = frozenset({"ingest", "verify", "export", "certify", "receipt"})
 """Every command that reads a source or a store. Each takes the whole survey declaration
 and runs only in an environment with no barred variable set (D-0087)."""
 
@@ -543,6 +543,71 @@ def export_cmd(
         click.echo(f"G3: {result.status}")
 
     sys.exit(EXIT_OK if result.passed else EXIT_FAIL)
+
+
+@cli.command("receipt")
+@click.argument("source", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument(
+    "store", required=False, type=click.Path(exists=True, file_okay=False, path_type=Path)
+)
+@declaration_options
+@click.option("--json", "as_json", is_flag=True, help="Print the receipt as JSON.")
+@click.option(
+    "--markdown",
+    "markdown_path",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Also write the receipt as Markdown here. Refused if it exists.",
+)
+def receipt_cmd(
+    source: Path,
+    store: Path | None,
+    revision: str,
+    template: str,
+    override_path: Path | None,
+    as_json: bool,
+    markdown_path: Path | None,
+) -> None:
+    """The header evidence of SOURCE, and of STORE if given. Read-only (D-0107).
+
+    Text cards verbatim, binary fields, the first trace header, keyword mentions and what no
+    card mentions; with a store, both digests recomputed and whether its raw headers are the
+    source's. Interprets nothing: no CRS is named and no EPSG code. Exits 1 on a digest
+    MISMATCH or headers that do not bind.
+    """
+    from sdip.ingest import validate_source
+    from sdip.provenance.header_receipt import build_receipt, receipt_ok, to_markdown
+
+    if markdown_path is not None:
+        target = markdown_path.resolve()
+        if target.exists():
+            raise click.UsageError(f"--markdown {markdown_path} exists; a receipt never overwrites")
+        guarded = [source.resolve().parent] + ([store.resolve()] if store else [])
+        if any(target.parent == g or g in target.parents for g in guarded):
+            raise click.UsageError(
+                "--markdown may not write inside the source's directory or the store"
+            )
+    declaration = _declaration(revision, template, override_path)
+    validate_source(source, declaration)
+    receipt = build_receipt(source, declaration.build_spec().segy_spec.text_header, store)
+    if markdown_path is not None:
+        markdown_path.write_text(to_markdown(receipt), encoding="utf-8")
+    if as_json:
+        click.echo(json.dumps(receipt, indent=2, sort_keys=True))
+    else:
+        src, text, binary = receipt["source"], receipt["textual_header"], receipt["binary_header"]
+        click.echo(f"source   {src['sha256']}  {src['bytes']} bytes")
+        click.echo(f"text     {text['sha256']}  {text['encoding']}, {text['decode_status']}")
+        click.echo(
+            f"binary   {binary['sha256']}  measurement system {binary['measurement_system']}"
+        )
+        click.echo(f"no card mentions: {', '.join(receipt['not_stated']) or 'nothing listed'}")
+        if store is not None:
+            st = receipt["store"]
+            click.echo(f"[{st['store_digest']['status']}] store digest")
+            click.echo(f"[{st['content_digest']['status']}] content digest")
+            click.echo(f"[{st['raw_headers_bind']['status']}] raw headers bind to the source")
+    sys.exit(EXIT_OK if receipt_ok(receipt) else EXIT_FAIL)
 
 
 @cli.command("certify")

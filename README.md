@@ -313,6 +313,7 @@ Everything measured is recorded in [`DECISIONS.md`](DECISIONS.md); everything no
 | `sdip verify` | Run the Equivalence Engine against an existing store |
 | `sdip export` | **MDIO → SEG-Y** |
 | `sdip certify` | The full chain, ending in a certificate |
+| `sdip receipt` | Read-only **header receipt**: a source's header bytes, fields and cards verbatim, and with a store both digests recomputed and whether its raw headers are the source's (D-0107). Names no CRS |
 
 **Exit status**, the same for every command: **0** pass · **1** fail, or refused input ·
 **2** usage or environment · **3** an internal defect in SDIP, never a verdict about your
