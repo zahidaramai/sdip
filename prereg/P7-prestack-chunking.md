@@ -601,3 +601,33 @@ not beat it are recorded by name. Either void run → NOT EVALUABLE; nothing is 
 
 **Scope.** Synthetic fixtures of 24-144 traces: relative behaviour only, warm cache, one
 machine. Not a survey-scale or cold-storage claim.
+
+---
+
+## Amendment B — results, 2026-10-31, at `58f2a82`: no measurement; the run command was defective
+
+| Run | Start (MYT) | 1-min load | Outcome |
+|---|---|---|---|
+| A | 00:09:42 | 2.97 | **errored before any timing**: 4 of 4 tests `error`, 0 figures |
+| B | 00:11:14 | 3.48 | **errored before any timing**: 4 of 4 tests `error`, 0 figures |
+
+Both from a clean detached worktree at the registration commit `58f2a82` (on `origin`), both under
+the load gate. **The cause is this amendment's run command, not the probe:** `record_property`
+raises `PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or
+'xunit1')`, pytest's default family is `xunit2`, and the suite turns every warning into an error
+(SP6, `filterwarnings = ["error"]`) — so the registered command could never record a median.
+Nothing was measured, so nothing is judged; the falsifier was not evaluated. Run roots deleted
+(Storage Law).
+
+---
+
+## Amendment D — 2026-10-31, before any rerun: the run command records its receipt
+
+**Changed:** the run command gains `-o junit_family=legacy`, the family `record_property` supports:
+
+`pytest tests/integration/test_p7_latency.py -m benchmark -o junit_family=legacy --junitxml=RUN_ROOT/p7b-<run>.xml`
+
+No warning is suppressed: the incompatibility is removed at its cause, and SP6's error setting
+stays. **Unchanged:** Amendment B's criterion, threshold, load gate, geometries, N and falsifier;
+Amendments A and C. The rerun is from a clean worktree at the commit that registers this
+amendment, once it is on `origin`.
