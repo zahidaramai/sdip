@@ -2382,3 +2382,54 @@ Test evidence, stated at its true scope: `tests/unit/test_release_readiness.py::
 (line 224) sets a gate to `NOT_RUN` and asserts release is blocked, and
 `test_an_absent_control_blocks_rather_than_being_treated_as_passing` (line 67) covers `NOT_RUN`
 controls. G5 and G6 are now covered by name: `tests/unit/test_release_readiness.py::test_an_unrun_g5_or_g6_makes_the_certificate_not_release_ready` (parametrised G5, G6; each `NOT_RUN` alone gives `release_ready` False with `gate G5 is NOT_RUN` / `gate G6 is NOT_RUN` blocking).
+
+---
+
+## D16 — CLOSED 2026-10-30 — A.1 was run with the file headers persisted
+
+- **Closes:** D16 above (**SP10**) · **Decision:** `DECISIONS.md` D-0019 (default stands)
+
+D16's closure was "re-run the A.1 article under both settings and record which reproduces the
+listed array set". Measured at `6d8cabc`, N = 1 each, through upstream's `segy_to_mdio` with
+SDIP's gap-free rev 1 spec, as P1 ran it, on the committed A.1-geometry article
+(`make_poststack3d`: 30 traces, 14,640 B):
+
+| Setting | Arrays written |
+|---|---|
+| `save_segy_file_header = 0` (upstream default; SDIP's `file_headers_not_persisted`) | 8 — A.1's list **minus** `segy_file_header` |
+| `= 1` STRICT (SDIP's `file_headers_persisted`) | 9 — **exactly** A.1's list |
+
+**Which explanation holds:** A.1's environment (P1 Results) is `multidimio` 1.2.1 — the pin.
+The default cannot have changed between the measurement and the pin, because they are the same
+release; only the first explanation remains: **A.1 was run with the setting enabled and did not
+record it.** The appendix stays frozen (§12.4); this entry is the record.
+
+**Scope.** The committed article has A.1's geometry and size but not its bytes (sha256
+`be4ce437…` against A.1's `cf6b1077…`; the banked generator's text differed). The array set
+depends on the setting and template, not on header text. Test, both halves:
+`tests/integration/test_appendix_a1_arrays.py` (2 passed, 5.2 s); each half fails on the other
+setting's output.
+
+---
+
+## D26 — CLOSED 2026-10-30 — both blind spots closed; blind spot 1 through D35
+
+- **Closes:** D26 and D26 HALF CLOSED above (**SP10**) · **Decision:** `DECISIONS.md` D-0046, D-0089
+
+Blind spot 2 closed on 2026-08-23 (HALF CLOSED above). Blind spot 1 was carried into D35
+("carried from D26"), and D35 closed on 2026-09-17 at its declared permanent end state:
+`stderr_recovered[]` plus `worker_warnings_captured: false` on every certificate. D26 never
+received the closing entry; this is it. Found by the 2026-10-30 debt sweep, no new measurement.
+
+---
+
+## D8 — NARROWED 2026-10-30 — residual 1 closed by D60
+
+- **Narrows:** D8 NARROWED above (**SP10**) · **Decision:** `DECISIONS.md` D-0088
+
+Residual 1 (three grid members reach the console as a traceback) named its candidate closure:
+handle the named upstream types at the CLI boundary only. D60 built exactly that on 2026-09-17:
+an upstream exception is a typed refusal (exit 1), and the corpus through `ingest`, `verify`,
+`export` and `certify` gave 402 of 402 checks with no traceback and no exit 3. The library still
+raises the types P5 measured. **Residuals 2 (no stanza-terminated rev 2 member), 3 (structural,
+not combinatorial) and 4 (one platform) stand; D8 stays open.**
