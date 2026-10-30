@@ -5625,3 +5625,29 @@ implementation (the pinned `segy`, or the documented algorithm), where the dense
 none. **What does not change:** P2's rule (an `ibm32` store is `EQUIVALENT` only with a
 byte-identical round trip), the certificate's other fields, the store digest schemes. The
 certificate's `raw_sample_view` gains `layout` and `entries`.
+
+---
+
+## D-0111 — 2026-10-30 — `sdip receipt` amendment: issuing commit and binary-stated units (GeoCRS findings)
+
+**Found by the consumer gate** (GeoCRS, relayed by GeoSuite, at `7f1c5ec`): the gate PASSED on F3
+and ST10010 (digests and header binding all `MATCH`, declarations reproduced 8/8), with two
+defects in D-0107's contract as built. Registered here before the fix.
+
+1. **`issued.sdip_commit` / `dirty` followed the caller's working directory.** Run from outside
+   SDIP's repository, the receipt said `commit: null, dirty: true` although SDIP was clean at
+   `7f1c5ec`. The receipt describes the tool that produced it, so these now come from the **SDIP
+   installation**: the git checkout containing the imported `sdip` package, with a new
+   `issued.sdip_source` naming that checkout, or `"installed distribution (no checkout)"` with
+   `sdip_commit: null` and `dirty: null` when there is none. (`certify` is unchanged: a certificate
+   names the working tree it was issued from, D-0103.)
+2. **`not_stated` ignored the binary header.** It listed `linear_units` while the same receipt
+   showed bytes 3255-3256 = 1 (metres). A topic is now stated if a card mentions it **or** a
+   binary field states it: `linear_units` by 3255-3256 = 1 or 2. A new `stated_by_binary` block
+   names the field and value. No other topic has a binary field in SEG-Y.
+3. The `?` with the raw byte beside it is kept, as GeoCRS confirmed.
+
+**Tests, both halves:** from a directory outside any repository the receipt names SDIP's own
+commit and clean state; a source with 3255-3256 = 1 or 2 does not list `linear_units`, one with
+0 does. Schema name unchanged (`sdip-header-receipt/1`): fields are added, none removed or
+redefined except `not_stated`, whose definition this entry corrects.
