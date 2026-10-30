@@ -34,7 +34,7 @@ from sdip.equivalence.planes import PlaneResult
 from sdip.equivalence.portability import PortabilityResult
 from sdip.equivalence.scale import G5Result
 from sdip.errors import DirtyTreeError
-from sdip.export.roundtrip import HEADER_SCOPE_RULING, HeaderScopedRoundTrip, RoundTripResult
+from sdip.export.roundtrip import SCOPE_RULINGS, HeaderScopedRoundTrip, RoundTripResult
 from sdip.guard.pins import check_pins
 from sdip.ingest.orchestrator import IngestResult
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY_NAME
@@ -447,14 +447,15 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
     gates = payload.get("gates", {})
     planes = payload.get("planes", {})
     blocking: list[str] = []
-    # D-0098. A G3 scoped under the maintainer's ruling for an undecodable textual header:
-    # no export can exist, so G3 counts as met on its written justification, and the three
-    # checks that need an export (closure and the two controls) do not apply. Recognised
-    # only by the ruling the certificate carries; any other ROUNDTRIP-SCOPED still blocks.
+    # D-0098 and D-0106. A G3 scoped under a ruling - an undecodable textual header
+    # (D-0098), an undefined revision word (D-0106, D61): no export can exist, so G3 counts
+    # as met on its written justification, and the three checks that need an export
+    # (closure and the two controls) do not apply. Recognised only by a ruling in
+    # SCOPE_RULINGS on the certificate; any other ROUNDTRIP-SCOPED still blocks.
     scoped = (payload.get("roundtrip") or {}).get("scoped") or {}
     header_scoped = (
         gates.get("G3") == "ROUNDTRIP-SCOPED"
-        and scoped.get("ruling") == HEADER_SCOPE_RULING
+        and scoped.get("ruling") in SCOPE_RULINGS
         and not (payload.get("roundtrip") or {}).get("performed", True)
     )
 

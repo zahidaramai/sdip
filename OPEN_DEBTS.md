@@ -2535,3 +2535,43 @@ repository (source committed, outputs ignored, tree clean) records `data/src.sgy
 records `null`. Both halves at the schema: 4 bad values (`/abs`, `../`, `a/../../`, empty)
 rejected; inside and outside certificates validate. The reference certificate predates the
 fields and is unchanged.
+
+---
+
+## D61 — CLOSED 2026-10-30 — G3 is ROUNDTRIP-SCOPED for an undefined revision word
+
+- **Closes:** D61 above (**SP10**) · **Decision:** `DECISIONS.md` D-0106
+
+**The cause, measured:** for revision word `0x7FFF` upstream stores the binary header with one
+undivided `segy_revision: 32767` and no `segy_revision_major`/`_minor` pair, and its own
+exporter refuses a store without the pair (`mdio.segy.compat.encode_segy_revision`). SDIP does
+not rewrite stored header values to make an export (SP12).
+
+**Built as the owner ruled:** `revision_scope` issues G3 `ROUNDTRIP-SCOPED` (`performed: false`,
+`ruling: D-0106`, the word and the stored value named) only when **both** are measured — the
+source's bytes 3501-3502 hold no defined revision (0, 1, 2, 2.1) and the store lacks the pair.
+`release_readiness` accepts a scoped G3 under exactly D-0098 or D-0106. P2's rule is untouched.
+
+**Both halves**, every export actually attempted (`tests/integration/test_revision_scoped_certify.py`,
+10 passed): `0x0300`, `0x7FFF`, `0xFFFF` scoped, each export refused; `0x0000`, `0x0100`, `0x0101`
+never scoped, each round trip PASS (`0x0101` is undefined but upstream keeps the pair, so the
+ordinary hash judges it). Through the executable: an IEEE source with `0x7FFF` certifies
+`EQUIVALENT`, release-ready, G3 scoped, closure and both export controls `NOT_APPLICABLE`, every
+other gate PASS, schema-valid; the same with `ibm32` samples stays `PROVISIONAL` on P2's rule
+alone. Unit: a scoped G3 under D-0098 or D-0106 is release-ready; under `D-0097`, `D-0107`,
+`d-0106` or an empty ruling it blocks.
+
+---
+
+## D68 — A rev 2 or 2.1 revision word read as revision 1 cannot be exported
+
+- **Status:** `OPEN` (raised 2026-10-30) · **Found by:** the D61 sweep · **Needs:** an owner ruling
+
+Measured on the 30-trace IEEE article with its revision word set and read under the default
+revision 1 declaration: `0x0200` and `0x0201` ingest, Planes pass, and the export is refused
+exactly as D61's (`InvalidMDIOError: Missing revision keys from binary header`) — upstream keeps
+no major/minor pair for them either. **These words are defined**, so D-0106 does not cover them:
+`certify` on such a file still stops at export with a clean refusal. Pinned by
+`test_a_defined_rev2_word_read_as_rev1_is_not_scoped_and_still_cannot_export`. **Decision
+needed:** extend the D-0106 scope to a defined rev 2/2.1 word read under a rev 1 declaration, or
+keep the refusal (rev 2 ingest itself is refused, D6).

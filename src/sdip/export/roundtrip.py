@@ -30,6 +30,7 @@ file a reader may never open.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -121,6 +122,17 @@ class RoundTripResult:
 HEADER_SCOPE_RULING = "D-0098"
 """The maintainer ruling that accepts :class:`HeaderScopedRoundTrip` for release."""
 
+REVISION_SCOPE_RULING = "D-0106"
+"""The owner's ruling (OPEN_DEBTS D61) for a source whose revision word is undefined."""
+
+SCOPE_RULINGS: frozenset[str] = frozenset({HEADER_SCOPE_RULING, REVISION_SCOPE_RULING})
+"""Every ruling under which a scoped G3 may count toward release. Nothing else does."""
+
+DEFINED_REVISION_CODES: frozenset[int] = frozenset({0x0000, 0x0100, 0x0200, 0x0201})
+"""Binary-header bytes 3501-3502 for SEG-Y revisions 0, 1, 2 and 2.1."""
+
+_REVISION_KEYS = ("segy_revision_major", "segy_revision_minor")
+
 
 @dataclass(frozen=True, slots=True)
 class HeaderScopedRoundTrip:
@@ -141,6 +153,7 @@ class HeaderScopedRoundTrip:
 
     non_conformance: str
     justification: str
+    ruling: str = HEADER_SCOPE_RULING
 
     status = "ROUNDTRIP-SCOPED"
     byte_identical = False
@@ -156,7 +169,7 @@ class HeaderScopedRoundTrip:
             "scoped": {
                 "non_conformance": self.non_conformance,
                 "justification": self.justification,
-                "ruling": HEADER_SCOPE_RULING,
+                "ruling": self.ruling,
             },
         }
 
@@ -188,6 +201,50 @@ def header_scope(decode: Any, store: str | Path) -> HeaderScopedRoundTrip | None
             "this source. Planes 1-5 verify the store against the source, Plane 1 against the "
             "raw bytes. Accepted for release by maintainer ruling D-0098."
         ),
+    )
+
+
+def revision_scope(source: str | Path, store: str | Path) -> HeaderScopedRoundTrip | None:
+    """The scoped G3 for a source whose revision word is undefined, or ``None``.
+
+    **OPEN_DEBTS D61, owner ruling D-0106.** Upstream stores such a source's binary header
+    with one undivided ``segy_revision`` value instead of the ``segy_revision_major`` /
+    ``segy_revision_minor`` pair, and its own exporter refuses a store without the pair
+    (``mdio.segy.compat.encode_segy_revision``: *"Missing revision keys from binary
+    header"*). No export can be made at the pinned writer, and SDIP rewriting the stored
+    header to make one would be fabrication (SP12). Issued only when **both** are measured:
+    bytes 3501-3502 of the source hold no defined revision, and the store's binary header
+    lacks the pair. Anything else goes through :func:`export` and is judged on its hash.
+    """
+    import zarr
+
+    from sdip.ingest.file_headers import read_raw_file_headers
+
+    code = int.from_bytes(read_raw_file_headers(source).binary[300:302], "big")
+    if code in DEFINED_REVISION_CODES:
+        return None
+    group = zarr.open_group(str(store), mode="r")
+    if UPSTREAM_FILE_HEADER_VARIABLE not in group:
+        return None
+    raw = group[UPSTREAM_FILE_HEADER_VARIABLE].attrs.get("binaryHeader")
+    stored = dict(raw) if isinstance(raw, Mapping) else {}
+    if all(key in stored for key in _REVISION_KEYS):
+        return None
+    return HeaderScopedRoundTrip(
+        non_conformance=(
+            f"binary header bytes 3501-3502: revision word 0x{code:04x} (major {code >> 8}, "
+            f"minor {code & 0xFF}) is no defined SEG-Y revision; the store records it as "
+            f"segy_revision={stored.get('segy_revision')!r} without a major/minor pair"
+        ),
+        justification=(
+            "upstream's exporter requires the binary header's revision as a major/minor pair "
+            "and refuses this store ('Missing revision keys from binary header', "
+            "mdio.segy.compat), so no whole-file export can be made at the pinned writer, "
+            "and SDIP does not rewrite stored header values to make one (SP12). Planes 1-5 "
+            "verify the store against the source, Plane 2 against the raw 400 bytes. "
+            "Accepted for release by the owner's ruling D-0106 (OPEN_DEBTS D61)."
+        ),
+        ruling=REVISION_SCOPE_RULING,
     )
 
 

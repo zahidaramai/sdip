@@ -620,7 +620,7 @@ def certify_cmd(
     from sdip.equivalence.determinism import g6
     from sdip.equivalence.nonvacuity import closure_control, g3_control, g7
     from sdip.export import export as run_export
-    from sdip.export.roundtrip import header_scope
+    from sdip.export.roundtrip import header_scope, revision_scope
     from sdip.ingest import ingest_declared as run_ingest
     from sdip.provenance.git import capture_git_state
     from sdip.provenance.store_digest import check_content_digest, check_store_digest
@@ -673,14 +673,16 @@ def certify_cmd(
     # segy_file_header variable (D-0055), so no export can be made and byte identity is
     # impossible: G3 is ROUNDTRIP-SCOPED with the offending characters named, and the
     # three checks that need an export do not apply. Every other gate still runs.
-    scope = header_scope(result.textual_decode, output)
+    # D-0106 (D61): likewise a source whose revision word is undefined - upstream stores it
+    # without the major/minor pair its own exporter requires.
+    scope = header_scope(result.textual_decode, output) or revision_scope(source, output)
     not_applicable = (
         None
         if scope is None
         else {
             "status": NOT_APPLICABLE,
             "name": "not applicable",
-            "reason": "no export exists for this source (G3 ROUNDTRIP-SCOPED, D-0098)",
+            "reason": f"no export exists for this source (G3 ROUNDTRIP-SCOPED, {scope.ruling})",
         }
     )
 
@@ -708,7 +710,10 @@ def certify_cmd(
         closure_status, closure_summary = (
             (closure.status, closure.summary())
             if closure is not None
-            else (NOT_APPLICABLE, "no export to re-ingest (G3 ROUNDTRIP-SCOPED, D-0098)")
+            else (
+                NOT_APPLICABLE,
+                f"no export to re-ingest (G3 ROUNDTRIP-SCOPED, {scope.ruling if scope else ''})",
+            )
         )
 
         # Closure's own negative control (operating contract §5): corrupt one byte of the export's

@@ -197,6 +197,22 @@ def test_a_header_scoped_certificate_is_release_ready():
     assert verdict["release_ready"] is True
 
 
+@pytest.mark.parametrize("ruling", ["D-0098", "D-0106"])
+def test_a_scoped_g3_under_either_ruling_is_release_ready(ruling):
+    """D-0098 (undecodable textual header) and D-0106 (undefined revision word, D61)."""
+    payload = _header_scoped()
+    payload["roundtrip"]["scoped"]["ruling"] = ruling
+    assert release_readiness(payload)["release_ready"] is True
+
+
+@pytest.mark.parametrize("ruling", ["D-0097", "D-0107", "d-0106", ""])
+def test_a_scoped_g3_under_any_other_ruling_still_blocks(ruling):
+    """The other half: only the two named rulings count; a near miss blocks."""
+    payload = _header_scoped()
+    payload["roundtrip"]["scoped"]["ruling"] = ruling
+    assert any("gate G3" in item for item in release_readiness(payload)["blocking"])
+
+
 def test_a_scoped_g3_without_the_ruling_still_blocks():
     payload = _header_scoped()
     del payload["roundtrip"]["scoped"]["ruling"]
