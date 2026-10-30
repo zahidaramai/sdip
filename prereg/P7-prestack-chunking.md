@@ -554,3 +554,50 @@ orders of magnitude inside their bound and are not what flaked. No figure above 
 **Registered before any rerun of this leg.** A test
 (`test_the_p7_wall_clock_comparison_is_a_benchmark_outside_the_gate`) asserts the marker is on
 exactly that test and that the default run deselects it.
+
+---
+
+## Amendment B — 2026-10-30, before any run it governs: a relative prestack criterion (D4)
+
+**Why.** The latency leg's own finding F9: the 2.0 s target separated nothing (every figure 137x
+to 1,800x inside it), while the ordering underneath it did; *"a future prestack chunking gate
+should be registered as a relative criterion, and it must be registered before it is
+measured."* The owner, on D4 (`DECISIONS.md` D-0106): *"Pre-register now"*, then *"Both: P7
+prestack criterion + P14 poststack probe"*. Poststack shapes measured by a consumer are context
+for P14 only and play no part here.
+
+**What is known before this run, stated so the criterion cannot be read as tuned to it:** the
+2026-08-23 runs (A/B above) put each purpose-built shape ahead of the default on its matched
+pattern by 1.8x to 10.9x, under load 9.4. The threshold below is a noise margin chosen from P7's
+recorded run-to-run spread (a factor of 2 on one store under load), which is why the load gate
+exists; it is not chosen from the ordering.
+
+**The run.** The existing runner, unchanged in construction:
+`pytest tests/integration/test_p7_latency.py -m benchmark --junitxml=RUN_ROOT/p7b-<run>.xml`,
+twice (runs A and B), from a clean worktree at the commit that registers this amendment, once
+it is on `origin`. Each run starts only when the 1-minute load average is at most a quarter of
+the cores (up to 3 checks, 60 s apart), else that run is **void**. The benchmark records, per
+(geometry, shape), its matched pattern's medians through pytest's `record_property`
+(`matched_median_s`, `default_median_s`), so the junit XML is the receipt; the pass/fail of the
+assertion itself is not the criterion.
+
+| Parameter | Declared value |
+|---|---|
+| Geometries | the two that clear the correctness precondition: `streamer_shot_3d`, `cdp_offset_3d`. The other two stay NOT EVALUABLE (F7), not counted either way |
+| Shapes compared | gather-contiguous vs default on `single gather`; time-slice-contiguous vs default on `time slice` (`MATCHED_PATTERN`) |
+| N, statistic | 5 repetitions, median (Amendment A, unchanged) |
+| Criterion | a purpose-built shape **beats** the default when default / matched ≥ **1.25** in **both** runs |
+| Load gate | 1-min load ≤ 0.25 × cores at the start of each run |
+
+**Decision rule and falsifier.** *Hypothesis:* the template default is adequate for prestack at
+this scale. *Falsifier:* every one of the four (geometry, shape) pairs beats the default by the
+criterion. If it fires, D4 records that SDIP ships a dominated prestack chunk silently and the
+owner is asked whether `sdip ingest` should accept a chunk shape and the certificate record a
+chunk manifest (P7's open design question, F12) — a store-format and certificate change that
+this probe does not make. If it does not fire, the default stays, and the pairs that did or did
+not beat it are recorded by name. Either void run → NOT EVALUABLE; nothing is decided.
+
+**Unchanged:** Amendments A and C, the original falsifier, every other test.
+
+**Scope.** Synthetic fixtures of 24-144 traces: relative behaviour only, warm cache, one
+machine. Not a survey-scale or cold-storage claim.

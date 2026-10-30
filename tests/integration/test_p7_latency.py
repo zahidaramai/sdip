@@ -733,7 +733,9 @@ what makes it the comparator: it is what a store ships with today, because
 @pytest.mark.benchmark
 @pytest.mark.parametrize("shape", sorted(MATCHED_PATTERN))
 @pytest.mark.parametrize("geometry", [g for g in GEOMETRIES if PRECONDITION[g]])
-def test_a_shape_built_for_a_pattern_beats_the_default_on_that_pattern(bench, geometry, shape):
+def test_a_shape_built_for_a_pattern_beats_the_default_on_that_pattern(
+    bench, geometry, shape, record_property
+):
     """**The leg's finding, and it is not a latency-target finding**.
 
     **A benchmark, not a gate** (P7 Amendment C; D39; ``DECISIONS.md`` D-0106): at
@@ -757,6 +759,10 @@ def test_a_shape_built_for_a_pattern_beats_the_default_on_that_pattern(bench, ge
     pattern = MATCHED_PATTERN[shape]
     matched = bench[geometry, shape].timings[pattern].median_s
     default = bench[geometry, "default"].timings[pattern].median_s
+    # P7 Amendment B: the junit XML of a `-m benchmark` run is the receipt, so the medians
+    # are recorded whatever the assertion says. The criterion is judged on these, not on it.
+    record_property("matched_median_s", matched)
+    record_property("default_median_s", default)
     assert matched < default, {"matched": matched, "default": default}
 
 
