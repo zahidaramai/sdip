@@ -117,7 +117,13 @@ def _emit(report: Report, *, as_json: bool, extra: Mapping[str, object] | None =
         for check in report.checks:
             click.echo(f"[{_GLYPH[check.status]}] {check.name:<{width}}  {check.summary}")
         click.echo("")
-        if report.ok:
+        not_run = [c.name for c in report.checks if c.status is Status.NOT_RUN]
+        if report.ok and not_run:
+            click.echo(
+                f"doctor: PASS ({len(report.checks) - len(not_run)} checks; "
+                f"not run: {', '.join(not_run)})"
+            )
+        elif report.ok:
             click.echo(f"doctor: PASS ({len(report.checks)} checks)")
         else:
             click.echo(
@@ -175,13 +181,22 @@ def cli(ctx: click.Context, debug: bool) -> None:
     help="Repository root to inspect for working-tree state.",
 )
 @click.option("--json", "as_json", is_flag=True, help="Emit a machine-readable report.")
-def doctor(root: Path, as_json: bool) -> None:
+@click.option(
+    "--consumer",
+    is_flag=True,
+    help=(
+        "Running SDIP inside another project: report working-tree and git-hooks, "
+        "which concern SDIP's own repository, as NOT_RUN and say so."
+    ),
+)
+def doctor(root: Path, as_json: bool, consumer: bool) -> None:
     """Environment sanity: barred vars, barred packages, pins, licences, tree.
 
     Runs first in CI and first in every runbook. If doctor fails, nothing else runs.
-    Exits 0 when every check passes, 1 otherwise. No flag skips a check.
+    Exits 0 when every check passes, 1 otherwise. No flag turns a failing check into
+    a pass; --consumer reports two repository checks as not run, by name.
     """
-    report = run_doctor(root)
+    report = run_doctor(root, consumer=consumer)
     extra = {"environment": environment_block()} if as_json else None
     sys.exit(_emit(report, as_json=as_json, extra=extra))
 

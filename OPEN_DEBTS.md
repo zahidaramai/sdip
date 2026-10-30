@@ -2484,3 +2484,19 @@ on the certificate, closing the SP1(a) gap for the five that declared nothing; *
 unless G3 is byte-identical. **Legs 2 (a format-parameterised raw view) and 4 (its G7
 controls) stay open:** D-0063 ruling 1 builds them only when a real file in such a format
 arrives.
+
+---
+
+## D37 — CLOSED 2026-10-30 — `sdip doctor --consumer`
+
+- **Closes:** D37 above (**SP10**) · **Decision:** `DECISIONS.md` D-0106
+
+Built as the owner ruled: `--consumer` reports `working-tree` and `git-hooks` as `NOT_RUN`,
+each saying "skipped (--consumer)" and recording what it would have said; the closing line
+names every check not run. The default is unchanged, and so is every other check. Measured
+through the executable from a directory that is not a git repository: `sdip doctor` FAIL
+(2 checks, as D37 recorded); `sdip doctor --consumer` PASS, "7 checks; not run: working-tree,
+publication-firewall, git-hooks" (the firewall was already `NOT_RUN` outside a repository).
+Tests in `tests/unit/test_cli.py`: the two checks FAIL by default and are `NOT_RUN` under the
+mode (the default half is the control); an injected failure in another check still fails
+doctor under the mode; the JSON report and the text output both say so.

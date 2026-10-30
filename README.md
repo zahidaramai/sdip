@@ -335,7 +335,9 @@ record it to show a re-ingest reproduced a store. `verify` checks both.
 that is dirty or absent, so mount a repository if you want a certificate. `ingest`,
 `verify` and `export` need nothing but the data. For the same reason `doctor` reports two
 failures in a bare container: both are about *this repository's* development discipline,
-not your environment.
+not your environment. Run **`sdip doctor --consumer`** there: it reports those two checks
+(`working-tree`, `git-hooks`) as not run and says so, and every other check decides the
+verdict as before. It is not an override: `certify` still refuses a dirty or absent tree.
 
 ---
 

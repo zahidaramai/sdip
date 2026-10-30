@@ -344,3 +344,58 @@ def test_doctor_fails_when_upstream_defines_a_setting_sdip_has_not_classified(mo
     check = doctor_module._check_upstream_settings()
     assert check.status.name == "FAIL"
     assert "SEGY_NEW" in check.summary
+
+
+# --- D37 / D-0106: `doctor --consumer` --------------------------------------------------
+
+
+def test_consumer_mode_reports_the_two_repository_checks_as_not_run(tmp_path):
+    """Outside a git repository both FAIL by default and are NOT_RUN, named, under --consumer.
+
+    The default half is the negative control: the mode must be what moves them.
+    """
+    default = {c.name: c for c in run_doctor(tmp_path).checks}
+    consumer = {c.name: c for c in run_doctor(tmp_path, consumer=True).checks}
+    for name in ("working-tree", "git-hooks"):
+        assert default[name].status is Status.FAIL
+        assert consumer[name].status is Status.NOT_RUN
+        assert "--consumer" in consumer[name].summary
+        assert consumer[name].evidence == {"consumer_mode": True, "would_have_been": "FAIL"}
+    assert list(default) == list(consumer), "the mode removes no check from the report"
+
+
+def test_consumer_mode_changes_no_other_check(tmp_path, monkeypatch):
+    """Any other failing check still fails doctor under --consumer: not an override.
+
+    The failure is injected by replacing one check, because no test may set a barred
+    variable (test_guard_env.test_sdip_source_never_sets_a_barred_variable).
+    """
+    from sdip.cli import doctor as doctor_module
+    from sdip.cli.result import Check
+
+    def failing_python() -> Check:
+        return Check(name="python-version", status=Status.FAIL, clause="x", summary="x")
+
+    monkeypatch.setattr(doctor_module, "_check_python", failing_python)
+    report = run_doctor(tmp_path, consumer=True)
+    assert not report.ok
+    assert {c.name for c in report.failed} == {"python-version"}
+
+
+def test_consumer_mode_records_what_the_check_would_have_said(git_repo):
+    """Inside a repository --consumer still reports them NOT_RUN, with what they would say."""
+    report = run_doctor(git_repo, consumer=True)
+    tree = next(c for c in report.checks if c.name == "working-tree")
+    assert tree.status is Status.NOT_RUN
+    assert tree.evidence["would_have_been"] == "PASS"
+
+
+def test_consumer_mode_says_so_on_the_command_line(runner, tmp_path):
+    result = runner.invoke(cli, ["doctor", "--consumer", "--root", str(tmp_path)])
+    assert "skipped (--consumer)" in result.output
+    payload = json.loads(
+        runner.invoke(cli, ["doctor", "--consumer", "--json", "--root", str(tmp_path)]).output
+    )
+    statuses = {c["name"]: c["status"] for c in payload["checks"]}
+    assert statuses["working-tree"] == statuses["git-hooks"] == "NOT_RUN"
+    assert "working-tree" not in payload["failed"]

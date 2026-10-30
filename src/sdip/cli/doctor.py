@@ -5,6 +5,12 @@ Runs first in CI and first in every runbook. If doctor fails, nothing else runs.
 Every check is FAIL-severity. There is no ``--force`` and no ``--allow-dirty``: the
 working-tree check is the same check ``sdip certify`` enforces, and a doctor that can
 be talked out of a finding is not a doctor.
+
+``--consumer`` (owner ruling, ``DECISIONS.md`` D-0106; OPEN_DEBTS D37) is not an override.
+It reports the two checks about *this repository's* development discipline -
+``working-tree`` and ``git-hooks`` - as ``NOT_RUN`` with the reason, in someone else's
+project where they cannot mean anything. It changes no other check, and ``sdip certify``
+still refuses a dirty or absent tree whatever doctor said.
 """
 
 from __future__ import annotations
@@ -385,11 +391,30 @@ def _check_firewall(root: Path) -> Check:
     )
 
 
-def run_doctor(root: str | Path = ".") -> Report:
+CONSUMER_SKIPPED = ("working-tree", "git-hooks")
+"""The checks ``--consumer`` reports as NOT_RUN. Both concern SDIP's own repository."""
+
+
+def _consumer_skip(check: Check) -> Check:
+    return Check(
+        name=check.name,
+        status=Status.NOT_RUN,
+        clause=check.clause,
+        summary=(
+            "skipped (--consumer): an SDIP development check; "
+            "sdip certify still requires a clean git working tree"
+        ),
+        evidence={"consumer_mode": True, "would_have_been": check.status.value},
+    )
+
+
+def run_doctor(root: str | Path = ".", *, consumer: bool = False) -> Report:
     """Run every environment check and return the report.
 
     Args:
         root: Repository root to inspect for working-tree state.
+        consumer: Report ``working-tree`` and ``git-hooks`` as NOT_RUN, saying why
+            (D-0106). Every other check runs and decides the verdict as before.
 
     Returns:
         A report whose ``ok`` property is the exit verdict.
@@ -410,6 +435,10 @@ def run_doctor(root: str | Path = ".") -> Report:
             _check_hooks(root_path),
         ]
     )
+    if consumer:
+        report.checks = [
+            _consumer_skip(c) if c.name in CONSUMER_SKIPPED else c for c in report.checks
+        ]
     return report
 
 
