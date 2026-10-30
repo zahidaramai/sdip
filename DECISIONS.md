@@ -5574,3 +5574,54 @@ store block; Markdown never overwrites and is refused inside the source's direct
 like every command that reads a source (D-0087 parity), so the preflight and the text decode use
 the declared reading; and `raw_headers_bind.from` names where the store's raw headers were read.
 GeoCRS `check` on a declaration built from a receipt is GeoCRS's to run; the receipt is ready for it.
+
+---
+
+## D-0110 — 2026-10-30 — The sparse raw sample view (D36): design, registered before code
+
+**Owner's ruling (D-0106):** *"Sparse view of only the at-risk words"*, the G3 byte-identity
+proof kept. This entry fixes the layout, the predicate and the controls before any code.
+
+**Measured first** (read-only, at `0c228c1`, N = 1): on the Volve time store
+(`68fd9bb4…0d5f`, 401 × 720 × 850, IBM source `f902e2bd…`), comparing
+`segy.ibm.ieee2ibm(amplitude)` with the stored dense view over every live cell: **0 of
+245,389,900 live words differ**. The comparison is not vacuous: one flipped stored word gives
+exactly 1 difference. The dense view there is **752,628 KiB — 49 % of the store**, which makes the
+store about 1.5 times its source. P2's at-risk regimes (exponent codes 1-32 and 97-127, zero
+fractions, unnormalised fractions) are absent from this survey; on such data a sparse view holds
+nothing.
+
+**Layout `sparse/1`.** `amplitude_raw_ibm32` becomes a Zarr **group** (the name, and the
+certificate's `raw_sample_view.array`, are kept) holding two 1-D arrays of equal length k ≥ 0:
+`index` (`uint64`, the flat C-order position in `amplitude`) and `words` (`uint32`, the source
+word there), sorted by `index`, live cells only. Group attributes keep every existing provenance
+attribute and add `sdipRawSampleLayout: "sparse/1"` and the reconstruction rule, so a stock-zarr
+reader can learn it from the store: *every source word = `ieee2ibm(amplitude)` (pinned `segy`
+0.6.0), then `words` written at `index`*.
+
+**Predicate.** At ingest, after `amplitude` is written, a live word `w` is stored iff
+`ieee2ibm(stored float32) != w`, the float32 read back from the written array — so the entries are
+exactly what the store needs, measured against itself, never predicted from P2's classes.
+
+**Plane 4 (G2d).** For every live trace, the reconstructed words must equal the source words,
+exactly (`array_equal` on `uint32`). It also fails on an `index` out of range, on a padding cell,
+duplicated or unsorted, or on `index`/`words` of different length. The dense layout of stores
+written before this release is still read and verified as before; a store's layout is read from
+its own attribute, never assumed.
+
+**G7.** `flipped_raw_ibm32_word` flips one stored word when k > 0; when k = 0 it inserts one
+spurious entry (the first live cell, its re-encoded word with one bit flipped), so the control
+bites on every IBM store, including the common case where nothing needed storing. Each must fail
+G2d and only G2d. `deleted_raw_ibm32_array` deletes the group; Plane 4's presence requirement for a
+lossy-decode source fails it, unchanged.
+
+**Both halves (D-0088).** Correct data across the value space the predicate depends on must PASS:
+a synthetic IBM source sweeping P2's regimes (normal, exponent 1-32 and 97-127, zero fraction with
+any sign and exponent, unnormalised) yields k equal to the count of non-round-tripping words, and
+Plane 4 PASS; each regime's word, corrupted, fails.
+
+**What it costs, stated:** a consumer recovering source words now needs an `ieee2ibm`
+implementation (the pinned `segy`, or the documented algorithm), where the dense view needed
+none. **What does not change:** P2's rule (an `ibm32` store is `EQUIVALENT` only with a
+byte-identical round trip), the certificate's other fields, the store digest schemes. The
+certificate's `raw_sample_view` gains `layout` and `entries`.
