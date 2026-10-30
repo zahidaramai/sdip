@@ -540,3 +540,22 @@ Either void run → NOT EVALUABLE, and the default stays.
 
 **Scope.** One more store, one machine, local disk, warm cache. Two fields are not every
 poststack survey.
+
+---
+
+## Amendment C — 2026-10-31 07:4x MYT, before any run: start now, on the owner's order
+
+**Why.** Amendment B's watcher waited from 03:51 to 07:41 and no 10-minute window at load ≤ 3.5
+came (sampled 1-minute load 5.5-19.6). The owner, directly in this session: *"Run it at all cost!"*
+
+**Changed — only when the run starts:** the harness is started at once from a clean worktree at
+the commit that registers this amendment, once that commit is on `origin`. The 10-quiet-minutes
+trigger is dropped. GeoSuite is asked to pause the suite's heavy jobs for the timing window.
+
+**Unchanged:** everything else in Amendment B and above:
+- the harness verbatim, the article, the shapes and patterns, N = 5, two runs;
+- the **per-run load gate** (≤ 0.25 × cores at each run's start, 3 checks 60 s apart, else void);
+- the 1.25 ratio, the decision rule and its consequence.
+
+A run above the gate is still void and is not judged. If both runs are void, the timing leg is
+NOT EVALUABLE, the default stays 128³, and only the precondition and structure are recorded.
