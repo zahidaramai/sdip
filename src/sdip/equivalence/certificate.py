@@ -41,6 +41,7 @@ from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY_NAME
 from sdip.provenance.environment import capture_environment
 from sdip.provenance.git import GitState, capture_git_state, repo_relative, repository_root
 from sdip.provenance.store_digest import StoreDigestResult
+from sdip.spec.declaration import SurveyDeclaration
 from sdip.spec.transforms import (
     detect_coordinate_scalar,
     detect_lossy_decode,
@@ -149,6 +150,36 @@ def read_codec_manifest(store: str | Path) -> list[str]:
             if name:
                 names.add(str(name))
     return sorted(names)
+
+
+def read_chunk_manifest(store: str | Path, declaration: SurveyDeclaration) -> dict[str, Any]:
+    """Which chunk shape wrote the store, and every array's shape on disk (D-0112).
+
+    Read from the store with stock ``zarr``, as the codec manifest is, and including arrays
+    inside groups (the D36 raw view). A record, not a gate: P14 measured the decoded
+    amplitude identical across four shapes, so the shape changes read cost, not content.
+    """
+    import zarr
+    from mdio.builder.template_registry import get_template
+
+    template = get_template(declaration.template)
+    default = [int(c) for c in template.full_chunk_shape]
+    group = zarr.open_group(str(store), mode="r")
+    arrays = {
+        str(path): [int(c) for c in node.chunks]
+        for path, node in sorted(group.members(max_depth=None))
+        if isinstance(node, zarr.Array)
+    }
+    declared = list(declaration.chunk_shape) if declaration.chunk_shape is not None else None
+    expected = declared if declared is not None else default
+    return {
+        "source": "declared" if declared is not None else "template_default",
+        "declared": declared,
+        "template_default": default,
+        "default_variable": template.default_variable_name,
+        "default_variable_matches": arrays.get(template.default_variable_name) == expected,
+        "arrays": arrays,
+    }
 
 
 @dataclass(slots=True)
@@ -363,6 +394,11 @@ def issue(
         "output_zarr_format": 3,
         "output_bytes": output_bytes,
         "output_array_manifest": _array_manifest(result.output_path),
+        "chunk_manifest": (
+            read_chunk_manifest(result.output_path, result.declaration)
+            if result.declaration is not None
+            else None
+        ),
         "planes": plane_block,
         "roundtrip": (
             roundtrip.to_json()

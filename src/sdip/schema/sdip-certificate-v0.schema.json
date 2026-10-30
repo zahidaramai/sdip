@@ -354,6 +354,20 @@
         }
       }
     },
+    "chunk_manifest": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["source", "declared", "template_default", "default_variable", "default_variable_matches", "arrays"],
+      "description": "Which chunk shape wrote the store and every array's chunk shape on disk, read with stock zarr, arrays inside groups included (DECISIONS.md D-0112, P7 F12). Null only for an ingest result that carries no declaration. A record, not a gate. Additive: certificates before it lack the key.",
+      "properties": {
+        "source": {"enum": ["declared", "template_default"]},
+        "declared": {"type": ["array", "null"], "items": {"type": "integer", "minimum": 1}},
+        "template_default": {"type": "array", "items": {"type": "integer"}},
+        "default_variable": {"type": "string"},
+        "default_variable_matches": {"type": "boolean"},
+        "arrays": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "integer", "minimum": 1}}}
+      }
+    },
     "planes": {
       "type": "object",
       "additionalProperties": false,

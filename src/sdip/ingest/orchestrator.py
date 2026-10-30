@@ -28,7 +28,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from sdip.errors import PhaseNotAuthorisedError, SdipError, UntrustedInputError
+from sdip.errors import (
+    ChunkShapeError,
+    PhaseNotAuthorisedError,
+    SdipError,
+    UntrustedInputError,
+)
 from sdip.guard.env import refuse_barred_env_vars
 from sdip.guard.library_config import refuse_library_config
 from sdip.guard.warn import (
@@ -451,9 +456,22 @@ def ingest_declared(
         # CONTAINS, not merely whether it can be written, and a grid this tool chose is
         # not one anybody declared (SP9, the same reasoning as G5's ceilings).
         grid_overrides = declaration.grid_overrides
+        # D-0112: a declared chunk shape goes through the documented public setter on the
+        # fresh copy `get_template` returns; upstream re-checks the dimension count.
+        template = get_template(declaration.template)
+        if declaration.chunk_shape is not None:
+            try:
+                template.full_chunk_shape = declaration.chunk_shape
+            except ValueError as exc:
+                dims = ", ".join(template.dimension_names)
+                msg = (
+                    f"chunk shape {declaration.chunk_shape} does not fit template "
+                    f"{declaration.template} ({dims}): {exc}. Nothing was written."
+                )
+                raise ChunkShapeError(msg) from exc
         segy_to_mdio(
             segy_spec=built.segy_spec,
-            mdio_template=get_template(declaration.template),
+            mdio_template=template,
             input_path=source_path,
             output_path=output_path,
             overwrite=overwrite,
@@ -528,6 +546,7 @@ def ingest(
     overwrite: bool = False,
     override: SurveyOverride | None = None,
     grid_overrides: dict[str, Any] | None = None,
+    chunk_shape: tuple[int, ...] | None = None,
 ) -> IngestResult:
     """Ingest under a reading given as keywords. The form for a caller with no declaration.
 
@@ -553,13 +572,18 @@ def ingest(
             :func:`sdip.spec.overrides.load_override`.
         grid_overrides: Passed straight through to ``segy_to_mdio``. **There is no
             default**; see :func:`ingest_declared`.
+        chunk_shape: An explicit chunk shape, or ``None`` for the template's (D-0112).
 
     Returns:
         The ingest result, in certificate shape. Refusals are :func:`ingest_declared`'s,
         unchanged.
     """
     declaration = SurveyDeclaration(
-        revision=revision, template=template, override=override, grid_overrides=grid_overrides
+        revision=revision,
+        template=template,
+        override=override,
+        grid_overrides=grid_overrides,
+        chunk_shape=chunk_shape,
     )
     return ingest_declared(source, output, declaration, overwrite=overwrite)
 

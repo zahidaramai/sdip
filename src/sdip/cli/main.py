@@ -22,6 +22,7 @@ from sdip.cli.doctor import environment_block, run_doctor
 from sdip.cli.result import Report, Status
 from sdip.equivalence.envelope import DEFAULT_ENVELOPE_GIB
 from sdip.errors import (
+    ChunkShapeError,
     DeclarationMismatchError,
     DirtyTreeError,
     GuardError,
@@ -64,14 +65,46 @@ and runs only in an environment with no barred variable set (D-0087)."""
 REVISION_CHOICES = ("0", "1", "2", "2.1")
 
 
+CHUNKS_HELP = (
+    "Explicit chunk shape for the store's data variable, one positive size per template "
+    "dimension, comma-separated (e.g. 64,64,64). Default: the template's own shape. Part of "
+    "the survey declaration (D-0112): pass the same value to every command that reads "
+    "that store."
+)
+
+
+def _parse_chunks(
+    _ctx: click.Context, _param: click.Parameter, value: str | None
+) -> tuple[int, ...] | None:
+    if value is None:
+        return None
+    try:
+        shape = tuple(int(part) for part in value.split(","))
+    except ValueError:
+        shape = ()
+    if not shape or any(c < 1 for c in shape):
+        msg = f"{value!r}: give positive integers separated by commas, e.g. 64,64,64"
+        raise click.BadParameter(msg)
+    return shape
+
+
 def declaration_options(func: Any) -> Any:
-    """``--revision``, ``--template``, ``--override``: the survey declaration, defined ONCE.
+    """The survey declaration's options, defined ONCE.
+
+    ``--revision``, ``--template``, ``--override`` and ``--chunks`` (D-0112).
 
     Applied to every command that reads a source or a store. Before D-0087 each command
     declared its own options; ``--override`` reached two of the five, and ``verify`` then
     judged a revision 0 store under revision 1's spec by default. One definition makes
     parity structural, and ``tests/unit/test_cli_declaration_parity.py`` pins it.
     """
+    func = click.option(
+        "--chunks",
+        "chunks",
+        default=None,
+        callback=_parse_chunks,
+        help=CHUNKS_HELP,
+    )(func)
     func = click.option(
         "--override",
         "override_path",
@@ -94,13 +127,20 @@ def declaration_options(func: Any) -> Any:
     )(func)
 
 
-def _declaration(revision: str, template: str, override_path: Path | None) -> SurveyDeclaration:
+def _declaration(
+    revision: str,
+    template: str,
+    override_path: Path | None,
+    chunks: tuple[int, ...] | None = None,
+) -> SurveyDeclaration:
     """The declaration a command was handed, built the same way for every command."""
     from sdip.spec import load_override
 
     number: float | int = float(revision) if "." in revision else int(revision)
     override = load_override(override_path) if override_path else None
-    return SurveyDeclaration(revision=number, template=template, override=override)
+    return SurveyDeclaration(
+        revision=number, template=template, override=override, chunk_shape=chunks
+    )
 
 
 _GLYPH = {Status.PASS: "PASS", Status.FAIL: "FAIL", Status.NOT_RUN: " -- "}
@@ -295,6 +335,7 @@ def ingest_cmd(
     template: str,
     overwrite: bool,
     override_path: Path | None,
+    chunks: tuple[int, ...] | None,
     as_json: bool,
 ) -> None:
     """SEG-Y to MDIO, against a gap-free spec.
@@ -309,7 +350,7 @@ def ingest_cmd(
     """
     from sdip.ingest import ingest_declared as run_ingest
 
-    declaration = _declaration(revision, template, override_path)
+    declaration = _declaration(revision, template, override_path, chunks)
     result = run_ingest(source, output, declaration, overwrite=overwrite)
 
     if as_json:
@@ -405,6 +446,7 @@ def verify_cmd(
     revision: str,
     template: str,
     override_path: Path | None,
+    chunks: tuple[int, ...] | None,
     skip_portability: bool,
     as_json: bool,
     envelope_gib: float,
@@ -430,7 +472,7 @@ def verify_cmd(
     if refusal is not None:
         raise UntrustedInputError(refusal)
 
-    declaration = _declaration(revision, template, override_path)
+    declaration = _declaration(revision, template, override_path, chunks)
     # Binding FIRST. A declaration that does not match the store is the root error, and the
     # binding names the declaration the store was written under; it reads only the store's
     # attribute record, never the untrusted source. Preflight then reads the source under a
@@ -515,6 +557,7 @@ def export_cmd(
     revision: str,
     template: str,
     override_path: Path | None,
+    chunks: tuple[int, ...] | None,
     as_json: bool,
 ) -> None:
     """MDIO to SEG-Y, then run G3 against the source.
@@ -524,7 +567,7 @@ def export_cmd(
     from sdip.equivalence.binding import check_binding
     from sdip.export import export as run_export
 
-    declaration = _declaration(revision, template, override_path)
+    declaration = _declaration(revision, template, override_path, chunks)
     binding = check_binding(store, declaration)
     built = declaration.build_spec()
     result = run_export(store, output, built.segy_spec, source=source)
@@ -565,6 +608,7 @@ def receipt_cmd(
     revision: str,
     template: str,
     override_path: Path | None,
+    chunks: tuple[int, ...] | None,
     as_json: bool,
     markdown_path: Path | None,
 ) -> None:
@@ -587,7 +631,7 @@ def receipt_cmd(
             raise click.UsageError(
                 "--markdown may not write inside the source's directory or the store"
             )
-    declaration = _declaration(revision, template, override_path)
+    declaration = _declaration(revision, template, override_path, chunks)
     validate_source(source, declaration)
     receipt = build_receipt(source, declaration.build_spec().segy_spec.text_header, store)
     if markdown_path is not None:
@@ -648,6 +692,7 @@ def certify_cmd(
     revision: str,
     template: str,
     override_path: Path | None,
+    chunks: tuple[int, ...] | None,
     overwrite: bool,
     rss_ceiling_gib: float | None,
     wall_ceiling_s: float | None,
@@ -715,7 +760,7 @@ def certify_cmd(
             "refuses now instead (spec 11.3). No flag skips this check."
         )
 
-    declaration = _declaration(revision, template, override_path)
+    declaration = _declaration(revision, template, override_path, chunks)
     started = time.monotonic()
     result = run_ingest(source, output, declaration, overwrite=overwrite)
     # The store this run just wrote must bind to the declaration it was written under.
@@ -975,7 +1020,7 @@ def main() -> None:
         # Exit 2: an environment SDIP will not run in is not a verdict about any data.
         click.echo(f"sdip: {type(exc).__name__}: {exc}", err=True)
         sys.exit(EXIT_USAGE)
-    except DeclarationMismatchError as exc:
+    except (DeclarationMismatchError, ChunkShapeError) as exc:
         # Exit 2, not 1. A mismatched declaration is an operator input error, not a
         # verdict about the data - reporting it as FAIL would tell a script that a
         # correct conversion was corrupt, which is precisely D47's defect.

@@ -73,3 +73,11 @@ class DeclarationMismatchError(SdipError):
     byte-correct store under one set of defaults, a traceback under another. A refusal
     naming both declarations is the only answer that is not wrong.
     """
+
+
+class ChunkShapeError(SdipError):
+    """A declared chunk shape the template cannot take (D-0112): an operator input error.
+
+    Raised before any trace is read or anything is written; the CLI exits 2, as for a
+    mismatched declaration, because it is not a verdict about the data.
+    """

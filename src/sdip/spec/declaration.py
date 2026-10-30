@@ -14,10 +14,11 @@ the ones it missed were silently wrong rather than loudly incapable:
   and a traceback with the revision retyped. No invocation gave the right answer.
 
 A declaration is everything that determines how the source's bytes are read into a
-store: the revision whose base spec applies, the MDIO template, the survey override, and
-any grid overrides. Commands take it whole, ingest records its digest in the store, and a
-command handed a different declaration refuses with both named instead of producing a
-verdict about a reading nobody performed (maintainer ruling, D-0087).
+store: the revision whose base spec applies, the MDIO template, the survey override, any
+grid overrides, and the chunk shape if one is declared (D-0112). Commands take it whole,
+ingest records its digest in the store, and a command handed a different declaration
+refuses with both named instead of producing a verdict about a reading nobody performed
+(maintainer ruling, D-0087).
 
 **The digest is not ``spec_sha256``.** That hash covers field names, byte positions and
 widths — deliberately, for G6 — and is blind to field types and byte order: a big-endian
@@ -55,6 +56,20 @@ class SurveyDeclaration:
     template: str
     override: SurveyOverride | None = None
     grid_overrides: Mapping[str, Any] | None = None
+    chunk_shape: tuple[int, ...] | None = None
+    """An explicit chunk shape, one positive size per template dimension, or ``None`` for
+    the template's own (D-0112). Part of the declaration so every re-ingest writes the same
+    layout; no ``-1``, whose meaning depends on the survey."""
+
+    def __post_init__(self) -> None:
+        """Refuse a chunk shape that is not positive integers; store it as a tuple."""
+        if self.chunk_shape is None:
+            return
+        shape = tuple(self.chunk_shape)
+        if not shape or any(isinstance(c, bool) or not isinstance(c, int) or c < 1 for c in shape):
+            msg = f"chunk shape {self.chunk_shape!r} must be positive integers, one per dimension"
+            raise ValueError(msg)
+        object.__setattr__(self, "chunk_shape", shape)
 
     @property
     def endianness(self) -> str | None:
@@ -74,13 +89,18 @@ class SurveyDeclaration:
             override = self.override.to_json()
             override.pop("source_path", None)
         grid = dict(sorted(self.grid_overrides.items())) if self.grid_overrides else None
-        return {
+        canonical: dict[str, Any] = {
             "schema": DECLARATION_SCHEMA,
             "revision": _revision_text(self.revision),
             "template": self.template,
             "override": override,
             "grid_overrides": grid,
         }
+        # Present only when declared, so every declaration without one - and so every
+        # store written before D-0112 - keeps the digest it had.
+        if self.chunk_shape is not None:
+            canonical["chunk_shape"] = list(self.chunk_shape)
+        return canonical
 
     def sha256(self) -> str:
         """Digest of :meth:`canonical`, serialised with sorted keys and no whitespace."""
@@ -95,6 +115,8 @@ class SurveyDeclaration:
         text = f"revision {_revision_text(self.revision)}, template {self.template}, {override}"
         if self.grid_overrides:
             text += f", grid overrides {', '.join(sorted(self.grid_overrides))}"
+        if self.chunk_shape is not None:
+            text += f", chunks {'x'.join(str(c) for c in self.chunk_shape)}"
         return text
 
     def build_spec(self) -> GapFreeSpec:

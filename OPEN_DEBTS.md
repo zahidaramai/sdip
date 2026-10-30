@@ -2665,3 +2665,26 @@ the falsifier fires. Every precondition was met: Planes 1-5 PASS and the amplitu
 store-layout ruling. The choices are whether `sdip ingest` accepts a chunk shape, whether the certificate records
 a chunk manifest (P7 F12), and whether the poststack default changes. Any of them is a store-format and
 certificate change. D4 stays open until that ruling.
+
+---
+
+## D4 — NARROWED 2026-10-31 — a chunk shape can be declared and is recorded; the default waits on F3
+
+- **Narrows:** D4 above and its 2026-10-31 FALSIFIERS FIRED entry (**SP10**) · **Decision:**
+  `DECISIONS.md` D-0112
+
+Built as D-0112 ruled. `--chunks I,X,S` sits on every store command and becomes part of the survey
+declaration, so `certify`'s closure and G6 re-ingest with the same shape. The certificate carries
+`chunk_manifest`: whether the shape was declared or defaulted, and every array's shape on disk,
+nested arrays included. **Measured through the executable** (`tests/integration/test_chunk_shape.py`,
+22 passed, on the 5 × 6 × 32 synthetic fixture at shape 2,3,16):
+- the store holds the declared shape;
+- it verifies under its own declaration;
+- `certify` issues with G6 and closure PASS and the manifest `declared`;
+- a declaration differing only in shape is refused (exit 2) in both directions;
+- a shape the template cannot take, or one that is not positive integers, is refused with nothing
+  written;
+- the digests of declarations without a shape equal their values before D-0112.
+
+**Still open:** whether the poststack default moves from 128³. P14 Amendment B (F3) decides, as
+D-0112 rules. Prestack: a fitting shape can now be declared; nothing ships one by default.
