@@ -5651,3 +5651,52 @@ defects in D-0107's contract as built. Registered here before the fix.
 commit and clean state; a source with 3255-3256 = 1 or 2 does not list `linear_units`, one with
 0 does. Schema name unchanged (`sdip-header-receipt/1`): fields are added, none removed or
 redefined except `not_stated`, whose definition this entry corrects.
+
+---
+
+## D-0112 — 2026-10-31 — D4 ruling: an explicit chunk shape on ingest, a chunk manifest on the certificate; the default stays pending F3
+
+**Ruling, relayed via GeoSuite under its D-222** (the owner, 2026-10-30 22:20 MYT: *"orchestrate all
+end to end, no holding back, I accept all your future recommendations"*; GeoSuite DECISIONS.md),
+after both chunking falsifiers fired (P7 Amendment D, P14 Amendment A; OPEN_DEBTS D4, 2026-10-31):
+
+> (1) yes, `sdip ingest` accepts an explicit chunk shape and the certificate records it; (2) yes,
+> the certificate records a chunk manifest (P7 F12); both additive, no pin bump. (3) no default
+> move yet: the P14 evidence is Volve only, and one field is one field. Register P14 Amendment B:
+> the same criterion, candidates 64^3 and 128×128×64 against 128^3, on the F3 store, armed for
+> the next quiet window with the same load gate. If 64^3 beats 128^3 on F3 with no loss, the
+> default moves to 64^3 as a MAJOR pin bump […]; if F3 disagrees, the default stays and the
+> disagreement is the record.
+
+**Design (1): the chunk shape is part of the survey declaration.** `SurveyDeclaration` gains
+`chunk_shape` (positive integers, one per template dimension, or `None` for the template's own
+shape). It goes on the declaration, not as an ingest keyword, for D-0091's reason: every
+re-ingest SDIP performs (certify's, the round-trip closure's, each of G6's runs) is built from the
+declaration, so a shape passed beside it would reach some of those runs and not others (the D62
+class). `--chunks I,X,S` joins `--revision/--template/--override` in the one shared option set, so
+every store command takes it (D-0087 parity). A command handed a declaration whose shape differs
+from the one that wrote the store refuses with both declarations named, as it does for any other
+part of the declaration.
+- **The digest stays the same for every existing store.** `canonical()` carries a `chunk_shape` key
+  only when a shape is declared, so a declaration without one hashes exactly as before and no store
+  written before this entry is refused.
+- SDIP accepts no `-1` (upstream's "whole dimension"). That size depends on the survey, so a store
+  written with it could not be described by its declaration alone.
+- The shape reaches upstream through the documented public setter `full_chunk_shape` on the fresh
+  template copy `get_template` returns (§3.3). Upstream checks the dimension count again.
+
+**Design (2): `chunk_manifest` on the certificate**, read from the store with stock `zarr`, as the
+codec manifest is (SP3):
+- `source`: `declared`, or `template_default`.
+- `declared`: the declared shape, or null.
+- `template_default`: the template's shape.
+- `arrays`: every array's chunk shape, keyed by its path, **including arrays inside groups**.
+- `default_variable_matches`: whether the template's default variable is chunked as declared.
+
+This records which shape wrote the store; it is not a gate. Equivalence does not depend on it,
+because P14 measured the amplitude identical across four shapes. **Correction (SP10) to P7 F12**
+("the certificate carries no chunk manifest"): `output_array_manifest` has recorded each
+top-level array's `chunks` since F2 (`4706b5a`). What was missing was whether that shape was
+asked for or defaulted, and the arrays nested in groups (the D36 raw view). Schema v0, additive.
+
+**Not changed:** the 128³ poststack default and every pin. P14 Amendment B (F3) decides (3).
