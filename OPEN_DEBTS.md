@@ -2591,3 +2591,26 @@ the justification names D68. Measured (`tests/integration/test_revision_scoped_c
 `0x0200` is `EQUIVALENT` and release-ready. Every other leg of the D61 sweep is unchanged
 (`0x0000`, `0x0100`, `0x0101` still round-trip, never scoped). 49 tests pass across the scope,
 header-scope and release-readiness suites.
+
+---
+
+## D13 — CLOSED 2026-10-30 — every cited section resolves to a public restatement, and a test holds it
+
+- **Closes:** D13 above (**SP10**) · **Decision:** `DECISIONS.md` D-0106 (*"Build a check that every
+  cited section resolves"*; the specification stays private)
+
+`CITATIONS.md` names, for every section number cited in a published file, a public file and a
+verbatim line restating the rule: 55 entries — 41 for the specification's numbering, 10 for the
+operating contract's (which numbers differently and is also private), 4 for other documents cited
+by their own numbers (NOTICE, the Sleipner licence). Specification §6.3, the one section no public
+file restated, is now restated in `CONTRIBUTING.md` (*Repository layout*), as the tree stands.
+Notes mark restatements that cover part of a section (§1.2, §6.5, §7, §8.9, §9.1, §10.1, §11.3).
+
+`tests/unit/test_section_citations.py` scans every tracked, published text file (693 citations at
+the draft scan) and fails on a number with no entry, and on an entry whose line is missing,
+duplicated, in an unpublished file, or under an unknown scheme; six negative controls each produce
+exactly their problem. **What it does not prove:** that a restatement says what the private text
+says. One disagreement found while building it is reported, not resolved here: the public
+CHANGELOG (corrected at 1.0.0) says a pin bump is a **major** release, while specification §12.4
+and the operating contract §3.2 still say **minor**; the governing documents are the owner's to
+amend.
