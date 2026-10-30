@@ -489,3 +489,54 @@ not a claim about cold reads, object stores or every poststack survey.
 ### Recorded in
 
 `OPEN_DEBTS.md` D4 (falsifiers fired; owner ruling asked) · this file
+
+---
+
+## Amendment B — 2026-10-31, before the run it governs: the same probe on F3 (D-0112)
+
+**Why.** P14 Amendment A's falsifier fired on both Volve stores. The D4 ruling (`DECISIONS.md`
+D-0112, relayed via GeoSuite under D-222) does not move the default on one field: *"the P14 evidence
+is Volve only, and one field is one field. Register P14 Amendment B: the same criterion,
+candidates 64^3 and 128×128×64 against 128^3, on the F3 store, armed for the next quiet window
+with the same load gate."*
+
+**Article.** One openly licensed poststack volume, fetched outside the repository and never
+vendored. It is the F3 article of P12: 1,292,686,488 bytes,
+`sha256 b36494f4e9bed7216228124f43ff8901168bff8bebd4e4c4dabb80a68d568dab`, 619,101 traces
+(651 × 951), 462 samples at 4 ms, IEEE float32. Case name `f3`; declaration revision 1,
+`PostStack3DTime`, no override (the reading D-0097 verified). The harness refuses a source whose
+sha256 differs.
+
+**Unchanged:**
+- the harness, verbatim as registered above;
+- the four patterns, N = 5, two runs (A, B);
+- the per-run load gate (≤ 0.25 × cores at each run's start, 3 checks 60 s apart, else void);
+- the 1.25 "beats/loses" ratio;
+- the precondition (Planes 1-5 PASS at every shape, amplitude identical across shapes), and its
+  stop condition.
+
+The harness still builds all four registered shapes. `64x256x64` is recorded and not judged; the
+ruling names two candidates.
+
+**When the run starts.** It is started by a detached watcher, as in Amendment A:
+- at the commit that registers this amendment, once that commit is on `origin`;
+- only after the 1-minute load average has been ≤ 3.5 for 10 consecutive minutes (sampled every
+  60 s);
+- the watcher stays armed until **2026-11-02 12:00 MYT**. If no window comes, that is recorded and
+  nothing runs.
+
+**Decision rule, on F3 alone** (a candidate *qualifies* when it beats 128³ on at least one pattern
+and loses on none, with "beats" and "loses" exactly as registered above):
+- **`64^3` qualifies:** as ruled, the poststack default moves from 128³ to 64³. That is a store-format
+  change shipped as a MAJOR release with a migration note; GeoSuite relays the re-pin to GeoAIBrain,
+  SFM and ExS. The move is its own decision entry and its own commit, made after this record and
+  citing it. Nothing changes on this record alone.
+- **`64^3` does not qualify:** the default stays 128³, and the disagreement between F3 and Volve is
+  the record.
+- **`128x128x64`** is judged by the same rule and recorded. On its own it moves nothing: the ruling
+  ties the move to 64³ only.
+
+Either void run → NOT EVALUABLE, and the default stays.
+
+**Scope.** One more store, one machine, local disk, warm cache. Two fields are not every
+poststack survey.
