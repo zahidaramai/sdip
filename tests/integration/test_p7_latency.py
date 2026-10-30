@@ -730,10 +730,16 @@ what makes it the comparator: it is what a store ships with today, because
 """
 
 
+@pytest.mark.benchmark
 @pytest.mark.parametrize("shape", sorted(MATCHED_PATTERN))
 @pytest.mark.parametrize("geometry", [g for g in GEOMETRIES if PRECONDITION[g]])
 def test_a_shape_built_for_a_pattern_beats_the_default_on_that_pattern(bench, geometry, shape):
     """**The leg's finding, and it is not a latency-target finding**.
+
+    **A benchmark, not a gate** (P7 Amendment C; D39; ``DECISIONS.md`` D-0106): at
+    millisecond scale on a loaded machine the comparison is noise (it failed at load 11.2,
+    then passed 3/3), so it is deselected from the default run and reported with
+    ``pytest -m benchmark``, still as medians of the declared N = 5.
 
     Both purpose-built shapes beat MDIO's default on the pattern they were built for, on
     both geometries that clear the precondition, in every run recorded on 2026-08-23 — by

@@ -745,3 +745,26 @@ def test_the_citation_detector_actually_detects():
     # Ordinary prose must NOT trip it.
     assert _citations("the operating contract §5 says") == []
     assert _citations("specification §11.4 covers hostile input") == []
+
+
+def test_the_p7_wall_clock_comparison_is_a_benchmark_outside_the_gate(repo_root):
+    """D39 / D-0106. The comparison is marked `benchmark`, and the default run deselects it.
+
+    Both halves: the marker must be on that test, and the default options must exclude the
+    marker, or the flaky comparison is back in the gating suite.
+    """
+    import tomllib
+
+    config = tomllib.loads((repo_root / "pyproject.toml").read_text())["tool"]["pytest"]
+    ini = config["ini_options"]
+    assert "-m 'not benchmark'" in ini["addopts"]
+    assert any(m.startswith("benchmark:") for m in ini["markers"])
+
+    tree = ast.parse((repo_root / "tests/integration/test_p7_latency.py").read_text())
+    marked = {
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef)
+        and any(ast.unparse(d) == "pytest.mark.benchmark" for d in node.decorator_list)
+    }
+    assert marked == {"test_a_shape_built_for_a_pattern_beats_the_default_on_that_pattern"}

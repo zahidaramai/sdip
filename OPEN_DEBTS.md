@@ -2500,3 +2500,17 @@ publication-firewall, git-hooks" (the firewall was already `NOT_RUN` outside a r
 Tests in `tests/unit/test_cli.py`: the two checks FAIL by default and are `NOT_RUN` under the
 mode (the default half is the control); an injected failure in another check still fails
 doctor under the mode; the JSON report and the text output both say so.
+
+---
+
+## D39 — CLOSED 2026-10-30 — the wall-clock comparison is a benchmark outside the gate
+
+- **Closes:** D39 above (**SP10**) · **Decision:** `DECISIONS.md` D-0106 · **Probe:** P7 Amendment C
+
+As the owner ruled: `test_a_shape_built_for_a_pattern_beats_the_default_on_that_pattern` is
+marked `benchmark` and deselected from the default run (`-m 'not benchmark'` in `pyproject.toml`),
+still reporting medians of N = 5 under `pytest -m benchmark`. P7 Amendment C records the change
+before any rerun. Collection measured: default 59 of 63 P7 tests (the 4 parametrised comparisons
+deselected); `-m benchmark` 4 of 63. CI was already excluding the whole file (`ci.yml`, D39), so
+CI is unchanged. Test: `test_the_p7_wall_clock_comparison_is_a_benchmark_outside_the_gate` asserts
+both halves — the marker on exactly that test, and the default deselection.

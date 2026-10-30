@@ -531,3 +531,26 @@ compute and its own pre-registration.
 - **Whether `sdip ingest` should expose a chunk parameter.** F12 states the gap. Closing
   it is a design decision with a certificate consequence — a chunk manifest is a new
   certificate field — and belongs in `DECISIONS.md`, not in a probe.
+
+---
+
+## Amendment C — 2026-10-30, before any rerun: the comparison is a benchmark, not a gate
+
+**Why.** OPEN_DEBTS D39: `test_a_shape_built_for_a_pattern_beats_the_default_on_that_pattern`
+failed at load average 11.2 (`matched=6.33 ms`, `default=4.00 ms`), then passed 3/3 in isolation
+on the same commit. At millisecond scale on a contended machine the comparison is noise. The
+owner ruled (`DECISIONS.md` D-0106): *"Move it out of the gate into a benchmark with medians."*
+
+**Changed:** that one comparison is marked `benchmark` and deselected from the default test run
+(`pyproject.toml`: `-m 'not benchmark'`); it runs with `pytest -m benchmark` and reports as
+before. **Its result is a reported benchmark, never a gate verdict:** it neither blocks a merge
+nor closes or opens a debt.
+
+**Unchanged:** Amendment A's parameters (N = 5 per geometry, shape and pattern; the median the
+reported figure; the 2.0 s target applied to store-open plus slice; the correctness precondition);
+the falsifier; every other test in the runner, including the 2.0 s target checks, which sit two
+orders of magnitude inside their bound and are not what flaked. No figure above is changed.
+
+**Registered before any rerun of this leg.** A test
+(`test_the_p7_wall_clock_comparison_is_a_benchmark_outside_the_gate`) asserts the marker is on
+exactly that test and that the default run deselects it.
