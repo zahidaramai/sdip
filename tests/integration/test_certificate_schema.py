@@ -222,3 +222,45 @@ def test_schema_id_resolves_to_a_path_that_is_actually_published():
         assert schema_id.endswith(str(tracked).replace("\\", "/")), (
             f"v{version}: $id {schema_id!r} does not name {tracked}"
         )
+
+
+# --- D46 / D-0106: a repository-relative path beside the absolute one -----------------
+
+
+def _issued_from(git_repo: Path, source_dir: Path) -> dict[str, Any]:
+    article = make_poststack3d(source_dir / "src.sgy")
+    result = ingest(article.path, source_dir / "out.mdio")
+    certificate = issue(
+        result,
+        [plane_1(article.path, source_dir / "out.mdio")],
+        root=git_repo,
+        require_clean_tree=False,
+        issued_at="2026-10-30T00:00:00Z",
+        issued_by="test",
+    )
+    payload = certificate.payload
+    payload["git"] = dict(payload["git"]) | {"dirty": False}
+    return payload
+
+
+def test_a_source_inside_the_tree_records_its_repo_relative_path(git_repo):
+    payload = _issued_from(git_repo, git_repo / "data")
+    assert payload["source_path_repo_relative"] == "data/src.sgy"
+    assert payload["output_path_repo_relative"] == "data/out.mdio"
+    assert Path(payload["source_path"]).is_absolute(), "the absolute path stays (provenance)"
+    jsonschema.Draft202012Validator(load_schema()).validate(payload)
+
+
+def test_a_source_outside_the_tree_records_null_not_a_climbing_path(git_repo, tmp_path_factory):
+    """The other half: outside the tree there is no relative path, and none is invented."""
+    payload = _issued_from(git_repo, tmp_path_factory.mktemp("elsewhere"))
+    assert payload["source_path_repo_relative"] is None
+    assert payload["output_path_repo_relative"] is None
+    jsonschema.Draft202012Validator(load_schema()).validate(payload)
+
+
+@pytest.mark.parametrize("bad", ["/abs/src.sgy", "../src.sgy", "a/../../src.sgy", ""])
+def test_the_schema_rejects_an_absolute_or_climbing_relative_path(full_certificate, bad):
+    payload = dict(full_certificate) | {"source_path_repo_relative": bad}
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.Draft202012Validator(load_schema()).validate(payload)

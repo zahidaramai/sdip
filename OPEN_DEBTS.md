@@ -2514,3 +2514,24 @@ before any rerun. Collection measured: default 59 of 63 P7 tests (the 4 parametr
 deselected); `-m benchmark` 4 of 63. CI was already excluding the whole file (`ci.yml`, D39), so
 CI is unchanged. Test: `test_the_p7_wall_clock_comparison_is_a_benchmark_outside_the_gate` asserts
 both halves — the marker on exactly that test, and the default deselection.
+
+---
+
+## D46 — CLOSED 2026-10-30 — a repo-relative path beside the absolute one
+
+- **Closes:** D46 above (**SP10**) · **Decision:** `DECISIONS.md` D-0106
+
+As the owner ruled: every certificate now carries `source_path_repo_relative` and
+`output_path_repo_relative` — each path relative to the top level of the git working tree
+`certify` ran in (`git rev-parse --show-toplevel`), POSIX form, both sides resolved first, or
+`null` outside that tree. `source_path` and `output_path` stay absolute, as provenance. Schema:
+two additive optional properties, `["string", "null"]`, with a pattern refusing a leading `/`
+or any `..` segment; schema version unchanged (`"0"`, additive like D-0101's
+`content_digest`), so every existing certificate still validates.
+
+**Measured through the executable:** `sdip certify data/src.sgy out.mdio` inside a throwaway
+repository (source committed, outputs ignored, tree clean) records `data/src.sgy` and
+`out.mdio`; the existing delayed-survey `certify` test, whose source lies outside the tree,
+records `null`. Both halves at the schema: 4 bad values (`/abs`, `../`, `a/../../`, empty)
+rejected; inside and outside certificates validate. The reference certificate predates the
+fields and is unchanged.

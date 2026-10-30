@@ -106,3 +106,24 @@ def capture_git_state(root: str | Path = ".") -> GitState:
         dirty_paths=paths,
         describe=describe.strip() if rc_desc == 0 else None,
     )
+
+
+def repository_root(root: str | Path = ".") -> Path | None:
+    """The top level of the git working tree containing ``root``, or None outside one."""
+    rc, out = _git(["rev-parse", "--show-toplevel"], Path(root).resolve())
+    return Path(out.strip()).resolve() if rc == 0 and out.strip() else None
+
+
+def repo_relative(path: str | Path, repo_root: Path | None) -> str | None:
+    """``path`` relative to ``repo_root``, POSIX form, or None when it lies outside.
+
+    OPEN_DEBTS D46, ``DECISIONS.md`` D-0106: a certificate records this **beside** the
+    resolved absolute path, which stays as provenance. Both sides are resolved first, so a
+    symlink cannot make a path outside the tree look inside it (§3.6).
+    """
+    if repo_root is None:
+        return None
+    try:
+        return Path(path).resolve().relative_to(repo_root.resolve()).as_posix()
+    except ValueError:
+        return None

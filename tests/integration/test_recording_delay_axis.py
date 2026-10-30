@@ -169,6 +169,8 @@ def test_certify_a_delayed_survey_is_release_ready(tmp_path):
     assert payload["roundtrip_closure"]["status"] == "PASS", payload["roundtrip_closure"]
     assert payload["planes"]["plane_4"]["evidence"]["derived_axis_origin_ms"] == 4.0
     assert payload["store_digest"]["status"] == "MATCH"
+    # D46 / D-0106: the source sits outside the tree certify ran in, so no relative path.
+    assert payload["source_path_repo_relative"] is None
     readiness = payload["release_readiness"]
     assert readiness["blocking"] == [], readiness["blocking"]
     assert readiness["release_ready"] is True

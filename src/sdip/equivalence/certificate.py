@@ -39,7 +39,7 @@ from sdip.guard.pins import check_pins
 from sdip.ingest.orchestrator import IngestResult
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY_NAME
 from sdip.provenance.environment import capture_environment
-from sdip.provenance.git import GitState, capture_git_state
+from sdip.provenance.git import GitState, capture_git_state, repo_relative, repository_root
 from sdip.provenance.store_digest import StoreDigestResult
 from sdip.spec.transforms import (
     detect_coordinate_scalar,
@@ -335,6 +335,7 @@ def issue(
         g3_scope_ruled=isinstance(roundtrip, HeaderScopedRoundTrip),
     )
 
+    top = repository_root(root)
     store_path = Path(result.output_path)
     output_bytes = sum(f.stat().st_size for f in store_path.rglob("*") if f.is_file())
 
@@ -342,6 +343,7 @@ def issue(
         "certificate_schema_version": CERTIFICATE_SCHEMA_VERSION,
         "spec_version": SPEC_VERSION,
         "source_path": result.source_path,
+        "source_path_repo_relative": repo_relative(result.source_path, top),
         "source_sha256": result.source_sha256,
         "source_sha256_post_read": result.source_sha256_post_read,
         "source_bytes": result.source_bytes,
@@ -357,6 +359,7 @@ def issue(
         "spec_gap_free": result.spec.coverage.gap_free,
         "spec_sha256": result.spec.sha256(),
         "output_path": result.output_path,
+        "output_path_repo_relative": repo_relative(result.output_path, top),
         "output_zarr_format": 3,
         "output_bytes": output_bytes,
         "output_array_manifest": _array_manifest(result.output_path),

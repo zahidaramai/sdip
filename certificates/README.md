@@ -77,3 +77,7 @@ engine has been shown to do.
 
 **`source_path` records the issuing machine's absolute path.** That is provenance, not
 identity — **the SHA-256 is the identity**, and it is what a reader should compare.
+Since D-0106 a certificate also carries **`source_path_repo_relative`** and
+**`output_path_repo_relative`**: the same paths relative to the git working tree `certify` ran
+in, or `null` when they lie outside it. The absolute paths stay. The reference certificate
+predates the fields and lacks them.

@@ -46,6 +46,11 @@
     "source_path": {
       "type": "string"
     },
+    "source_path_repo_relative": {
+      "type": ["string", "null"],
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$",
+      "description": "source_path relative to the top level of the git working tree certify ran in, POSIX form; null when it lies outside that tree. Recorded beside the absolute path, which stays as provenance (OPEN_DEBTS D46, DECISIONS.md D-0106). Additive: certificates before it lack the key."
+    },
     "source_sha256": {
       "$ref": "#/$defs/sha256"
     },
@@ -285,6 +290,11 @@
     },
     "output_path": {
       "type": "string"
+    },
+    "output_path_repo_relative": {
+      "type": ["string", "null"],
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$",
+      "description": "output_path relative to the top level of the git working tree certify ran in, POSIX form; null when it lies outside that tree. Recorded beside the absolute path, which stays as provenance (OPEN_DEBTS D46, DECISIONS.md D-0106). Additive: certificates before it lack the key."
     },
     "output_zarr_format": {
       "const": 3
