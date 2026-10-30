@@ -131,6 +131,9 @@ SCOPE_RULINGS: frozenset[str] = frozenset({HEADER_SCOPE_RULING, REVISION_SCOPE_R
 DEFINED_REVISION_CODES: frozenset[int] = frozenset({0x0000, 0x0100, 0x0200, 0x0201})
 """Binary-header bytes 3501-3502 for SEG-Y revisions 0, 1, 2 and 2.1."""
 
+REV2_REVISION_CODES: frozenset[int] = frozenset({0x0200, 0x0201})
+"""Revision 2 and 2.1 words. Read under a revision below 2 they lose the pair too (D68)."""
+
 _REVISION_KEYS = ("segy_revision_major", "segy_revision_minor")
 
 
@@ -204,8 +207,14 @@ def header_scope(decode: Any, store: str | Path) -> HeaderScopedRoundTrip | None
     )
 
 
-def revision_scope(source: str | Path, store: str | Path) -> HeaderScopedRoundTrip | None:
-    """The scoped G3 for a source whose revision word is undefined, or ``None``.
+def revision_scope(
+    source: str | Path, store: str | Path, *, read_revision: float | int = 1
+) -> HeaderScopedRoundTrip | None:
+    """The scoped G3 for a source whose revision word the writer cannot carry, or ``None``.
+
+    Two cases, both under the owner's ruling D-0106: an **undefined** word (OPEN_DEBTS D61),
+    and a revision 2 or 2.1 word **read under a revision below 2** (OPEN_DEBTS D68, the
+    owner: *"Extend D-0106 scope to it"*).
 
     **OPEN_DEBTS D61, owner ruling D-0106.** Upstream stores such a source's binary header
     with one undivided ``segy_revision`` value instead of the ``segy_revision_major`` /
@@ -221,7 +230,8 @@ def revision_scope(source: str | Path, store: str | Path) -> HeaderScopedRoundTr
     from sdip.ingest.file_headers import read_raw_file_headers
 
     code = int.from_bytes(read_raw_file_headers(source).binary[300:302], "big")
-    if code in DEFINED_REVISION_CODES:
+    rev2_read_low = code in REV2_REVISION_CODES and float(read_revision) < 2
+    if code in DEFINED_REVISION_CODES and not rev2_read_low:
         return None
     group = zarr.open_group(str(store), mode="r")
     if UPSTREAM_FILE_HEADER_VARIABLE not in group:
@@ -230,11 +240,17 @@ def revision_scope(source: str | Path, store: str | Path) -> HeaderScopedRoundTr
     stored = dict(raw) if isinstance(raw, Mapping) else {}
     if all(key in stored for key in _REVISION_KEYS):
         return None
+    what = (
+        f"is a revision {code >> 8}.{code & 0xFF} word read as revision {read_revision}"
+        if rev2_read_low
+        else f"(major {code >> 8}, minor {code & 0xFF}) is no defined SEG-Y revision"
+    )
+    debt = "OPEN_DEBTS D68" if rev2_read_low else "OPEN_DEBTS D61"
     return HeaderScopedRoundTrip(
         non_conformance=(
-            f"binary header bytes 3501-3502: revision word 0x{code:04x} (major {code >> 8}, "
-            f"minor {code & 0xFF}) is no defined SEG-Y revision; the store records it as "
-            f"segy_revision={stored.get('segy_revision')!r} without a major/minor pair"
+            f"binary header bytes 3501-3502: revision word 0x{code:04x} {what}; the store "
+            f"records it as segy_revision={stored.get('segy_revision')!r} without a "
+            "major/minor pair"
         ),
         justification=(
             "upstream's exporter requires the binary header's revision as a major/minor pair "
@@ -242,7 +258,7 @@ def revision_scope(source: str | Path, store: str | Path) -> HeaderScopedRoundTr
             "mdio.segy.compat), so no whole-file export can be made at the pinned writer, "
             "and SDIP does not rewrite stored header values to make one (SP12). Planes 1-5 "
             "verify the store against the source, Plane 2 against the raw 400 bytes. "
-            "Accepted for release by the owner's ruling D-0106 (OPEN_DEBTS D61)."
+            f"Accepted for release by the owner's ruling D-0106 ({debt})."
         ),
         ruling=REVISION_SCOPE_RULING,
     )

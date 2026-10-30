@@ -68,13 +68,24 @@ def test_a_store_upstream_can_export_is_never_scoped(tmp_path, code):
 
 
 @pytest.mark.parametrize("code", [0x0200, 0x0201])
-def test_a_defined_rev2_word_read_as_rev1_is_not_scoped_and_still_cannot_export(tmp_path, code):
-    """Pinned as found (OPEN_DEBTS D68): D-0106 rules on undefined words only.
+def test_a_rev2_word_read_as_rev1_is_scoped_where_no_export_can_be_made(tmp_path, code):
+    """OPEN_DEBTS D68, owner ruling D-0106 extended to a rev 2 word read as revision 1.
 
-    A rev 2 or 2.1 word read under a revision 1 declaration also loses the pair, and stays
-    a clean refusal at export until it has its own ruling.
+    Such a word loses the pair too, and is scoped like an undefined one.
     """
-    assert _ingest_and_export(tmp_path, code) == (False, "InvalidMDIOError")
+    assert _ingest_and_export(tmp_path, code) == (True, "InvalidMDIOError")
+
+
+def test_a_rev2_word_certifies_scoped_and_names_its_debt(tmp_path):
+    source = _with_revision_word(tmp_path / "rev2.sgy", 0x0200, "float32")
+    proc, payload = _certify(source, tmp_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr[-2000:]
+    scoped = payload["roundtrip"]["scoped"]
+    assert scoped["ruling"] == REVISION_SCOPE_RULING
+    assert "revision 2.0 word read as revision 1" in scoped["non_conformance"]
+    assert "D68" in scoped["justification"]
+    assert payload["verdict"] == "EQUIVALENT"
+    assert payload["release_readiness"]["release_ready"] is True
 
 
 def _certify(source: Path, tmp_path: Path) -> tuple[subprocess.CompletedProcess[str], dict]:

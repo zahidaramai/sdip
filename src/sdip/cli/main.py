@@ -675,7 +675,9 @@ def certify_cmd(
     # three checks that need an export do not apply. Every other gate still runs.
     # D-0106 (D61): likewise a source whose revision word is undefined - upstream stores it
     # without the major/minor pair its own exporter requires.
-    scope = header_scope(result.textual_decode, output) or revision_scope(source, output)
+    scope = header_scope(result.textual_decode, output) or revision_scope(
+        source, output, read_revision=declaration.revision
+    )
     not_applicable = (
         None
         if scope is None

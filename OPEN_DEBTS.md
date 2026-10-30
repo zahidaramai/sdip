@@ -2575,3 +2575,19 @@ no major/minor pair for them either. **These words are defined**, so D-0106 does
 `test_a_defined_rev2_word_read_as_rev1_is_not_scoped_and_still_cannot_export`. **Decision
 needed:** extend the D-0106 scope to a defined rev 2/2.1 word read under a rev 1 declaration, or
 keep the refusal (rev 2 ingest itself is refused, D6).
+
+---
+
+## D68 — CLOSED 2026-10-30 — a rev 2/2.1 word read as revision 1 is ROUNDTRIP-SCOPED
+
+- **Closes:** D68 above (**SP10**) · **Decision:** owner, relayed by GeoSuite 2026-10-30:
+  *"Extend D-0106 scope to it"* (recorded under `DECISIONS.md` D-0106's ruling)
+
+`revision_scope` now also issues the D-0106 scope when bytes 3501-3502 hold a revision 2 or 2.1
+word (`0x0200`, `0x0201`) and the declaration read the file as a revision below 2, and the store
+lacks the major/minor pair. The non-conformance names the word and the revision it was read as;
+the justification names D68. Measured (`tests/integration/test_revision_scoped_certify.py`):
+`0x0200` and `0x0201` scoped, each export refused; through `sdip certify` an IEEE source with
+`0x0200` is `EQUIVALENT` and release-ready. Every other leg of the D61 sweep is unchanged
+(`0x0000`, `0x0100`, `0x0101` still round-trip, never scoped). 49 tests pass across the scope,
+header-scope and release-readiness suites.
