@@ -84,7 +84,8 @@ ts = pytest.importorskip(
 
 CORE_SPEC_ARRAYS: tuple[str, ...] = (
     "amplitude",
-    "amplitude_raw_ibm32",
+    "amplitude_raw_ibm32/index",
+    "amplitude_raw_ibm32/words",
     "headers_raw_uint8",
     "inline",
     "crossline",
@@ -101,9 +102,10 @@ every core-spec array reads bit-identically, and an unchecked criterion is not a
 criterion.
 
 ``amplitude_raw_ibm32`` is **conditional**: :mod:`sdip.ingest.raw_samples` writes it only
-when the source's sample format is ``ibm32``, which the Appendix A.1 article is. It is
-listed here rather than special-cased because its ``data_type`` is the plain string
-``uint32`` — core-spec, so it changes the count and nothing else. If the fixture's sample
+when the source's sample format is ``ibm32``, which the Appendix A.1 article is. Since
+``DECISIONS.md`` D-0110 it is a group of two 1-D arrays, ``index`` (``uint64``) and
+``words`` (``uint32``) - both core-spec, listed by path; before it, one ``uint32`` array the
+shape of ``amplitude``. If the fixture's sample
 format ever changes, the array disappears and
 :func:`test_the_store_is_the_one_the_probe_registered` is what says so.
 
@@ -200,7 +202,9 @@ def test_the_store_is_the_one_the_probe_registered(article_and_store):
     """Guards the fixture, not the reader: a changed store makes the table below a lie."""
     _, store = article_and_store
     group = zarr.open_group(str(store), mode="r")
-    names = sorted(name for name, _ in group.arrays())
+    names = sorted(
+        path for path, node in group.members(max_depth=None) if isinstance(node, zarr.Array)
+    )
     assert names == sorted(CORE_SPEC_ARRAYS + EXTENSION_ARRAYS)
     assert len(group["headers"].dtype.names) == EXPECTED_HEADER_FIELDS
 

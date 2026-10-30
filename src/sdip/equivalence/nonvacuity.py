@@ -213,14 +213,58 @@ def _flip_raw_ibm32_word(store: Path) -> None:
     """
     import numpy as np
 
+    from sdip.ingest.raw_samples import (
+        INDEX_ARRAY,
+        LAYOUT_SPARSE,
+        WORDS_ARRAY,
+        raw_view_layout,
+    )
+
     group = _group(store)
     if RAW_IBM32_ARRAY not in group:
         msg = f"{RAW_IBM32_ARRAY} absent; this control applies only to a lossy-decode source"
         raise ControlNotApplicableError(msg)
-    words = group[RAW_IBM32_ARRAY][:]
-    cell = (*tuple(0 for _ in words.shape[:-1]), 0)
-    words[cell] = np.uint32(int(words[cell]) ^ 1)
-    group[RAW_IBM32_ARRAY][:] = words
+    node = group[RAW_IBM32_ARRAY]
+    if raw_view_layout(node) != LAYOUT_SPARSE:
+        words = node[:]
+        cell = (*tuple(0 for _ in words.shape[:-1]), 0)
+        words[cell] = np.uint32(int(words[cell]) ^ 1)
+        node[:] = words
+        return
+    # D-0110. With entries, flip one stored word. With none - the common case, where every
+    # live word re-encodes exactly - insert one spurious entry: the first live cell's
+    # re-encoded word with one bit flipped. Either must fail G2d, so the control bites on
+    # every IBM store and never goes quietly not-applicable.
+    if node[WORDS_ARRAY].shape[0]:
+        stored = np.asarray(node[WORDS_ARRAY][:])
+        stored[0] ^= np.uint32(1)
+        node[WORDS_ARRAY][:] = stored
+        return
+    from segy.ibm import ieee2ibm
+
+    amplitude = group["amplitude"]
+    live = np.argwhere(np.asarray(group["trace_mask"][:]).astype(bool))
+    if live.size == 0:
+        msg = "the store has no live trace to corrupt"
+        raise ControlNotApplicableError(msg)
+    cell = (*(int(c) for c in live[0]), 0)
+    word = int(np.asarray(ieee2ibm(np.asarray([amplitude[cell]], np.float32)), np.uint32)[0]) ^ 1
+    flat = int(np.ravel_multi_index(cell, tuple(amplitude.shape)))
+    for name, values in (
+        (INDEX_ARRAY, np.asarray([flat], np.uint64)),
+        (WORDS_ARRAY, np.asarray([word], np.uint32)),
+    ):
+        old = node[name]
+        dtype, compressors = old.dtype, old.compressors
+        del node[name]
+        node.create_array(
+            name=name,
+            shape=(1,),
+            dtype=dtype,
+            chunks=(1,),
+            fill_value=0,
+            compressors=compressors,
+        )[:] = values
 
 
 DERIVED_COORD_ARRAY: Final[str] = "cdp_x"

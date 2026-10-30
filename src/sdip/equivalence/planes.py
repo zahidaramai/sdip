@@ -1201,11 +1201,15 @@ RAW_IBM32_NOTE = (
     "measured 1,939 of 4,103 ibm32 words losing the VALUE in the decode, and two "
     "decoded arrays that both read `inf` are equal without either being the source "
     "sample. A store can have correct raw words and a lossy decode; both facts belong "
-    "on the certificate, and neither is allowed to stand in for the other."
+    "on the certificate, and neither is allowed to stand in for the other. Since D-0110 "
+    "the view is sparse/1: every source word is ieee2ibm(amplitude) with the stored "
+    "entries written over it, and that reconstruction is what is compared, exactly."
 )
 
 
-def _raw_ibm32_evidence(source: str | Path, group: Any, trace_map: Any) -> dict[str, Any]:
+def _raw_ibm32_evidence(
+    source: str | Path, group: Any, trace_map: Any, variable: str = "amplitude"
+) -> dict[str, Any]:
     """Compare the stored raw ``ibm32`` words against the source, as ``uint32``.
 
     Absent array means **not checked**, never checked-and-passed: a ``float32`` source
@@ -1227,6 +1231,21 @@ def _raw_ibm32_evidence(source: str | Path, group: Any, trace_map: Any) -> dict[
                 f"store carries no {ARRAY_NAME} array. Written only for an ibm32 source "
                 "(OPEN_DEBTS D1); its absence is NOT evidence that the raw words match."
             ),
+        }
+
+    from sdip.ingest.raw_samples import LAYOUT_SPARSE, raw_view_layout
+
+    layout = raw_view_layout(group[ARRAY_NAME])
+    if layout == LAYOUT_SPARSE:
+        return _sparse_raw_evidence(source, group, trace_map, variable)
+    if layout != "dense":
+        return {
+            "raw_ibm32_view_present": True,
+            "raw_ibm32_words_verified": False,
+            "raw_ibm32_identical": False,
+            "raw_ibm32_layout": layout,
+            "raw_ibm32_error": f"unknown raw view layout {layout!r}",
+            "raw_ibm32_note": RAW_IBM32_NOTE,
         }
 
     stored = np.asarray(group[ARRAY_NAME][:])
@@ -1270,6 +1289,7 @@ def _raw_ibm32_evidence(source: str | Path, group: Any, trace_map: Any) -> dict[
         "raw_ibm32_view_present": True,
         "raw_ibm32_words_verified": True,
         "raw_ibm32_identical": not mismatches,
+        "raw_ibm32_layout": "dense",
         "raw_ibm32_compared": "np.array_equal on uint32 words, source vs store - EXACT",
         "raw_ibm32_n": compared,
         "raw_ibm32_words_per_trace": int(stored.shape[-1]),
@@ -1277,6 +1297,118 @@ def _raw_ibm32_evidence(source: str | Path, group: Any, trace_map: Any) -> dict[
         "raw_ibm32_first_difference": mismatches[0] if mismatches else None,
         "raw_ibm32_mismatch_count": len(mismatches),
         "raw_ibm32_note": RAW_IBM32_NOTE,
+    }
+
+
+def _sparse_raw_evidence(
+    source: str | Path, group: Any, trace_map: Any, variable: str
+) -> dict[str, Any]:
+    """Plane 4's raw leg on a ``sparse/1`` view (``DECISIONS.md`` D-0110).
+
+    The entries are checked once for shape - equal lengths, strictly increasing, in range,
+    every one on a live cell - and then, slab by slab, every live trace's reconstructed
+    words (``ieee2ibm`` of the stored float32, entries written over it) must equal the
+    source's own words exactly. A malformed view fails; it is never repaired.
+    """
+    from sdip.ingest.raw_samples import (
+        ARRAY_NAME,
+        INDEX_ARRAY,
+        LAYOUT_SPARSE,
+        WORDS_ARRAY,
+        read_source_words,
+        reconstruct_slab,
+    )
+
+    view = group[ARRAY_NAME]
+    amplitude = group[variable]
+    shape = tuple(int(n) for n in amplitude.shape)
+    base: dict[str, Any] = {
+        "raw_ibm32_view_present": True,
+        "raw_ibm32_layout": LAYOUT_SPARSE,
+        "raw_ibm32_note": RAW_IBM32_NOTE,
+    }
+    try:
+        words = read_source_words(source, samples_per_trace=shape[-1])
+    except UntrustedInputError as exc:
+        return base | {
+            "raw_ibm32_words_verified": False,
+            "raw_ibm32_identical": None,
+            "raw_ibm32_error": f"{type(exc).__name__}: {exc}",
+        }
+
+    problems: list[str] = []
+    if INDEX_ARRAY not in view or WORDS_ARRAY not in view:
+        problems.append(f"{ARRAY_NAME} lacks its {INDEX_ARRAY} or {WORDS_ARRAY} array")
+        index = np.zeros(0, dtype=np.uint64)
+    else:
+        index = np.asarray(view[INDEX_ARRAY][:], dtype=np.uint64)
+        if view[WORDS_ARRAY].shape != view[INDEX_ARRAY].shape:
+            problems.append("index and words differ in length")
+    total = int(np.prod(shape, dtype=np.int64))
+    if index.size:
+        if np.any(np.diff(index.astype(np.int64)) <= 0):
+            problems.append("index is not strictly increasing")
+        if int(index.max()) >= total:
+            problems.append(f"an index is outside amplitude ({int(index.max())} >= {total})")
+        else:
+            live_cells = set(trace_map.ordinal_to_cell.values())
+            cells = np.unravel_index(index.astype(np.int64) // shape[-1], shape[:-1])
+            off = [tuple(int(c[k]) for c in cells) for k in range(index.size)]
+            padding = [c for c in off if c not in live_cells]
+            if padding:
+                problems.append(
+                    f"{len(padding)} entr(y/ies) on padding, first at cell {padding[0]}"
+                )
+    if problems:
+        return base | {
+            "raw_ibm32_words_verified": True,
+            "raw_ibm32_identical": False,
+            "raw_ibm32_entries": int(index.size),
+            "raw_ibm32_structure_problems": problems,
+            "raw_ibm32_first_difference": None,
+            "raw_ibm32_mismatch_count": len(problems),
+        }
+
+    slab = int(np.prod(shape[1:], dtype=np.int64))
+    by_outer: dict[int, list[tuple[int, tuple[int, ...]]]] = {}
+    for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
+        by_outer.setdefault(cell[0], []).append((ordinal, cell))
+    mismatches: list[dict[str, Any]] = []
+    compared = 0
+    for outer, traces in sorted(by_outer.items()):
+        rebuilt = reconstruct_slab(np.asarray(amplitude[outer]), outer, slab, view)
+        for ordinal, cell in traces:
+            compared += 1
+            expected = np.asarray(words[ordinal], dtype=np.uint32)
+            observed = rebuilt[cell[1:]]
+            if not identical(expected, observed):
+                differing = np.flatnonzero(expected != observed)
+                first = int(differing[0])
+                mismatches.append(
+                    {
+                        "source_ordinal": ordinal,
+                        "cell": list(cell),
+                        "first_sample": first,
+                        "expected_word": f"0x{int(expected[first]):08X}",
+                        "observed_word": f"0x{int(observed[first]):08X}",
+                        "differing_words": int(differing.size),
+                    }
+                )
+        if len(mismatches) >= 20:
+            break
+    return base | {
+        "raw_ibm32_words_verified": True,
+        "raw_ibm32_identical": not mismatches,
+        "raw_ibm32_entries": int(index.size),
+        "raw_ibm32_compared": (
+            "np.array_equal on uint32 words, source vs ieee2ibm(amplitude) with the stored "
+            "entries written over it - EXACT"
+        ),
+        "raw_ibm32_n": compared,
+        "raw_ibm32_words_per_trace": shape[-1],
+        "raw_ibm32_sampling": "exhaustive over live traces",
+        "raw_ibm32_first_difference": mismatches[0] if mismatches else None,
+        "raw_ibm32_mismatch_count": len(mismatches),
     }
 
 
@@ -1365,7 +1497,7 @@ def plane_4(
     #
     # `None` means the array is absent, which is correct for a non-ibm32 source and is
     # NOT a failure. Only an explicit False fails.
-    raw_evidence = _raw_ibm32_evidence(source, group, trace_map)
+    raw_evidence = _raw_ibm32_evidence(source, group, trace_map, variable)
     raw_identical = raw_evidence.get("raw_ibm32_identical")
     raw_ok = raw_identical is not False
 

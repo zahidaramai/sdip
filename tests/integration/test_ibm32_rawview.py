@@ -29,20 +29,25 @@ from sdip._pins import SEGY_TRACE_HEADER_BYTES as HEADER
 from sdip.equivalence import plane_4, plane_5
 from sdip.export import export
 from sdip.ingest import ingest
+from sdip.equivalence.nonvacuity import _flip_raw_ibm32_word
 from sdip.ingest.raw_samples import (
     ARRAY_NAME,
     ATTR_CONTAINER,
-    ATTR_FILL_WORD,
+    ATTR_LAYOUT,
     ATTR_LIVE_MASK,
     ATTR_PROBE,
     ATTR_RATIONALE,
+    ATTR_RECONSTRUCTION,
     ATTR_SOURCE_FORMAT,
     ATTR_UNDECODED,
     ATTR_WORD_LAYOUT,
-    FILL_WORD,
+    INDEX_ARRAY,
+    LAYOUT_SPARSE,
     SAMPLE_WORD_BYTES,
     TRACE_DATA_OFFSET,
+    WORDS_ARRAY,
     read_source_words,
+    reconstructed_words,
 )
 from tests.fixtures.generators import make_poststack3d
 from tests.fixtures.generators.irregular import make_sparse_grid
@@ -84,33 +89,40 @@ def test_an_ibm32_source_gets_the_parallel_view(ingested):
     assert result.to_json()["raw_sample_view"]["probe"] == "P2"
 
 
-def test_the_view_is_shaped_like_amplitude_and_typed_uint32(ingested):
-    """Grid read from the store's ``dimension_names``; nothing hard-codes inline/crossline."""
-    _, store, _ = ingested
-    group = _group(store)
-    raw, amplitude = group[ARRAY_NAME], group["amplitude"]
-    assert raw.shape == amplitude.shape
-    assert raw.dtype == np.uint32
-    assert raw.metadata.to_dict()["dimension_names"] == amplitude.metadata.to_dict().get(
-        "dimension_names"
-    )
+def test_the_view_is_a_sparse_group_of_index_and_words(ingested):
+    """D-0110. ``sparse/1``: a group of ``uint64`` flat positions and ``uint32`` words.
+
+    Replaces the dense test of a per-cell array the shape of ``amplitude``. On this article
+    every word re-encodes exactly, so the view holds no entries - and says so.
+    """
+    _, store, result = ingested
+    view = _group(store)[ARRAY_NAME]
+    assert isinstance(view, zarr.Group)
+    index, words = view[INDEX_ARRAY], view[WORDS_ARRAY]
+    assert index.dtype == np.uint64
+    assert words.dtype == np.uint32
+    assert index.shape == words.shape == (result.raw_samples.entries,)
+    assert result.to_json()["raw_sample_view"]["layout"] == LAYOUT_SPARSE
 
 
 def test_the_view_carries_only_blosc_or_zstd(ingested):
-    """SP3. A lossy codec here would destroy the bits the array exists to preserve."""
+    """SP3. A lossy codec here would destroy the bits the view exists to preserve."""
     _, store, _ = ingested
-    codecs = {c["name"] for c in _group(store)[ARRAY_NAME].metadata.to_dict()["codecs"]}
-    assert codecs <= {"bytes", "blosc", "zstd"}
+    view = _group(store)[ARRAY_NAME]
+    for name in (INDEX_ARRAY, WORDS_ARRAY):
+        codecs = {c["name"] for c in view[name].metadata.to_dict()["codecs"]}
+        assert codecs <= {"bytes", "blosc", "zstd"}
 
 
 def test_the_array_says_what_it_is_holding(ingested):
-    """A consumer must learn the array is undecoded from the array, not from a document."""
+    """A consumer must learn the view is undecoded, and how to rebuild it, from the store."""
     _, store, _ = ingested
     attrs = dict(_group(store)[ARRAY_NAME].attrs)
     assert attrs[ATTR_UNDECODED] is True
     assert attrs[ATTR_SOURCE_FORMAT] == "ibm32"
     assert attrs[ATTR_PROBE] == "P2"
-    assert attrs[ATTR_FILL_WORD] == FILL_WORD
+    assert attrs[ATTR_LAYOUT] == LAYOUT_SPARSE
+    assert "ieee2ibm" in attrs[ATTR_RECONSTRUCTION]
     assert "big-endian" in attrs[ATTR_WORD_LAYOUT]
     assert "CONTAINER" in attrs[ATTR_CONTAINER]
     assert "P2" in attrs[ATTR_RATIONALE]
@@ -127,7 +139,7 @@ def test_every_stored_word_is_the_word_in_the_source(ingested):
     """
     article, store, _ = ingested
     blob = article.path.read_bytes()
-    stored = np.asarray(_group(store)[ARRAY_NAME][:])
+    stored = reconstructed_words(store)
     n_crossline, n_samples = len(article.crosslines), article.samples_per_trace
     stride = HEADER + n_samples * SAMPLE_WORD_BYTES
 
@@ -230,9 +242,9 @@ def test_a_corrupted_raw_word_fails_g2d_without_touching_the_decoded_leg(ingeste
     article, store, result = ingested
     copy = tmp_path / "corrupt.mdio"
     shutil.copytree(store, copy)
-    group = zarr.open_group(str(copy), mode="r+")
-    original = int(np.asarray(group[ARRAY_NAME][0, 0, 0]))
-    group[ARRAY_NAME][0, 0, 0] = np.uint32(original ^ 0x00000001)
+    # D-0110: the view holds no entries here, so the corruption is the G7 control's own -
+    # one spurious entry at the first live cell, its re-encoded word with one bit flipped.
+    _flip_raw_ibm32_word(copy)
 
     plane = plane_4(article.path, copy, result.spec.segy_spec)
     assert plane.evidence["raw_ibm32_identical"] is False
@@ -245,12 +257,11 @@ def test_a_corrupted_raw_word_fails_g2d_without_touching_the_decoded_leg(ingeste
     assert plane.evidence["mismatch_count"] == 0
 
 
-def test_padding_carries_the_fill_word_and_is_never_compared(tmp_path):
-    """SP12. Padding is not data, and no ``uint32`` can announce itself as padding.
+def test_no_entry_lies_on_padding_and_padding_is_never_compared(tmp_path):
+    """SP12. Padding is not data. D-0110: an entry exists only for a live cell.
 
-    A sparse grid has 54 cells no source trace maps to. They hold the fill word — which
-    is ``0x00000000``, a perfectly valid IBM word for true zero — so the store's
-    ``trace_mask`` is the only discriminator, exactly as it is for ``amplitude``.
+    A sparse grid has 54 cells no source trace maps to. None of the view's entries may sit
+    on one, and the raw leg compares live traces only.
     """
     article = make_sparse_grid(tmp_path / "sparse.sgy")
     store = tmp_path / "sparse.mdio"
@@ -258,9 +269,11 @@ def test_padding_carries_the_fill_word_and_is_never_compared(tmp_path):
 
     group = _group(store)
     mask = np.asarray(group["trace_mask"][:]).astype(bool)
-    stored = np.asarray(group[ARRAY_NAME][:])
     assert int((~mask).sum()) == 54
-    assert np.array_equal(np.unique(stored[~mask]), np.array([FILL_WORD], dtype=np.uint32))
+    index = np.asarray(group[ARRAY_NAME][INDEX_ARRAY][:]).astype(np.int64)
+    n_samples = group["amplitude"].shape[-1]
+    cells = np.unravel_index(index // n_samples, mask.shape)
+    assert bool(np.all(mask[cells])) if index.size else True
 
     plane = plane_4(article.path, store, result.spec.segy_spec)
     live = plane_5(article.path, store, result.spec.segy_spec).evidence["live_cells_in_mask"]
@@ -303,8 +316,12 @@ def test_the_raw_view_recovers_words_the_decode_destroyed(destroyed):
     assert decoded[1] == np.float32(0.0)  # 0x00000001 underflowed: the value is gone
     assert decoded[2] == np.float32(0.0)  # 0x80000000 lost its sign
 
-    stored = np.asarray(group[ARRAY_NAME][0, 0, :])
+    stored = reconstructed_words(store)[0, 0, :]
     assert [int(w) for w in stored[: len(planted)]] == list(planted)
+    # D-0110: exactly the planted words are stored - each is one the decode destroyed.
+    view = group[ARRAY_NAME]
+    assert [int(w) for w in view[WORDS_ARRAY][:]] == list(planted)
+    assert [int(i) for i in view[INDEX_ARRAY][:]] == list(range(len(planted)))
 
     # And the source really did carry those words - read independently, by offset.
     words = read_source_words(source, samples_per_trace=8)
@@ -338,7 +355,7 @@ def test_the_decode_is_what_lost_them_and_a_re_encode_cannot_bring_them_back(des
         assert word != came_back
 
     # The store still holds the originals, which is the point of D1's remedy.
-    stored = np.asarray(_group(store)[ARRAY_NAME][0, 0, : len(planted)])
+    stored = reconstructed_words(store)[0, 0, : len(planted)]
     assert [int(w) for w in stored] == list(planted)
 
 

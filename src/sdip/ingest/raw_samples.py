@@ -1,5 +1,16 @@
 """The raw ``uint32`` sample view. Probe **P2**'s remaining remedy, ``OPEN_DEBTS.md`` D1.
 
+**Since ``DECISIONS.md`` D-0110 (OPEN_DEBTS D36) the view is sparse.** It is a group,
+``amplitude_raw_ibm32``, of two 1-D arrays: ``index`` (``uint64`` flat C-order positions in
+``amplitude``) and ``words`` (``uint32`` source words), holding only the live words whose
+stored float32 does not re-encode to the source word. Every source word is
+``segy.ibm.ieee2ibm(amplitude)`` with those entries written over it. On real processed data
+that is usually nothing at all (0 of 245,389,900 live words on the Volve time survey), where
+the dense view below doubled the store. Everything said below about reading from the source,
+``uint32`` as a container and stock-zarr writing still holds; what the fill word was for no
+longer arises, because an entry exists only for a live cell. Stores written before D-0110
+keep the dense layout, and Plane 4 reads either from the view's own attribute.
+
 **Probe P2 fired.** Swept exhaustively over the IBM exponent axis under the binding pins,
 only 1,656 of 4,103 words round-trip ``ibm32 → float32 → ibm32`` bit-identically.
 **1,939 lose the value, not merely the spelling**: exponent codes 97-127 decode to
@@ -89,6 +100,25 @@ ATTR_RATIONALE: Final[str] = "sdipRawSampleRationale"
 ATTR_PROBE: Final[str] = "sdipRawSampleProbe"
 ATTR_LIVE_MASK: Final[str] = "sdipRawSampleLiveMask"
 ATTR_FILL_WORD: Final[str] = "sdipRawSampleFillWord"
+ATTR_LAYOUT: Final[str] = "sdipRawSampleLayout"
+ATTR_RECONSTRUCTION: Final[str] = "sdipRawSampleReconstruction"
+
+LAYOUT_SPARSE: Final[str] = "sparse/1"
+"""``DECISIONS.md`` D-0110 (OPEN_DEBTS D36): a group of ``index`` and ``words``, holding only
+the live words whose stored float32 does not re-encode to the source word."""
+
+LAYOUT_DENSE: Final[str] = "dense"
+"""Stores written before D-0110: one ``uint32`` per cell. Still read and verified."""
+
+INDEX_ARRAY: Final[str] = "index"
+WORDS_ARRAY: Final[str] = "words"
+
+RECONSTRUCTION: Final[str] = (
+    "Every source word is segy.ibm.ieee2ibm(amplitude as float32), with the pinned segy "
+    "0.6.0, then words[i] written at flat C-order position index[i] of amplitude. Entries "
+    "exist only for live cells whose stored float32 does not re-encode to the source word "
+    "(DECISIONS.md D-0110); none for padding."
+)
 """SDIP's own namespace, as in :mod:`sdip.ingest.file_headers`. A consumer reading this
 array must be able to learn what it is holding from the array itself."""
 
@@ -135,6 +165,8 @@ class RawSampleView:
     traces_written: int
     source_trace_count: int
     source_bytes_per_trace: int
+    layout: str = LAYOUT_SPARSE
+    entries: int = 0
 
     @property
     def complete(self) -> bool:
@@ -158,6 +190,8 @@ class RawSampleView:
             "traces_written": self.traces_written,
             "source_trace_count": self.source_trace_count,
             "source_bytes_per_trace": self.source_bytes_per_trace,
+            "layout": self.layout,
+            "entries": self.entries,
             "complete": self.complete,
             "probe": "P2",
             "rationale": RATIONALE,
@@ -314,16 +348,41 @@ def attach_raw_sample_view(
         handle.header[:], grid_coordinates(group, grid_dimensions), grid_dimensions
     )
 
-    array = group.create_array(
-        name=ARRAY_NAME,
-        shape=shape,
-        dtype="uint32",
-        chunks=decoded.chunks,
-        dimension_names=dimensions,
-        fill_value=FILL_WORD,
-        # Blosc/Zstd only. A lossy codec on THIS array would destroy the bits it exists
-        # to preserve, and a store whose manifest carries one is void (**SP3**).
-        compressors=BloscCodec(cname="zstd", clevel=5),
+    # D-0110. Only the live words the store cannot reproduce: for each outermost slab, the
+    # source words of its live traces against ieee2ibm of the float32 ALREADY WRITTEN to
+    # `amplitude`, read back - so the entries are what this store needs, measured against
+    # itself. One slab in memory at a time (D2, §11.2).
+    from segy.ibm import ieee2ibm
+
+    grouped: dict[int, list[tuple[int, tuple[int, ...]]]] = defaultdict(list)
+    for ordinal, cell in trace_map.ordinal_to_cell.items():
+        grouped[cell[0]].append((ordinal, cell))
+
+    slab = int(np.prod(shape[1:], dtype=np.int64))
+    index_parts: list[NDArray[np.uint64]] = []
+    word_parts: list[NDArray[np.uint32]] = []
+    written = 0
+    for outer in sorted(grouped):
+        source_block = np.full(shape[1:], FILL_WORD, dtype=np.uint32)
+        live = np.zeros(shape[1:], dtype=bool)
+        for ordinal, cell in grouped[outer]:
+            source_block[cell[1:]] = words[ordinal]
+            live[cell[1:]] = True
+            written += 1
+        encoded = np.asarray(ieee2ibm(np.asarray(decoded[outer], dtype=np.float32)), np.uint32)
+        at_risk = np.flatnonzero(live & (encoded != source_block))
+        index_parts.append((at_risk + outer * slab).astype(np.uint64))
+        word_parts.append(source_block.reshape(-1)[at_risk])
+
+    index = np.concatenate(index_parts) if index_parts else np.zeros(0, np.uint64)
+    stored_words = np.concatenate(word_parts) if word_parts else np.zeros(0, np.uint32)
+    order = np.argsort(index, kind="stable")
+    index, stored_words = index[order], stored_words[order]
+
+    if ARRAY_NAME in group:
+        del group[ARRAY_NAME]
+    view = group.create_group(
+        ARRAY_NAME,
         attributes={
             ATTR_UNDECODED: True,
             ATTR_SOURCE_FORMAT: sample_format,
@@ -332,25 +391,26 @@ def attach_raw_sample_view(
             ATTR_RATIONALE: RATIONALE,
             ATTR_PROBE: "P2",
             ATTR_LIVE_MASK: LIVE_MASK_NOTE,
-            ATTR_FILL_WORD: FILL_WORD,
+            ATTR_LAYOUT: LAYOUT_SPARSE,
+            ATTR_RECONSTRUCTION: RECONSTRUCTION,
         },
-        overwrite=True,
     )
-
-    # One hyperplane in memory at a time rather than the whole volume: this array is the
-    # same size as `amplitude`, and D2 records that nothing about survey-scale memory
-    # behaviour has been measured yet (probe P3).
-    grouped: dict[int, list[tuple[int, tuple[int, ...]]]] = defaultdict(list)
-    for ordinal, cell in trace_map.ordinal_to_cell.items():
-        grouped[cell[0]].append((ordinal, cell))
-
-    written = 0
-    for outer in sorted(grouped):
-        block = np.full(shape[1:], FILL_WORD, dtype=np.uint32)
-        for ordinal, cell in grouped[outer]:
-            block[cell[1:]] = words[ordinal]
-            written += 1
-        array[outer] = block
+    chunk = (max(1, min(int(index.size), 1 << 20)),)
+    for name, values, dtype in (
+        (INDEX_ARRAY, index, "uint64"),
+        (WORDS_ARRAY, stored_words, "uint32"),
+    ):
+        # Blosc/Zstd only. A lossy codec here would destroy the bits it preserves (SP3).
+        target = view.create_array(
+            name=name,
+            shape=(int(index.size),),
+            dtype=dtype,
+            chunks=chunk,
+            fill_value=0,
+            compressors=BloscCodec(cname="zstd", clevel=5),
+        )
+        if index.size:
+            target[:] = values
 
     return RawSampleView(
         array=ARRAY_NAME,
@@ -362,4 +422,59 @@ def attach_raw_sample_view(
         traces_written=written,
         source_trace_count=int(words.shape[0]),
         source_bytes_per_trace=SEGY_TRACE_HEADER_BYTES + samples_per_trace * SAMPLE_WORD_BYTES,
+        layout=LAYOUT_SPARSE,
+        entries=int(index.size),
+    )
+
+
+def raw_view_layout(node: Any) -> str:
+    """``sparse/1`` for a D-0110 group, ``dense`` for the per-cell array stores before it."""
+    import zarr
+
+    if isinstance(node, zarr.Group):
+        return str(node.attrs.get(ATTR_LAYOUT, "unknown"))
+    return LAYOUT_DENSE
+
+
+def reconstruct_slab(
+    amplitude_slab: NDArray[np.float32], outer: int, slab_size: int, view: Any
+) -> NDArray[np.uint32]:
+    """Source words for one outermost slab of a ``sparse/1`` store (D-0110).
+
+    ``ieee2ibm`` of the stored float32, then the view's entries that fall in this slab. The
+    caller checks the entries' validity (range, order, live cells) once, separately.
+    """
+    from segy.ibm import ieee2ibm
+
+    words = np.asarray(ieee2ibm(np.asarray(amplitude_slab, dtype=np.float32)), np.uint32).copy()
+    index = np.asarray(view[INDEX_ARRAY][:], dtype=np.uint64)
+    lo, hi = np.searchsorted(index, [outer * slab_size, (outer + 1) * slab_size])
+    if hi > lo:
+        stored = np.asarray(view[WORDS_ARRAY][lo:hi], dtype=np.uint32)
+        flat = words.reshape(-1)
+        flat[(index[lo:hi] - outer * slab_size).astype(np.int64)] = stored
+    return words
+
+
+def reconstructed_words(store: str | Path, *, variable: str = "amplitude") -> NDArray[np.uint32]:
+    """Every source word of a store, rebuilt whole from its raw view. Padding included.
+
+    ``sparse/1``: ``ieee2ibm`` of the stored float32 with the entries written over it;
+    ``dense``: the array as stored. The whole volume is materialised - a convenience for small
+    stores and tests, not the path Plane 4 takes (it works slab by slab).
+    """
+    import zarr
+
+    group = zarr.open_group(str(store), mode="r")
+    node: Any = group[ARRAY_NAME]
+    if raw_view_layout(node) == LAYOUT_DENSE:
+        dense: NDArray[np.uint32] = np.asarray(node[:], dtype=np.uint32)
+        return dense
+    amplitude: Any = group[variable]
+    slab = int(np.prod(amplitude.shape[1:], dtype=np.int64))
+    return np.stack(
+        [
+            reconstruct_slab(np.asarray(amplitude[i]), i, slab, node)
+            for i in range(amplitude.shape[0])
+        ]
     )
