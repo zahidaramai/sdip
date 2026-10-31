@@ -16,7 +16,7 @@
  "kernel": "Linux c1b60be61d79 6.12.76-linuxkit #1 SMP Tue Jul 21 14:38:37 UTC 2026 aarch64 GNU/Linux",
  "network": "none during every test step",
  "deviations": [
-  "Build 1 honoured the repository .dockerignore, which excludes tests/, prereg/, overrides/: no test ran (pytest exit 4). The build context copy then had .dockerignore removed; docs/, local/, CLAUDE.md were never in the git archive.",
+  "Build 1 honoured the repository .dockerignore, which excludes tests/, prereg/, overrides/: no test ran (pytest exit 4). The build context copy then had .dockerignore removed; docs/, local/ and the other publication-firewalled files were never in the git archive.",
   "Rerun 1 of step (a) via 'uv run' tried to re-sync (hatchling from PyPI) with no network: no test ran. Rerun 2 used /src/.venv/bin/python -m pytest directly.",
   "Steps (a)-rerun mounted the two files changed by 8c0821f read-only over the image's copies; everything else is the 38920a6 tree."
  ],

@@ -34,7 +34,7 @@ Linux is also where most operators and CI run.
 ## Method
 
 1. **Source.** `git archive` of the registration commit's tree, so the container holds exactly
-   the committed files and no working-copy state. `docs/`, `local/` and `CLAUDE.md` are not in
+   the committed files and no working-copy state. `docs/`, `local/` and the other publication-firewalled files are not in
    the archive.
 2. **Image** `sdip-p17:20261031`, built from this Dockerfile (network: base pull, apt `git`,
    PyPI). The pulled base digest and `sha256(uv.lock)` go in the receipt.
@@ -141,7 +141,7 @@ Step (a) re-run on Linux, same image, with the two changed files mounted read-on
 
 1. Build 1 honoured the repository's `.dockerignore`, which keeps `tests/`, `prereg/` and
    `overrides/` out of the product image. No test ran (pytest exit 4). The build-context copy
-   then had `.dockerignore` removed. `docs/`, `local/` and `CLAUDE.md` were never in the
+   then had `.dockerignore` removed. `docs/`, `local/` and the other publication-firewalled files were never in the
    archive.
 2. The first step (a) re-run went through `uv run`, which tried to re-sync from PyPI with no
    network. No test ran. The second re-run called `/src/.venv/bin/python -m pytest` directly.
@@ -154,3 +154,12 @@ Step (a) re-run on Linux, same image, with the two changed files mounted read-on
 - The full suite was not run on Linux; only the D8 corpus and pair suites (and the new unit
   test). CI's `check` job runs the full suite on Ubuntu when dispatched (D-0095), and none has
   run since this change.
+
+### Correction note — appended 2026-10-31
+
+Two lines above, one of them in the pre-registration section, named an assistant-tooling file
+when listing what the archive leaves out. A published file must not
+(`test_no_published_file_cites_assistant_tooling`, failed by the gate at `026d2c7`). Both
+lines now say "the other publication-firewalled files". **No criterion, threshold, N or method
+step changed**, and the registration commit `38920a6` keeps the original wording in history.
+The same correction was made in the receipt's deviation text.
