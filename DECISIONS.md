@@ -5891,3 +5891,25 @@ asked for the same.
 **Decision.** D73 closes. Each control's target is on the certificate. `nonvacuity` is an open
 object in schema v0, so no schema change was needed. No gate's criterion changed. The controls
 now corrupt what they always meant to corrupt: a trace.
+
+---
+
+## D-0120 — 2026-10-31 — D30's bound measured (P21); a refusal is one stderr line
+
+**Context.** GeoSuite's order under owner D-216: D30 first. Registered at `b6d833f` before the
+run.
+
+**Result.**
+- `multidimio` 1.2.1 refuses `ratio > 10`, strictly. 10.000 is accepted, and so is a 9.75 oblique
+  swath; both certify EQUIVALENT.
+- 10.08, 10.75, 14 and 100 are refused cleanly by ingest, verify and certify.
+- The barred limit setting is refused before reading (exit 2).
+
+**A defect found and fixed:** the README's one-line refusal was five lines for any upstream
+message containing line breaks. `_refusal` in `src/sdip/cli/main.py` now joins them, for every
+refusal the CLI writes. Pre-registered criterion 2 fired on that and holds after the fix, with
+the four refused-side tests as the permanent control. **Consumer-visible:** a refusal that used
+to span several lines is now one line, with the same text.
+
+**Asked, not decided:** whether D30 closes as an accepted limit (no lawful route past it at these
+pins) or stays open for a future upstream change.

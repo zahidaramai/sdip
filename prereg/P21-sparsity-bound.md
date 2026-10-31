@@ -81,3 +81,58 @@ for a future upstream change, is a ruling, asked for in the report.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-10-31 |
+| Run commit | `0e0761d`, clean tree. Registration at `b6d833f`, before the run |
+| Receipt | `prereg/P21-receipt-2026-10-31.json`: every member's ingest, verify and certify, doctor, the barred-setting run |
+| Verdict | **Every member landed on its registered side.** Criterion 2 **fired** before a CLI fix (a refusal spanned five stderr lines) and holds after it. Criteria 1 and 3 hold |
+
+### Measured
+
+| Member | Ratio | Ingest | Verify | Certify | Plane 5 padding |
+|---|---:|---|---|---|---|
+| `below_9_09` | 9.091 | exit 0 | PASS | **EQUIVALENT** (only G5 NOT_RUN) | verified, 89 cells |
+| `diag_10_00` | 10.000 | exit 0 | PASS | **EQUIVALENT** (only G5 NOT_RUN) | verified, 90 cells |
+| `swath_L36_w4` | 9.750 | exit 0 | PASS | **EQUIVALENT** (only G5 NOT_RUN) | verified, 1,260 cells |
+| `diag_10_08` | 10.083 | **exit 1**, 0 B stdout, 1 `sdip:` line | exit 2 (no store) | exit 1, same line | — |
+| `swath_L40_w4` | 10.750 | **exit 1**, likewise | exit 2 | exit 1 | — |
+| `swath_L40_w3` | 14.000 | **exit 1**, likewise | exit 2 | exit 1 | — |
+| `diag_100` | 100.000 | **exit 1**, likewise | exit 2 | exit 1 | — |
+
+- No traceback and no exit 3 anywhere. No refused member left a store carrying a provenance
+  marker.
+- The refusal names the ratio: `sdip: UpstreamRefusal: GridTraceSparsityError raised in
+  mdio/ingestion/grid_qc.py:69: … Sparsity ratio: 10.08 …`.
+- **The bound is `ratio > 10`, strict.** 10.000 is accepted and 10.083 is refused, as the source
+  says.
+- **Criterion 3:** `sdip doctor` PASS ("all 12 environment variables the installed upstream
+  reads are classified"). With `MDIO__GRID__SPARSITY_RATIO_LIMIT=1000` set, ingest exits **2**
+  before reading the file (`BarredEnvironmentError`), and no store is created.
+
+### Criterion 2 fired first, and what fixed it
+
+At the registration commit, every refused member's `sdip:` line was followed by **four
+continuation lines**, because MDIO's exception message carries its own line breaks. The README
+promises one `sdip: <ErrorName>: <reason>` line, and consumers parse by line (GeoGIS's intake
+does). The CLI boundary now writes every refusal through one helper that joins the message's
+breaks with spaces (`0e0761d`). The four refused-side tests in
+`tests/integration/test_d30_sparsity_bound.py` failed before it and pass after. They are the
+permanent control.
+
+### What D30 now is
+
+A **measured hard limit**:
+- ratio ≤ 10 is accepted and certifies;
+- ratio > 10 is refused cleanly, in one line, by every command;
+- the only route past it is a barred setting, and it is refused.
+
+A real oblique 3-D swath sparser than about 1 in 10 of its bounding grid cannot be ingested by
+SDIP at these pins. Changing the grid to fit would be processing (§1.3). Whether that **closes**
+D30 as an accepted limit is a ruling, asked for in the report.
+
+### Scope
+
+Synthetic poststack 3-D grids, 10–160 traces, revision 1, one template, macOS arm64. The bound
+is upstream's at `multidimio` 1.2.1; a pin bump could move it.

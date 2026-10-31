@@ -3024,3 +3024,22 @@ Recorded so that "open" is a claim about work, not inertia:
 - **D31:** a standing hazard, held by a permanent test. Whether that makes it closable is a
   ruling, not a run.
 - **D38:** the registered falsifier needs a single source of ≥ 1.5 GB.
+
+---
+
+## D30 — NARROWED 2026-10-31 — the bound measured exactly; both sides clean (P21)
+
+- **Narrows:** D30 above (**SP10**) · **Decision:** `DECISIONS.md` D-0120 · **Probe:** P21
+- **Status:** `OPEN`, pending a ruling on closing it as an accepted limit
+
+Seven synthetic grids (ratios 9.09 to 100), registered at `b6d833f`, all landed on their
+registered side. Ratio ≤ 10, including exactly 10.000 and a realistic oblique swath at 9.75,
+ingests and certifies EQUIVALENT, with padding verified. Ratio > 10 (10.08, 10.75, 14, 100) is
+refused by every command in one line naming `GridTraceSparsityError`. Setting the barred limit
+is refused with exit 2 before the file is read.
+
+Found and fixed on the way: a refusal spanned five stderr lines (MDIO's message has line
+breaks). It is one line since `0e0761d`.
+
+Nothing in SDIP can lawfully move the bound: the setting is barred, and reshaping the grid is
+processing. D30 stays open only for the ruling on whether that closes it.

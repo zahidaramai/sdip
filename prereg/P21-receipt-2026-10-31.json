@@ -1,0 +1,262 @@
+{
+ "probe": "P21",
+ "debt": "D30",
+ "run_date": "2026-10-31",
+ "registration_commit": "b6d833f",
+ "run_commit": "0e0761d (clean tree)",
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "host": "macOS arm64, CPython 3.12.13",
+ "before_fix_b6d833f": {
+  "refusal_lines_on_stderr": 5,
+  "example_member": "diag_10_08",
+  "note": "one sdip: line followed by four continuation lines from MDIO's message; four refused-side tests failed"
+ },
+ "results": {
+  "doctor": {
+   "exit": 0,
+   "upstream_settings_line": [
+    "[PASS] upstream-settings     all 12 environment variables the installed upstream reads are classified"
+   ]
+  },
+  "members": {
+   "below_9_09": {
+    "ratio": 9.091,
+    "registered_side": "accepted",
+    "ingest": {
+     "exit": 0,
+     "stdout_bytes": 13828,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": "Ingesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.16block/s]"
+    },
+    "store_marker": true,
+    "verify": {
+     "exit": 0,
+     "stdout_bytes": 37252,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": ""
+    },
+    "certify": {
+     "exit": 0,
+     "stdout_bytes": 1504,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": "Ingesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.21block/s]"
+    },
+    "certificate": {
+     "verdict": "EQUIVALENT",
+     "blocking": [
+      "gate G5 is NOT_RUN"
+     ],
+     "plane_5": "PASS",
+     "padding_verified": true,
+     "padding_cells": 89
+    }
+   },
+   "diag_10_00": {
+    "ratio": 10.0,
+    "registered_side": "accepted",
+    "ingest": {
+     "exit": 0,
+     "stdout_bytes": 13829,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": "Ingesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.16block/s]"
+    },
+    "store_marker": true,
+    "verify": {
+     "exit": 0,
+     "stdout_bytes": 37252,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": ""
+    },
+    "certify": {
+     "exit": 0,
+     "stdout_bytes": 1504,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": "Ingesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.18block/s]"
+    },
+    "certificate": {
+     "verdict": "EQUIVALENT",
+     "blocking": [
+      "gate G5 is NOT_RUN"
+     ],
+     "plane_5": "PASS",
+     "padding_verified": true,
+     "padding_cells": 90
+    }
+   },
+   "swath_L36_w4": {
+    "ratio": 9.75,
+    "registered_side": "accepted",
+    "ingest": {
+     "exit": 0,
+     "stdout_bytes": 13841,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": "Ingesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.18block/s]"
+    },
+    "store_marker": true,
+    "verify": {
+     "exit": 0,
+     "stdout_bytes": 37276,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": ""
+    },
+    "certify": {
+     "exit": 0,
+     "stdout_bytes": 1506,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": "Ingesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.24block/s]"
+    },
+    "certificate": {
+     "verdict": "EQUIVALENT",
+     "blocking": [
+      "gate G5 is NOT_RUN"
+     ],
+     "plane_5": "PASS",
+     "padding_verified": true,
+     "padding_cells": 1260
+    }
+   },
+   "diag_10_08": {
+    "ratio": 10.083,
+    "registered_side": "refused",
+    "ingest": {
+     "exit": 1,
+     "stdout_bytes": 0,
+     "sdip_lines": [
+      "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (11, 11, 16) but SEG-Y tracecount: 12. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 10.08. Ingestion grid: {'inline': 11, 'crossline': 11, 'time': 16}. SEG-Y trace count: 12, grid trace count: 121. inline min: 1 max: 11 crossline min: 1 max: 11 time min: 0 max: 60."
+     ],
+     "traceback": false,
+     "last_stderr": "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (11, 11, 16) but SEG-Y tracecount: 12. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 10.08. Ingestion grid: {'inline': 11, 'crossline': 11,"
+    },
+    "store_marker": false,
+    "verify": {
+     "exit": 2,
+     "stdout_bytes": 0,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": "Error: Invalid value for 'STORE': Directory '/var/folders/zv/77r6ldb52zd2qt3zx0h053zw0000gn/T/tmps8eej4nw/diag_10_08/s.mdio' does not exist."
+    },
+    "certify": {
+     "exit": 1,
+     "stdout_bytes": 0,
+     "sdip_lines": [
+      "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (11, 11, 16) but SEG-Y tracecount: 12. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 10.08. Ingestion grid: {'inline': 11, 'crossline': 11, 'time': 16}. SEG-Y trace count: 12, grid trace count: 121. inline min: 1 max: 11 crossline min: 1 max: 11 time min: 0 max: 60."
+     ],
+     "traceback": false,
+     "last_stderr": "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (11, 11, 16) but SEG-Y tracecount: 12. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 10.08. Ingestion grid: {'inline': 11, 'crossline': 11,"
+    }
+   },
+   "swath_L40_w4": {
+    "ratio": 10.75,
+    "registered_side": "refused",
+    "ingest": {
+     "exit": 1,
+     "stdout_bytes": 0,
+     "sdip_lines": [
+      "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (40, 43, 16) but SEG-Y tracecount: 160. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 10.75. Ingestion grid: {'inline': 40, 'crossline': 43, 'time': 16}. SEG-Y trace count: 160, grid trace count: 1720. inline min: 1 max: 40 crossline min: 1 max: 43 time min: 0 max: 60."
+     ],
+     "traceback": false,
+     "last_stderr": "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (40, 43, 16) but SEG-Y tracecount: 160. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 10.75. Ingestion grid: {'inline': 40, 'crossline': 43"
+    },
+    "store_marker": false,
+    "verify": {
+     "exit": 2,
+     "stdout_bytes": 0,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": "Error: Invalid value for 'STORE': Directory '/var/folders/zv/77r6ldb52zd2qt3zx0h053zw0000gn/T/tmps8eej4nw/swath_L40_w4/s.mdio' does not exist."
+    },
+    "certify": {
+     "exit": 1,
+     "stdout_bytes": 0,
+     "sdip_lines": [
+      "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (40, 43, 16) but SEG-Y tracecount: 160. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 10.75. Ingestion grid: {'inline': 40, 'crossline': 43, 'time': 16}. SEG-Y trace count: 160, grid trace count: 1720. inline min: 1 max: 40 crossline min: 1 max: 43 time min: 0 max: 60."
+     ],
+     "traceback": false,
+     "last_stderr": "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (40, 43, 16) but SEG-Y tracecount: 160. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 10.75. Ingestion grid: {'inline': 40, 'crossline': 43"
+    }
+   },
+   "swath_L40_w3": {
+    "ratio": 14.0,
+    "registered_side": "refused",
+    "ingest": {
+     "exit": 1,
+     "stdout_bytes": 0,
+     "sdip_lines": [
+      "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (40, 42, 16) but SEG-Y tracecount: 120. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 14.00. Ingestion grid: {'inline': 40, 'crossline': 42, 'time': 16}. SEG-Y trace count: 120, grid trace count: 1680. inline min: 1 max: 40 crossline min: 1 max: 42 time min: 0 max: 60."
+     ],
+     "traceback": false,
+     "last_stderr": "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (40, 42, 16) but SEG-Y tracecount: 120. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 14.00. Ingestion grid: {'inline': 40, 'crossline': 42"
+    },
+    "store_marker": false,
+    "verify": {
+     "exit": 2,
+     "stdout_bytes": 0,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": "Error: Invalid value for 'STORE': Directory '/var/folders/zv/77r6ldb52zd2qt3zx0h053zw0000gn/T/tmps8eej4nw/swath_L40_w3/s.mdio' does not exist."
+    },
+    "certify": {
+     "exit": 1,
+     "stdout_bytes": 0,
+     "sdip_lines": [
+      "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (40, 42, 16) but SEG-Y tracecount: 120. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 14.00. Ingestion grid: {'inline': 40, 'crossline': 42, 'time': 16}. SEG-Y trace count: 120, grid trace count: 1680. inline min: 1 max: 40 crossline min: 1 max: 42 time min: 0 max: 60."
+     ],
+     "traceback": false,
+     "last_stderr": "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (40, 42, 16) but SEG-Y tracecount: 120. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 14.00. Ingestion grid: {'inline': 40, 'crossline': 42"
+    }
+   },
+   "diag_100": {
+    "ratio": 100.0,
+    "registered_side": "refused",
+    "ingest": {
+     "exit": 1,
+     "stdout_bytes": 0,
+     "sdip_lines": [
+      "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (100, 100, 16) but SEG-Y tracecount: 100. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 100.00. Ingestion grid: {'inline': 100, 'crossline': 100, 'time': 16}. SEG-Y trace count: 100, grid trace count: 10000. inline min: 1 max: 100 crossline min: 1 max: 100 time min: 0 max: 60."
+     ],
+     "traceback": false,
+     "last_stderr": "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (100, 100, 16) but SEG-Y tracecount: 100. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 100.00. Ingestion grid: {'inline': 100, 'crossline'"
+    },
+    "store_marker": false,
+    "verify": {
+     "exit": 2,
+     "stdout_bytes": 0,
+     "sdip_lines": [],
+     "traceback": false,
+     "last_stderr": "Error: Invalid value for 'STORE': Directory '/var/folders/zv/77r6ldb52zd2qt3zx0h053zw0000gn/T/tmps8eej4nw/diag_100/s.mdio' does not exist."
+    },
+    "certify": {
+     "exit": 1,
+     "stdout_bytes": 0,
+     "sdip_lines": [
+      "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (100, 100, 16) but SEG-Y tracecount: 100. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 100.00. Ingestion grid: {'inline': 100, 'crossline': 100, 'time': 16}. SEG-Y trace count: 100, grid trace count: 10000. inline min: 1 max: 100 crossline min: 1 max: 100 time min: 0 max: 60."
+     ],
+     "traceback": false,
+     "last_stderr": "sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (100, 100, 16) but SEG-Y tracecount: 100. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 100.00. Ingestion grid: {'inline': 100, 'crossline'"
+    }
+   }
+  },
+  "barred": {
+   "exit": 2,
+   "stdout_bytes": 0,
+   "sdip_lines": [
+    "sdip: BarredEnvironmentError: refusing to ingest: barred environment variable set (spec 9.1). MDIO__GRID__SPARSITY_RATIO_LIMIT: Moves the sparsity refusal OPEN_DEBTS D30 records as a hard limit whose only route past is the barred MDIO_IGNORE_CHECKS. Raising it is the same bypass under another name."
+   ],
+   "traceback": false,
+   "last_stderr": "sdip: BarredEnvironmentError: refusing to ingest: barred environment variable set (spec 9.1). MDIO__GRID__SPARSITY_RATIO_LIMIT: Moves the sparsity refusal OPEN_DEBTS D30 records as a hard limit whose only route past is the barred MDIO_IGNORE_CHECKS. Raising it is the same bypass under another name.",
+   "store_exists": false
+  }
+ }
+}
