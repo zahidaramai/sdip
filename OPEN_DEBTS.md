@@ -2688,3 +2688,15 @@ nested arrays included. **Measured through the executable** (`tests/integration/
 
 **Still open:** whether the poststack default moves from 128³. P14 Amendment B (F3) decides, as
 D-0112 rules. Prestack: a fitting shape can now be declared; nothing ships one by default.
+
+---
+
+## D4 — 2026-10-31 — F3 (P14 Amendment D): precondition PASS, timing void; default stays 128³
+
+- **Updates:** D4's 2026-10-31 entries (**SP10**)
+
+The P14 run on F3 (`fa30c13`) passed its precondition: Planes 1-5 PASS at all four shapes, and the
+amplitude was identical across them. It recorded the structure: `64^3` decodes the least on every
+pattern. Both timing runs were void, at load 13.59 and 10.99 against 3.5. The F3 leg is NOT
+EVALUABLE, so **the poststack default stays 128³** (D-0112). The rerun is registered as P14
+Amendment E: a watcher waits for an idle machine, armed until 2026-11-02 12:00 MYT.

@@ -818,3 +818,60 @@ if __name__ == "__main__":
 - the 1.25 ratio, the decision rule and its consequence;
 - Amendment C's start rule: the harness starts at once, at the commit registering this
   amendment, once that commit is on `origin`.
+
+---
+
+## Amendment D — results, 2026-10-31, at `fa30c13`: precondition PASS, timing NOT EVALUABLE (both runs void)
+
+| Field | Value |
+|---|---|
+| Run | 07:47:43-08:11:58 MYT, from a clean detached worktree at the registration commit `fa30c13` (on `origin`), harness as registered in Amendment D |
+| Source | sha256 equal to the article (the harness checked) |
+| Receipt | `prereg/P14-receipt-2026-10-31-D.json` (local path removed; raw sha256 `e82ec06cff1a83c1…`). Run root deleted after this record (Storage Law) |
+| Verdict | **Precondition PASS. Timing NOT EVALUABLE: both runs void. The default stays 128³.** The falsifier was not evaluated |
+
+**Precondition.** Planes 1-5 PASS at every shape, and the decoded `amplitude` sha256 is identical
+across the four shapes (`1aeed5932f77…`). Store bytes: 540,958,172 (128³), 538,026,099
+(128x128x64), 536,469,126 (64³), 538,263,076 (64x256x64).
+
+**Structure** (per pattern: chunks touched · compressed MiB · decoded MiB):
+
+| Shape | full inline | full crossline | sample slice | window |
+|---|---|---|---|---|
+| 128^3 | 32 · 102.7 · 256.0 | 24 · 70.2 · 192.0 | 48 · 143.5 · 384.0 | 30 · 117.2 · 240.0 |
+| 128x128x64 | 64 · 102.2 · 256.0 | 48 · 69.8 · 192.0 | 48 · 70.8 · 192.0 | 45 · 87.9 · 180.0 |
+| 64^3 | 120 · 50.9 · 120.0 | 88 · 35.0 · 88.0 | 165 · 70.5 · 165.0 | 162 · 78.9 · 162.0 |
+| 64x256x64 | 32 · 51.1 · 128.0 | 88 · 134.9 · 352.0 | 44 · 70.8 · 176.0 | 54 · 105.6 · 216.0 |
+
+As on Volve, `64^3` decodes the least on every pattern, 1.5x to 2.3x less than `128^3`, while
+touching 3.4x to 5.4x more chunks. `64x256x64` decodes the most on the crossline. Structure is not
+the criterion; the timing is.
+
+**Timing: void, not judged.** At the third check, run A started at a 1-minute load of 13.59 and
+run B at 10.99, against the declared 3.5, so both are void. The owner declined a suite-wide pause
+for the window (relayed by GeoSuite: "drop the pause, run everything"). The harness still recorded
+the samples, and they are in the receipt with `"void": true`. **They are not evidence.**
+
+---
+
+## Amendment E — 2026-10-31, before the rerun: the timing rerun waits for an idle machine
+
+**Why.** Amendment D's run met its precondition but both timing runs were void. GeoSuite relayed the
+owner's choice not to pause the suite: *"re-arm the watcher for a naturally idle period
+(overnight, armed to 2026-11-02 12:00 as registered)"*.
+
+**Changed — only when the run starts:** Amendment B's trigger returns. A detached watcher starts the
+Amendment D harness:
+- at the commit that registers this amendment, once that commit is on `origin`;
+- only after the 1-minute load average has been ≤ 3.5 for 10 consecutive minutes (sampled every
+  60 s);
+- the watcher stays armed until **2026-11-02 12:00 MYT**. If no window comes, that is recorded and
+  nothing runs.
+
+**Unchanged:**
+- the Amendment D harness, verbatim;
+- the article, shapes, patterns, N = 5, two runs;
+- the per-run load gate, the 1.25 ratio, the decision rule and its consequence.
+
+The harness rebuilds the stores, so the precondition and the structure are measured again; **they
+must equal the results above**, and any difference is reported first.
