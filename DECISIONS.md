@@ -6120,3 +6120,36 @@ The options:
 - **(c)** Disable the default and leave the refusal to an explicit `--envelope-gib`.
 
 Any change also changes the refusal message consumers see.
+
+---
+
+## D-0129 — 2026-11-01 — The verify envelope re-fitted on three points (P26); D38 closed; D74 opened
+
+**Ruling** (GeoSuite D-244, option (a) of D-0128): register P26 with one synthetic source of 4–6
+GB, measure, re-fit `envelope.py` on three points, and set the default where the line reaches
+8 GiB, with the refusal stating the fit.
+
+**Result** (P26, registered at `7c9a131`, run at `36c33fe`):
+- 4.81 GB source: `verify` passes, with a peak of 1,783.2 MB, +10.7 % on the 2-point
+  prediction (within the registered 25 %).
+- Fit: 0.1779 MB per MB, intercept 919.6 MB, R² 0.996. It reaches 8 GiB at 40.15 GiB.
+- **`--envelope-gib`'s default moves from 1.0 to 40.1 GiB**, rounded down. The refusal reads
+  "measured at 0.4/1.6/4.8 GB, slope 0.178 MB/MB, intercept 0.92 GB".
+- `envelope.py`'s tests recompute every constant from the points, and the points from the
+  receipts.
+
+**D38 closes.** The remaining 0.3 MB-per-MB growth of the parsed headers and trace map is
+P27, if a consumer needs it, per GeoSuite.
+
+**Asked, not decided: D74.** Ingest's recorded peaks (1.03 MB per MB, reaching 8 GiB near 7.8
+GB) contradict D-0042's statement for ingest. `certify`'s chain would breach the 8 GiB ceiling at
+ingest above about 7.8 GB. The options:
+- **(a)** Register a probe attributing ingest memory, as P24 did for verify.
+- **(b)** Add an ingest envelope from this fit now, so ingest refuses above about 7.8 GB, with
+  a ruling on the number.
+- **(c)** Record it as an accepted limit.
+
+**Recommendation: (a), then (b) if the cause is upstream and cannot be changed.**
+
+**Consumer-visible:** `sdip verify` no longer refuses sources between 1.0 and 40.1 GiB by
+default. The refusal text above the default changes.

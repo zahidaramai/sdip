@@ -434,10 +434,10 @@ def _print_planes(planes: list[Any]) -> None:
     default=DEFAULT_ENVELOPE_GIB,
     show_default=True,
     help=(
-        "Largest single source file to attempt. Above it, verification is REFUSED rather "
-        "than started: the verification path fully materialises, so peak RSS is linear in "
-        "file size and the process is killed instead of returning a verdict. Pass 0 to "
-        "disable the check."
+        "Largest single source file to attempt, in GiB. Above it, verification is REFUSED "
+        "rather than started, because the projected peak memory (measured at 0.4/1.6/4.8 GB, "
+        "probe P26) would pass the 8 GiB ceiling and a killed process returns no verdict. "
+        "Pass 0 to disable the check."
     ),
 )
 def verify_cmd(

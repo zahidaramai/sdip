@@ -78,3 +78,53 @@ it, by GeoSuite's ruling).
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-11-01 |
+| Code | `main` `36c33fe`, clean. Registration `7c9a131`, before the run |
+| Receipt | `prereg/P26-receipt-2026-11-01.json`: fixture hash, peaks, wall clocks, the fit, the driver |
+| Verdict | **All three criteria hold; the fit is adopted** |
+
+### Measured
+
+`xl`: 4,808,163,600 B, sha256 `7ac9dfb2…89a30817`.
+
+| | Peak RSS | Wall clock |
+|---|---:|---:|
+| `sdip ingest` (recorded, not gated) | 5,528,076,288 B | 223.4 s |
+| `sdip verify --skip-portability --envelope-gib 0` | **1,783,169,024 B** | 339.3 s |
+
+- **Criterion 1 (verify passes): HOLDS.** Exit 0, verdict PASS, all five planes PASS, G1 PASS,
+  both digests MATCH.
+- **Criterion 2 (within 25 % of the prediction): HOLDS.** 1,783.2 MB against 1,611.4 MB
+  predicted, +10.7 %.
+- **Criterion 3 (fit adopted): done.**
+
+| Fit over 0.40 / 1.60 / 4.81 GB | Value |
+|---|---|
+| Slope | **0.1779 MB per MB** |
+| Intercept | **919.6 MB** |
+| R² | 0.996 |
+| Reaches 8 GiB at | 43,106 MB = 40.15 GiB |
+| **New `--envelope-gib` default** | **40.1 GiB** (was 1.0) |
+
+`envelope.py` now carries the three points, the fitted constants and the default, and its tests
+recompute each constant from the points and the points from the P24 and P26 receipts. The
+refusal message states the fit: "measured at 0.4/1.6/4.8 GB, slope 0.178 MB/MB, intercept
+0.92 GB".
+
+### A finding outside the criteria: ingest memory is linear in the file
+
+Ingest's peak RSS, recorded at three sizes by P23 and P26, is 1,008.6, 2,199.6 and 5,528.1 MB.
+That is **1.03 MB per MB** of source, and the line reaches 8 GiB near a **7.8 GB** source. This
+contradicts `DECISIONS.md` D-0042's statement, which D-0060 left standing for ingest, that
+ingest memory "tracks the chunk working set". It also means a source that the new `verify`
+default admits could not be **ingested** under the 8 GiB ceiling above about 7.8 GB. Opened as
+D74 and asked (section 9). Nothing about ingest is changed here.
+
+### Scope
+
+One synthetic geometry family, macOS arm64. The default extrapolates the line about 8 times
+past the largest source measured. `/usr/bin/time -l` reports the `sdip` process's own maximum
+resident set; worker processes it spawns are not added in.

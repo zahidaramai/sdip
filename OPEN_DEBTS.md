@@ -3207,3 +3207,40 @@ and its output byte-identical.
 - the parsed source headers and the trace map, which still grow at about 0.3 MB per MB.
 
 The second is not a ceiling at any size this machine verifies.
+
+---
+
+## D38 — CLOSED 2026-11-01 — verification streams; the envelope is re-fitted (P23, P24, P26)
+
+- **Closes:** D38 above (**SP10**) · **Decision:** `DECISIONS.md` D-0129 · **Rulings:**
+  GeoSuite D-244 (the envelope re-fit) and D-0125 / D-244 (the remaining growth is P27 if a
+  consumer needs it)
+- **Revisit:** if a consumer needs `verify` above about 40 GiB, or a measurement breaks the fit
+
+D38 said the verification path materialised whole files and breached 8 GiB near 1.1–1.4 GB.
+- **Planes 3 and 4 now read block by block.** `sdip verify` measured 1.01, 1.18 and 1.78 GB of
+  peak RSS on 0.40, 1.60 and 4.81 GB sources, with its output byte-identical to the
+  whole-file code.
+- **The fit:** 0.178 MB per MB above 0.92 GB. It reaches 8 GiB near 40 GiB.
+- **The default:** `--envelope-gib` is now 40.1 GiB, and the refusal states the fit.
+
+The parsed source headers and the trace map still grow, at about 0.3 MB per MB alone. That is
+deferred to P27, if a consumer ever needs it.
+
+---
+
+## D74 — `sdip ingest` memory is linear in the source: about 1.03 MB per MB
+
+- **Status:** `OPEN` (raised 2026-11-01) · **Found by:** P26, recorded beside P23 ·
+  **Decision:** `DECISIONS.md` D-0129 · **Needs:** a ruling (section 9: a measurement
+  contradicts a documented conclusion)
+
+`sdip ingest`'s peak RSS was 1,008.6, 2,199.6 and 5,528.1 MB on 0.40, 1.60 and 4.81 GB
+synthetic sources (`/usr/bin/time -l`, the `sdip` process alone). The least-squares line is
+1.03 MB per MB above 0.58 GB, and it reaches 8 GiB near a **7.8 GB** source.
+- **D-0042** said ingest memory tracks the chunk working set. D-0060 retracted that only for
+  verification. These numbers contradict it for ingest too.
+- **Consequence:** `certify` runs ingest under the same 8 GiB ceiling, so above about 7.8 GB
+  a source would breach it at ingest, though `verify` alone would admit it.
+
+Not attributed (SDIP's own arrays, or upstream's ingest), and not fixed.

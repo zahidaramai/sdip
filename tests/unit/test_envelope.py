@@ -1,12 +1,23 @@
-"""The declared verification-memory envelope. `DECISIONS.md` D-0063 ruling 5."""
+"""The declared verification-memory envelope. `DECISIONS.md` D-0063 ruling 5, re-fitted by P26.
+
+The constants are not free parameters: each is recomputed here from the committed
+measurements, so a constant edited without a measurement fails.
+"""
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
+import numpy as np
+
 from sdip.equivalence.envelope import (
+    CEILING_GIB,
     DEFAULT_ENVELOPE_GIB,
+    MEASURED_POINTS,
     REASON_CODE,
+    RSS_INTERCEPT_MB,
+    RSS_SLOPE,
     envelope_refusal,
     projected_peak_rss_mb,
 )
@@ -19,6 +30,44 @@ def _sized(path: Path, size: int) -> Path:
     return path
 
 
+def _fit() -> tuple[float, float]:
+    x = np.array([s / 1e6 for s, _ in MEASURED_POINTS])
+    y = np.array([r / 1e6 for _, r in MEASURED_POINTS])
+    slope, intercept = np.polyfit(x, y, 1)
+    return float(slope), float(intercept)
+
+
+def test_the_points_are_p24_and_p26s_receipts(repo_root):
+    import json
+
+    p24 = json.loads((repo_root / "prereg/P24-receipt-2026-11-01.json").read_text())
+    p26 = json.loads((repo_root / "prereg/P26-receipt-2026-11-01.json").read_text())
+    stage_b = p24["stage_b"]["whole_verify_peak_rss_bytes"]
+    assert MEASURED_POINTS == (
+        (400_683_600, stage_b["small"]),
+        (1_602_723_600, stage_b["large"]),
+        (p26["fixture"]["bytes"], p26["verify"]["peak_rss_bytes"]),
+    )
+
+
+def test_the_constants_are_the_least_squares_fit_of_the_points():
+    slope, intercept = _fit()
+    assert round(slope, 4) == RSS_SLOPE
+    assert round(intercept, 1) == RSS_INTERCEPT_MB
+
+
+def test_the_default_is_where_the_line_reaches_the_ceiling_rounded_down():
+    reach_gib = (CEILING_GIB * 1024**3 / 1e6 - RSS_INTERCEPT_MB) / RSS_SLOPE * 1e6 / 1024**3
+    assert math.floor(reach_gib * 10) / 10 == DEFAULT_ENVELOPE_GIB
+    assert projected_peak_rss_mb(int(DEFAULT_ENVELOPE_GIB * 1024**3)) <= CEILING_GIB * 1024**3 / 1e6
+
+
+def test_the_line_does_not_under_predict_any_point_by_much():
+    """A projection far under a measured peak would let a file through that then dies."""
+    for size, peak in MEASURED_POINTS:
+        assert projected_peak_rss_mb(size) >= 0.9 * peak / 1e6, (size, peak)
+
+
 def test_a_file_inside_the_envelope_is_not_refused(tmp_path):
     assert envelope_refusal(_sized(tmp_path / "s.sgy", 1024), envelope_gib=1.0) is None
 
@@ -29,11 +78,18 @@ def test_a_file_above_the_envelope_is_refused_with_a_stable_reason_code(tmp_path
     message = envelope_refusal(source, envelope_gib=1.0)
     assert message is not None
     assert message.startswith(REASON_CODE)
-    # it cites the measurement rather than asserting a limit
-    assert "R^2 = 0.99997" in message
-    assert "D-0060" in message
+    # it states the fit rather than asserting a limit (GeoSuite D-244)
+    assert "measured at 0.4/1.6/4.8 GB, slope 0.178 MB/MB, intercept 0.92 GB" in message
+    assert "P26" in message
     # and it names the escape hatch, so refusing is not a dead end
     assert "--envelope-gib" in message
+
+
+def test_the_default_refuses_above_it_and_admits_below_it(tmp_path):
+    above = _sized(tmp_path / "above.sgy", int((DEFAULT_ENVELOPE_GIB + 0.1) * 1024**3))
+    below = _sized(tmp_path / "below.sgy", int((DEFAULT_ENVELOPE_GIB - 0.1) * 1024**3))
+    assert envelope_refusal(above, envelope_gib=DEFAULT_ENVELOPE_GIB) is not None
+    assert envelope_refusal(below, envelope_gib=DEFAULT_ENVELOPE_GIB) is None
 
 
 def test_zero_disables_the_check_because_that_is_an_operator_decision(tmp_path):
@@ -41,27 +97,3 @@ def test_zero_disables_the_check_because_that_is_an_operator_decision(tmp_path):
     source = _sized(tmp_path / "huge.sgy", (50 * 1024**3))
     assert envelope_refusal(source, envelope_gib=0) is None
     assert envelope_refusal(source, envelope_gib=-1) is None
-
-
-def test_the_default_envelope_sits_below_the_measured_breach_range(tmp_path):
-    """The number sits under a range the measurements do not agree on.
-
-    D-0060 bracketed the breach of a declared 8 GiB ceiling between **1,083 MB** (the
-    synthetic fit) and **1,393 MB** (anchored on the single real survey point). A default
-    set inside a range where two measurements disagree would be a guess wearing a number.
-    """
-    assert DEFAULT_ENVELOPE_GIB * 1024**3 < 1_083 * 1e6, "must sit under BOTH estimates"
-
-
-def test_the_projection_reproduces_the_one_real_measurement_conservatively():
-    """The fit over-predicts the real point, and that direction is the safe one.
-
-    494,565,408 B was observed at **2.81-2.87 GiB**. The fit projects higher. An
-    under-prediction would let a file through that then OOMs, which is the failure this
-    envelope exists to prevent — so the fit is used as the conservative side of a
-    bracket, never as a point estimate.
-    """
-    observed_gib_high = 2.87
-    projected_gib = projected_peak_rss_mb(494_565_408) / 1024
-    assert projected_gib > observed_gib_high, "an under-prediction would defeat the point"
-    assert projected_gib < 2 * observed_gib_high, "but it must not be wild"

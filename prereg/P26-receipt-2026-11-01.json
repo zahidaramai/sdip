@@ -1,0 +1,66 @@
+{
+ "probe": "P26",
+ "debt": "D38",
+ "run_date": "2026-11-01",
+ "registration_commit": "7c9a131",
+ "code": "main 36c33fe (main checkout, clean)",
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "host": "macOS arm64, 36 GiB RAM, CPython 3.12.13",
+ "fixture": {
+  "name": "xl",
+  "bytes": 4808163600,
+  "sha256": "7ac9dfb25d4b1f44976931df37568e86e3f950d8687d791c3c3c369a89a30817",
+  "construction": "piece k=0..5: make_poststack3d(n_inline=300, n_crossline=630, n_samples=1000, inline_start=100+300k); piece 0's 3,600 header bytes, then each piece's bytes after its first 3,600, in order"
+ },
+ "ingest": {
+  "peak_rss_bytes": 5528076288,
+  "real_s": 223.44
+ },
+ "verify": {
+  "peak_rss_bytes": 1783169024,
+  "real_s": 339.3,
+  "exit": 0,
+  "verdict": "PASS",
+  "planes": {
+   "plane_1": "PASS",
+   "plane_2": "PASS",
+   "plane_3": "PASS",
+   "plane_4": "PASS",
+   "plane_5": "PASS"
+  },
+  "json_sha256": "bd8ce8e9ac9d98e485b6e120e4504d7546a73a771d07c7aa2cd7b347de806bd1"
+ },
+ "command": "/usr/bin/time -l sdip verify --json --skip-portability --envelope-gib 0 xl.sgy xl.mdio",
+ "points_from_p24_stage_b": [
+  [
+   400683600,
+   1012170752
+  ],
+  [
+   1602723600,
+   1175601152
+  ]
+ ],
+ "prediction_from_two_points_mb": 1611.415552,
+ "deviation_from_prediction": 0.1066,
+ "fit": {
+  "method": "numpy.polyfit degree 1 on (source MB, peak RSS MB), MB = 1e6 B",
+  "slope_mb_per_mb": 0.17794253850927652,
+  "intercept_mb": 919.624242870779,
+  "r2": 0.9958541631844635,
+  "reaches_8GiB_at_mb": 43105.54639372727,
+  "reaches_8GiB_at_gib": 40.14516844761304,
+  "default_gib_rounded_down": 40.1
+ },
+ "criteria": {
+  "1_verify_passes": true,
+  "2_within_25pct_of_prediction": true,
+  "3_fit_adopted": true
+ },
+ "driver": {
+  "p26_run.sh": "#!/bin/bash\n# P26 at main 36c33fe: build xl from six pieces, ingest, verify under /usr/bin/time -l.\nset -u\nL=$1; R=$L/p26; M=/Users/zahidaramai/Local_Sites/seis-mdio-zarr; mkdir -p $R; cd $M\ngit -C $M log --oneline -1\nPYTHONPATH=$M .venv/bin/python - $R <<'PY'\nimport sys, hashlib, shutil\nfrom pathlib import Path\nfrom tests.fixtures.generators.poststack3d import make_poststack3d\nr = Path(sys.argv[1]); out = r / \"xl.sgy\"\nwith out.open(\"wb\") as f:\n    for k in range(6):\n        piece = make_poststack3d(r / f\"piece{k}.sgy\", n_inline=300, n_crossline=630, n_samples=1000, inline_start=100 + 300 * k).path\n        with piece.open(\"rb\") as p:\n            head = p.read(3600)\n            if k == 0: f.write(head)\n            shutil.copyfileobj(p, f, 1 << 24)\n        piece.unlink()\n        print(\"piece\", k, \"done\", flush=True)\nh = hashlib.sha256()\nwith out.open(\"rb\") as f:\n    for b in iter(lambda: f.read(1 << 24), b\"\"): h.update(b)\nprint(\"xl\", out.stat().st_size, h.hexdigest(), flush=True)\nPY\n/usr/bin/time -l .venv/bin/sdip ingest $R/xl.sgy $R/xl.mdio > $R/xl.ingest.out 2> $R/xl.ingest.time\necho \"ingest exit $? $(grep -E 'maximum resident' $R/xl.ingest.time) $(grep -E ' real ' $R/xl.ingest.time)\"\n/usr/bin/time -l .venv/bin/sdip verify --json --skip-portability --envelope-gib 0 $R/xl.sgy $R/xl.mdio > $R/xl.verify.json 2> $R/xl.verify.time\necho \"verify exit $? $(grep -E 'maximum resident' $R/xl.verify.time) $(grep -E ' real ' $R/xl.verify.time)\"\n"
+ }
+}
