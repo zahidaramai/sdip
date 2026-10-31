@@ -567,3 +567,103 @@ reporting a second `fixed_length_utf32`-shaped hole.
 | Re-run commit | `f23a1e576a3d256367014e4f09ef2cbdcf920d1b`, working tree dirty with concurrent unrelated work |
 | Environment | Unchanged: `tensorstore` 0.1.85 · `zarr-python` 3.3.0 · `numpy` 2.5.2 · `multidimio` 1.2.1 · `segy` 0.6.0 |
 | Scope | Unchanged. Still one implementation, N = 30 traces, one revision, one geometry, local filesystem. **D3 stays narrowed, not closed.** |
+
+---
+
+## Pre-registration, leg 3 — zarr-java on `headers_raw_uint8` — appended 2026-10-31, before the run
+
+**SP9.** This section is committed before the run. The results go in a later section,
+appended after it, and are never edited into this one.
+
+| Field | Value |
+|---|---|
+| Leg | P4 leg 3 |
+| Registered | 2026-10-31 |
+| Registered by | Claude Code session, on GeoSuite's relay of owner D-216 ("every plan and debt proceeds") |
+| Related debt | `OPEN_DEBTS.md` D3 |
+| Spec clause | §7 G4, §10.3 |
+| Push | The commit is local. The workspace's top ruling forbids a push without the owner's command, so "committed and pushed before the run" holds only as "committed before the run". Stated, not bent. |
+
+### Question
+
+Can the JVM reader that refused `headers` (zarr-java 0.2.0) read the `uint8` header
+plane `headers_raw_uint8`, opened by path, so that every live trace's 240 header bytes
+it returns equal the source SEG-Y's bytes?
+
+### Why it matters
+
+D-0051 built `headers_raw_uint8` as P4's pre-approved mitigation, so that trace headers
+do not depend on a reader accepting the `struct` extension dtype. Its portability has
+been measured through one non-Python reader only: TensorStore, in
+`tests/integration/test_p4_crossimpl.py`. TensorStore also accepts `struct`, so that
+crossing cannot show the mitigation doing its job. zarr-java is the reader the
+mitigation exists for. Leg 2 ran on 2026-08-23 against a store that did not yet contain
+the plane, so whether the mitigation works for the one reader that needs it is unmeasured.
+
+### Method
+
+1. **Stores, built through the product.** Two sources from committed generators, each
+   ingested with the `sdip ingest` executable at defaults (template `PostStack3DTime`)
+   and the source's own `--revision`:
+   - `make_poststack3d` at defaults (seed 20260822): 5 IL × 6 XL × 32 samples, 30
+     traces, a full grid.
+   - `make_sparse_grid`: a padded grid, so padding cells exist and the live mask is
+     exercised.
+2. **Reader.** zarr-java 0.2.0 (`dev.zarr:zarr-java:0.2.0`, same as leg 2) on the
+   Homebrew OpenJDK, in a separate JVM process. It opens `headers_raw_uint8` **by path**
+   (`Array.open`), never through `Group.list()` (D32: listing fails, accepted). It also
+   opens `trace_mask` by path. Each array leaves the JVM as base64 of its raw bytes in C
+   order, so no number is ever printed in decimal. The harness lives in `local/p4java3/`
+   (publication firewall, never committed); its full Java source and comparator are
+   copied into the results section so the run can be repeated from this file.
+3. **Comparison, in Python, no tolerance.**
+   - (a) zarr-java bytes of `headers_raw_uint8` == `zarr-python` `tobytes()` of the same
+     array, plus `numpy.array_equal`, dtype `uint8` and shape `(*grid, 240)`.
+   - (b) For every cell where `trace_mask` is true (from zarr-java's own read), the
+     240-byte row equals the source file's trace header bytes, read by the comparator by
+     fixed offset (3600 + k × (240 + n_samples × 4)) and matched to the cell through
+     the source's own inline/crossline at bytes 189–192 / 193–196. This does not use
+     SDIP's reader.
+   - (c) The count of live cells equals the source's trace count, and every source trace
+     maps to exactly one live cell.
+   - Padding cells (mask false) are **not** compared to anything (SP12). Their count is
+     reported.
+4. **Non-vacuity (SP11).**
+   - In a **copy** of the poststack store, one byte of one live cell's row is changed
+     through `zarr-python` (XOR `0xFF`, so the chunk is re-encoded, not corrupted). The
+     JVM read must show the change at exactly that cell and byte, and every other byte
+     must stay identical to the original read.
+   - Rows must not all be equal. The count of distinct live rows is reported. An
+     all-identical plane would satisfy (b) without the reader decoding anything that
+     varies per trace.
+5. **The product's own verdict.** `sdip verify` on each store must report PASS. This
+   shows the stores are correct SDIP stores, not that zarr-java can read them.
+
+### Pre-registered parameters
+
+| Parameter | Value |
+|---|---|
+| N | Exhaustive: every cell of both stores, every source trace |
+| Threshold | Byte equality on every compared byte. No tolerance |
+| Reader | zarr-java 0.2.0, Homebrew OpenJDK (version recorded at run time) |
+| Python side | the repository's locked environment (`uv run`), `zarr` 3.3.0 |
+| Geometry | poststack 3D only. Prestack is **out of scope** and stays out of scope for this leg |
+
+### Falsifier
+
+**zarr-java fails to open or read `headers_raw_uint8` by path, or any byte it returns
+for a live cell differs from the source SEG-Y's byte at that offset.**
+
+### If it fires
+
+D3 stays OPEN, reason changed to "the mitigation does not reach the JVM reader". The
+failure (exception text or the differing cells) is recorded in the results and in D3.
+Nothing is fixed in this leg, and nothing is filed upstream (D-0089).
+
+### If it does not fire
+
+D3 closes, scoped: trace-header **data** is byte-identically readable by both measured
+non-Python readers through `headers_raw_uint8`. The structured `headers` array keeps the
+`struct` extension dtype. That is upstream's format and is left as it is. Group listing in
+zarr-java remains the accepted limit D32. The closure is recorded as a new append-only
+entry in `OPEN_DEBTS.md`, scoped to N, geometry, reader version and local filesystem.
