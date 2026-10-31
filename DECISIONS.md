@@ -5947,3 +5947,41 @@ triples outside `TRIPLE_SAMPLE` and mutants 88–399, under caps of 2,700 s and 
 **Decision.** D8 is narrowed: residual 3 is measured over every registered triple and mutant.
 D8 stays OPEN for coverage-guided fuzzing, four-way combinations, x86-64 and Windows. No gate,
 criterion or code changed.
+
+---
+
+## D-0123 — 2026-11-01 — Ruling requested: D23 and D31
+
+**Context.** GeoSuite's order: one paragraph per debt, with the measured numbers and a
+recommendation. Asked, not decided.
+
+**D23 (G7's cost).** G7 runs its controls one after another, and each control re-runs the
+planes it audits. Measured at survey scale (P3's 116,532-trace file): 48.5 s per control at 8
+controls (D23, 388.1 s), and at most 44.92 s per control across 3 chains and 45 control runs
+(P10 Amendment B, max/min 1.05). At today's 18 controls that is about 809 s of G7, derived
+from the per-control maximum and not run at 18. Five full `certify` runs at 16 controls took
+1,111.72 to 1,168.55 s, so G7 is about 62 to 65 % of the chain. The hazard D23 named, a wall
+clock that gets a gate switched off, is now held by the parametric ceiling (D43, P10 Amendment
+C): 1,350 s at 16 controls plus 44.92 s for each control after that, 1,439.8 s at 18. No run
+has breached it. D23's remedy, running the controls in parallel, would change G7 and needs a
+ruling (operating contract section 9). It would also multiply peak memory: one chain peaked at
+3.50 GB against the 8.0 GiB ceiling, so more than two concurrent controls could plausibly
+breach it. That is an estimate, not a measurement. **Recommendation:** close D23 as an accepted,
+documented cost. G7 stays serial, the parametric ceiling prices each control, and parallelism
+is revisited only if a registered run breaches G5's ceiling or a consumer's survey makes the
+chain impractical. The alternative is to register a probe of two workers with G5 and peak RSS
+as its criteria, which keeps D23 open.
+
+**D31 (the `inf` clamp).** `ieee2ibm` clamps an infinite value to the IBM word `0x61100000`.
+That word decodes to infinity and still round-trips bit-identically, so a probe that sampled
+only that word would report a clean pass on an overflow. It was measured in P2, and nothing in
+the product depends on it. The engine compares the raw `uint32` words exactly (D-0045), and a
+transform that can overflow is declared on the certificate. The hazard is held by two
+permanent default-suite tests in `tests/unit/test_p2_ibm32.py`: one pins that the word decodes
+to `inf` and returns unchanged, and one requires P2's sweep to record the overflow warning
+unsuppressed, so a sweep that never reaches the overflow regime fails. P2's mantissa axis is
+committed, not chosen after the fact. No run or code change can remove the hazard, because it
+is a property of the pinned `segy` 0.6.0 transform. **Recommendation:** close D31 as held by
+those tests, revisited at the next `segy` pin bump. The tests stay, so closing removes nothing.
+The alternative is to keep it OPEN as a permanent marker, which leaves "open" meaning
+"remembered" rather than "work to do".
