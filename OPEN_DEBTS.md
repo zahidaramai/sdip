@@ -3065,3 +3065,23 @@ stderr line:
 
 `verify` and `certify` refuse the same file too. Setting `MDIO__GRID__SPARSITY_RATIO_LIMIT` is
 refused with exit **2** before the file is read.
+
+---
+
+## D8 — NARROWED 2026-11-01 — every registered triple and mutant has run (P22)
+
+- **Narrows:** D8 NARROWED 2026-10-31 (P18) above (**SP10**) · **Decision:** `DECISIONS.md`
+  D-0122 · **Probe:** P22, falsifier did **not** fire
+
+The 877 triples and 312 mutants P18 did not reach all ran through the D8 harness, under their
+caps. **0 of 1,189 met any clause.** With P18, residual 3 is measured over all 1,177 cross-class
+triples and all 400 registered mutants: 0 of 1,577.
+
+26 converted files certified NON-EQUIVALENT or PROVISIONAL. Diagnosed through the `sdip`
+executable, every one is an already recorded upstream limit: 16 vary the coordinate scalar by
+trace (D55), 7 declare a sample interval finer than a millisecond (D54), and 3 have an undefined
+revision word that MDIO will not export (D61). None passed falsely, and none failed for the
+D71/D72 causes that hit 24 of P18's 87 converted mutants.
+
+**Still open on D8:** coverage-guided fuzzing; four-way combinations; x86-64 and Windows.
+**D8 stays OPEN.**

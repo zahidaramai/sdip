@@ -5925,3 +5925,25 @@ revisit at the next pin bump. Recorded in `OPEN_DEBTS.md` D30 CLOSED.
 **Correction.** P21's registration cited "section 12 SP12". SP12 belongs to specification section 2, and spec section 12 has no
 public restatement, so the section-citation test failed the gate at `f495024`. The cell now reads
 "SP12", with a correction note in the P21 file. No criterion changed.
+
+---
+
+## D-0122 — 2026-11-01 — P18's remaining campaign ran in full (P22); D8 narrowed
+
+**Context.** GeoSuite's order under owner D-216. Registered at `d78d257` before the run: the 877
+triples outside `TRIPLE_SAMPLE` and mutants 88–399, under caps of 2,700 s and 9,000 s.
+
+**Result.**
+- 0 of 1,189 files met any of P15's six clauses. Neither cap was reached (1,734.1 s and
+  8,527.0 s).
+- Triples: 835 SDIP-typed refusals, 18 `GridTraceSparsityError`, 13 `GridTraceCountError`, 11
+  converted. Mutants: 310 converted, 2 refused.
+- Of 321 converted files, 295 certified with exit 0. The 26 that exited 1 were each diagnosed
+  through the `sdip` executable: D55 (16), D54 (7) and D61 (3). These are recorded limits whose
+  failure is the correct outcome. No cause lies outside them, so there is no new finding and no
+  question for the owner.
+- 0 of 310 converted mutants failed for the D71/D72 causes. In P18 that was 24 of 87.
+
+**Decision.** D8 is narrowed: residual 3 is measured over every registered triple and mutant.
+D8 stays OPEN for coverage-guided fuzzing, four-way combinations, x86-64 and Windows. No gate,
+criterion or code changed.
