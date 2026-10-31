@@ -145,20 +145,41 @@ def _flip_binary_byte(store: Path) -> None:
     _rewrite_header_attr(store, ATTR_RAW_BINARY, lambda raw: raw.__setitem__(21, raw[21] ^ 0x01))
 
 
-def _flip_header_byte(store: Path) -> None:
+def _live_cells(group: Any, count: int) -> list[tuple[int, ...]]:
+    """The first ``count`` live grid cells (``trace_mask`` true), in C order (D73, P20).
+
+    Controls that corrupt a trace must corrupt a TRACE. Grid cell ``(0, ..., 0)`` is padding
+    in a correct store whose first corner is empty, and a control that writes padding
+    misses its gate or trips the padding check instead, so G7 failed correct stores.
+
+    Raises:
+        ControlNotApplicableError: If the store has fewer than ``count`` live cells.
+    """
+    mask = np.asarray(group["trace_mask"][:]).astype(bool)
+    live = np.argwhere(mask)
+    if len(live) < count:
+        msg = f"the store has {len(live)} live cell(s); this control needs {count}"
+        raise ControlNotApplicableError(msg)
+    return [tuple(int(i) for i in cell) for cell in live[:count]]
+
+
+def _flip_header_byte(store: Path) -> list[list[int]]:
     group = _group(store)
     headers = group["headers"][:]
-    cell = tuple(0 for _ in headers.shape)
+    (cell,) = _live_cells(group, 1)
     headers["pad_240"][cell] = (int(headers["pad_240"][cell]) + 1) % 256
     group["headers"][:] = headers
+    return [list(cell)]
 
 
-def _flip_sample_bit(store: Path) -> None:
+def _flip_sample_bit(store: Path) -> list[list[int]]:
     group = _group(store)
     volume = group["amplitude"][:]
-    cell = (*tuple(0 for _ in volume.shape[:-1]), 0)
+    (live,) = _live_cells(group, 1)
+    cell = (*live, 0)
     volume[cell] = (volume[cell].view(np.uint32) ^ np.uint32(1)).view(np.float32)
     group["amplitude"][:] = volume
+    return [list(live)]
 
 
 def _invert_live_mask(store: Path) -> None:
@@ -191,17 +212,17 @@ def _drop_a_trace(store: Path) -> None:
     group["amplitude"][:] = volume
 
 
-def _transpose_two_traces(store: Path) -> None:
+def _transpose_two_traces(store: Path) -> list[list[int]]:
     group = _group(store)
+    first, second = _live_cells(group, 2)
     for name in ("headers", "amplitude"):
         data = group[name][:]
         # Both arrays are indexed by the same leading grid dimensions; amplitude
         # carries a trailing sample axis that a whole-cell swap moves with it.
-        first = tuple(0 for _ in range(2))
-        second = (*first[:-1], first[-1] + 1)
         a, b = data[first].copy(), data[second].copy()
         data[first], data[second] = b, a
         group[name][:] = data
+    return [list(first), list(second)]
 
 
 def _flip_raw_ibm32_word(store: Path) -> None:
@@ -276,7 +297,7 @@ to prove the leg fires; both are checked by the leg itself.
 """
 
 
-def _corrupt_cdp_coordinate(store: Path) -> None:
+def _corrupt_cdp_coordinate(store: Path) -> list[list[int]]:
     """Shift one derived world coordinate by one unit.
 
     **This is the control for the hole an external audit found (D-0056).** Before the
@@ -294,10 +315,18 @@ def _corrupt_cdp_coordinate(store: Path) -> None:
     if DERIVED_COORD_ARRAY not in group:
         msg = f"{DERIVED_COORD_ARRAY} absent; the store carries no derived coordinates"
         raise KeyError(msg)
+    from sdip.equivalence.planes import _project_cell, store_dimensions
+
     values = np.asarray(group[DERIVED_COORD_ARRAY][:])
-    cell = tuple(0 for _ in values.shape)
+    (live,) = _live_cells(group, 1)
+    own = tuple(group[DERIVED_COORD_ARRAY].metadata.dimension_names or ())
+    cell = _project_cell(live, store_dimensions(group), own)
+    if cell is None:
+        msg = f"{DERIVED_COORD_ARRAY} is not indexed by the grid's dimensions"
+        raise ControlNotApplicableError(msg)
     values[cell] = values[cell] + 1
     group[DERIVED_COORD_ARRAY][:] = values
+    return [list(cell)]
 
 
 def _corrupt_sample_axis(store: Path) -> None:
@@ -435,7 +464,7 @@ controls touch different bytes in different arrays and neither can stand in for 
 """
 
 
-def _flip_raw_header_byte(store: Path) -> None:
+def _flip_raw_header_byte(store: Path) -> list[list[int]]:
     """Flip one bit of one raw header byte in ``headers_raw_uint8``.
 
     The ``uint8`` plane is the copy of the trace headers a non-Python consumer can
@@ -451,9 +480,11 @@ def _flip_raw_header_byte(store: Path) -> None:
         msg = f"{RAW_HEADER_PLANE_ARRAY} absent; the store carries no uint8 header plane"
         raise KeyError(msg)
     plane = group[RAW_HEADER_PLANE_ARRAY][:]
-    cell = (*tuple(0 for _ in plane.shape[:-1]), RAW_HEADER_PLANE_BYTE)
+    (live,) = _live_cells(group, 1)
+    cell = (*live, RAW_HEADER_PLANE_BYTE)
     plane[cell] = np.uint8(int(plane[cell]) ^ 1)
     group[RAW_HEADER_PLANE_ARRAY][:] = plane
+    return [list(live)]
 
 
 @dataclass(frozen=True, slots=True)
@@ -463,7 +494,9 @@ class Corruption:
     name: str
     description: str
     must_fail: frozenset[str]
-    apply: Callable[[Path], None]
+    apply: Callable[[Path], Any]
+    """Corrupts a working copy. May return the grid cells it wrote, which the certificate
+    records as ``target`` (D73, P20)."""
     clause: str
     touches: frozenset[str]
     """Store subpaths ``apply`` writes, relative to the store root, POSIX-separated.
@@ -791,6 +824,8 @@ class ControlOutcome:
     """Bytes really copied to build this control's working copy."""
     bytes_hardlinked: int = 0
     """Bytes shared with the store under audit by hard link, and so never copied."""
+    target: list[list[int]] | None = None
+    """The grid cells this control wrote, when it says (D73, P20)."""
 
     @property
     def passed(self) -> bool:
@@ -825,7 +860,7 @@ class ControlOutcome:
             "status": "PASS" if self.passed else "FAIL",
             "bytes_copied": self.bytes_copied,
             "bytes_hardlinked": self.bytes_hardlinked,
-        }
+        } | ({"target": self.target} if self.target is not None else {})
 
 
 @dataclass(slots=True)
@@ -1062,7 +1097,9 @@ def g7(source: str | Path, store: str | Path, spec: Any, *, workdir: str | Path)
             bytes_hardlinked=cost.bytes_hardlinked,
         )
         try:
-            control.apply(copy)
+            target = control.apply(copy)
+            if isinstance(target, list):
+                outcome.target = target
         except ControlNotApplicableError as exc:
             outcome.not_applicable = str(exc)
         except Exception as exc:
