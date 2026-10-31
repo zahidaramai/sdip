@@ -747,6 +747,42 @@ def test_the_citation_detector_actually_detects():
     assert _citations("specification §11.4 covers hostile input") == []
 
 
+def _default_marker_conjuncts(addopts: str) -> set[str]:
+    """The ``and``-joined terms of the default ``-m '...'`` expression in ``addopts``."""
+    start = addopts.index("-m '") + len("-m '")
+    expression = addopts[start : addopts.index("'", start)]
+    return {term.strip() for term in expression.split(" and ")}
+
+
+def test_the_marker_reader_sees_each_exclusion_and_nothing_else():
+    """NEGATIVE CONTROL for the reader the two tests below rely on."""
+    assert _default_marker_conjuncts("-ra -m 'not benchmark'") == {"not benchmark"}
+    both = _default_marker_conjuncts("-m 'not benchmark and not campaign' -ra")
+    assert both == {"not benchmark", "not campaign"}
+    assert "not benchmark" not in _default_marker_conjuncts("-m 'benchmark'")
+    assert "not benchmark" not in _default_marker_conjuncts("-m 'not benchmark or slow'")
+
+
+def test_the_p15_campaign_is_outside_the_default_run(repo_root):
+    """P15 / D-0114. The 202 non-representative pairs are `campaign`, deselected by default.
+
+    Both halves: the default options exclude the marker, and the pair suite marks exactly the
+    pairs outside the registered representative set.
+    """
+    import tomllib
+
+    ini = tomllib.loads((repo_root / "pyproject.toml").read_text())["tool"]["pytest"]["ini_options"]
+    assert "not campaign" in _default_marker_conjuncts(ini["addopts"])
+    assert any(m.startswith("campaign:") for m in ini["markers"])
+
+    from tests.fixtures.generators.hostile import PAIRS, REPRESENTATIVE_PAIRS
+    from tests.negative.test_d8_hostile_pairs import PAIR_PARAMS
+
+    unmarked = {(p.values[0], p.values[1]) for p in PAIR_PARAMS if not p.marks}
+    assert unmarked == set(REPRESENTATIVE_PAIRS)
+    assert len(PAIR_PARAMS) == len(PAIRS) == 223
+
+
 def test_the_p7_wall_clock_comparison_is_a_benchmark_outside_the_gate(repo_root):
     """D39 / D-0106. The comparison is marked `benchmark`, and the default run deselects it.
 
@@ -757,7 +793,7 @@ def test_the_p7_wall_clock_comparison_is_a_benchmark_outside_the_gate(repo_root)
 
     config = tomllib.loads((repo_root / "pyproject.toml").read_text())["tool"]["pytest"]
     ini = config["ini_options"]
-    assert "-m 'not benchmark'" in ini["addopts"]
+    assert "not benchmark" in _default_marker_conjuncts(ini["addopts"])
     assert any(m.startswith("benchmark:") for m in ini["markers"])
 
     tree = ast.parse((repo_root / "tests/integration/test_p7_latency.py").read_text())
