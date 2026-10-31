@@ -1,0 +1,77 @@
+{
+ "probe": "P24",
+ "stage": "A",
+ "debt": "D38",
+ "run_date": "2026-11-01",
+ "registration_commit": "bfe8314",
+ "code": "main 0c1edbc (main checkout, clean)",
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "host": "macOS arm64, 36 GiB RAM, CPython 3.12.13",
+ "fixtures_sha256_checked": {
+  "small": "ac6001f611319a41d45d2729844d834c10ad340d0ce8a2f94f620796927ca03a",
+  "large": "2b8b7aa0851771ae8d2981ed173de63f7dd94f0b50124d3a7bf2881b9cd3eb2e"
+ },
+ "whole_verify_peak_rss_bytes": {
+  "small": 1011367936,
+  "large": 2251620352
+ },
+ "p23_after_large_bytes": 2253045760,
+ "step_peak_rss_bytes": {
+  "small": {
+   "baseline": 57098240,
+   "binding": 65961984,
+   "preflight": 56950784,
+   "g1": 56721408,
+   "plane_1": 66109440,
+   "plane_2": 66109440,
+   "plane_3": 630259712,
+   "plane_4": 978616320,
+   "plane_5": 181813248,
+   "trace_map": 173801472,
+   "store_digest": 66994176,
+   "content_digest": 66781184
+  },
+  "large": {
+   "baseline": 56688640,
+   "binding": 65699840,
+   "preflight": 56344576,
+   "g1": 56754176,
+   "plane_1": 65650688,
+   "plane_2": 65814528,
+   "plane_3": 2254651392,
+   "plane_4": 1087537152,
+   "plane_5": 547831808,
+   "trace_map": 485933056,
+   "store_digest": 66732032,
+   "content_digest": 67125248
+  }
+ },
+ "slope_mb_per_mb": {
+  "baseline": -0.0,
+  "binding": -0.0,
+  "preflight": -0.001,
+  "g1": 0.0,
+  "plane_1": -0.0,
+  "plane_2": -0.0,
+  "plane_3": 1.351,
+  "plane_4": 0.091,
+  "plane_5": 0.304,
+  "trace_map": 0.26,
+  "store_digest": -0.0,
+  "content_digest": 0.0,
+  "whole": 1.032
+ },
+ "criteria": {
+  "1_reproduces_p23_within_10pct": true,
+  "2_step_setting_the_peak": "plane_3",
+  "2_share_of_whole": 1.0013,
+  "2_sets_the_peak": true
+ },
+ "driver": {
+  "p24_step.py": "\"\"\"P24 stage A: run ONE verify step alone and print its process's peak RSS (bytes, macOS).\"\"\"\nimport json, resource, sys\nfrom pathlib import Path\n\nif __name__ == \"__main__\":\n    step, source, store = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3])\n    from sdip.cli.main import _declaration\n    declaration = _declaration(\"1\", \"PostStack3DTime\", None, None)\n    if step == \"baseline\":\n        pass\n    elif step == \"binding\":\n        from sdip.equivalence.binding import check_binding; check_binding(store, declaration)\n    elif step == \"preflight\":\n        from sdip.ingest.orchestrator import validate_source; validate_source(source, declaration)\n    elif step == \"g1\":\n        from sdip.spec import g1_for_spec; g1_for_spec(declaration.build_spec())\n    elif step.startswith(\"plane_\"):\n        from sdip.equivalence import plane_1, plane_2, plane_3, plane_4, plane_5\n        from sdip.spec import g1_for_spec\n        built = declaration.build_spec(); spec = built.segy_spec\n        n = int(step[-1])\n        if n == 1: plane_1(source, store)\n        elif n == 2: plane_2(source, store, declaration=declaration)\n        elif n == 3: plane_3(source, store, spec, g1_passed=g1_for_spec(built).passed)\n        elif n == 4: plane_4(source, store, spec)\n        else: plane_5(source, store, spec)\n    elif step == \"trace_map\":\n        from segy import SegyFile\n        from sdip.equivalence.planes import _open_store, grid_coordinates, store_dimensions\n        from sdip.equivalence.trace_map import build_trace_map\n        spec = declaration.build_spec().segy_spec\n        headers = SegyFile(str(source), spec=spec).header[:]\n        group = _open_store(store); dims = store_dimensions(group)\n        build_trace_map(headers, grid_coordinates(group, dims), dims)\n    elif step == \"store_digest\":\n        from sdip.provenance.store_digest import check_store_digest; check_store_digest(store)\n    elif step == \"content_digest\":\n        from sdip.provenance.store_digest import check_content_digest; check_content_digest(store)\n    else:\n        raise SystemExit(f\"unknown step {step}\")\n    print(json.dumps({\"step\": step, \"ru_maxrss\": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}))\n",
+  "p24_run.sh": "#!/bin/bash\n# P24 stage A at main 0c1edbc: fixtures, ingest, whole verify, then each step alone.\nset -u\nL=$1; R=$L/p24; M=/Users/zahidaramai/Local_Sites/seis-mdio-zarr; mkdir -p $R; cd $M\nPYTHONPATH=$M .venv/bin/python - $R <<'PY'\nimport sys, hashlib\nfrom pathlib import Path\nfrom tests.fixtures.generators.poststack3d import make_poststack3d\nwant = {\"small\": \"ac6001f611319a41d45d2729844d834c10ad340d0ce8a2f94f620796927ca03a\",\n        \"large\": \"2b8b7aa0851771ae8d2981ed173de63f7dd94f0b50124d3a7bf2881b9cd3eb2e\"}\nr = Path(sys.argv[1])\nfor name, ni in ((\"small\", 150), (\"large\", 600)):\n    p = make_poststack3d(r / f\"{name}.sgy\", n_inline=ni, n_crossline=630, n_samples=1000).path\n    h = hashlib.sha256()\n    with p.open(\"rb\") as f:\n        for b in iter(lambda: f.read(1 << 24), b\"\"): h.update(b)\n    assert h.hexdigest() == want[name], (name, h.hexdigest())\n    print(\"fixture\", name, \"sha256 ok\", flush=True)\nPY\n[ $? -eq 0 ] || { echo \"FIXTURE MISMATCH, stopped\"; exit 3; }\nfor n in small large; do\n  .venv/bin/sdip ingest $R/$n.sgy $R/$n.mdio > /dev/null 2>&1; echo \"ingest $n exit $?\"\n  /usr/bin/time -l .venv/bin/sdip verify --json --skip-portability --envelope-gib 0 $R/$n.sgy $R/$n.mdio > $R/$n.verify.json 2> $R/$n.verify.time\n  echo \"whole $n exit $? $(grep 'maximum resident' $R/$n.verify.time)\"\n  for s in baseline binding preflight g1 plane_1 plane_2 plane_3 plane_4 plane_5 trace_map store_digest content_digest; do\n    out=$(PYTHONPATH=$M .venv/bin/python $L/p24_step.py $s $R/$n.sgy $R/$n.mdio 2>/dev/null | tail -1)\n    echo \"$n $out\"\n  done\ndone\n"
+ }
+}

@@ -86,3 +86,37 @@ memory, real survey data, and prestack geometries are not measured.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+## Stage A results, 2026-11-01
+
+| Field | Value |
+|---|---|
+| Code | `main` `0c1edbc`, clean. Registration `bfe8314`, before the run |
+| Receipt | `prereg/P24-receipt-2026-11-01.json`: every peak, the slopes, and the driver's source |
+| Fixtures | both regenerated and hash-checked against P23's sha256 |
+
+Peak RSS, each step alone in a fresh process (`ru_maxrss`), and the whole command
+(`/usr/bin/time -l`):
+
+| Step | `small` (0.40 GB) | `large` (1.60 GB) | MB per MB of source |
+|---|---:|---:|---:|
+| baseline (imports) | 57.1 MB | 56.7 MB | 0.00 |
+| binding, preflight, g1, plane 1, plane 2, both digests | 56–67 MB each | 56–67 MB each | 0.00 |
+| **plane 3** | 630.3 MB | **2,254.7 MB** | **1.35** |
+| plane 4 | 978.6 MB | 1,087.5 MB | 0.09 |
+| plane 5 | 181.8 MB | 547.8 MB | 0.30 |
+| trace map alone | 173.8 MB | 485.9 MB | 0.26 |
+| **whole `sdip verify`** | 1,011.4 MB | **2,251.6 MB** | 1.03 |
+
+- **Criterion 1 (reproduces P23): holds.** 2,251,620,352 B against P23's 2,253,045,760 B,
+  0.06 % apart.
+- **Criterion 2 (attributes the peak): Plane 3 sets it.** Alone, it peaks at 100.1 % of the
+  whole command. No memory is held across steps beyond that.
+- **Criterion 3 (attributes the growth):** Plane 3 grows at 1.35 MB per MB, more than the whole
+  command's 1.03. Plane 5 grows at 0.30 and the trace map at 0.26. Plane 4 after P23 grows at
+  0.09: its roughly 1 GB is close to constant in the file.
+
+**What this means for stage B.** Plane 3, the trace-header plane, holds about 5.9 KB of memory
+per trace on `large` (2.2 GB over 378,000 traces), for 240 bytes of header per trace. It reads
+headers whole, so its working set is many times the bytes it compares. Plane 3 is stage B's
+target. Plane 5 and the trace map, which Planes 3, 4 and 5 each build, come second.
