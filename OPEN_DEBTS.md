@@ -3244,3 +3244,21 @@ synthetic sources (`/usr/bin/time -l`, the `sdip` process alone). The least-squa
   a source would breach it at ingest, though `verify` alone would admit it.
 
 Not attributed (SDIP's own arrays, or upstream's ingest), and not fixed.
+
+---
+
+## D74 — NARROWED 2026-11-01 — interim: ingest and certify refuse above 7.2 GiB
+
+- **Narrows:** D74 above (**SP10**) · **Decision:** `DECISIONS.md` D-0130 · **Ruling:** GeoSuite
+  D-245 under D-222: option (b) as an interim, then (a)
+- **Status:** `OPEN`
+
+`sdip ingest` and `sdip certify` now refuse, on the file's size alone and before any read, a
+source above **7.2 GiB**. That is where ingest's measured line (1.03 MB per MB above 0.58 GB,
+over 0.40, 1.60 and 4.81 GB) reaches 8 GiB, rounded down. The refusal is one stderr line
+stating the fit, and `--envelope-gib` overrides it. `certify` therefore never breaches its
+ceiling at ingest without saying so.
+
+**Still open:** option (a). A registered probe attributes ingest memory by stage. If the cause
+is in SDIP's code, a streaming fix follows with fresh criteria. If it is in `multidimio`, the
+fit is recorded as the limit.

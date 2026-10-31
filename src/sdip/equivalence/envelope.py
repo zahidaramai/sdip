@@ -83,8 +83,66 @@ def envelope_refusal(source: str | Path, *, envelope_gib: float) -> str | None:
         f"declared {envelope_gib:.2f} GiB envelope. Verification memory was measured at "
         f"0.4/1.6/4.8 GB, slope {RSS_SLOPE:.3f} MB/MB, intercept {RSS_INTERCEPT_MB / 1000:.2f} GB "
         f"(probe P26, DECISIONS.md D-0129), so this file projects to roughly "
-        f"{projected_peak_rss_mb(size) / 1024:.1f} GiB against a {CEILING_GIB:.1f} GiB "
+        f"{projected_peak_rss_mb(size) / 1024:.1f} GiB against the {CEILING_GIB:.1f} GiB "
         "ceiling. Refusing is deliberate: a process that runs out of memory is killed and "
         "returns NO verdict, which is worse than declining to start. Pass --envelope-gib "
         "to declare a larger one, or 0 to disable."
+    )
+
+
+# --- The ingest envelope (OPEN_DEBTS D74, GeoSuite D-245) ---------------------------------
+
+INGEST_MEASURED_POINTS: Final[tuple[tuple[int, int], ...]] = (
+    (400_683_600, 1_008_599_040),
+    (1_602_723_600, 2_199_552_000),
+    (4_808_163_600, 5_528_076_288),
+)
+"""``(source bytes, peak RSS bytes)`` of ``sdip ingest`` (recorded by probes P23 and P26).
+
+The same fixtures and measurement as :data:`MEASURED_POINTS`. Ingest memory is linear in the
+source, contradicting ``DECISIONS.md`` D-0042's statement (D74). It is not yet attributed;
+this envelope is the interim GeoSuite ruled (D-245) so that ``certify``, which ingests first,
+never silently breaches its ceiling."""
+
+INGEST_RSS_INTERCEPT_MB: Final[float] = 577.8
+INGEST_RSS_SLOPE: Final[float] = 1.0281
+"""``RSS_MB = 577.8 + 1.0281 x source_MB``: least squares over
+:data:`INGEST_MEASURED_POINTS`, in MB of 10^6 bytes."""
+
+DEFAULT_INGEST_ENVELOPE_GIB: Final[float] = 7.2
+"""Largest single source file `sdip ingest` and `sdip certify` will attempt, in GiB.
+
+Where the fitted ingest line reaches the 8 GiB ceiling (7,793 MB, 7.26 GiB), rounded **down**
+to one decimal. Override it with ``--envelope-gib``, or pass 0 to disable it."""
+
+
+def projected_ingest_peak_rss_mb(source_bytes: int) -> float:
+    """Projected peak RSS in MB for ingesting a source of this size."""
+    return INGEST_RSS_INTERCEPT_MB + INGEST_RSS_SLOPE * (source_bytes / 1e6)
+
+
+def ingest_envelope_refusal(source: str | Path, *, envelope_gib: float) -> str | None:
+    """Return the ingest refusal message, or ``None`` when the file is inside the envelope.
+
+    Args:
+        source: The SEG-Y file about to be ingested.
+        envelope_gib: The declared envelope. ``0`` or negative disables the check.
+
+    Returns:
+        A message naming the code, the sizes and the measurement, or ``None``.
+    """
+    if envelope_gib <= 0:
+        return None
+    size = Path(source).stat().st_size
+    if size <= int(envelope_gib * 1024**3):
+        return None
+    return (
+        f"{REASON_CODE}: refusing to ingest a {size / 1024**3:.2f} GiB source against a "
+        f"declared {envelope_gib:.2f} GiB envelope. Ingest memory was measured at "
+        f"0.4/1.6/4.8 GB, slope {INGEST_RSS_SLOPE:.3f} MB/MB, intercept "
+        f"{INGEST_RSS_INTERCEPT_MB / 1000:.2f} GB (OPEN_DEBTS D74, DECISIONS.md D-0130), so "
+        f"this file projects to roughly {projected_ingest_peak_rss_mb(size) / 1024:.1f} GiB "
+        f"against the {CEILING_GIB:.1f} GiB ceiling. Refusing is deliberate: a process that "
+        "runs out of memory is killed and returns NO result, which is worse than declining "
+        "to start. Pass --envelope-gib to declare a larger one, or 0 to disable."
     )

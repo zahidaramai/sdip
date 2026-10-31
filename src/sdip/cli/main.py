@@ -20,7 +20,7 @@ from sdip._pins import SPEC_VERSION
 from sdip.cli import signals
 from sdip.cli.doctor import environment_block, run_doctor
 from sdip.cli.result import Report, Status
-from sdip.equivalence.envelope import DEFAULT_ENVELOPE_GIB
+from sdip.equivalence.envelope import DEFAULT_ENVELOPE_GIB, DEFAULT_INGEST_ENVELOPE_GIB
 from sdip.errors import (
     ChunkShapeError,
     DeclarationMismatchError,
@@ -328,6 +328,17 @@ def spec_build(revision: str, override_path: Path | None, as_json: bool) -> None
 @declaration_options
 @click.option("--overwrite", is_flag=True, help="Overwrite an existing store.")
 @click.option("--json", "as_json", is_flag=True, help="Emit a machine-readable report.")
+@click.option(
+    "--envelope-gib",
+    type=float,
+    default=DEFAULT_INGEST_ENVELOPE_GIB,
+    show_default=True,
+    help=(
+        "Largest single source file to ingest, in GiB. Above it, the run is REFUSED before "
+        "the file is read, because ingest's projected peak memory (measured at 0.4/1.6/4.8 "
+        "GB, OPEN_DEBTS D74) would pass the 8 GiB ceiling. Pass 0 to disable the check."
+    ),
+)
 def ingest_cmd(
     source: Path,
     output: Path,
@@ -337,6 +348,7 @@ def ingest_cmd(
     override_path: Path | None,
     chunks: tuple[int, ...] | None,
     as_json: bool,
+    envelope_gib: float,
 ) -> None:
     """SEG-Y to MDIO, against a gap-free spec.
 
@@ -348,7 +360,14 @@ def ingest_cmd(
     template find index fields the revision standard does not name, such as inline and
     crossline in a rev 0 file. It is applied before G1 and changes no byte content.
     """
+    from sdip.equivalence.envelope import ingest_envelope_refusal
     from sdip.ingest import ingest_declared as run_ingest
+
+    # On the file's size alone, before any read: an ingest killed for memory leaves no
+    # result and possibly a partial store (D74, GeoSuite D-245).
+    refusal = ingest_envelope_refusal(source, envelope_gib=envelope_gib)
+    if refusal is not None:
+        raise UntrustedInputError(refusal)
 
     declaration = _declaration(revision, template, override_path, chunks)
     result = run_ingest(source, output, declaration, overwrite=overwrite)
@@ -686,6 +705,17 @@ def receipt_cmd(
     show_default=True,
     help="Where to write the certificate JSON.",
 )
+@click.option(
+    "--envelope-gib",
+    type=float,
+    default=DEFAULT_INGEST_ENVELOPE_GIB,
+    show_default=True,
+    help=(
+        "Largest single source file to certify, in GiB. Above it, the chain is REFUSED before "
+        "the file is read, because ingest's projected peak memory (measured at 0.4/1.6/4.8 "
+        "GB, OPEN_DEBTS D74) would pass the 8 GiB ceiling. Pass 0 to disable the check."
+    ),
+)
 def certify_cmd(
     source: Path,
     output: Path,
@@ -698,6 +728,7 @@ def certify_cmd(
     wall_ceiling_s: float | None,
     prereg: str | None,
     certificates: Path,
+    envelope_gib: float,
 ) -> None:
     """Full chain: ingest, five planes, round trip, portability, certificate.
 
@@ -759,6 +790,15 @@ def certify_cmd(
             "`sdip certify` would run the full chain and then refuse to issue, so it "
             "refuses now instead (spec 11.3). No flag skips this check."
         )
+
+    # The chain ingests first, and ingest memory is linear in the source (D74): above the
+    # envelope the run would breach the 8 GiB ceiling at ingest, so it refuses now, on the
+    # file's size alone (GeoSuite D-245).
+    from sdip.equivalence.envelope import ingest_envelope_refusal
+
+    refusal = ingest_envelope_refusal(source, envelope_gib=envelope_gib)
+    if refusal is not None:
+        raise UntrustedInputError(refusal)
 
     declaration = _declaration(revision, template, override_path, chunks)
     started = time.monotonic()

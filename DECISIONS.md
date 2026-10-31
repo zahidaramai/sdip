@@ -6153,3 +6153,33 @@ ingest above about 7.8 GB. The options:
 
 **Consumer-visible:** `sdip verify` no longer refuses sources between 1.0 and 40.1 GiB by
 default. The refusal text above the default changes.
+
+---
+
+## D-0130 — 2026-11-01 — An interim ingest envelope (D74); D-0042 corrected for ingest
+
+**Ruling** (GeoSuite D-245 under D-222, answering D-0129 on D74): option (b) first, as an
+interim, then (a). Add an ingest envelope from the measured fit, with the default where the line
+reaches 8 GiB, rounded down to 0.1 GiB, and a refusal stating the fit, so `certify` never
+silently breaches its ceiling. Then attribute ingest memory by stage in a registered probe.
+
+**Built.**
+- `envelope.py` carries `INGEST_MEASURED_POINTS`: the ingest peaks P23 and P26 recorded, at
+  1,008.6, 2,199.6 and 5,528.1 MB on 0.40, 1.60 and 4.81 GB. Their receipts are
+  `prereg/P23-receipt-2026-11-01.json` and `prereg/P26-receipt-2026-11-01.json`, and the tests
+  hold the points equal to them.
+- The fit is 1.0281 MB per MB above 577.8 MB, and it reaches 8 GiB at 7,793 MB (7.26 GiB).
+- **`sdip ingest` and `sdip certify` gain `--envelope-gib`, default 7.2 GiB.** Above it they
+  refuse before any read, with one stderr line beginning `SDIP-E-ENVELOPE: refusing to ingest`
+  and stating "measured at 0.4/1.6/4.8 GB, slope 1.028 MB/MB, intercept 0.58 GB".
+- Tests check both commands through the `sdip` executable on a sparse 7.3 GiB file: exit 1,
+  one line, and nothing written.
+
+**Correction to D-0042** (**SP10**: D-0042 is left unedited). D-0042 said "memory tracks the
+chunk working set". D-0060 retracted that for the verification path. **It is also false for
+ingest:** P23 and P26 recorded ingest peaks growing at 1.03 MB per MB of source. Where in
+ingest that growth comes from is not yet measured.
+
+**Consumer-visible.** `sdip ingest` and `sdip certify` refuse sources above 7.2 GiB by default,
+which they did not before. The certificates SFM holds name 58 MB sources, far below it. The
+README's scope table gains a "Source size" row.
