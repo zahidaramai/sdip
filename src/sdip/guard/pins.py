@@ -17,10 +17,16 @@ would overstate what is known (**SP8**):
    installation, which is the realistic way a pinned dependency stops being what the
    pin says without the version changing.
 
-**The commit SHA is still not verified and this module never claims it is.** A wheel
-does not carry the SHA it was built from, and closing that gap needs either a source
-build or an upstream provenance attestation, neither of which exists under the current
-pins. Every result states which claim it is making.
+4. **Commit** - every installed package file compared, offline, with probe P25's committed
+   manifest of the source tree at the pinned commit (``sdip.guard._source_manifest``,
+   ``DECISIONS.md`` D-0126, GeoSuite D-242). A wheel does not carry the SHA it was built
+   from, so this is an attestation **by source comparison**: P25 found the files identical
+   to the commit's source, and the run checks that the installed files are still those
+   files. ``commit_sha_verified`` is true only when every file matches, none is missing,
+   none is extra, and the pin is the one the manifest was made for. Anything else, a pin
+   bump without a re-run P25 included, reports ``declared-not-runtime-verified``.
+
+Every result states which claim it is making.
 """
 
 from __future__ import annotations
@@ -35,8 +41,15 @@ from importlib.metadata import distribution as _distribution
 from pathlib import Path
 
 from sdip._pins import PINS, Pin
+from sdip.guard._source_manifest import RECEIPT, RECEIPT_SHA256, SOURCE_MANIFEST
 
 _CHUNK = 1 << 20
+
+VERIFIED = "source-comparison-verified"
+"""``sha_verification`` when the installed files are the pinned commit's source (P25)."""
+
+DECLARED = "declared-not-runtime-verified"
+"""``sha_verification`` otherwise: the commit SHA is declared, and nothing checked it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +79,42 @@ class FileIntegrity:
 
 
 @dataclass(frozen=True, slots=True)
+class CommitAttestation:
+    """Whether the installed files are the pinned commit's source, by P25's manifest."""
+
+    verified: bool
+    checked: int
+    mismatched: tuple[str, ...] = ()
+    missing: tuple[str, ...] = ()
+    unlisted: tuple[str, ...] = ()
+    reason: str = ""
+
+    @property
+    def sha_verification(self) -> str:
+        """The certificate's label for this commit."""
+        return VERIFIED if self.verified else DECLARED
+
+    @property
+    def basis(self) -> str | None:
+        """What the verification rests on, or ``None`` when there is none."""
+        if not self.verified:
+            return None
+        return f"source comparison P25 {RECEIPT} sha256 {RECEIPT_SHA256}, no network at run time"
+
+    def to_json(self) -> dict[str, object]:
+        """Certificate-shaped mapping."""
+        return {
+            "sha_verification": self.sha_verification,
+            "basis": self.basis,
+            "files_checked": self.checked,
+            "mismatched": list(self.mismatched),
+            "missing": list(self.missing),
+            "unlisted": list(self.unlisted),
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class PinStatus:
     """Result of checking one binding pin against the installed environment."""
 
@@ -77,6 +126,7 @@ class PinStatus:
     ok: bool
     artifact_hashes: dict[str, str] = field(default_factory=dict)
     integrity: FileIntegrity | None = None
+    attestation: CommitAttestation | None = None
 
     @property
     def detail(self) -> str:
@@ -95,10 +145,15 @@ class PinStatus:
                 f"RECORD manifest: {', '.join(broken[:3])}"
             )
         integrity = self.integrity.checked if self.integrity else 0
+        commit = (
+            "verified by source comparison (P25)"
+            if self.commit_sha_verified
+            else "declared, not verified"
+        )
         return (
             f"{self.distribution} {self.installed_version} matches pin; "
             f"{integrity} installed files match RECORD; "
-            f"commit SHA {self.declared_commit_sha[:12]} declared, not verified"
+            f"commit SHA {self.declared_commit_sha[:12]} {commit}"
         )
 
     def to_json(self) -> dict[str, object]:
@@ -111,6 +166,7 @@ class PinStatus:
             "commit_sha_verified": self.commit_sha_verified,
             "artifact_hashes": dict(self.artifact_hashes),
             "installed_file_integrity": (self.integrity.to_json() if self.integrity else None),
+            "commit_attestation": (self.attestation.to_json() if self.attestation else None),
             "ok": self.ok,
         }
 
@@ -197,6 +253,76 @@ def verify_installed_files(dist: Distribution) -> FileIntegrity:
     )
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while block := handle.read(_CHUNK):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def attest_commit(pin: Pin) -> CommitAttestation:
+    """Compare the installed package files with P25's manifest of the pinned commit's source.
+
+    Offline: it reads the installed files and the committed manifest, nothing else. The
+    commit is verified only when the manifest was made for exactly this pin, every listed
+    file is installed with the listed sha256, and the distribution installs no package file
+    the manifest does not list.
+    """
+    entry = SOURCE_MANIFEST.get(pin.distribution)
+    if entry is None:
+        return CommitAttestation(False, 0, reason="no P25 source manifest for this distribution")
+    if (entry["version"], entry["commit_sha"]) != (pin.version, pin.commit_sha):
+        return CommitAttestation(
+            False,
+            0,
+            reason=(
+                f"the P25 manifest is for {entry['version']} at {str(entry['commit_sha'])[:12]}, "
+                f"the pin is {pin.version} at {pin.commit_sha[:12]}: a pin bump needs P25 re-run"
+            ),
+        )
+    try:
+        dist = _distribution(pin.distribution)
+        installed_version = dist.version
+    except PackageNotFoundError:
+        return CommitAttestation(False, 0, reason=f"{pin.distribution} is not installed")
+    if installed_version != pin.version:
+        return CommitAttestation(
+            False, 0, reason=f"{installed_version} is installed, the pin is {pin.version}"
+        )
+
+    files: dict[str, str] = dict(entry["files"])  # type: ignore[call-overload]
+    packages = {name.split("/", 1)[0] for name in files}
+    installed = {
+        str(f)
+        for f in dist.files or []
+        if str(f).split("/", 1)[0] in packages and "__pycache__" not in str(f)
+    }
+    mismatched: list[str] = []
+    missing: list[str] = []
+    checked = 0
+    for name, expected in sorted(files.items()):
+        target = Path(str(dist.locate_file(name)))
+        if name not in installed or not target.is_file():
+            missing.append(name)
+            continue
+        checked += 1
+        if _sha256(target) != expected:
+            mismatched.append(name)
+    unlisted = sorted(installed - set(files))
+    verified = not mismatched and not missing and not unlisted
+    reason = (
+        ""
+        if verified
+        else (
+            f"{len(mismatched)} differ, {len(missing)} missing, {len(unlisted)} not in the manifest"
+        )
+    )
+    return CommitAttestation(
+        verified, checked, tuple(mismatched), tuple(missing), tuple(unlisted), reason
+    )
+
+
 def _status_for(pin: Pin, artifacts: dict[str, dict[str, str]], *, deep: bool) -> PinStatus:
     try:
         installed: str | None = version(pin.distribution)
@@ -210,16 +336,18 @@ def _status_for(pin: Pin, artifacts: dict[str, dict[str, str]], *, deep: bool) -
         except PackageNotFoundError:  # pragma: no cover - raced uninstall
             integrity = None
 
+    attestation = attest_commit(pin) if installed == pin.version else None
     version_ok = installed == pin.version
     return PinStatus(
         distribution=pin.distribution,
         expected_version=pin.version,
         installed_version=installed,
         declared_commit_sha=pin.commit_sha,
-        commit_sha_verified=False,
+        commit_sha_verified=attestation is not None and attestation.verified,
         ok=version_ok and (integrity is None or integrity.ok),
         artifact_hashes=artifacts.get(pin.distribution, {}),
         integrity=integrity,
+        attestation=attestation,
     )
 
 

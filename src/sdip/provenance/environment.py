@@ -8,7 +8,8 @@ from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
-from sdip._pins import PINS
+from sdip._pins import PINS, Pin
+from sdip.guard.pins import attest_commit
 
 _RECORDED = (
     "multidimio",
@@ -71,14 +72,20 @@ def capture_environment() -> EnvironmentCapture:
         machine=platform.machine(),
         packages={name: _version_or_none(name) for name in _RECORDED}
         | {"python_full": sys.version.split()[0]},
-        declared_pins={
-            pin.distribution: {
-                "version": pin.version,
-                "commit_sha": pin.commit_sha,
-                "repository": pin.repository,
-                "release_tag": pin.release_tag,
-                "sha_verification": "declared-not-runtime-verified",
-            }
-            for pin in PINS
-        },
+        declared_pins={pin.distribution: _declared_pin(pin) for pin in PINS},
     )
+
+
+def _declared_pin(pin: Pin) -> dict[str, str]:
+    """One pin as the certificate records it, with how its commit was checked (D9, D-0126)."""
+    attestation = attest_commit(pin)
+    record = {
+        "version": pin.version,
+        "commit_sha": pin.commit_sha,
+        "repository": pin.repository,
+        "release_tag": pin.release_tag,
+        "sha_verification": attestation.sha_verification,
+    }
+    if attestation.basis is not None:
+        record["sha_verification_basis"] = attestation.basis
+    return record

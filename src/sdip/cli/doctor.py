@@ -186,7 +186,9 @@ def _check_pins(root: Path) -> Check:
         status=Status.PASS if not bad else Status.FAIL,
         clause="spec 3.3",
         summary=(
-            f"all {len(PINS)} binding pins match; {files} installed files verified against RECORD"
+            f"all {len(PINS)} binding pins match; {files} installed files verified against "
+            f"RECORD; {sum(s.commit_sha_verified for s in statuses)} of {len(PINS)} commits "
+            "verified by source comparison (P25)"
             if not bad
             else "; ".join(s.detail for s in bad)
         ),
@@ -203,10 +205,11 @@ def _check_pins(root: Path) -> Check:
                     "catches a site-packages edit made after installation."
                 ),
                 "commit_sha": (
-                    "NOT verified. A wheel does not carry the SHA it was built from; "
-                    "closing that needs a source build or an upstream provenance "
-                    "attestation, neither of which exists under the current pins. "
-                    "Open debt D9."
+                    "verified by source comparison when commit_attestation says so: the "
+                    "installed package files compared offline with probe P25's committed "
+                    "manifest of the pinned commit's source (DECISIONS.md D-0126). A pin "
+                    "bump without a re-run P25, or any difference, reports it declared, "
+                    "not verified."
                 ),
             },
         },

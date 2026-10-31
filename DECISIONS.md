@@ -6050,3 +6050,38 @@ per-file hashes are committed in `prereg/P25-receipt-2026-11-01.json`.
 - **(b)** Leave the certificate unchanged and close D9 on the P25 record alone. Each certificate
   then keeps saying "declared-not-runtime-verified".
 - **(c)** Keep D9 open.
+
+---
+
+## D-0127 — 2026-11-01 — D9 closed: commit SHAs verified offline against P25's manifest
+
+**Ruling** (GeoSuite D-242 under D-222, answering D-0126): option (a). `doctor` compares the
+installed files' sha256 with the committed P25 manifest, offline, on every run.
+`commit_sha_verified` becomes true only when all match. The certificate states the basis:
+source comparison P25, the receipt's sha256, no network at run time. Any mismatch, or a pin
+bump without a re-run P25, sets it false with `declared-not-runtime-verified`. Tests and the
+negative control come first.
+
+**Built.**
+- `sdip/guard/_source_manifest.py` is P25's per-file hashes plus the receipt's path and sha256.
+  It is generated from the receipt, and a test holds it equal to the receipt.
+- `sdip.guard.pins.attest_commit` does the comparison.
+- `PinStatus` carries a `commit_attestation` block, and the certificate's `env.declared_pins`
+  records `sha_verification` and, when verified, `sha_verification_basis`.
+- The schema's `sha_verification` widens from one constant to two values, and gains the basis
+  property. The schema version stays 0: every certificate issued before validates unchanged.
+- The two tests that asserted the commit is never verified were changed deliberately, as their
+  docstrings required.
+
+**Negative controls**, each turning the claim off:
+- one file's hash differs;
+- a listed file is not installed;
+- an installed file is not listed;
+- the pin's version or commit is bumped;
+- an unknown distribution.
+
+A socket that refuses every connection shows that no network is used.
+
+**Consumer-visible.** Certificates issued from now say `source-comparison-verified` with a
+basis, where they said `declared-not-runtime-verified`. `doctor`'s pin line counts the verified
+commits.

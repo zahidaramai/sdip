@@ -32,14 +32,15 @@ def test_commit_shas_are_full_length_hex():
 
 
 def test_sha_verification_is_reported_honestly():
-    """SP8. A wheel does not carry the SHA it was built from; never claim otherwise.
+    """SP8. A wheel does not carry the SHA it was built from; never claim more than is known.
 
-    This is open debt D9. The test exists so that a future change which starts
-    claiming verification must also change this assertion deliberately.
+    Until D-0126 this asserted the commit was never verified (D9). It now asserts the one
+    claim that is made: verified by source comparison against P25's manifest, and said so.
+    Each way that claim can be wrong is a negative control in test_commit_attestation.py.
     """
     for status in check_pins():
-        assert status.commit_sha_verified is False
-        assert "declared" in status.detail or not status.ok
+        assert status.commit_sha_verified is True
+        assert "verified by source comparison (P25)" in status.detail
 
 
 @pytest.mark.parametrize("distribution", ["multidimio", "segy"])
@@ -170,13 +171,12 @@ def test_deleting_an_installed_file_is_detected(tmp_path):
     assert any("__init__.py" in m for m in result.missing)
 
 
-def test_commit_sha_is_still_never_claimed_as_verified(repo_root):
-    """D9 is NARROWED, not closed. The report must keep saying so."""
+def test_record_integrity_still_says_what_it_does_not_attest(repo_root):
+    """The RECORD check attests the wheel, not the commit; the commit claim is separate."""
     for status in check_pins(lockfile=repo_root / "uv.lock"):
-        assert status.commit_sha_verified is False
         payload = status.to_json()
-        assert payload["commit_sha_verified"] is False
         assert payload["installed_file_integrity"]["does_not_attest"]
+        assert payload["commit_attestation"]["basis"].startswith("source comparison P25")
 
 
 def test_deep_can_be_switched_off(repo_root):

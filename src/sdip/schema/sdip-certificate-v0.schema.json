@@ -824,7 +824,7 @@
         },
         "declared_pins": {
           "type": "object",
-          "description": "Commit SHAs are declared, not runtime-verified: a wheel does not carry the SHA it was built from. Open debt D9.",
+          "description": "Each pin and how its commit was checked. A wheel does not carry the SHA it was built from, so the commit is verified only by source comparison: the installed package files are compared, offline, with probe P25's committed manifest of the source at the pinned commit. Otherwise it is declared, not verified (DECISIONS.md D-0126).",
           "additionalProperties": {
             "type": "object",
             "required": [
@@ -843,7 +843,14 @@
                 "type": "string"
               },
               "sha_verification": {
-                "const": "declared-not-runtime-verified"
+                "enum": [
+                  "declared-not-runtime-verified",
+                  "source-comparison-verified"
+                ]
+              },
+              "sha_verification_basis": {
+                "type": "string",
+                "description": "Present only when sha_verification is source-comparison-verified: the receipt and its sha256 the comparison rests on."
               },
               "release_tag": {
                 "type": "string",

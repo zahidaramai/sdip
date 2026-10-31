@@ -75,9 +75,10 @@ def test_capture_environment_records_the_pins():
 
 
 def test_capture_environment_labels_sha_verification_honestly():
-    """SP8 / open debt D9. Never claim a verification that did not happen."""
+    """SP8, D9 closed by D-0126. The label names the check made and what it rests on."""
     for record in capture_environment().to_json()["declared_pins"].values():
-        assert record["sha_verification"] == "declared-not-runtime-verified"
+        assert record["sha_verification"] == "source-comparison-verified"
+        assert record["sha_verification_basis"].endswith("no network at run time")
 
 
 def test_clean_repository_is_certifiable(git_repo):

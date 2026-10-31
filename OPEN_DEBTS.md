@@ -3164,3 +3164,25 @@ control was detected.
 
 **Still open:** the certificate still says `commit_sha_verified: false`. Changing what it says
 is a certificate-semantics question (D-0126), asked and not done here.
+
+---
+
+## D9 — CLOSED 2026-11-01 — the commit is verified at run time, by source comparison
+
+- **Closes:** D9 above (**SP10**) · **Decision:** `DECISIONS.md` D-0127 · **Ruling:** GeoSuite
+  D-242 under D-222, 2026-11-01 (option (a) of D-0126)
+- **Revisit:** at every pin bump, which must re-run P25 and regenerate the manifest
+
+`sdip doctor` and every certificate now compare each installed package file of `multidimio` and
+`segy`, offline, with `sdip/guard/_source_manifest.py`, which is P25's committed manifest of the
+source at the pinned commits. `commit_sha_verified` is true and `sha_verification` reads
+`source-comparison-verified` only when:
+- all 131 files match;
+- none is missing;
+- the distribution installs no package file the manifest lacks;
+- the pin's version and commit are the manifest's.
+
+The certificate then states the basis, the P25 receipt and its sha256, with no network at run
+time. Anything else reports `declared-not-runtime-verified`, as before. A pin bump without a
+re-run P25 is included. Each of these is a negative control in
+`tests/unit/test_commit_attestation.py`.
