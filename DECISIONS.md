@@ -5922,6 +5922,6 @@ pins) or stays open for a future upstream change.
 these pins, recording the limit, the refusal text consumers see and the one-line stderr form, and
 revisit at the next pin bump. Recorded in `OPEN_DEBTS.md` D30 CLOSED.
 
-**Correction.** P21's registration cited "§12 SP12". SP12 belongs to spec §2, and §12 has no
+**Correction.** P21's registration cited "section 12 SP12". SP12 belongs to specification section 2, and spec section 12 has no
 public restatement, so the section-citation test failed the gate at `f495024`. The cell now reads
 "SP12", with a correction note in the P21 file. No criterion changed.

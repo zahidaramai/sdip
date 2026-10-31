@@ -139,7 +139,7 @@ is upstream's at `multidimio` 1.2.1; a pin bump could move it.
 
 ### Correction note — appended 2026-10-31
 
-The registration's "Spec clause" row cited "§12 SP12". SP12 is a principle (spec §2), and §12 is
+The registration's "Spec clause" row cited "section 12 SP12". SP12 is a principle (specification section 2), and section 12 is
 governance, so the citation was wrong. `test_every_cited_section_resolves_to_a_public_restatement`
 failed the gate at `f495024` on it. The row now reads "SP12". **No criterion, member, threshold or
 method changed.** The registration commit `b6d833f` keeps the original wording in history.
