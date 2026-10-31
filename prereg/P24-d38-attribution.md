@@ -120,3 +120,56 @@ Peak RSS, each step alone in a fresh process (`ru_maxrss`), and the whole comman
 per trace on `large` (2.2 GB over 378,000 traces), for 240 bytes of header per trace. It reads
 headers whole, so its working set is many times the bytes it compares. Plane 3 is stage B's
 target. Plane 5 and the trace map, which Planes 3, 4 and 5 each build, come second.
+
+## Amendment B — stage B's scope and criteria, 2026-11-01
+
+Written after stage A's results and **before** any stage B code is measured.
+
+### A diagnosis inside Plane 3 (not gated)
+
+Each of Plane 3's reads alone, in a fresh process, on `large` at `0c1edbc` (driver
+`p24_sub.py`, its source in the receipt):
+
+| Read | Peak RSS |
+|---|---:|
+| source headers parsed by `segy` (`handle.header[:]`) | 470.4 MB |
+| store structured headers (`headers[:]`) | 203.0 MB |
+| store raw header plane (`headers_raw_uint8[:]`) | 207.6 MB |
+| **source header bytes through `read_source_header_bytes`' memory map, every trace touched** | **1,668.8 MB** |
+
+The byte leg reads the source headers through a memory map. Each 240-byte header sits inside a
+4,240-byte trace, so touching every header makes almost every page of the file resident: 1.67
+GB for a 1.60 GB file. That one read is most of Plane 3's 2.25 GB peak. It is the same mechanism
+P23 removed from Plane 4's raw-word leg.
+
+### Scope (the whole change)
+
+Plane 3 only:
+1. The byte leg walks the store's chunk grid (P23's `_chunk_blocks`). Per block it reads the
+   store's `headers_raw_uint8` region, and the source header bytes of only that block's traces
+   **by explicit reads**, not the memory map.
+2. The field-wise leg reads the store's structured `headers` region per block, instead of the
+   whole array.
+3. The parsed source headers stay whole. The trace map and the derived-coordinate leg use them,
+   as do Planes 4 and 5. Streaming them is out of this scope.
+
+Comparisons, counts, examples and their order are unchanged, and no tolerance is added. Oracle
+tests, written as P23's were, compare each changed leg with the whole-array loop across block
+boundaries, past the 20-example cap, with mutations shown to fail.
+
+### Predictions (recorded, not criteria)
+
+Plane 3 alone on `large`: about 0.5 to 0.7 GB, which is the parsed headers plus the trace map.
+The whole command's peak then moves to Plane 4: about 1.1 GB on `large`, and its slope falls to
+about 0.1.
+
+### Criteria (all must hold)
+
+1. **Unchanged.** For both fixtures, `sdip verify --json` is byte-identical to stage A's run
+   (receipt sha256), and the full default gate passes.
+2. **Bounded.** The whole command's peak on `large` is at most **1.25 GiB** (1,342,177,280 B).
+3. **Not linear in the file.** The whole command's slope is at most **0.35** MB per MB.
+4. **Attributed.** Plane 3 alone on `large` is at most **0.8 GiB** (858,993,459 B).
+
+Measured exactly as stage A measured, on the same fixtures, at the stage B commit. A criterion
+that fails is reported as failed, and the scope above is not widened after measuring.
