@@ -968,6 +968,16 @@ def _raised_by(exc: BaseException) -> tuple[str | None, str]:
     return None, "unknown location"
 
 
+def _refusal(line: str) -> None:
+    """Write one refusal to stderr as ONE line (README: `sdip: <ErrorName>: <reason>`).
+
+    An upstream message can carry its own line breaks: MDIO's GridTraceSparsityError spans
+    five lines (P21). A consumer reading the refusal by line would see four stray lines, so
+    every break inside the message is joined with a space.
+    """
+    click.echo(" ".join(part.strip() for part in line.splitlines() if part.strip()), err=True)
+
+
 def _report_unhandled(exc: Exception) -> int:
     """§3.6 at ONE boundary (D60, D-0088). Classified by where it was raised, not by type."""
     owner, where = _raised_by(exc)
@@ -980,10 +990,7 @@ def _report_unhandled(exc: Exception) -> int:
                 "one the file or store was written with. A store written by sdip ingest records "
                 "its declaration and would have been refused before this point."
             )
-        click.echo(
-            f"sdip: UpstreamRefusal: {name} raised in {where}: {exc}.{hint}",
-            err=True,
-        )
+        _refusal(f"sdip: UpstreamRefusal: {name} raised in {where}: {exc}.{hint}")
         return EXIT_FAIL
     click.echo(
         f"sdip: internal error: {name}: {exc}. This is a defect in SDIP, not a verdict about "
@@ -1014,17 +1021,17 @@ def main() -> None:
         )
         sys.exit(exc.exit_code)
     except PhaseNotAuthorisedError as exc:
-        click.echo(f"sdip: {exc}", err=True)
+        _refusal(f"sdip: {exc}")
         sys.exit(EXIT_USAGE)
     except GuardError as exc:
         # Exit 2: an environment SDIP will not run in is not a verdict about any data.
-        click.echo(f"sdip: {type(exc).__name__}: {exc}", err=True)
+        _refusal(f"sdip: {type(exc).__name__}: {exc}")
         sys.exit(EXIT_USAGE)
     except (DeclarationMismatchError, ChunkShapeError) as exc:
         # Exit 2, not 1. A mismatched declaration is an operator input error, not a
         # verdict about the data - reporting it as FAIL would tell a script that a
         # correct conversion was corrupt, which is precisely D47's defect.
-        click.echo(f"sdip: {type(exc).__name__}: {exc}", err=True)
+        _refusal(f"sdip: {type(exc).__name__}: {exc}")
         sys.exit(EXIT_USAGE)
     except SdipError as exc:
         # Every error SDIP raises deliberately reaches the operator as a message and a
@@ -1034,7 +1041,7 @@ def main() -> None:
         # traceback at the CLI boundary is the crash that clause bars. Catching the base
         # class rather than a list means a new SdipError subclass is covered the day it
         # is written, instead of the day someone remembers to add it here.
-        click.echo(f"sdip: {type(exc).__name__}: {exc}", err=True)
+        _refusal(f"sdip: {type(exc).__name__}: {exc}")
         sys.exit(EXIT_FAIL)
     except click.ClickException as exc:
         exc.show()
