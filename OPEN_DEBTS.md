@@ -3186,3 +3186,24 @@ The certificate then states the basis, the P25 receipt and its sha256, with no n
 time. Anything else reports `declared-not-runtime-verified`, as before. A pin bump without a
 re-run P25 is included. Each of these is a negative control in
 `tests/unit/test_commit_attestation.py`.
+
+---
+
+## D38 — NARROWED 2026-11-01 — Plane 3 streams too; verify peaks at 1.18 GB on 1.60 GB (P24)
+
+- **Narrows:** D38 NARROWED 2026-11-01 (P23) above (**SP10**) · **Decision:** `DECISIONS.md`
+  D-0128 · **Probe:** P24, all criteria held
+- **Status:** `OPEN`, pending the envelope ruling asked in D-0128
+
+P24 measured each step of `sdip verify` alone. Plane 3 set the whole remaining peak: its byte
+leg read the source headers through a memory map, which made the file resident. Plane 3 now
+reads by explicit per-block reads (`dd1be18`). On the 1.60 GB source, `verify` peaks at
+**1,175.6 MB** (2,251.6 MB before P24, 8.13 GB before P23), with a slope of **0.136 MB per MB**
+and its output byte-identical.
+
+**Still open:**
+- the 1.0 GiB `--envelope-gib` default, which was set when verification needed about 7.7 MB per
+  MB of source;
+- the parsed source headers and the trace map, which still grow at about 0.3 MB per MB.
+
+The second is not a ceiling at any size this machine verifies.

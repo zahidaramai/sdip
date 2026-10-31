@@ -90,5 +90,39 @@
   "driver": {
    "p24_sub.py": "\"\"\"P24 diagnosis (not gated): Plane 3's parts, each alone, peak RSS.\"\"\"\nimport json, resource, sys\nfrom pathlib import Path\nimport numpy as np\nif __name__ == \"__main__\":\n    part, source, store = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3])\n    from sdip.cli.main import _declaration\n    from sdip.equivalence.planes import _open_source, _open_store\n    spec = _declaration(\"1\", \"PostStack3DTime\", None, None).build_spec().segy_spec\n    handle = _open_source(source, spec); group = _open_store(store)\n    if part == \"source_headers\": h = handle.header[:]\n    elif part == \"store_headers\": h = group[\"headers\"][:]\n    elif part == \"store_raw_header_plane\": h = np.asarray(group[\"headers_raw_uint8\"][:])\n    elif part == \"source_header_bytes_memmap_touched\":\n        from sdip.ingest.header_plane import read_source_header_bytes, sample_bytes, trace_data_offset\n        m = read_source_header_bytes(source, samples_per_trace=int(handle.samples_per_trace), bytes_per_sample=sample_bytes(spec), data_offset=trace_data_offset(handle))\n        s = 0\n        for i in range(m.shape[0]): s += int(m[i][0])\n    print(json.dumps({\"part\": part, \"ru_maxrss\": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}))\n"
   }
+ },
+ "stage_b": {
+  "code": "dd1be18 (clean tree)",
+  "amendment_commit": "85b100f",
+  "whole_verify_peak_rss_bytes": {
+   "small": 1012170752,
+   "large": 1175601152
+  },
+  "step_peak_rss_bytes": {
+   "small": {
+    "plane_3": 200966144,
+    "plane_4": 978698240,
+    "plane_5": 185204736,
+    "trace_map": 169574400
+   },
+   "large": {
+    "plane_3": 538869760,
+    "plane_4": 1083195392,
+    "plane_5": 544276480,
+    "trace_map": 493142016
+   }
+  },
+  "slope_mb_per_mb_whole": 0.136,
+  "verify_json_sha256": {
+   "small": "399e64ad1a68c1f09334dfc0dad87a894e5714ad3bc7cfb79baf5118bcd6ac3d",
+   "large": "362811ab1c687815e3c17b815d7841ab8ba4f00b67124327254e34378085f9f5"
+  },
+  "criteria": {
+   "1_json_identical_to_stage_a": true,
+   "2_large_at_most_1_25GiB": true,
+   "3_slope_at_most_0_35": true,
+   "4_plane3_large_at_most_0_8GiB": true
+  },
+  "gate": "1918 passed, 886 deselected, 1,955.6 s (dd1be18)"
  }
 }

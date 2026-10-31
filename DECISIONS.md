@@ -6085,3 +6085,38 @@ A socket that refuses every connection shows that no network is used.
 **Consumer-visible.** Certificates issued from now say `source-comparison-verified` with a
 basis, where they said `declared-not-runtime-verified`. `doctor`'s pin line counts the verified
 commits.
+
+---
+
+## D-0128 — 2026-11-01 — D38 narrowed again (P24); ruling requested on the verify envelope
+
+**Context.** GeoSuite's ruling in D-0125: attribution first, then the reads it names. P24 was
+registered at `bfe8314`. Stage B's criteria were set by Amendment B (`85b100f`) before any
+stage B measurement.
+
+**Result.**
+- **Stage A:** Plane 3 set `verify`'s peak, at 100.1 % of the whole command. Its byte leg's
+  memory map made the 1.60 GB source resident (1,668.8 MB alone).
+- **Stage B** (`dd1be18`): all four criteria held.
+  - The output is byte-identical to stage A's.
+  - Whole peak: 1,175.6 MB.
+  - Slope: 0.136.
+  - Plane 3 alone: 538.9 MB.
+  - Gate: 1,918 passed.
+
+**Asked, not decided: the `--envelope-gib` default.** D-0063 ruling 5 set `sdip verify` to
+refuse sources above 1.0 GiB, because verification then needed about 7.7 MB per MB of source
+and a 1.4 GB file was predicted to breach 8 GiB. Measured now:
+- 1.18 GB of peak RSS for a 1.60 GB source;
+- 0.136 MB per MB above about 1.0 GB of fixed cost;
+- `envelope.py`'s projection constants (214.7 + 7.73 × MB) are now about six times too high.
+
+The options:
+- **(a) Recommended.** Raise the default to the size at which the measured line reaches the
+  8.0 GiB memory ceiling with the same caution as before. Re-fit `envelope.py`'s constants to
+  P24's two points and keep the refusal above that size. That size is far above anything
+  measured, so a new registered run at the new size should come first.
+- **(b)** Keep 1.0 GiB until a larger source has been measured.
+- **(c)** Disable the default and leave the refusal to an explicit `--envelope-gib`.
+
+Any change also changes the refusal message consumers see.

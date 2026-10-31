@@ -173,3 +173,40 @@ about 0.1.
 
 Measured exactly as stage A measured, on the same fixtures, at the stage B commit. A criterion
 that fails is reported as failed, and the scope above is not widened after measuring.
+
+## Amendment B — results, 2026-11-01
+
+| Field | Value |
+|---|---|
+| Code | `dd1be18`, clean. Amendment B committed at `85b100f`, before any stage B measurement |
+| Receipt | `prereg/P24-receipt-2026-11-01.json`, `stage_b` |
+| Verdict | **All four criteria hold** |
+
+| | Stage A (`0c1edbc`) | Stage B (`dd1be18`) |
+|---|---:|---:|
+| Whole `sdip verify`, `small` | 1,011.4 MB | 1,012.2 MB |
+| Whole `sdip verify`, `large` | 2,251.6 MB | **1,175.6 MB** |
+| Whole-command slope, MB per MB | 1.03 | **0.136** |
+| Plane 3 alone, `large` | 2,254.7 MB | **538.9 MB** |
+| Plane 4 alone, `large` | 1,087.5 MB | 1,083.2 MB |
+| Plane 5 alone, `large` | 547.8 MB | 544.3 MB |
+| Trace map alone, `large` | 485.9 MB | 493.1 MB |
+
+- **Criterion 1 (unchanged): HOLDS.** For both fixtures the `sdip verify --json` document has
+  the same sha256 as stage A's. The full default gate passes at `dd1be18`: 1,918 passed.
+- **Criterion 2 (at most 1.25 GiB): HOLDS.** 1,175.6 MB (1.09 GiB).
+- **Criterion 3 (slope at most 0.35): HOLDS.** 0.136.
+- **Criterion 4 (Plane 3 alone at most 0.8 GiB): HOLDS.** 538.9 MB.
+
+As predicted, the peak moved to Plane 4, at about 1.08 GB. Plane 4 is nearly flat in the file:
+979 MB on `small`. What still grows is the parsed source headers and the trace map, which
+Planes 3, 4 and 5 each read or build: about 0.26 to 0.30 MB per MB alone.
+
+**Across P23 and P24**, `sdip verify` on the 1.60 GB source went from 8.13 GB to 1.18 GB of
+peak RSS, with its output byte-identical at every step.
+
+### Scope
+
+The same as P23: one synthetic poststack geometry, `ibm32`, `sparse/1`, two sizes, macOS arm64,
+`verify` without G4. Nothing above 1.60 GB was measured. The slope says a 10 GB source would
+need roughly 2.4 GB, but that is an extrapolation.
