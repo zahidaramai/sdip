@@ -118,3 +118,53 @@ stanza-terminated rev 2 member) and 4 (one platform) are untouched by this probe
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-10-31 |
+| Run commit | `742e102`, clean tree. Registration at `e7b5f9c`, before the run |
+| Harness | the D8 child, unchanged. Each pair is judged by `falsifier_hits` in `tests/negative/test_d8_hostile_pairs.py` |
+| Receipt | `prereg/P15-receipt-2026-10-31.json`: one record per pair (clauses hit, outcome, exit codes, peak RSS, seconds, source SHA-256) |
+| Environment | `multidimio` 1.2.1 · `segy` 0.6.0 · CPython 3.12.13 · macOS arm64 |
+| Verdict | **The falsifier did not fire. 0 of 223 pairs met any clause** |
+
+### Measured
+
+| | Pairs |
+|---|---:|
+| Refused by SDIP, typed `UntrustedInputError`, raised inside `sdip` | 191 |
+| Refused by MDIO's pinned grid types (`GridTraceSparsityError` 12, `GridTraceCountError` 6) | 18 |
+| Converted | 14 |
+| Any CLI command exiting 3, printing a traceback or `internal error`, or escaping | **0** |
+| Peak RSS above 512 MiB | **0** (max 248.9 MB) |
+| A path created outside the output directory, or in the repository | **0** |
+| CLI `ingest` exit 0 on a file the library refused | **0** |
+| Child timeout or missing report | **0** (slowest pair 27.5 s) |
+
+CLI exit codes across `ingest` / `verify` / `export` / `certify`:
+- 209 pairs: 1 / 1 / 1 / 1;
+- 9 pairs: 0 / 1 / 1 / 1;
+- 5 pairs: 0 / 1 / 1 / 0.
+
+`verify` and `export` read the positive control's store, so a converted pair is judged FAIL
+against a store it did not write. That is a verdict, not a crash.
+
+**Reported, not gated:**
+- **Converted although one member alone is refused: 0.** All 14 converting pairs are made of
+  two members that each convert alone.
+- **Byte-identical to one of their single members: 15.** These are `file_headers_only` (which
+  keeps no traces) paired with a trace-level member. Their second hostility is erased by
+  construction, as the registration expected.
+
+### Gate placement, by the registered rule
+
+The 223 took **838.2 s**, above 600 s. The 21 representative pairs stay in the default suite.
+The other 202 run under the new `campaign` marker, which the default `addopts` deselects
+(`pytest -m campaign` runs them).
+
+### Scope — read this before citing P15
+
+- Two hostilities at once, from one corpus of 23 single mutations on one 30-trace poststack
+  file. Three or more at once, and any mutation search, are unmeasured.
+- One host, one platform (D8 residual 4 stands). No stanza-terminated rev 2 member (D8
+  residual 2 stands).

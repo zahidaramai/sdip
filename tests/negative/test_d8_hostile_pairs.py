@@ -122,9 +122,17 @@ def test_the_positive_control_is_clean_through_the_identical_harness(harness):
     assert run.report["export"]["exit_code"] == 0
 
 
-@pytest.mark.parametrize(
-    ("a", "b"), REPRESENTATIVE_PAIRS, ids=[pair_name(*p) for p in REPRESENTATIVE_PAIRS]
-)
+CAMPAIGN = pytest.mark.campaign
+"""The 202 non-representative pairs: P15 measured the 223 at 838 s, above its registered
+600 s, so by the registration they run under ``-m campaign`` and not in the default suite."""
+
+PAIR_PARAMS = [
+    pytest.param(a, b, id=pair_name(a, b), marks=() if (a, b) in REPRESENTATIVE_PAIRS else CAMPAIGN)
+    for a, b in PAIRS
+]
+
+
+@pytest.mark.parametrize(("a", "b"), PAIR_PARAMS)
 def test_no_pair_crashes_leaks_or_escapes(harness, a, b):
     """Every command ends in a typed refusal or a verdict on a doubly hostile file."""
     root, store = harness

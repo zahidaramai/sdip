@@ -114,7 +114,9 @@ testpaths = ["tests"]
 pythonpath = ["."]
 # `not benchmark`: a wall-clock comparison is reported, never gated (D39, DECISIONS.md
 # D-0106). Run it with `pytest -m benchmark`; a later -m on the command line wins.
-addopts = "-ra --strict-markers --strict-config -m 'not benchmark'"
+# `not campaign`: P15's exhaustive pair run (838 s) is outside the default run by its
+# registered rule; 21 representative pairs stay in. Run all with `pytest -m campaign`.
+addopts = "-ra --strict-markers --strict-config -m 'not benchmark and not campaign'"
 # SP6 - no suppressed warnings. Any warning that reaches pytest is an error
 # unless a test opts in explicitly. This is a project rule, not a preference.
 filterwarnings = ["error"]
@@ -124,6 +126,7 @@ markers = [
     "slow: excluded from the fast unit lane",
     "benchmark: a wall-clock comparison; reported, never part of the gating suite (D39)",
     "phase: not yet in the authorised roadmap phase",
+    "campaign: an exhaustive probe run kept out of the default suite by its registration (P15)",
 ]
 
 [tool.ruff]

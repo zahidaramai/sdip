@@ -40,7 +40,7 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | [P12](P12-f3-certify.md) | Does a real delayed survey certify? | Amendment A: **release-ready** (D-0100) | — | — |
 | [P13](P13-store-content-variance.md) | Which store bytes differ between ingests? | did not fire; only root `createdOn` (D-0101) | — | — |
 | [P14](P14-poststack-chunking.md) | Does any of three poststack chunk shapes beat 128³ on Volve? | **REGISTERED** 2026-10-30, not run | — | D4 |
-| [P15](P15-hostile-pairs.md) | Does every command stay clean on a file hostile in two ways at once? | **REGISTERED** 2026-10-31, not run | — | D8 |
+| [P15](P15-hostile-pairs.md) | Does every command stay clean on a file hostile in two ways at once? | did not fire — 0 of 223 pairs | — | D8 |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a

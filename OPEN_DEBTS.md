@@ -2760,3 +2760,26 @@ measured non-Python readers, using core-spec arrays only.
 - zarr-java cannot list the group (D32, closed as an accepted limit). Arrays are opened by name.
 - Scope: poststack 3D, revision 1, local filesystem, zarr-java 0.2.0. Prestack stores were not
   read by zarr-java. Object stores are P8/D7.
+
+---
+
+## D8 — NARROWED 2026-10-31 — residual 3 closed for pairs (P15)
+
+- **Narrows:** D8 NARROWED 2026-10-30 above (**SP10**) · **Decision:** `DECISIONS.md` D-0114 ·
+  **Probe:** P15, falsifier did **not** fire
+
+Residual 3 said no file hostile in two ways at once had been run. P15 (registered at `e7b5f9c`
+before the run) built all **223 cross-class pairs** of the 23 single-mutation corpus members
+and ran each through the unchanged D8 harness: library ingest, then `sdip ingest`, `verify`,
+`export` and `certify`. **0 of 223 met any falsifier clause.** 191 were refused by SDIP's typed
+error before upstream saw the file, 18 by MDIO's pinned grid types, and 14 converted (each from
+two members that convert alone). Nothing exited 3, printed a traceback, escaped, wrote outside
+its output directory or exceeded 512 MiB (max 248.9 MB). Receipt
+`prereg/P15-receipt-2026-10-31.json`.
+
+The permanent suite keeps **21 representative pairs** by default, plus the other 202 under
+`-m campaign`, as the registration ruled for a run over 600 s (838 s measured).
+
+**Still open:** three or more hostilities at once and any mutation search (residual 3 beyond
+pairs); residual 2 (no stanza-terminated rev 2 member); residual 4 (one platform).
+**D8 stays OPEN.**

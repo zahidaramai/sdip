@@ -5729,3 +5729,29 @@ failed.
 `tests/`, CI, or any pin changes. The structured `headers` array stays as upstream writes it,
 and D32 (no group listing in zarr-java) stays the accepted limit. Not authorised by this
 entry: prestack, object stores, other zarr-java versions.
+
+---
+
+## D-0114 — 2026-10-31 — D8 narrowed: no pair of hostilities breaks any command (P15)
+
+**Context.** Owner D-216, relayed by GeoSuite: every open debt proceeds, oldest first,
+excluding those that need a quiet machine. D4's remainder waits on the F3 timing (D69). D7
+needs cloud ingest, which is outside the phase (GeoSuite parked it under D-222). D8 is next.
+
+**Registered before the run** at `e7b5f9c` (local commit; GeoSuite pushes under its own
+approval). **Built** at `742e102`:
+- the 23 single-mutation corpus members' mutations became named functions, with corpus
+  bytes unchanged (33 of 33 hashes identical before and after);
+- `PAIRS` (223), `REPRESENTATIVE_PAIRS` (21) and `build_pair`;
+- `tests/negative/test_d8_hostile_pairs.py`, with a builder non-vacuity test and the
+  positive control through the identical harness.
+
+**Result.** 0 of 223 pairs fired any of the six clauses. 191 SDIP-typed refusals, 18 MDIO grid
+refusals, 14 conversions, max peak RSS 248.9 MB, 838.2 s in total.
+
+**Decision.**
+- Residual 3 of D8 closes for pairs. D8 stays open on triples and mutation search, residual 2
+  and residual 4.
+- By the registered rule (838 s > 600 s), 21 pairs stay in the default suite. A new `campaign`
+  marker holds the other 202, deselected by the default `addopts` as `benchmark` is.
+- No change to `src/`, a gate, a pin or the Equivalence Contract.
