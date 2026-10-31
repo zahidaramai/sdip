@@ -5700,3 +5700,32 @@ top-level array's `chunks` since F2 (`4706b5a`). What was missing was whether th
 asked for or defaulted, and the arrays nested in groups (the D36 raw view). Schema v0, additive.
 
 **Not changed:** the 128³ poststack default and every pin. P14 Amendment B (F3) decides (3).
+
+---
+
+## D-0113 — 2026-10-31 — D3 closed: zarr-java reads the `uint8` header plane byte-identically (P4 leg 3)
+
+**Context.** Owner D-216, relayed by GeoSuite: every open debt proceeds, oldest first,
+excluding those that need a quiet machine. D3 is the oldest. The mitigation was built in
+D-0051. What was missing was a measurement through the reader the mitigation exists for:
+zarr-java, which refuses `headers` (D-0047).
+
+**Registered before the run** at `841ae6d` (SP9). The commit is local only: the workspace's
+top ruling forbids a push without the owner's command. The registration says so.
+
+**Result.** zarr-java 0.2.0 on OpenJDK 26.0.2.1, opening by path, on two stores written and
+verified by the `sdip` executable (`sdip verify` PASS on both):
+
+| Store | Rows compared to source bytes | Differ | Padding cells (not compared) |
+|---|---|---|---|
+| poststack 3D, 30 traces, full grid | 30 × 240 B | 0 | 0 |
+| sparse grid, 27 traces in 9×9 | 27 × 240 B | 0 | 54 |
+
+zarr-java's bytes equal `zarr-python`'s for `headers_raw_uint8`, `trace_mask`, `inline` and
+`crossline`. A one-byte flip in a copy was seen at exactly `[2, 3, 17]`. 25 checks, 0
+failed.
+
+**Decision.** D3 closes, scoped, as its pre-registered outcome says. Nothing in `src/`,
+`tests/`, CI, or any pin changes. The structured `headers` array stays as upstream writes it,
+and D32 (no group listing in zarr-java) stays the accepted limit. Not authorised by this
+entry: prestack, object stores, other zarr-java versions.

@@ -2731,3 +2731,32 @@ declares it with `--chunks`.
 
 **Re-pin: closed, nothing to do.** The default did not change, so no consumer pin moves. GeoAIBrain,
 SFM and ExS keep SDIP's 128³ default; only this debt can reopen the re-pin.
+
+---
+
+## D3 — CLOSED 2026-10-31 — trace-header data reaches both measured non-Python readers, through the `uint8` plane
+
+- **Status:** `CLOSED`, scoped · **Decision:** `DECISIONS.md` D-0113 · **Probe:** P4 leg 3,
+  falsifier did **not** fire
+
+The open reason since D-0047 was measured: zarr-java 0.2.0 refuses `headers` (`struct`, no
+Zarr v3 specification). The pre-approved mitigation, `headers_raw_uint8` (D-0051), had been
+crossed through TensorStore only. TensorStore also reads `struct`, so that crossing could not
+show the mitigation doing its job.
+
+**P4 leg 3** (`prereg/P4-portability.md`, registered at `841ae6d` before the run): zarr-java
+0.2.0 opened `headers_raw_uint8` by path on two stores built with `sdip ingest` (30 traces
+full grid; 27 traces in a 9×9 padded grid). Every live row matched the source file's 240
+trace-header bytes, read by raw offset: **57 × 240 B, 0 differ.** A one-byte flip in a copy
+showed up at exactly that cell and byte. 25 checks, 0 failed. Receipt
+`prereg/P4-leg3-receipt-2026-10-31.json`.
+
+**What closes:** trace-header data is readable byte-identically outside Python by both
+measured non-Python readers, using core-spec arrays only.
+
+**What does not change, and is not this debt:**
+- `headers` keeps upstream's `struct` dtype; zarr-java still refuses it. A consumer reads
+  headers through `headers_raw_uint8`.
+- zarr-java cannot list the group (D32, closed as an accepted limit). Arrays are opened by name.
+- Scope: poststack 3D, revision 1, local filesystem, zarr-java 0.2.0. Prestack stores were not
+  read by zarr-java. Object stores are P8/D7.

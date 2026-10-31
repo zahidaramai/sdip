@@ -1,0 +1,53 @@
+{
+  "probe": "P4 leg 3",
+  "debt": "D3",
+  "run_date": "2026-10-31",
+  "run_root": "local/p4java3 (worktree seis-mdio-zarr-d3)",
+  "registration_commit": "841ae6da4936350f63f34f723a49db68acf0e9f6",
+  "tree_clean_at_run": true,
+  "harness_sha256": {
+    "compare.py": "9febc0a60acb4214ac31ea70c746b3f02bc0a12a4f68d702ad7e7345fe36c522",
+    "probe/pom.xml": "b31ce71b71c6ec9f678c1a5ba6c6fb05d9e838ea9199b2239fac79212537d4d0",
+    "probe/src/main/java/sdip/P4Leg3.java": "d98ebacda58cc6f5c725b344f5cb401493d14dfa9be440de24d70c1e6c4168a5"
+  },
+  "jdk": "openjdk version \"26.0.2.1\" 2026-08-18",
+  "zarr_java": "dev.zarr:zarr-java:0.2.0",
+  "zarr_python": "3.3.0",
+  "stores": {
+    "post": {
+      "source_sha256": "be4ce4375799b8ebc670526229581e73d995f03a8a3bb308141f41fc91bdd762",
+      "source_bytes": 14640,
+      "ingest": "sdip ingest --revision 1 post.sgy post.mdio",
+      "verify": "sdip verify --revision 1: PASS (5 planes + G4)",
+      "array_sha256": {
+        "headers_raw_uint8": "951367c18b5bfe2a35fd1c3499a60e12cce7f827b5bc319257195ebbce211538",
+        "trace_mask": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6",
+        "inline": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42",
+        "crossline": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers_raw_uint8_shape": [
+        5,
+        6,
+        240
+      ]
+    },
+    "sparse": {
+      "source_sha256": "a27df1329c3ba194a95cbb900b7d07cbb8cc9eef885cccdaada4a40874e3ee32",
+      "source_bytes": 11808,
+      "ingest": "sdip ingest --revision 1 sparse.sgy sparse.mdio",
+      "verify": "sdip verify --revision 1: PASS (5 planes + G4)",
+      "array_sha256": {
+        "headers_raw_uint8": "7a5ef6c9080d552ccd5bd26e2dbcb88b39b3c6f3b18c95683f954dc7da03bd82",
+        "trace_mask": "3e3c479ca9bacf782afbbd459e31ac74f6fda98e6e377776ffe065fe5d6b5978",
+        "inline": "09a056a154d6e5e0bd065f67093ca40c6a754f847189015a6f7cb66b52cd5184",
+        "crossline": "a6462cdf3f909ef3a66fa3eae951a951f4ed0eb4eb64fcd87a0326e34c4bb4ee"
+      },
+      "headers_raw_uint8_shape": [
+        9,
+        9,
+        240
+      ]
+    }
+  },
+  "result": "25 checks, 0 failed; falsifier did not fire"
+}

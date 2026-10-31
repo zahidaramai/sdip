@@ -667,3 +667,280 @@ non-Python readers through `headers_raw_uint8`. The structured `headers` array k
 `struct` extension dtype. That is upstream's format and is left as it is. Group listing in
 zarr-java remains the accepted limit D32. The closure is recorded as a new append-only
 entry in `OPEN_DEBTS.md`, scoped to N, geometry, reader version and local filesystem.
+
+
+---
+
+## Results, leg 3 — zarr-java on `headers_raw_uint8` — appended 2026-10-31, never edited into the sections above
+
+| Field | Value |
+|---|---|
+| Run date | 2026-10-31 |
+| Run commit | `841ae6d` (the registration commit), clean tree, worktree on branch `d3-zarr-java-header-plane` |
+| Harness | `local/p4java3/` (firewall, deleted after harvest): Maven project `probe/` plus `compare.py`. Full source below |
+| Receipt | `prereg/P4-leg3-receipt-2026-10-31.json`: source, array and harness SHA-256s |
+| Environment | zarr-java 0.2.0 · OpenJDK 26.0.2.1 (Homebrew, aarch64) · Maven, offline against the local repository · `zarr-python` 3.3.0 · `multidimio` 1.2.1 · `segy` 0.6.0 · macOS arm64 |
+| Stores | Built with the `sdip` executable: `sdip ingest --revision 1`, then `sdip verify --revision 1` → **PASS**, five planes plus G4, on both |
+| Verdict | **The falsifier did not fire.** 25 checks, 0 failed |
+
+### Measured
+
+| Store | Source SHA-256 | `headers_raw_uint8` shape | Live / padding | Rows compared to source | Differ | Distinct rows |
+|---|---|---|---|---|---|---|
+| `make_poststack3d` defaults | `be4ce437…dd762` (leg 2's source, byte-identical) | `(5, 6, 240)` | 30 / 0 | 30 × 240 B | **0** | 30 |
+| `make_sparse_grid` | `a27df132…ee32` | `(9, 9, 240)` | 27 / 54 | 27 × 240 B | **0** | 27 |
+
+- zarr-java opened `headers_raw_uint8`, `trace_mask`, `inline` and `crossline` **by path**
+  on both stores. `headers_raw_uint8` came back as ma2 `ubyte`.
+- (a) zarr-java's bytes equal `zarr-python`'s for all four arrays on both stores: 7,200 B
+  and 19,440 B of header plane, plus `array_equal`, dtype and shape.
+- (b) Every live row equals the source file's 240 trace-header bytes. The bytes were read by
+  fixed offset and matched to the row through the source's own bytes 189–196. SDIP's reader
+  was not used.
+- (c) The live cells match the source traces one to one on both stores. The 54 padding
+  cells were not compared (SP12).
+- **Control:** in a copy of the poststack store, byte 17 of cell `(2, 3)` was XORed with
+  `0xFF` through `zarr-python`. The JVM read differed from the original at exactly
+  `[[2, 3, 17]]`, by exactly that XOR.
+
+### Verdict against the pre-registered falsifier
+
+> zarr-java fails to open or read `headers_raw_uint8` by path, or any byte it returns for
+> a live cell differs from the source SEG-Y's byte at that offset.
+
+**It did not fire.** The reader that refuses `headers` reads the mitigation, byte for byte
+against the source. With leg 1's TensorStore crossing
+(`tests/integration/test_p4_crossimpl.py`), **both measured non-Python readers now read
+trace-header data byte-identically through `headers_raw_uint8`.** By the pre-registered
+outcome, D3 closes, scoped.
+
+### Scope — read this before citing leg 3
+
+- N = 57 traces in two poststack 3D stores, revision 1, `ibm32`, local filesystem, one
+  host. Prestack geometries were not read by zarr-java.
+- One version of one implementation (zarr-java 0.2.0).
+- The structured `headers` array is unchanged and zarr-java still refuses it. The mitigation
+  works around it and does not fix it.
+- Group listing in zarr-java still fails (D32, accepted). A consumer must open arrays by name.
+- The decompressor is not independent of `zarr-python`'s, as in leg 2 (c-blosc under both).
+
+### Reproducing leg 3
+
+Needs a JDK, Maven and (on a cold Maven cache) network access to Maven Central and the
+Unidata repository. From the repository root:
+
+```
+mkdir -p local/p4java3/probe/src/main/java/sdip   # put the three files below in place
+uv run python - <<'PY'
+from pathlib import Path
+from tests.fixtures.generators import make_poststack3d
+from tests.fixtures.generators.irregular import make_sparse_grid
+if __name__ == "__main__":
+    make_poststack3d(Path("local/p4java3/post.sgy")); make_sparse_grid(Path("local/p4java3/sparse.sgy"))
+PY
+cd local/p4java3
+for s in post sparse; do uv run sdip ingest --revision 1 $s.sgy $s.mdio; uv run sdip verify --revision 1 $s.sgy $s.mdio; done
+(cd probe && PATH=/opt/homebrew/opt/openjdk/bin:$PATH mvn -q compile)
+cd ../.. && uv run python local/p4java3/compare.py
+```
+
+`local/p4java3/probe/pom.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>sdip</groupId>
+  <artifactId>p4-leg3</artifactId>
+  <version>1</version>
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+  <repositories>
+    <repository>
+      <id>unidata</id>
+      <url>https://artifacts.unidata.ucar.edu/repository/unidata-all/</url>
+    </repository>
+  </repositories>
+  <dependencies>
+    <dependency>
+      <groupId>dev.zarr</groupId>
+      <artifactId>zarr-java</artifactId>
+      <version>0.2.0</version>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <configuration><mainClass>sdip.P4Leg3</mainClass></configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+```
+
+`local/p4java3/probe/src/main/java/sdip/P4Leg3.java`:
+
+```java
+package sdip;
+
+import dev.zarr.zarrjava.store.FilesystemStore;
+import dev.zarr.zarrjava.v3.Array;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Base64;
+
+/** P4 leg 3: open named arrays BY PATH (never Group.list) and dump raw C-order bytes as base64. */
+public final class P4Leg3 {
+    public static void main(String[] args) throws Exception {
+        String store = args[0];
+        Path out = Path.of(args[1]);
+        StringBuilder sb = new StringBuilder("{");
+        for (int i = 2; i < args.length; i++) {
+            String name = args[i];
+            if (i > 2) sb.append(',');
+            sb.append('"').append(name).append("\":{");
+            try {
+                Array a = Array.open(new FilesystemStore(store).resolve(name));
+                ucar.ma2.Array v = a.read();
+                int[] shape = v.getShape();
+                Object j = v.copyTo1DJavaArray();
+                byte[] raw;
+                if (j instanceof byte[] b) {
+                    raw = b;
+                } else if (j instanceof int[] ints) {
+                    ByteBuffer bb = ByteBuffer.allocate(ints.length * 4).order(ByteOrder.LITTLE_ENDIAN);
+                    for (int x : ints) bb.putInt(x);
+                    raw = bb.array();
+                } else {
+                    throw new IllegalStateException("unhandled java type " + j.getClass());
+                }
+                sb.append("\"ok\":true,\"ma2_type\":\"").append(v.getDataType()).append("\",\"shape\":[");
+                for (int k = 0; k < shape.length; k++) { if (k > 0) sb.append(','); sb.append(shape[k]); }
+                sb.append("],\"b64\":\"").append(Base64.getEncoder().encodeToString(raw)).append('"');
+            } catch (Throwable t) {
+                String msg = String.valueOf(t).replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
+                sb.append("\"ok\":false,\"error\":\"").append(msg).append('"');
+            }
+            sb.append('}');
+        }
+        sb.append('}');
+        Files.writeString(out, sb.toString());
+    }
+}
+```
+
+`local/p4java3/compare.py`:
+
+```python
+"""P4 leg 3 comparator. Runs zarr-java (separate JVM), compares with no tolerance."""
+import base64, json, os, shutil, subprocess, sys
+from pathlib import Path
+import numpy as np
+import zarr
+
+HERE = Path(__file__).resolve().parent
+ENV = dict(os.environ, PATH="/opt/homebrew/opt/openjdk/bin:" + os.environ["PATH"])
+ARRAYS = ["headers_raw_uint8", "trace_mask", "inline", "crossline"]
+DT = {"headers_raw_uint8": np.uint8, "trace_mask": np.int8, "inline": "<i4", "crossline": "<i4"}
+checks = []
+
+def check(name, ok, detail=""):
+    checks.append((name, bool(ok)))
+    print(("PASS " if ok else "FAIL ") + name + (f"  [{detail}]" if detail else ""))
+
+def jvm_read(store, tag):
+    out = HERE / f"jvm_{tag}.json"
+    out.unlink(missing_ok=True)
+    args = " ".join([str(store), str(out), *ARRAYS])
+    subprocess.run(["mvn", "-o", "-q", "exec:java", f"-Dexec.args={args}"],
+                   cwd=HERE / "probe", env=ENV, check=True)
+    res = json.loads(out.read_text())
+    arrs = {}
+    for n in ARRAYS:
+        r = res[n]
+        if not r["ok"]:
+            arrs[n] = r["error"]
+            continue
+        a = np.frombuffer(base64.b64decode(r["b64"]), dtype=DT[n]).reshape(r["shape"])
+        arrs[n] = (a, r["ma2_type"])
+    return arrs
+
+def source_headers(sgy):
+    b = Path(sgy).read_bytes()
+    ns = int.from_bytes(b[3220:3222], "big")
+    fmt = int.from_bytes(b[3224:3226], "big")
+    ext = int.from_bytes(b[3504:3506], "big", signed=True)
+    assert fmt in (1, 5) and ext == 0, (fmt, ext)
+    stride = 240 + ns * 4
+    n = (len(b) - 3600) // stride
+    assert 3600 + n * stride == len(b)
+    rows = {}
+    for k in range(n):
+        h = b[3600 + k * stride: 3600 + k * stride + 240]
+        il = int.from_bytes(h[188:192], "big", signed=True)
+        xl = int.from_bytes(h[192:196], "big", signed=True)
+        assert (il, xl) not in rows
+        rows[(il, xl)] = np.frombuffer(h, dtype=np.uint8)
+    return rows
+
+def leg(tag, sgy, store):
+    print(f"--- {tag}: {store.name}")
+    jv = jvm_read(store, tag)
+    for n in ARRAYS:
+        check(f"{tag}: zarr-java opens and reads {n} by path", not isinstance(jv[n], str),
+              jv[n] if isinstance(jv[n], str) else f"ma2 {jv[n][1]}, shape {jv[n][0].shape}")
+    if any(isinstance(jv[n], str) for n in ARRAYS):
+        return None
+    g = zarr.open_group(str(store), mode="r")
+    py = g["headers_raw_uint8"][...]
+    jh = jv["headers_raw_uint8"][0]
+    check(f"{tag}: (a) dtype uint8 and shape (*grid,240)", py.dtype == np.uint8 and py.shape[-1] == 240 and jh.shape == py.shape, f"{py.shape}")
+    check(f"{tag}: (a) zarr-java bytes == zarr-python bytes", jh.tobytes() == py.tobytes() and np.array_equal(jh, py), f"{py.nbytes} B")
+    for n in ("trace_mask", "inline", "crossline"):
+        check(f"{tag}: (a) {n} identical across readers", np.array_equal(jv[n][0], g[n][...]))
+    mask = jv["trace_mask"][0].astype(bool)
+    il, xl = jv["inline"][0], jv["crossline"][0]
+    src = source_headers(sgy)
+    live = list(zip(*np.nonzero(mask)))
+    mapped = {(int(il[i]), int(xl[j])): (i, j) for i, j in live}
+    check(f"{tag}: (c) live cells == source traces, one-to-one", len(live) == len(src) and set(mapped) == set(src),
+          f"live {len(live)}, source {len(src)}, padding {mask.size - len(live)}")
+    bad = [k for k, (i, j) in mapped.items() if k in src and not np.array_equal(jh[i, j], src[k])]
+    check(f"{tag}: (b) every live row == source trace header bytes", not bad and len(mapped) == len(src),
+          f"{len(mapped)} rows x 240 B compared, {len(bad)} differ")
+    distinct = len({jh[i, j].tobytes() for i, j in live})
+    check(f"{tag}: rows vary per trace (not vacuous)", distinct > 1, f"{distinct} distinct of {len(live)}")
+    return jh, live
+
+if __name__ == "__main__":
+    post = leg("post", HERE / "post.sgy", HERE / "post.mdio")
+    leg("sparse", HERE / "sparse.sgy", HERE / "sparse.mdio")
+    # Non-vacuity: flip one byte of one live row in a COPY, through zarr-python.
+    jh0, live = post
+    copy = HERE / "post_flipped.mdio"
+    shutil.rmtree(copy, ignore_errors=True)
+    shutil.copytree(HERE / "post.mdio", copy)
+    (i, j), byte = live[len(live) // 2], 17
+    arr = zarr.open_array(str(copy / "headers_raw_uint8"), mode="r+")
+    row = arr[i, j, :]
+    row[byte] ^= 0xFF
+    arr[i, j, :] = row
+    jv = jvm_read(copy, "flipped")
+    jh1 = jv["headers_raw_uint8"][0]
+    diff = np.argwhere(jh1 != jh0)
+    check("control: JVM sees the flip at exactly that cell and byte",
+          diff.tolist() == [[int(i), int(j), byte]] and jh1[i, j, byte] == (jh0[i, j, byte] ^ 0xFF),
+          f"differing positions {diff.tolist()}")
+    shutil.rmtree(copy)
+    n_fail = sum(not ok for _, ok in checks)
+    print(f"{len(checks)} checks, {n_fail} failed")
+    sys.exit(1 if n_fail else 0)
+```
