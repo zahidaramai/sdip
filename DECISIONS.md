@@ -5836,3 +5836,37 @@ In every case G3 told the truth. Nothing passed falsely.
 - D71 and D72 open, and **no fix is made**: changing what `export` writes, or what G3 accepts,
   is the owner's call under §9. Asked through GeoSuite.
 - No `src/`, gate or pin change.
+
+---
+
+## D-0118 — 2026-10-31 — D71 and D72 built and closed (P19); G7's cell-0 assumption opened as D73
+
+**Authority.** The owner, in session: "Build both", answering the D71/D72 question. GeoSuite's
+ruling of the same day asked for the same.
+
+**Registered before the build** at `d51f0d1`. Built at `cbb4f2d`. Tests updated at `5cd6207`.
+
+**What changed**, every part additive:
+- `export` writes back the stored raw binary header (D71).
+- `ingest` writes `source_trace_ordinal`, declared in the marker.
+- `export` restores source order after verifying upstream's grid order record by record (D72).
+- A store without the array exports in grid order, with G3 `ROUNDTRIP-SCOPED: grid order` when
+  order is the only difference.
+- Plane 5 has an ordinal leg.
+- G7 has two controls (18 in all).
+- Schema v0 has `roundtrip.restored`.
+- The ceiling tripwire is at 18. The base stays measured at 16.
+
+**P19 result.**
+- 23 of 23 eligible mutants round-trip byte-identically with closure PASS.
+- B1–B3 certify EQUIVALENT.
+- The pre-D72 store is scoped `grid order`.
+- Both new controls fail exactly their gates on every store.
+- TensorStore crosses the new array byte-identically.
+
+**Deviation.** Padding in the new array is 0, not the registered −1, because Plane 5 holds
+integer padding to 0. The mask decides liveness. No criterion is affected.
+
+**Found, not fixed: D73.** Five existing G7 controls write grid cell 0. On a correct store whose
+cell 0 is padding, they miss or mis-fire, and the store certifies NON-EQUIVALENT: 3 of 87
+mutants, identical under the old code. A ruling is asked, because it changes G7's controls.

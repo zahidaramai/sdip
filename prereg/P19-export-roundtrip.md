@@ -82,3 +82,49 @@ order, it is stopped and asked about. `main` does not move until all five criter
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-10-31 |
+| Run commit | `5cd6207`, clean tree (build `cbb4f2d`). Registration at `d51f0d1`, before the build |
+| Receipt | `prereg/P19-receipt-2026-10-31.json`: every certificate summary, population C's report, the D73 diagnosis |
+| Verdict | **All five pass criteria hold.** Criterion 5 (full default suite) is the gate run on the records commit |
+
+### Measured against the pass criteria
+
+| # | Criterion | Result |
+|---|---|---|
+| 1 | 23 of 24 mutants: G3 PASS, closure PASS | **23 of 23** G3 PASS byte-identical, closure PASS. `mutant_022` is refused by ingest (its declared trace length disagrees with the file), as registered: not counted |
+| 2 | B1, B2, B3: G3 PASS, closure PASS, EQUIVALENT | **3 of 3.** B1 restored binary-header bytes 307–400; B2 moved 30 traces; B3 both |
+| 3 | C: `ROUNDTRIP-SCOPED`, reason `grid order` | **Yes.** A store written by `b0ca755`, exported by the new code: status `ROUNDTRIP-SCOPED`, `non_conformance: "grid order"`, `trace_order: "grid"`. Export exits 1, as for every non-PASS G3 |
+| 4 | the new control fails exactly its gates; existing controls as before | **Yes.** `swapped_source_ordinals` (G2e) and `deleted_source_order` (G2c) PASS on all 26 certified stores. Existing controls: unchanged from the old code (see D73 below) |
+| 5 | full default suite | the gate on the records commit |
+
+Verdicts on population A: **20 EQUIVALENT**, 3 NON-EQUIVALENT (`mutant_039`, `_058`, `_080`).
+Those three pass G3 and closure. They fail G7 for a reason this change did not introduce:
+
+### A finding outside the registration: G7's controls assume grid cell 0 is live (D73)
+
+On `mutant_039` the five controls `flipped_header_byte`, `flipped_sample_bit`,
+`flipped_raw_header_byte`, `transposed_traces` and `corrupted_cdp_coordinate` fail. They fail
+identically under the **old** code (`b0ca755`, re-certified). The store is a correct 6×6 grid,
+with 30 live cells and 6 padding cells, and **cell `(0, 0)` is padding**. Each of those
+controls writes cell `(0, …, 0)`, so it corrupts padding:
+- one control is caught by the padding check (G2e) instead of its declared gate;
+- the rest are caught by nothing.
+
+So G7 fails, and a correct store certifies NON-EQUIVALENT. That is D-0088's "a gate that fails
+a correct store". Opened as **D73**. Not fixed: it changes G7 controls, which is the owner's
+call (§9).
+
+### Deviations
+
+1. **Padding fill 0, not the registered −1.** Plane 5's SP12 padding check holds every integer
+   array's padding to 0, so the array follows the store's convention, and `trace_mask` decides
+   which cells are live, as for every integer array. Export reads live cells from the mask. No
+   pass criterion is affected.
+2. **The wall-clock ceiling's tripwire** now acknowledges 18 controls. The base stays measured
+   at 16, and the parametric term prices the two new controls at 44.92 s each.
+3. **Three tests pinned exact lists** the change extends (Plane 5's checks on F3, P5's duplicate
+   case, P4's fixture guard). In P4's case the new array was added to the crossing, and
+   TensorStore reads it byte-identically.

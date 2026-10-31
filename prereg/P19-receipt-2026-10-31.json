@@ -1,0 +1,806 @@
+{
+ "probe": "P19",
+ "debts": "D71, D72; finding opens D73",
+ "run_date": "2026-10-31",
+ "registration_commit": "d51f0d1",
+ "build_commit": "cbb4f2d",
+ "run_commit": "5cd6207 (clean tree)",
+ "old_code_for_C": "b0ca755 (main checkout venv)",
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "host": "macOS arm64, CPython 3.12.13",
+ "results": {
+  "A": {
+   "mutant_000": {
+    "exit": 0,
+    "stderr_tail": "0,  1.65block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.65block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.23block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.23block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      368
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_009": {
+    "exit": 0,
+    "stderr_tail": "0,  1.66block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.66block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.23block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.23block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 13
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_010": {
+    "exit": 0,
+    "stderr_tail": "0,  1.52block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.52block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.17block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.17block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      231
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_012": {
+    "exit": 0,
+    "stderr_tail": "0,  1.49block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.49block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.20block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.20block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      66
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_013": {
+    "exit": 0,
+    "stderr_tail": "0,  1.58block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.58block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.14block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.14block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      264,
+      400
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_016": {
+    "exit": 0,
+    "stderr_tail": "0,  1.57block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.57block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.13block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.13block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 4
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_019": {
+    "exit": 0,
+    "stderr_tail": "0,  1.50block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.50block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.16block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.16block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 15
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_020": {
+    "exit": 0,
+    "stderr_tail": "0,  1.57block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.57block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.20block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.20block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      278
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_022": {
+    "exit": 1,
+    "stderr_tail": "sdip: UntrustedInputError: source carries 4640 bytes of trace data, which is not a whole number of 368-byte traces (240 header + 32 samples x 4 bytes, format code 1). The declared trace length and the file disagree, so no byte offset in this file can be trusted.\n"
+   },
+   "mutant_026": {
+    "exit": 0,
+    "stderr_tail": "0,  1.61block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.61block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.17block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.17block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 4
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_029": {
+    "exit": 0,
+    "stderr_tail": "0,  1.57block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.57block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.13block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.13block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 18
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_031": {
+    "exit": 0,
+    "stderr_tail": "0,  1.57block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.57block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.13block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.13block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      227
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_036": {
+    "exit": 0,
+    "stderr_tail": "0,  1.48block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.48block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.11block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.11block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 6
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_039": {
+    "exit": 1,
+    "stderr_tail": "0,  1.56block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.56block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.12block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.12block/s]\n",
+    "verdict": "NON-EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 12
+    },
+    "closure": "PASS",
+    "g7": "FAIL",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": [
+     "flipped_header_byte",
+     "flipped_sample_bit",
+     "flipped_raw_header_byte",
+     "transposed_traces",
+     "corrupted_cdp_coordinate"
+    ]
+   },
+   "mutant_043": {
+    "exit": 0,
+    "stderr_tail": "0,  1.56s/block]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:01<00:00,  1.56s/block]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:01<00:00,  1.63s/block]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:01<00:00,  1.63s/block]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      279
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_047": {
+    "exit": 0,
+    "stderr_tail": "0,  1.63block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.63block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.17block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.17block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 9
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_055": {
+    "exit": 0,
+    "stderr_tail": "0,  1.67block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.67block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.21block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.21block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      390
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_058": {
+    "exit": 1,
+    "stderr_tail": "0,  1.43block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.43block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.04block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.04block/s]\n",
+    "verdict": "NON-EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 10
+    },
+    "closure": "PASS",
+    "g7": "FAIL",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": [
+     "flipped_header_byte",
+     "flipped_sample_bit",
+     "flipped_raw_header_byte",
+     "transposed_traces",
+     "corrupted_cdp_coordinate"
+    ]
+   },
+   "mutant_065": {
+    "exit": 0,
+    "stderr_tail": "0,  1.64block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.64block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.21block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.21block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      124
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_066": {
+    "exit": 0,
+    "stderr_tail": "0,  1.72block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.72block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.24block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.24block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      266
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_071": {
+    "exit": 0,
+    "stderr_tail": "0,  1.58block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.58block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.17block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.17block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      249
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_080": {
+    "exit": 1,
+    "stderr_tail": "0,  1.62block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.62block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.18block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.18block/s]\n",
+    "verdict": "NON-EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 6
+    },
+    "closure": "PASS",
+    "g7": "FAIL",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": [
+     "flipped_header_byte",
+     "flipped_sample_bit",
+     "flipped_raw_header_byte",
+     "transposed_traces",
+     "corrupted_cdp_coordinate"
+    ]
+   },
+   "mutant_083": {
+    "exit": 0,
+    "stderr_tail": "0,  1.80block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.80block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.25block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.25block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      97
+     ],
+     "trace_order": "source",
+     "traces_moved": 20
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "mutant_086": {
+    "exit": 0,
+    "stderr_tail": "0,  1.74block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.74block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.29block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.29block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 25
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   }
+  },
+  "B": {
+   "B1": {
+    "exit": 0,
+    "stderr_tail": "0,  1.75block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.75block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.23block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.23block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      307,
+      308,
+      309,
+      310,
+      311,
+      312,
+      313,
+      314,
+      315,
+      316,
+      317,
+      318,
+      319,
+      320,
+      321,
+      322,
+      323,
+      324,
+      325,
+      326,
+      327,
+      328,
+      329,
+      330,
+      331,
+      332,
+      333,
+      334,
+      335,
+      336,
+      337,
+      338,
+      339,
+      340,
+      341,
+      342,
+      343,
+      344,
+      345,
+      346,
+      347,
+      348,
+      349,
+      350,
+      351,
+      352,
+      353,
+      354,
+      355,
+      356,
+      357,
+      358,
+      359,
+      360,
+      361,
+      362,
+      363,
+      364,
+      365,
+      366,
+      367,
+      368,
+      369,
+      370,
+      371,
+      372,
+      373,
+      374,
+      375,
+      376,
+      377,
+      378,
+      379,
+      380,
+      381,
+      382,
+      383,
+      384,
+      385,
+      386,
+      387,
+      388,
+      389,
+      390,
+      391,
+      392,
+      393,
+      394,
+      395,
+      396,
+      397,
+      398,
+      399,
+      400
+     ],
+     "trace_order": "source",
+     "traces_moved": 0
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "B2": {
+    "exit": 0,
+    "stderr_tail": "0,  1.70block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.70block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.23block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.23block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "source",
+     "traces_moved": 30
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   },
+   "B3": {
+    "exit": 0,
+    "stderr_tail": "0,  1.61block/s]\nScanning SEG-Y for geometry attributes: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.61block/s]\n\nIngesting traces:   0%|          | 0/1 [00:00<?, ?block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.15block/s]\nIngesting traces: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00,  1.15block/s]\n",
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "byte_identical": true,
+    "restored": {
+     "binary_header_bytes": [
+      307,
+      308,
+      309,
+      310,
+      311,
+      312,
+      313,
+      314,
+      315,
+      316,
+      317,
+      318,
+      319,
+      320,
+      321,
+      322,
+      323,
+      324,
+      325,
+      326,
+      327,
+      328,
+      329,
+      330,
+      331,
+      332,
+      333,
+      334,
+      335,
+      336,
+      337,
+      338,
+      339,
+      340,
+      341,
+      342,
+      343,
+      344,
+      345,
+      346,
+      347,
+      348,
+      349,
+      350,
+      351,
+      352,
+      353,
+      354,
+      355,
+      356,
+      357,
+      358,
+      359,
+      360,
+      361,
+      362,
+      363,
+      364,
+      365,
+      366,
+      367,
+      368,
+      369,
+      370,
+      371,
+      372,
+      373,
+      374,
+      375,
+      376,
+      377,
+      378,
+      379,
+      380,
+      381,
+      382,
+      383,
+      384,
+      385,
+      386,
+      387,
+      388,
+      389,
+      390,
+      391,
+      392,
+      393,
+      394,
+      395,
+      396,
+      397,
+      398,
+      399,
+      400
+     ],
+     "trace_order": "source",
+     "traces_moved": 30
+    },
+    "closure": "PASS",
+    "g7": "PASS",
+    "new_controls": {
+     "swapped_source_ordinals": "PASS",
+     "deleted_source_order": "PASS"
+    },
+    "controls_failed": []
+   }
+  },
+  "C": {
+   "old_ingest_exit": 0,
+   "export_exit": 1,
+   "old_store_has_ordinal": false,
+   "report": {
+    "byte_identical": false,
+    "declaration": {
+     "recorded_sha256": "5bc11b36f001b01f3529afde18e989b3df846d7d03d27f4b387e3a37eace6848",
+     "schema": "sdip.survey-declaration/1",
+     "sha256": "5bc11b36f001b01f3529afde18e989b3df846d7d03d27f4b387e3a37eace6848",
+     "status": "BOUND",
+     "store_template": "PostStack3DTime",
+     "summary": "revision 1, template PostStack3DTime, no override"
+    },
+    "export_bytes": 14640,
+    "export_sha256": "be4ce4375799b8ebc670526229581e73d995f03a8a3bb308141f41fc91bdd762",
+    "first_difference": {
+     "expected": 30,
+     "kind": "byte",
+     "observed": 1,
+     "offset": 3603,
+     "region": "trace data, 3 bytes past the first trace"
+    },
+    "performed": true,
+    "restored": {
+     "binary_header_bytes": [],
+     "trace_order": "grid"
+    },
+    "scoped": {
+     "justification": "The store was written before SDIP recorded source trace order (D72), so export writes upstream's grid order. The export holds the source's file headers and exactly the source's trace records, byte for byte, in a different order.",
+     "non_conformance": "grid order"
+    },
+    "status": "ROUNDTRIP-SCOPED"
+   }
+  }
+ },
+ "d73_diagnosis": {
+  "mutant_039_old_code_b0ca755": {
+   "verdict": "NON-EQUIVALENT",
+   "failed_controls": [
+    "flipped_header_byte",
+    "flipped_sample_bit",
+    "flipped_raw_header_byte",
+    "transposed_traces",
+    "corrupted_cdp_coordinate"
+   ],
+   "store_grid": [
+    6,
+    6
+   ],
+   "cell_0_live": false,
+   "live": 30,
+   "padding": 6
+  },
+  "cause": "the five controls write grid cell (0,...,0); in this correct store that cell is padding"
+ }
+}

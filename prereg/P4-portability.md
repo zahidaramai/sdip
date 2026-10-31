@@ -944,3 +944,18 @@ if __name__ == "__main__":
     print(f"{len(checks)} checks, {n_fail} failed")
     sys.exit(1 if n_fail else 0)
 ```
+
+---
+
+## Addendum — appended 2026-10-31, a new core array crosses (D72, P19)
+
+**SP10.** Nothing above is edited. Since D72, every store `sdip ingest` writes carries
+`source_trace_ordinal`: grid-shaped, `int64` (the plain string `"int64"`, core-spec), the
+source position of each live cell's trace. It joins `CORE_SPEC_ARRAYS` in
+`tests/integration/test_p4_crossimpl.py`, and the fixture guard's array list grows by one.
+
+**Re-measured, not inherited:**
+`test_core_spec_arrays_cross_the_boundary_byte_identically[source_trace_ordinal]` **PASSES**
+through TensorStore 0.1.85 at `5cd6207`. The extension set is unchanged (`headers`,
+`segy_file_header`). zarr-java was not re-run for this array. Its leg 3 (2026-10-31) read core
+arrays by path, and this array is core-spec, but that is an inference, not a measurement.

@@ -2885,3 +2885,53 @@ G3 fails: **12 of 87** converted P18 mutants. Plane 5 passes on the store. Wheth
 records source order, and whether export can or should restore it, is unmeasured. Real surveys
 are often written out of grid order (by acquisition sequence), so this may reach real files.
 **Not fixed, pending a ruling.**
+
+---
+
+## D71 — CLOSED 2026-10-31 — export writes the stored raw binary header back
+
+- **Closed by:** `DECISIONS.md` D-0118 · **Probe:** P19, passed · **Authority:** owner, "Build both"
+
+After upstream writes the file, `sdip export` writes the store's `sdipRawBinaryHeader` (the
+source's 400 bytes, verified by Plane 2 and authoritative under §4.3) over bytes 3201–3600. The
+round-trip block records which bytes upstream's encoding had changed. Measured: the 12 P18
+mutants with non-zero unassigned bytes, and B1 (bytes 307–400 all non-zero), now round-trip
+byte-identically.
+
+---
+
+## D72 — CLOSED 2026-10-31 — ingest records the source trace order, and export restores it
+
+- **Closed by:** `DECISIONS.md` D-0118 · **Probe:** P19, passed · **Authority:** owner, "Build both"
+
+Ingest writes `source_trace_ordinal` (grid-shaped `int64`, padding 0, `trace_mask` decides
+liveness), declared in the provenance marker. Export checks that upstream wrote one record per
+live cell in grid order, then rewrites the records in source order. Plane 5 verifies the
+ordinals against the source; two G7 controls guard them. Measured:
+- the 12 P18 out-of-order mutants and B2/B3 round-trip byte-identically (B2: 30 traces moved);
+- a store written before the array existed exports in grid order, with G3
+  `ROUNDTRIP-SCOPED: grid order`.
+
+**Consumers:** new stores carry one more core array, so their content digest differs from a
+pre-D72 store of the same source. The digest scheme is unchanged.
+
+---
+
+## D73 — G7's controls corrupt grid cell 0, which can be padding: a correct store fails G7
+
+- **Status:** `OPEN` (raised 2026-10-31) · **Found by:** P19 · **Decision:** `DECISIONS.md` D-0118
+- **Needs:** an owner ruling (§9: a change to G7's controls)
+
+`flipped_header_byte`, `flipped_sample_bit`, `flipped_raw_header_byte`, `transposed_traces` and
+`corrupted_cdp_coordinate` write grid cell `(0, …, 0)`. When that cell is padding, they corrupt
+padding:
+- `flipped_header_byte` and `flipped_raw_header_byte` are caught by the padding check (G2e)
+  instead of G2c;
+- the other three are caught by nothing.
+
+G7 fails, and **a correct store certifies NON-EQUIVALENT**. Measured: 3 of the 87 converted P18
+mutants (`039`, `058`, `080`), identically under the code before and after P19. Example: a 6×6
+grid, 30 live, 6 padding, with `(0, 0)` padding. Any real survey whose first grid corner is
+empty would hit this. **Candidate fix:** each such control targets the first **live** cell
+(from `trace_mask`) instead of cell 0, with the five controls re-measured on a store whose cell
+0 is padding. Not built pending the ruling.
