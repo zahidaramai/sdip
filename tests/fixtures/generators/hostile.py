@@ -752,6 +752,84 @@ CLASSES: Final[tuple[str, ...]] = (
 nobody measured."""
 
 
+# --- variable extended textual headers (probe P16, D8 residual 2) -------------------
+
+END_STANZA: Final[str] = "((SEG: EndText))"
+"""The record that ends a variable run of extended textual headers (SEG-Y rev 1 and later)."""
+
+
+def _extended_record(line: str) -> bytes:
+    """One 3200-byte EBCDIC extended textual record carrying ``line`` first, blank-padded."""
+    return line.ljust(SEGY_TEXTUAL_HEADER_BYTES).encode("cp037")
+
+
+def _variable_extended(root: Path, name: str, records: tuple[bytes, ...]) -> Path:
+    """Bytes 3505-3506 = -1, and ``records`` inserted between byte 3600 and the first trace.
+
+    Built byte by byte: the pinned ``segy`` writer cannot produce a variable layout. The trace
+    bytes are the well-formed file's, unchanged.
+    """
+
+    def mutate(payload: bytearray) -> None:
+        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_EXT_TEXT_HEADERS, -1)
+        payload[FILE_HEADER_BYTES:FILE_HEADER_BYTES] = b"".join(records)
+
+    return _corrupt(root, f"{name}.sgy", mutate)
+
+
+def _variable_extended_one_stanza(root: Path) -> Path:
+    return _variable_extended(root, "variable_extended_one_stanza", (_extended_record(END_STANZA),))
+
+
+def _variable_extended_two_records(root: Path) -> Path:
+    return _variable_extended(
+        root,
+        "variable_extended_two_records",
+        (_extended_record("SDIP P16 EXTENDED TEXTUAL RECORD 1 OF 2"), _extended_record(END_STANZA)),
+    )
+
+
+def _variable_extended_no_records(root: Path) -> Path:
+    return _variable_extended(root, "variable_extended_no_records", ())
+
+
+def _variable_extended_unterminated(root: Path) -> Path:
+    return _variable_extended(
+        root,
+        "variable_extended_unterminated",
+        (_extended_record("SDIP P16 EXTENDED TEXTUAL RECORD - NO END STANZA FOLLOWS"),),
+    )
+
+
+VARIABLE_EXTENDED: Final[tuple[HostileFixture, ...]] = (
+    HostileFixture(
+        "variable_extended_one_stanza",
+        "extended_headers",
+        "Bytes 3505-3506 = -1 and one record, the end stanza, before the first trace.",
+        _variable_extended_one_stanza,
+    ),
+    HostileFixture(
+        "variable_extended_two_records",
+        "extended_headers",
+        "Bytes 3505-3506 = -1, an ordinary record, then the end stanza.",
+        _variable_extended_two_records,
+    ),
+    HostileFixture(
+        "variable_extended_no_records",
+        "extended_headers",
+        "Bytes 3505-3506 = -1 and no record: the first trace sits at byte 3600.",
+        _variable_extended_no_records,
+    ),
+    HostileFixture(
+        "variable_extended_unterminated",
+        "extended_headers",
+        "Bytes 3505-3506 = -1 and one ordinary record, with no end stanza anywhere.",
+        _variable_extended_unterminated,
+    ),
+)
+"""Probe P16's members. Not in :data:`CORPUS` until P16's result says what they do."""
+
+
 # --- pairs: two hostilities in one file (probe P15, prereg/P15-hostile-pairs.md) --------
 
 TRACE_LAYER: Final[int] = 0
