@@ -3085,3 +3085,32 @@ D71/D72 causes that hit 24 of P18's 87 converted mutants.
 
 **Still open on D8:** coverage-guided fuzzing; four-way combinations; x86-64 and Windows.
 **D8 stays OPEN.**
+
+---
+
+## D23 — CLOSED 2026-11-01 — an accepted, documented cost
+
+- **Closes:** D23 above (**SP10**) · **Decision:** `DECISIONS.md` D-0124 · **Ruling:** GeoSuite
+  D-241 under D-222, 2026-11-01 (asked in D-0123)
+- **Revisit:** if a registered run breaches G5's ceiling, or a consumer's survey makes the chain
+  impractical
+
+G7 runs its controls serially, and each one re-runs the planes it audits. That costs at most
+44.92 s per control at survey scale (P10 Amendment B), about 809 s at 18 controls (derived),
+or 62 to 65 % of a full `certify`. The hazard D23 named, a wall clock that gets a gate switched
+off, is held by the parametric ceiling (D43): 1,350 s at 16 controls plus 44.92 s per added
+control. No run has breached it. G7 stays serial, so its peak memory is not multiplied.
+
+---
+
+## D31 — CLOSED 2026-11-01 — held by two permanent tests
+
+- **Closes:** D31 above (**SP10**) · **Decision:** `DECISIONS.md` D-0124 · **Ruling:** GeoSuite
+  D-241 under D-222, 2026-11-01 (asked in D-0123)
+- **Revisit:** at the next `segy` pin bump
+
+The hazard is a property of the pinned `segy` 0.6.0 transform, so it cannot be removed, only
+held. Two default-suite tests in `tests/unit/test_p2_ibm32.py` hold it:
+`test_the_overflow_clamp_target_is_itself_a_valid_ibm_word` pins that `0x61100000` decodes to
+`inf` and round-trips unchanged, and `test_the_overflow_warning_is_recorded_and_not_suppressed`
+fails any P2 sweep that never reaches the overflow regime. The tests stay.

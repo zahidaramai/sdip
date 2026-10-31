@@ -5985,3 +5985,17 @@ is a property of the pinned `segy` 0.6.0 transform. **Recommendation:** close D3
 those tests, revisited at the next `segy` pin bump. The tests stay, so closing removes nothing.
 The alternative is to keep it OPEN as a permanent marker, which leaves "open" meaning
 "remembered" rather than "work to do".
+
+---
+
+## D-0124 — 2026-11-01 — D23 and D31 closed as recommended
+
+**Ruling** (GeoSuite D-241 under D-222, answering D-0123): both as recommended.
+
+- **D23** closes as an accepted, documented cost. G7 stays serial, and the hazard is held by the
+  parametric ceiling (D43). Revisit only on a G5 breach or a consumer chain that is impractical.
+- **D31** closes as held by the two permanent tests in `tests/unit/test_p2_ibm32.py`. Revisit
+  at the next `segy` pin bump.
+
+Recorded in `OPEN_DEBTS.md` as D23 CLOSED and D31 CLOSED. No gate, criterion, test or code
+changed.
