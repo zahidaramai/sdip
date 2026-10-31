@@ -101,12 +101,23 @@ def _raised_in(exc: BaseException) -> str:
     frames = traceback.extract_tb(exc.__traceback__)
     if not frames:
         return "unknown"
-    parts = Path(frames[-1].filename).parts
-    if "site-packages" in parts:
-        return parts[parts.index("site-packages") + 1]
-    if "src" in parts:
-        return parts[parts.index("src") + 1]
-    return Path(frames[-1].filename).stem
+    return _package_of(frames[-1].filename)
+
+
+def _package_of(filename: str) -> str:
+    """The top-level package a source file belongs to, read from its path.
+
+    The **last** ``site-packages`` or ``src`` is the one that holds the package. P17 found
+    the first one wrong: a checkout at ``/src`` puts SDIP at ``/src/src/sdip/...``, and the
+    first ``src`` named the package ``src`` on 28 corpus members (DECISIONS.md D-0116).
+    """
+    parts = Path(filename).parts
+    for anchor in ("site-packages", "src"):
+        if anchor in parts:
+            last = len(parts) - 1 - parts[::-1].index(anchor)
+            if last + 1 < len(parts):
+                return parts[last + 1]
+    return Path(filename).stem
 
 
 def _run_api(source: Path, output: Path) -> dict[str, Any]:
