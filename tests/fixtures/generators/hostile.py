@@ -49,6 +49,7 @@ from __future__ import annotations
 import struct
 from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import combinations
 from pathlib import Path
 from typing import Final
 
@@ -236,167 +237,205 @@ def _one_byte_short_of_file_headers(root: Path) -> Path:
 # --- truncated --------------------------------------------------------------------
 
 
-def _file_headers_only(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        del payload[FILE_HEADER_BYTES:]
+def _mutate_file_headers_only(payload: bytearray) -> None:
+    del payload[FILE_HEADER_BYTES:]
 
-    return _corrupt(root, "file_headers_only.sgy", mutate)
+
+def _file_headers_only(root: Path) -> Path:
+    return _corrupt(root, "file_headers_only.sgy", _mutate_file_headers_only)
+
+
+def _mutate_truncated_mid_trace_header(payload: bytearray) -> None:
+    del payload[FILE_HEADER_BYTES + SEGY_TRACE_HEADER_BYTES // 2 :]
 
 
 def _truncated_mid_trace_header(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        del payload[FILE_HEADER_BYTES + SEGY_TRACE_HEADER_BYTES // 2 :]
+    return _corrupt(root, "truncated_mid_trace_header.sgy", _mutate_truncated_mid_trace_header)
 
-    return _corrupt(root, "truncated_mid_trace_header.sgy", mutate)
+
+def _mutate_truncated_mid_sample_block(payload: bytearray) -> None:
+    stride = _trace_stride(payload)
+    del payload[FILE_HEADER_BYTES + stride + SEGY_TRACE_HEADER_BYTES + 6 :]
 
 
 def _truncated_mid_sample_block(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        stride = _trace_stride(payload)
-        del payload[FILE_HEADER_BYTES + stride + SEGY_TRACE_HEADER_BYTES + 6 :]
+    return _corrupt(root, "truncated_mid_sample_block.sgy", _mutate_truncated_mid_sample_block)
 
-    return _corrupt(root, "truncated_mid_sample_block.sgy", mutate)
+
+def _mutate_truncated_mid_sample_word(payload: bytearray) -> None:
+    del payload[len(payload) - 2 :]
 
 
 def _truncated_mid_sample_word(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        del payload[len(payload) - 2 :]
-
-    return _corrupt(root, "truncated_mid_sample_word.sgy", mutate)
+    return _corrupt(root, "truncated_mid_sample_word.sgy", _mutate_truncated_mid_sample_word)
 
 
 # --- declared_length --------------------------------------------------------------
 
 
-def _declared_samples_exceed_file(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLES_PER_TRACE, INT16_MAX)
+def _mutate_declared_samples_exceed_file(payload: bytearray) -> None:
+    _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLES_PER_TRACE, INT16_MAX)
 
-    return _corrupt(root, "declared_samples_exceed_file.sgy", mutate)
+
+def _declared_samples_exceed_file(root: Path) -> Path:
+    return _corrupt(root, "declared_samples_exceed_file.sgy", _mutate_declared_samples_exceed_file)
+
+
+def _mutate_declared_samples_exceed_file_unsigned(payload: bytearray) -> None:
+    _put_u16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLES_PER_TRACE, 65535)
 
 
 def _declared_samples_exceed_file_unsigned(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_u16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLES_PER_TRACE, 65535)
+    return _corrupt(
+        root,
+        "declared_samples_exceed_file_unsigned.sgy",
+        _mutate_declared_samples_exceed_file_unsigned,
+    )
 
-    return _corrupt(root, "declared_samples_exceed_file_unsigned.sgy", mutate)
+
+def _mutate_declared_trace_samples_exceed_file(payload: bytearray) -> None:
+    stride = _trace_stride(payload)
+    count = (len(payload) - FILE_HEADER_BYTES) // stride
+    for trace in range(count):
+        _put_i16(payload, FILE_HEADER_BYTES + trace * stride + TRC_SAMPLES, INT16_MAX)
 
 
 def _declared_trace_samples_exceed_file(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        stride = _trace_stride(payload)
-        count = (len(payload) - FILE_HEADER_BYTES) // stride
-        for trace in range(count):
-            _put_i16(payload, FILE_HEADER_BYTES + trace * stride + TRC_SAMPLES, INT16_MAX)
+    return _corrupt(
+        root, "declared_trace_samples_exceed_file.sgy", _mutate_declared_trace_samples_exceed_file
+    )
 
-    return _corrupt(root, "declared_trace_samples_exceed_file.sgy", mutate)
+
+def _mutate_declared_extended_headers_exceed_file(payload: bytearray) -> None:
+    _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_EXT_TEXT_HEADERS, INT16_MAX)
 
 
 def _declared_extended_headers_exceed_file(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_EXT_TEXT_HEADERS, INT16_MAX)
-
-    return _corrupt(root, "declared_extended_headers_exceed_file.sgy", mutate)
+    return _corrupt(
+        root,
+        "declared_extended_headers_exceed_file.sgy",
+        _mutate_declared_extended_headers_exceed_file,
+    )
 
 
 # --- count_field ------------------------------------------------------------------
 
 
-def _samples_per_trace_zero(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLES_PER_TRACE, 0)
+def _mutate_samples_per_trace_zero(payload: bytearray) -> None:
+    _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLES_PER_TRACE, 0)
 
-    return _corrupt(root, "samples_per_trace_zero.sgy", mutate)
+
+def _samples_per_trace_zero(root: Path) -> Path:
+    return _corrupt(root, "samples_per_trace_zero.sgy", _mutate_samples_per_trace_zero)
+
+
+def _mutate_samples_per_trace_negative(payload: bytearray) -> None:
+    _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLES_PER_TRACE, -1)
 
 
 def _samples_per_trace_negative(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLES_PER_TRACE, -1)
+    return _corrupt(root, "samples_per_trace_negative.sgy", _mutate_samples_per_trace_negative)
 
-    return _corrupt(root, "samples_per_trace_negative.sgy", mutate)
+
+def _mutate_trace_samples_zero(payload: bytearray) -> None:
+    stride = _trace_stride(payload)
+    count = (len(payload) - FILE_HEADER_BYTES) // stride
+    for trace in range(count):
+        _put_i16(payload, FILE_HEADER_BYTES + trace * stride + TRC_SAMPLES, 0)
 
 
 def _trace_samples_zero(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        stride = _trace_stride(payload)
-        count = (len(payload) - FILE_HEADER_BYTES) // stride
-        for trace in range(count):
-            _put_i16(payload, FILE_HEADER_BYTES + trace * stride + TRC_SAMPLES, 0)
+    return _corrupt(root, "trace_samples_zero.sgy", _mutate_trace_samples_zero)
 
-    return _corrupt(root, "trace_samples_zero.sgy", mutate)
+
+def _mutate_trace_samples_negative(payload: bytearray) -> None:
+    stride = _trace_stride(payload)
+    count = (len(payload) - FILE_HEADER_BYTES) // stride
+    for trace in range(count):
+        _put_i16(payload, FILE_HEADER_BYTES + trace * stride + TRC_SAMPLES, -1)
 
 
 def _trace_samples_negative(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        stride = _trace_stride(payload)
-        count = (len(payload) - FILE_HEADER_BYTES) // stride
-        for trace in range(count):
-            _put_i16(payload, FILE_HEADER_BYTES + trace * stride + TRC_SAMPLES, -1)
-
-    return _corrupt(root, "trace_samples_negative.sgy", mutate)
+    return _corrupt(root, "trace_samples_negative.sgy", _mutate_trace_samples_negative)
 
 
 # --- sample_format ----------------------------------------------------------------
 
 
-def _sample_format_undefined(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_FORMAT, 99)
+def _mutate_sample_format_undefined(payload: bytearray) -> None:
+    _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_FORMAT, 99)
 
-    return _corrupt(root, "sample_format_undefined.sgy", mutate)
+
+def _sample_format_undefined(root: Path) -> Path:
+    return _corrupt(root, "sample_format_undefined.sgy", _mutate_sample_format_undefined)
+
+
+def _mutate_sample_format_zero(payload: bytearray) -> None:
+    _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_FORMAT, 0)
 
 
 def _sample_format_zero(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_FORMAT, 0)
+    return _corrupt(root, "sample_format_zero.sgy", _mutate_sample_format_zero)
 
-    return _corrupt(root, "sample_format_zero.sgy", mutate)
+
+def _mutate_sample_format_negative(payload: bytearray) -> None:
+    _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_FORMAT, -32768)
 
 
 def _sample_format_negative(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_FORMAT, -32768)
+    return _corrupt(root, "sample_format_negative.sgy", _mutate_sample_format_negative)
 
-    return _corrupt(root, "sample_format_negative.sgy", mutate)
+
+def _mutate_revision_undefined(payload: bytearray) -> None:
+    _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_REVISION, INT16_MAX)
 
 
 def _revision_undefined(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_REVISION, INT16_MAX)
-
-    return _corrupt(root, "revision_undefined.sgy", mutate)
+    return _corrupt(root, "revision_undefined.sgy", _mutate_revision_undefined)
 
 
 # --- sample_interval --------------------------------------------------------------
 
 
-def _sample_interval_zero(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_INTERVAL, 0)
+def _mutate_sample_interval_zero(payload: bytearray) -> None:
+    _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_INTERVAL, 0)
 
-    return _corrupt(root, "sample_interval_zero.sgy", mutate)
+
+def _sample_interval_zero(root: Path) -> Path:
+    return _corrupt(root, "sample_interval_zero.sgy", _mutate_sample_interval_zero)
+
+
+def _mutate_sample_interval_negative(payload: bytearray) -> None:
+    _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_INTERVAL, -1)
 
 
 def _sample_interval_negative(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        _put_i16(payload, SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_INTERVAL, -1)
+    return _corrupt(root, "sample_interval_negative.sgy", _mutate_sample_interval_negative)
 
-    return _corrupt(root, "sample_interval_negative.sgy", mutate)
+
+def _mutate_sample_interval_enormous(payload: bytearray) -> None:
+    offset = SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_INTERVAL
+    _put_i16(payload, offset, INT16_MAX)
+    stride = _trace_stride(payload)
+    count = (len(payload) - FILE_HEADER_BYTES) // stride
+    for trace in range(count):
+        _put_i16(payload, FILE_HEADER_BYTES + trace * stride + TRC_SAMPLE_INTERVAL, INT16_MAX)
 
 
 def _sample_interval_enormous(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        offset = SEGY_TEXTUAL_HEADER_BYTES + BIN_SAMPLE_INTERVAL
-        _put_i16(payload, offset, INT16_MAX)
-        stride = _trace_stride(payload)
-        count = (len(payload) - FILE_HEADER_BYTES) // stride
-        for trace in range(count):
-            _put_i16(payload, FILE_HEADER_BYTES + trace * stride + TRC_SAMPLE_INTERVAL, INT16_MAX)
-
-    return _corrupt(root, "sample_interval_enormous.sgy", mutate)
+    return _corrupt(root, "sample_interval_enormous.sgy", _mutate_sample_interval_enormous)
 
 
 # --- grid -------------------------------------------------------------------------
+
+
+def _mutate_grid_sparse_enormous(payload: bytearray) -> None:
+    stride = _trace_stride(payload)
+    count = (len(payload) - FILE_HEADER_BYTES) // stride
+    for trace in range(count):
+        base = FILE_HEADER_BYTES + trace * stride
+        _put_i32(payload, base + TRC_INLINE, trace * (1 << 24))
+        _put_i32(payload, base + TRC_CROSSLINE, trace * (1 << 24))
 
 
 def _grid_sparse_enormous(root: Path) -> Path:
@@ -406,42 +445,34 @@ def _grid_sparse_enormous(root: Path) -> Path:
     that sizes a dense grid from the index range allocates roughly 2**48 cells for
     30 traces of content.
     """
+    return _corrupt(root, "grid_sparse_enormous.sgy", _mutate_grid_sparse_enormous)
 
-    def mutate(payload: bytearray) -> None:
-        stride = _trace_stride(payload)
-        count = (len(payload) - FILE_HEADER_BYTES) // stride
-        for trace in range(count):
-            base = FILE_HEADER_BYTES + trace * stride
-            _put_i32(payload, base + TRC_INLINE, trace * (1 << 24))
-            _put_i32(payload, base + TRC_CROSSLINE, trace * (1 << 24))
 
-    return _corrupt(root, "grid_sparse_enormous.sgy", mutate)
+def _mutate_grid_index_negative(payload: bytearray) -> None:
+    stride = _trace_stride(payload)
+    count = (len(payload) - FILE_HEADER_BYTES) // stride
+    for trace in range(count):
+        base = FILE_HEADER_BYTES + trace * stride
+        _put_i32(payload, base + TRC_INLINE, -(1 << 30) - trace)
+        _put_i32(payload, base + TRC_CROSSLINE, -(1 << 30) - trace)
 
 
 def _grid_index_negative(root: Path) -> Path:
-    def mutate(payload: bytearray) -> None:
-        stride = _trace_stride(payload)
-        count = (len(payload) - FILE_HEADER_BYTES) // stride
-        for trace in range(count):
-            base = FILE_HEADER_BYTES + trace * stride
-            _put_i32(payload, base + TRC_INLINE, -(1 << 30) - trace)
-            _put_i32(payload, base + TRC_CROSSLINE, -(1 << 30) - trace)
+    return _corrupt(root, "grid_index_negative.sgy", _mutate_grid_index_negative)
 
-    return _corrupt(root, "grid_index_negative.sgy", mutate)
+
+def _mutate_grid_all_identical(payload: bytearray) -> None:
+    stride = _trace_stride(payload)
+    count = (len(payload) - FILE_HEADER_BYTES) // stride
+    for trace in range(count):
+        base = FILE_HEADER_BYTES + trace * stride
+        _put_i32(payload, base + TRC_INLINE, 1)
+        _put_i32(payload, base + TRC_CROSSLINE, 1)
 
 
 def _grid_all_identical(root: Path) -> Path:
     """Every trace claims the same cell. Thirty traces, one grid position."""
-
-    def mutate(payload: bytearray) -> None:
-        stride = _trace_stride(payload)
-        count = (len(payload) - FILE_HEADER_BYTES) // stride
-        for trace in range(count):
-            base = FILE_HEADER_BYTES + trace * stride
-            _put_i32(payload, base + TRC_INLINE, 1)
-            _put_i32(payload, base + TRC_CROSSLINE, 1)
-
-    return _corrupt(root, "grid_all_identical.sgy", mutate)
+    return _corrupt(root, "grid_all_identical.sgy", _mutate_grid_all_identical)
 
 
 # --- garbage ----------------------------------------------------------------------
@@ -475,6 +506,16 @@ def _all_ff_bytes(root: Path) -> Path:
 # --- path -------------------------------------------------------------------------
 
 
+def _mutate_path_bait_in_headers(payload: bytearray) -> None:
+    bait = PATH_BAIT.encode("ascii")
+    payload[:SEGY_TEXTUAL_HEADER_BYTES] = _ebcdic_text(f"C 1 {PATH_BAIT}")
+    stride = _trace_stride(payload)
+    count = (len(payload) - FILE_HEADER_BYTES) // stride
+    for trace in range(count):
+        base = FILE_HEADER_BYTES + trace * stride + 200
+        payload[base : base + len(bait)] = bait
+
+
 def _path_bait_in_headers(root: Path) -> Path:
     """A structurally valid file whose text and header tail are filesystem paths.
 
@@ -483,17 +524,7 @@ def _path_bait_in_headers(root: Path) -> Path:
     so that *"no output path is derived from file content"* is a check with a witness
     rather than a sentence in a specification.
     """
-    bait = PATH_BAIT.encode("ascii")
-
-    def mutate(payload: bytearray) -> None:
-        payload[:SEGY_TEXTUAL_HEADER_BYTES] = _ebcdic_text(f"C 1 {PATH_BAIT}")
-        stride = _trace_stride(payload)
-        count = (len(payload) - FILE_HEADER_BYTES) // stride
-        for trace in range(count):
-            base = FILE_HEADER_BYTES + trace * stride + 200
-            payload[base : base + len(bait)] = bait
-
-    return _corrupt(root, "path_bait_in_headers.sgy", mutate)
+    return _corrupt(root, "path_bait_in_headers.sgy", _mutate_path_bait_in_headers)
 
 
 def _source_is_a_directory(root: Path) -> Path:
@@ -719,6 +750,93 @@ CLASSES: Final[tuple[str, ...]] = (
 )
 """Every hostility class the corpus must cover. A class with no member is a class
 nobody measured."""
+
+
+# --- pairs: two hostilities in one file (probe P15, prereg/P15-hostile-pairs.md) --------
+
+TRACE_LAYER: Final[int] = 0
+"""Writes inside traces. Applied first: it finds traces from the binary header's count."""
+TRUNCATION_LAYER: Final[int] = 1
+"""Deletes the file's tail. Applied after trace writes, before binary-header writes."""
+BINARY_LAYER: Final[int] = 2
+"""Writes below byte 3600, which every truncation keeps. Applied last."""
+
+MUTATIONS: Final[dict[str, tuple[int, Callable[[bytearray], None]]]] = {
+    "file_headers_only": (TRUNCATION_LAYER, _mutate_file_headers_only),
+    "truncated_mid_trace_header": (TRUNCATION_LAYER, _mutate_truncated_mid_trace_header),
+    "truncated_mid_sample_block": (TRUNCATION_LAYER, _mutate_truncated_mid_sample_block),
+    "truncated_mid_sample_word": (TRUNCATION_LAYER, _mutate_truncated_mid_sample_word),
+    "declared_samples_exceed_file": (BINARY_LAYER, _mutate_declared_samples_exceed_file),
+    "declared_samples_exceed_file_unsigned": (
+        BINARY_LAYER,
+        _mutate_declared_samples_exceed_file_unsigned,
+    ),
+    "declared_trace_samples_exceed_file": (
+        TRACE_LAYER,
+        _mutate_declared_trace_samples_exceed_file,
+    ),
+    "declared_extended_headers_exceed_file": (
+        BINARY_LAYER,
+        _mutate_declared_extended_headers_exceed_file,
+    ),
+    "samples_per_trace_zero": (BINARY_LAYER, _mutate_samples_per_trace_zero),
+    "samples_per_trace_negative": (BINARY_LAYER, _mutate_samples_per_trace_negative),
+    "trace_samples_zero": (TRACE_LAYER, _mutate_trace_samples_zero),
+    "trace_samples_negative": (TRACE_LAYER, _mutate_trace_samples_negative),
+    "sample_format_undefined": (BINARY_LAYER, _mutate_sample_format_undefined),
+    "sample_format_zero": (BINARY_LAYER, _mutate_sample_format_zero),
+    "sample_format_negative": (BINARY_LAYER, _mutate_sample_format_negative),
+    "revision_undefined": (BINARY_LAYER, _mutate_revision_undefined),
+    "sample_interval_zero": (BINARY_LAYER, _mutate_sample_interval_zero),
+    "sample_interval_negative": (BINARY_LAYER, _mutate_sample_interval_negative),
+    "sample_interval_enormous": (TRACE_LAYER, _mutate_sample_interval_enormous),
+    "grid_sparse_enormous": (TRACE_LAYER, _mutate_grid_sparse_enormous),
+    "grid_index_negative": (TRACE_LAYER, _mutate_grid_index_negative),
+    "grid_all_identical": (TRACE_LAYER, _mutate_grid_all_identical),
+    "path_bait_in_headers": (TRACE_LAYER, _mutate_path_bait_in_headers),
+}
+"""Every corpus member that is one mutation of the well-formed file, with its layer.
+
+The members left out replace the whole file (``short``, ``garbage``) or are not a file
+(``source_is_a_directory``, ``source_is_a_dangling_symlink``), so there is nothing to
+apply a second mutation to."""
+
+_CLASS_OF: Final[dict[str, str]] = {f.name: f.klass for f in CORPUS}
+
+PAIRS: Final[tuple[tuple[str, str], ...]] = tuple(
+    (a, b) for a, b in combinations(MUTATIONS, 2) if _CLASS_OF[a] != _CLASS_OF[b]
+)
+"""Every pair from different classes: 223. Different classes touch disjoint bytes, so
+neither mutation overwrites the other."""
+
+REPRESENTATIVE_PAIRS: Final[tuple[tuple[str, str], ...]] = tuple(
+    (a, b)
+    for a, b in PAIRS
+    if a == [n for n in MUTATIONS if _CLASS_OF[n] == _CLASS_OF[a]][-1]
+    and b == [n for n in MUTATIONS if _CLASS_OF[n] == _CLASS_OF[b]][-1]
+)
+"""One pair per class pair, 21: the last member of each class. Last, because the first
+``truncated`` member deletes every trace and would erase the other hostility."""
+
+
+def pair_name(a: str, b: str) -> str:
+    """The file stem for a pair."""
+    return f"{a}+{b}"
+
+
+def build_pair(root: str | Path, a: str, b: str) -> Path:
+    """Write the well-formed file with mutations ``a`` and ``b`` applied, in layer order."""
+    target = Path(root)
+    target.mkdir(parents=True, exist_ok=True)
+    name = pair_name(a, b)
+    base = _well_formed(target, f".base_for_{name}.sgy")
+    payload = bytearray(base.read_bytes())
+    for _layer, mutate in sorted((MUTATIONS[a], MUTATIONS[b]), key=lambda m: m[0]):
+        mutate(payload)
+    out = target / f"{name}.sgy"
+    out.write_bytes(bytes(payload))
+    base.unlink()
+    return out
 
 
 def build_corpus(root: str | Path) -> list[BuiltHostile]:
