@@ -44,6 +44,7 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | [P16](P16-variable-extended-headers.md) | What does each command do with bytes 3505-3506 = -1? | **FIRED** — untyped upstream error on 4 of 4; refused since (D-0115) | — | D8, D70 |
 | [P17](P17-linux-hostile-corpus.md) | Does the D8 corpus behave the same on Linux? | **FIRED** on a harness defect (path naming); clean on Linux since (D-0116) | — | D8 |
 | [P18](P18-hostile-triples-and-mutants.md) | Do three hostilities at once, or seeded byte overwrites, break any command? | did not fire — 300 triples, 88 mutants (cap); export finding D71, D72 | — | D8, D71, D72 |
+| [P19](P19-export-roundtrip.md) | Do the D71/D72 fixes make the 24 mutants round-trip, with controls? | **REGISTERED** 2026-10-31, not run | — | D71, D72 |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a
