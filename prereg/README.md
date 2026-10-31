@@ -47,6 +47,7 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | [P19](P19-export-roundtrip.md) | Do the D71/D72 fixes make the 24 mutants round-trip, with controls? | **PASSED** — 23/23, B1-B3, C scoped; G7 finding D73 | — | D71, D72, D73 |
 | [P20](P20-g7-live-cell.md) | Do G7 controls on the first live cell pass correct stores, verdicts kept? | **PASSED** — 26/26 EQUIVALENT, invariance held | — | D73 |
 | [P21](P21-sparsity-bound.md) | Where is the 3-D sparsity bound, and is each side clean? | bound measured: ratio > 10 refused; one-line refusal fixed | — | D30 |
+| [P22](P22-d8-remaining-campaign.md) | Do P18's unrun 877 triples and 312 mutants break any command? | **REGISTERED** 2026-11-01, not run | — | D8 |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a
