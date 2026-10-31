@@ -2958,3 +2958,69 @@ Measured:
 
 **Not changed:** `inverted_live_mask` (fails its gate on either value) and the dense-layout
 branch of `flipped_raw_ibm32_word` (legacy).
+
+---
+
+## Status words, 2026-10-31 — which open debts can run on this machine
+
+**SP10:** every entry below is new. It changes no earlier entry and re-reads none. It states for
+each open debt whether it can be worked here now, so the register's count is true about what
+is waiting on whom. `BLOCKED` means a precondition outside this repository is missing.
+`PARKED` means a recorded ruling says not to build until a stated event. Debts not listed below
+stay `OPEN` and are runnable here.
+
+## D4 — BLOCKED 2026-10-31 — what remains waits on D69
+
+- **Status:** `BLOCKED` · **Cites:** D4 entries above, D-0112
+What remains of D4 is the poststack default chunk, which D-0112 judges on the F3 timing (D69).
+Unblocks when D69 runs.
+
+## D69 — BLOCKED 2026-10-31 — needs a quiet machine
+
+- **Status:** `BLOCKED` · **Cites:** D69 above, P14 Amendment E
+The F3 timing must run under P14 Amendment E's start rule (10 consecutive minutes at 1-minute load
+≤ 3.5), in a newly registered window. This machine runs other projects' gates and containers
+concurrently. Unblocks on a registered quiet window.
+
+## D63 — BLOCKED 2026-10-31 — survey-scale timing needs a quiet machine
+
+- **Status:** `BLOCKED` · **Cites:** D63 above, D-0093
+D63 asks for the digest's share of a survey-scale `certify` wall clock. That is a timing, under
+the same condition as D69. Unblocks with D69's window. The two can share one run.
+
+## D7 — PARKED 2026-10-31 — cloud ingest is outside the phase, by ruling
+
+- **Status:** `PARKED` · **Cites:** D7 above; GeoSuite ruling under D-222, relayed 2026-10-31
+  ("nothing in the suite sends data off this machine")
+Building a cloud ingest path is outside the current phase. Lifted only by an owner ruling.
+
+## D22 — PARKED 2026-10-31 — by D-0088 Ruling 7, until a file needs it
+
+- **Status:** `PARKED` · **Cites:** D22 NARROWED 2026-09-17 above
+No file needing a declared revision 0 sample format has arrived. Such a file is refused, with
+this debt named.
+
+## D41 — PARKED 2026-10-31 — legs 2 and 4, by D-0063 Ruling 1, until a real file arrives
+
+- **Status:** `PARKED` · **Cites:** D41 NARROWED 2026-10-30 above
+Built only when a real file in a lossy-decode format arrives.
+
+## D70 — PARKED 2026-10-31 — the stanza reader, until a real delivery carries −1
+
+- **Status:** `PARKED` · **Cites:** D70 above, D-0115; GeoSuite ruling under D-222 the same day
+Such a file is refused with this debt named.
+
+## Still OPEN and runnable here, 2026-10-31
+
+Recorded so that "open" is a claim about work, not inertia:
+- **D8:** the 877 unrun triples and 312 unrun mutants (P18), and coverage-guided fuzzing. Only
+  the x86-64/Windows part needs hardware this machine lacks.
+- **D9:** a source build of the pinned commits, with its `RECORD` hashes compared to the
+  installed wheels. Needs an inbound fetch of the pinned sources.
+- **D23:** G7's plane re-run cost. A design question; any change to G7 needs a ruling (§9).
+- **D30:** P5's sparsity bound. The 2-D route through `PostStack2DTime` was measured on
+  2026-10-31: a real Volve arbitrary line, 225 traces, certifies EQUIVALENT at `87886b6`
+  (`prereg/P20-g7-live-cell.md`). A 3-D grid sparser than ratio 10 is unmeasured.
+- **D31:** a standing hazard, held by a permanent test. Whether that makes it closable is a
+  ruling, not a run.
+- **D38:** the registered falsifier needs a single source of ≥ 1.5 GB.
