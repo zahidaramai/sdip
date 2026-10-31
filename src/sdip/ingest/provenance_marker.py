@@ -121,6 +121,13 @@ MARKER_KEYS: Final[tuple[str, ...]] = (
 MITIGATION_HEADER_PLANE: Final[str] = "headers_raw_uint8"
 """Written unconditionally by ``sdip ingest`` (D-0051)."""
 
+MITIGATION_SOURCE_ORDER: Final[str] = "source_trace_ordinal"
+"""Written unconditionally by ``sdip ingest`` since D72 (P19). A store marked before it
+existed does not declare it, so its absence there is not a partial write."""
+
+DEFAULT_MITIGATIONS: Final[tuple[str, ...]] = (MITIGATION_HEADER_PLANE, MITIGATION_SOURCE_ORDER)
+"""What the current writer always attaches."""
+
 
 def marker_attrs(
     *,
@@ -128,7 +135,7 @@ def marker_attrs(
     store_digest: dict[str, Any],
     content_digest: dict[str, Any],
     sample_axis_origin: dict[str, Any] | None,
-    mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,),
+    mitigations: tuple[str, ...] = DEFAULT_MITIGATIONS,
 ) -> dict[str, Any]:
     """The attribute mapping ``sdip ingest`` writes onto the root group."""
     from sdip import __version__
@@ -151,7 +158,7 @@ def attach_provenance_marker(
     *,
     declaration: SurveyDeclaration,
     sample_axis_origin: dict[str, Any] | None,
-    mitigations: tuple[str, ...] = (MITIGATION_HEADER_PLANE,),
+    mitigations: tuple[str, ...] = DEFAULT_MITIGATIONS,
 ) -> dict[str, Any]:
     """Write the marker onto the store's root group. Stock ``zarr``, no MDIO.
 

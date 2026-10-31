@@ -87,6 +87,20 @@ from sdip._pins import (
 from sdip.errors import UntrustedInputError
 
 ARRAY_NAME: Final[str] = "headers_raw_uint8"
+
+ORDINAL_ARRAY_NAME: Final[str] = "source_trace_ordinal"
+"""Grid-shaped ``int64``: each live cell's 0-based trace ordinal in the source (D72, P19)."""
+ORDINAL_FILL: Final[int] = 0
+"""A padding cell's value: 0, like every integer array in the store. 0 is also a legal
+ordinal, so ``trace_mask`` decides which cells are live, as it does for every integer
+array (Plane 5's SP12 check holds integer padding to 0)."""
+ATTR_ORDINAL_NOTE: Final[str] = "sdipSourceTraceOrder"
+ATTR_ORDINAL_FILL: Final[str] = "sdipSourceTraceOrdinalFill"
+ORDINAL_NOTE: Final[str] = (
+    "The 0-based position of each live cell's trace in the source SEG-Y; 0 in padding, "
+    "so trace_mask decides which cells are live. "
+    "sdip export writes trace records back in this order (OPEN_DEBTS D72)."
+)
 """Name of the parallel plane. Named for what it is, next to what it shadows."""
 
 TRACE_DATA_OFFSET: Final[int] = SEGY_TEXTUAL_HEADER_BYTES + SEGY_BINARY_HEADER_BYTES
@@ -502,6 +516,26 @@ def attach_header_plane(
             block[cell[1:]] = raw[ordinal]
             written += 1
         array[outer] = block
+
+    # D72 / P19. Where each live cell's trace sat in the source file, so export can write
+    # the traces back in source order rather than upstream's grid order. From the same map
+    # as the plane above, so the two cannot disagree about placement.
+    order = group.create_array(
+        name=ORDINAL_ARRAY_NAME,
+        shape=grid_shape,
+        dtype="int64",
+        chunks=tuple(int(c) for c in structured.chunks),
+        dimension_names=grid_dimensions,
+        fill_value=ORDINAL_FILL,
+        compressors=BloscCodec(cname="zstd", clevel=5),
+        attributes={ATTR_ORDINAL_NOTE: ORDINAL_NOTE, ATTR_ORDINAL_FILL: ORDINAL_FILL},
+        overwrite=True,
+    )
+    for outer in sorted(grouped):
+        row = np.full(grid_shape[1:], ORDINAL_FILL, dtype=np.int64)
+        for ordinal, cell in grouped[outer]:
+            row[cell[1:]] = ordinal
+        order[outer] = row
 
     return HeaderPlane(
         array=ARRAY_NAME,

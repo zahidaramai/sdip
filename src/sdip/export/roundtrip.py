@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from sdip._pins import SEGY_BINARY_HEADER_BYTES, SEGY_TEXTUAL_HEADER_BYTES
 from sdip.errors import RoundTripUnavailableError
 from sdip.guard.warn import WarningLedger, recording_warnings
 from sdip.ingest.file_headers import UPSTREAM_FILE_HEADER_VARIABLE
@@ -53,6 +54,10 @@ class RoundTripResult:
     export_bytes: int
     scoped: dict[str, str] | None = None
     warnings: WarningLedger = field(default_factory=WarningLedger)
+    restored: dict[str, Any] | None = None
+    """What SDIP wrote over upstream's export from the store's own records (D71, D72):
+    ``binary_header_bytes`` (1-based bytes where upstream's encoding differed from the
+    stored raw header), ``trace_order`` and ``traces_moved``."""
 
     @property
     def byte_identical(self) -> bool:
@@ -116,6 +121,8 @@ class RoundTripResult:
         }
         if self.scoped:
             payload["scoped"] = dict(self.scoped)
+        if self.restored is not None:
+            payload["restored"] = dict(self.restored)
         return payload
 
 
@@ -358,6 +365,18 @@ def export(
 
         mdio_to_segy(segy_spec=spec, input_path=store_path, output_path=output_path)
 
+    restored: dict[str, Any] = {
+        "binary_header_bytes": restore_binary_header(store_path, output_path)
+    }
+    moved = restore_source_order(store_path, output_path)
+    if moved is None:
+        restored["trace_order"] = "grid"
+        if scoped is None:
+            scoped = grid_order_scope(store_path, source_path, output_path)
+    else:
+        restored["trace_order"] = "source"
+        restored["traces_moved"] = moved
+
     return RoundTripResult(
         source_path=str(source_path),
         source_sha256=sha256_file(source_path),
@@ -367,4 +386,170 @@ def export(
         export_bytes=output_path.stat().st_size,
         scoped=scoped,
         warnings=ledger,
+        restored=restored,
     )
+
+
+def restore_binary_header(store: Path, exported: Path) -> list[int]:
+    """Write the store's raw 400-byte binary header over the exported file's (D71).
+
+    Upstream's exporter re-encodes the binary header from parsed fields, so a byte no field
+    names (an unassigned byte, often vendor data) comes back as ``0x00``. The store holds
+    the source's own 400 bytes, verified by Plane 2 and authoritative on conflict (§4.3).
+    Writing them back is not a transform: it puts the source's bytes where they were.
+
+    Returns:
+        The 1-based binary-header bytes where upstream's encoding differed from the stored
+        copy, so the certificate shows exactly what was written over.
+    """
+    from sdip.ingest.file_headers import read_raw_binary_from_store
+
+    raw = read_raw_binary_from_store(store)
+    if len(raw) != SEGY_BINARY_HEADER_BYTES:
+        msg = (
+            f"the store's raw binary header is {len(raw)} bytes, not "
+            f"{SEGY_BINARY_HEADER_BYTES}; it cannot be written back"
+        )
+        raise RoundTripUnavailableError(msg)
+    with exported.open("r+b") as handle:
+        handle.seek(SEGY_TEXTUAL_HEADER_BYTES)
+        written = handle.read(SEGY_BINARY_HEADER_BYTES)
+        differing = [i + 1 for i, (a, b) in enumerate(zip(raw, written, strict=False)) if a != b]
+        if differing:
+            handle.seek(SEGY_TEXTUAL_HEADER_BYTES)
+            handle.write(raw)
+    return differing
+
+
+GRID_ORDER_NON_CONFORMANCE = "grid order"
+"""G3's scope reason for a store that records no source trace order (D72, P19)."""
+
+
+def _trace_records(path: Path, count: int) -> tuple[int, int]:
+    """``(data_offset, stride)`` of a SEG-Y holding ``count`` trace records, by arithmetic.
+
+    The offset comes from the binary header's extended-header count (bytes 3505-3506); the
+    stride from what remains divided by ``count``, which must divide exactly.
+    """
+    size = path.stat().st_size
+    with path.open("rb") as handle:
+        handle.seek(SEGY_TEXTUAL_HEADER_BYTES + 304)
+        extended = int.from_bytes(handle.read(2), "big", signed=True)
+    data_offset = SEGY_TEXTUAL_HEADER_BYTES + SEGY_BINARY_HEADER_BYTES
+    data_offset += max(extended, 0) * SEGY_TEXTUAL_HEADER_BYTES
+    body = size - data_offset
+    if count <= 0 or body <= 0 or body % count:
+        msg = (
+            f"{path.name}: {body} bytes of trace data do not divide into {count} trace "
+            "records, so no record boundary in it can be trusted"
+        )
+        raise RoundTripUnavailableError(msg)
+    return data_offset, body // count
+
+
+def restore_source_order(store: Path, exported: Path) -> int | None:
+    """Rewrite the exported trace records into the source order the store records (D72).
+
+    Upstream writes one record per live cell in grid (C) order. That is checked, not
+    assumed: every record's 240 header bytes must equal the store's ``headers_raw_uint8``
+    at the cell it is taken to be. The records are then written back sorted by the
+    store's ``source_trace_ordinal``, streamed one record at a time.
+
+    Returns:
+        How many records changed position, or ``None`` when the store records no source
+        order (written before the array existed), in which case the file is untouched.
+
+    Raises:
+        RoundTripUnavailableError: If the store records an order but upstream's records
+            cannot be matched to cells, so a reorder would be a guess.
+    """
+    import numpy as np
+    import zarr
+
+    from sdip.ingest.header_plane import ARRAY_NAME as HEADER_PLANE
+    from sdip.ingest.header_plane import ORDINAL_ARRAY_NAME
+
+    group = zarr.open_group(str(store), mode="r")
+    if ORDINAL_ARRAY_NAME not in group:
+        return None
+    if HEADER_PLANE not in group:
+        msg = (
+            f"the store records source order but carries no {HEADER_PLANE}, so upstream's "
+            "trace records cannot be matched to cells"
+        )
+        raise RoundTripUnavailableError(msg)
+    ordinal_array: Any = group[ORDINAL_ARRAY_NAME]
+    ordinals = np.asarray(ordinal_array[...])
+    plane: Any = group[HEADER_PLANE]
+    mask: Any = group["trace_mask"]
+    live = np.argwhere(np.asarray(mask[...]).astype(bool))  # C order, as upstream writes
+    count = len(live)
+    data_offset, stride = _trace_records(exported, count)
+
+    with exported.open("rb") as handle:
+        for position, cell in enumerate(live):
+            handle.seek(data_offset + position * stride)
+            if handle.read(240) != np.asarray(plane[tuple(cell)]).tobytes():
+                msg = (
+                    f"exported trace record {position} does not carry the header bytes of "
+                    f"grid cell {[int(i) for i in cell]}: upstream did not write live cells "
+                    "in grid order, so restoring source order would be a guess"
+                )
+                raise RoundTripUnavailableError(msg)
+
+    order = np.argsort(ordinals[tuple(live.T)], kind="stable")
+    moved = int(np.count_nonzero(order != np.arange(count)))
+    if moved == 0:
+        return 0
+    staging = exported.with_name(exported.name + ".sdip-order")
+    with exported.open("rb") as source, staging.open("wb") as target:
+        target.write(source.read(data_offset))
+        for position in order:
+            source.seek(data_offset + int(position) * stride)
+            target.write(source.read(stride))
+    staging.replace(exported)
+    return moved
+
+
+def grid_order_scope(store: Path, source: Path, exported: Path) -> dict[str, str] | None:
+    """G3's scope for a store with no recorded source order, when order is the only change.
+
+    ``ROUNDTRIP-SCOPED: grid order`` only if the export has the source's length and file
+    headers and the same multiset of trace records. Any other difference returns ``None``,
+    and G3 stays a FAIL.
+    """
+    import hashlib
+    from collections import Counter
+
+    import numpy as np
+    import zarr
+
+    if source.stat().st_size != exported.stat().st_size:
+        return None
+    mask: Any = zarr.open_group(str(store), mode="r")["trace_mask"]
+    count = int(np.asarray(mask[...]).sum())
+    try:
+        data_offset, stride = _trace_records(exported, count)
+    except RoundTripUnavailableError:
+        return None
+    with source.open("rb") as a, exported.open("rb") as b:
+        if a.read(data_offset) != b.read(data_offset):
+            return None
+    tallies: list[Counter[str]] = []
+    for path in (source, exported):
+        tally: Counter[str] = Counter()
+        with path.open("rb") as handle:
+            handle.seek(data_offset)
+            for _ in range(count):
+                tally[hashlib.sha256(handle.read(stride)).hexdigest()] += 1
+        tallies.append(tally)
+    if tallies[0] != tallies[1]:
+        return None
+    return {
+        "non_conformance": GRID_ORDER_NON_CONFORMANCE,
+        "justification": (
+            "The store was written before SDIP recorded source trace order (D72), so export "
+            "writes upstream's grid order. The export holds the source's file headers and "
+            "exactly the source's trace records, byte for byte, in a different order."
+        ),
+    }

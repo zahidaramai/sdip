@@ -65,6 +65,7 @@ from sdip.ingest.file_headers import (
     raw_header_node,
 )
 from sdip.ingest.header_plane import ARRAY_NAME as RAW_HEADER_PLANE_ARRAY
+from sdip.ingest.header_plane import ORDINAL_ARRAY_NAME as SOURCE_ORDER_ARRAY
 from sdip.ingest.raw_samples import ARRAY_NAME as RAW_IBM32_ARRAY
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -360,6 +361,39 @@ def _delete_raw_header_plane(store: Path) -> None:
     _delete_array(store, RAW_HEADER_PLANE_ARRAY)
 
 
+def _swap_source_ordinals(store: Path) -> None:
+    """Swap the recorded source ordinals of the first two live cells (D72, P19).
+
+    Export writes trace records back in this order, so a wrong ordinal is a wrong file
+    with every header and sample still correct. Plane 5 compares the ordinals with the
+    map rebuilt from the source, and nothing else reads them.
+    """
+    group = _group(store)
+    if SOURCE_ORDER_ARRAY not in group:
+        msg = f"{SOURCE_ORDER_ARRAY} absent: the store predates recorded source order"
+        raise ControlNotApplicableError(msg)
+    mask = np.asarray(group["trace_mask"][:]).astype(bool)
+    live = np.argwhere(mask)
+    if len(live) < 2:
+        msg = "fewer than two live cells; there is no order to corrupt"
+        raise ControlNotApplicableError(msg)
+    ordinals = np.asarray(group[SOURCE_ORDER_ARRAY][:])
+    a, b = tuple(live[0]), tuple(live[1])
+    ordinals[a], ordinals[b] = ordinals[b], ordinals[a]
+    group[SOURCE_ORDER_ARRAY][:] = ordinals
+
+
+def _delete_source_order(store: Path) -> None:
+    """Delete ``source_trace_ordinal`` from a store whose marker declares it (D72, P19)."""
+    from sdip.ingest.provenance_marker import MITIGATION_SOURCE_ORDER, declared_mitigations
+
+    group = _group(store)
+    if MITIGATION_SOURCE_ORDER not in declared_mitigations(group):
+        msg = f"the store's marker does not declare {SOURCE_ORDER_ARRAY}; absence is not a defect"
+        raise ControlNotApplicableError(msg)
+    _delete_array(store, SOURCE_ORDER_ARRAY)
+
+
 def _delete_derived_coordinate(store: Path) -> None:
     """Delete the entire ``cdp_x`` array — the declared transform's output (D-0040)."""
     _delete_array(store, DERIVED_COORD_ARRAY)
@@ -589,6 +623,22 @@ CONTROLS: tuple[Corruption, ...] = (
         apply=_delete_derived_coordinate,
         touches=frozenset({DERIVED_COORD_ARRAY}),
         clause="DECISIONS D-0061 - the declared transform's output must exist",
+    ),
+    Corruption(
+        name="swapped_source_ordinals",
+        description="The recorded source ordinals of two live cells swapped",
+        must_fail=frozenset({"G2e"}),
+        apply=_swap_source_ordinals,
+        touches=frozenset({SOURCE_ORDER_ARRAY}),
+        clause="OPEN_DEBTS D72 / P19 - the order export writes trace records back in",
+    ),
+    Corruption(
+        name="deleted_source_order",
+        description="The whole source_trace_ordinal array removed from a marked SDIP store",
+        must_fail=frozenset({"G2c"}),
+        apply=_delete_source_order,
+        touches=frozenset({SOURCE_ORDER_ARRAY}),
+        clause="OPEN_DEBTS D72 / P19 - declared by the marker, so absence is a partial write",
     ),
 )
 """The permanent control set. Covers every gate in :data:`ALL_GATES` except G3.

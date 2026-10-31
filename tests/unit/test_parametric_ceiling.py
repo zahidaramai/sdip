@@ -31,12 +31,20 @@ def test_it_bounds_every_run_ever_recorded():
         assert observed <= ceiling, f"{observed}s breaches the {ceiling}s ceiling"
 
 
+ACKNOWLEDGED_CONTROL_COUNT = 18
+"""The control count this ceiling has been acknowledged at. 16 when the base was measured;
+18 since P19 added ``swapped_source_ordinals`` and ``deleted_source_order`` (D-0118), which
+the parametric term prices at 44.92 s each. The base stays measured at 16: that is a fact
+about the measurement, not about today's count."""
+
+
 def test_the_base_matches_the_control_count_it_was_measured_at():
     """At the reference count the parametric term vanishes and the base stands alone."""
     assert parametric_wall_ceiling(WALL_CEILING_REFERENCE_CONTROLS) == WALL_CEILING_BASE_S
-    assert len(CONTROLS) == WALL_CEILING_REFERENCE_CONTROLS, (
-        "the control count moved; the base was measured at "
-        f"{WALL_CEILING_REFERENCE_CONTROLS} and this test is the tripwire that says so"
+    assert WALL_CEILING_REFERENCE_CONTROLS == 16
+    assert len(CONTROLS) == ACKNOWLEDGED_CONTROL_COUNT, (
+        f"the control count moved to {len(CONTROLS)}; the ceiling was last acknowledged at "
+        f"{ACKNOWLEDGED_CONTROL_COUNT}, and this test is the tripwire that says so"
     )
 
 

@@ -423,6 +423,37 @@
         "byte_identical": {
           "type": "boolean"
         },
+        "restored": {
+          "type": "object",
+          "description": "What SDIP wrote over upstream's export from the store's own records (D71, D72, P19). Additive in schema v0.",
+          "additionalProperties": false,
+          "required": [
+            "binary_header_bytes"
+          ],
+          "properties": {
+            "binary_header_bytes": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 400
+              },
+              "description": "1-based binary-header bytes where upstream's encoding differed from the stored raw header, which was written back."
+            },
+            "trace_order": {
+              "enum": [
+                "source",
+                "grid"
+              ],
+              "description": "source: trace records rewritten into the source order the store records. grid: the store records no source order; upstream's grid order kept."
+            },
+            "traces_moved": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Trace records whose position changed when source order was restored."
+            }
+          }
+        },
         "scoped": {
           "type": [
             "object",

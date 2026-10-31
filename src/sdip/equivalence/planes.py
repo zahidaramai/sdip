@@ -1557,6 +1557,27 @@ def plane_4(
     )
 
 
+def _source_order_evidence(group: Any, trace_map: Any) -> dict[str, Any]:
+    """Compare ``source_trace_ordinal`` with the source map (D72, P19)."""
+    from sdip.ingest.header_plane import ORDINAL_ARRAY_NAME, ORDINAL_FILL
+
+    if ORDINAL_ARRAY_NAME not in group:
+        return {"source_order_checked": False, "source_order_matches": None}
+    stored = np.asarray(group[ORDINAL_ARRAY_NAME][:])
+    expected = np.full(stored.shape, ORDINAL_FILL, dtype=np.int64)
+    for ordinal, cell in trace_map.ordinal_to_cell.items():
+        expected[cell] = ordinal
+    differing = np.argwhere(stored != expected)
+    return {
+        "source_order_checked": True,
+        "source_order_matches": bool(differing.size == 0),
+        "source_order_differing_cells": len(differing),
+        "source_order_first_difference": (
+            [int(i) for i in differing[0]] if differing.size else None
+        ),
+    }
+
+
 def plane_5(source: str | Path, store: str | Path, spec: Any) -> PlaneResult:
     """**Plane 5 — cardinality and ordering.** Gate G2e. Spec §4.6.
 
@@ -1607,6 +1628,16 @@ def plane_5(source: str | Path, store: str | Path, spec: Any) -> PlaneResult:
     padding = _padding_evidence(group, mask, dimensions)
     checks["padding_is_only_fill"] = bool(padding["padding_verified"])
 
+    # D72 / P19. The source trace order the store records, which export restores. Each
+    # mapped cell must hold its source ordinal and every other cell the fill. Read against
+    # the map rebuilt from the SOURCE, never against the store's own headers or mask, so a
+    # control that moves headers or samples cannot also move this leg's answer. A store
+    # written before the array existed is NOT CHECKED here; plane 3's presence check fails
+    # a marked store that should carry it.
+    order = _source_order_evidence(group, trace_map)
+    if order["source_order_checked"]:
+        checks["source_order_matches_map"] = bool(order["source_order_matches"])
+
     ok = all(checks.values())
 
     return PlaneResult(
@@ -1624,6 +1655,7 @@ def plane_5(source: str | Path, store: str | Path, spec: Any) -> PlaneResult:
             "checks": checks,
             "failed_checks": [k for k, v in checks.items() if not v],
             **padding,
+            **order,
             "missing_required_arrays": missing_arrays,
             "required_array_note": REQUIRED_ARRAY_NOTE,
             "trace_map": trace_map.to_json(),
