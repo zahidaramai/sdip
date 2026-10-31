@@ -2700,3 +2700,34 @@ amplitude was identical across them. It recorded the structure: `64^3` decodes t
 pattern. Both timing runs were void, at load 13.59 and 10.99 against 3.5. The F3 leg is NOT
 EVALUABLE, so **the poststack default stays 128³** (D-0112). The rerun is registered as P14
 Amendment E: a watcher waits for an idle machine, armed until 2026-11-02 12:00 MYT.
+
+---
+
+## D69 — The F3 poststack chunk timing is unmeasured; run it when the machine is quiet
+
+- **Status:** `OPEN` (raised 2026-10-31) · **Found by:** P14 Amendment D (F3) · **Needs:** a quiet
+  machine, no ruling
+
+On the owner's order (*"register debt later when quiet in future. done closed re-pin, push and
+commit"*), the F3 timing leg moves out of the active work and into this debt. P14 Amendment E's
+watcher was armed at `8776cc8` and stopped at 2026-10-31 08:16 before any run; nothing was
+measured under it.
+
+**What is known.** On F3, at `fa30c13`:
+- the precondition PASS and the structure are recorded (P14 Amendment D results);
+- both timing runs were void (load 13.59 and 10.99 against 3.5).
+
+On Volve, 64³ and 128x128x64 beat 128³ (P14 Amendment A).
+
+**To close it:** run the P14 Amendment D harness on F3 from a clean worktree at a commit that is on
+`origin`, under Amendment E's start rule (10 consecutive minutes at 1-minute load ≤ 3.5). That
+needs a new dated window, registered as an amendment before the run (SP9), because Amendment E's
+window ends 2026-11-02 12:00. Then judge it by D-0112's rule. If 64³ beats 128³ on at least one
+pattern and loses on none, the default moves to 64³ as a MAJOR release and GeoSuite relays the
+re-pin. Otherwise 128³ stays and the disagreement is the record.
+
+**Until then:** the poststack default is 128³ (D-0112), and an operator who wants another shape
+declares it with `--chunks`.
+
+**Re-pin: closed, nothing to do.** The default did not change, so no consumer pin moves. GeoAIBrain,
+SFM and ExS keep SDIP's 128³ default; only this debt can reopen the re-pin.

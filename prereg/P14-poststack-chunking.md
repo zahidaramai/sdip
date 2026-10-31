@@ -875,3 +875,11 @@ Amendment D harness:
 
 The harness rebuilds the stores, so the precondition and the structure are measured again; **they
 must equal the results above**, and any difference is reported first.
+
+---
+
+## Amendment E — not run, 2026-10-31 08:16 MYT: watcher stopped on the owner's order
+
+The Amendment E watcher was armed at `8776cc8` and was waiting for a quiet window (sampled load
+8.9) when it was stopped at 08:16:55 on the owner's order. Nothing was built or timed under it. The
+F3 timing leg is carried as `OPEN_DEBTS.md` D69; the default stays 128³.
