@@ -5870,3 +5870,24 @@ integer padding to 0. The mask decides liveness. No criterion is affected.
 **Found, not fixed: D73.** Five existing G7 controls write grid cell 0. On a correct store whose
 cell 0 is padding, they miss or mis-fire, and the store certifies NON-EQUIVALENT: 3 of 87
 mutants, identical under the old code. A ruling is asked, because it changes G7's controls.
+
+---
+
+## D-0119 — 2026-10-31 — D73 closed: G7's controls target the first live cell(s) (P20)
+
+**Authority.** The owner, in session: "Approve the fix". GeoSuite's ruling of the same day
+asked for the same.
+
+**Registered before the build** at `e171443`. Built at `aa0b68b`.
+
+**Result.**
+- 26 of 26 stores certify EQUIVALENT with all planes PASS and no failing control.
+- The three affected mutants moved from NON-EQUIVALENT to EQUIVALENT. Nothing else moved: G3
+  and closure are identical to P19.
+- The published reference stays EQUIVALENT, with the old target cells (invariance).
+- Outside the registration, a real Volve 2-D arbitrary line from GeoGIS's intake (1-D grid) went
+  from NON-EQUIVALENT (`transposed_traces` raised `IndexError` on the 1-D grid) to EQUIVALENT.
+
+**Decision.** D73 closes. Each control's target is on the certificate. `nonvacuity` is an open
+object in schema v0, so no schema change was needed. No gate's criterion changed. The controls
+now corrupt what they always meant to corrupt: a trace.

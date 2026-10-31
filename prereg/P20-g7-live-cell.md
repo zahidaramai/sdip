@@ -64,3 +64,44 @@ otherwise it is stopped and asked about. `main` does not move until all five hol
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-10-31 |
+| Run commit | `aa0b68b`, clean tree. Registration at `e171443`, before the build |
+| Receipt | `prereg/P20-receipt-2026-10-31.json`: every store's verdict, plane statuses, control outcomes and targets; the P19 comparison; the 2-D line below |
+| Verdict | **All five pass criteria hold.** Criterion 5 is the gate on the records commit |
+
+### Measured against the pass criteria
+
+| # | Criterion | Result |
+|---|---|---|
+| 1 | the three affected mutants: G7 PASS, live targets | **Yes.** `mutant_039`, `_058` and `_080` (cell `(0, 0)` is padding in each): every control PASS. Targets `[0,5]`, `[0,3]` and `[0,1]` respectively, all live |
+| 2 | all 26: controls PASS or N/A; verdicts kept or corrected; G3, closure and planes unchanged | **Yes.** 26 of 26 EQUIVALENT, all five planes PASS on every store, no control failing. Against P19, only those three verdicts moved (NON-EQUIVALENT → EQUIVALENT). G3 and closure are identical on all 26 |
+| 3 | R: EQUIVALENT, G7 PASS | **Yes** |
+| 4 | invariance on R | **Yes.** Targets `(0,0)` for the four single-cell controls; `(0,0)` and `(0,1)` for `transposed_traces`, exactly the old fixed cells |
+| 5 | full default suite | the gate on the records commit |
+
+### An observation outside the registration: a real 2-D line
+
+On the same day, GeoGIS's first intake run fed SDIP a real Volve arbitrary line:
+`volve10r12-full-twt-arb.sgy`, 822,600 B, 225 traces, SHA-256 `75a4bae9…af44`. It was declared
+`--revision 1 --template PostStack2DTime --override overrides/rev1-cdp-alias.toml`. Its grid is
+**1-D**.
+- **At `403fefb`:** `certify` was NON-EQUIVALENT. `transposed_traces` raised `IndexError: too
+  many indices for array: array is 1-dimensional, but 2 were indexed`, because the old control
+  hard-coded the 2-D cells `(0,0)` and `(0,1)`. That is D73's class: a control that assumes the
+  grid's shape.
+- **At `aa0b68b`:** EQUIVALENT. `transposed_traces` swaps `[0]` and `[1]`, and G7 passes (15
+  applied, 3 not applicable). G3 is `ROUNDTRIP-SCOPED` under D-0098 (two non-printable textual
+  characters, so no export). The only blocker is G5 NOT_RUN.
+
+This is one real file, not a registered population. It is recorded because it shows that the
+same defect reached real data in a second form.
+
+### Scope
+
+26 synthetic stores (30 traces each), one published reference, and one real 2-D line, on macOS
+arm64. The two controls that still name a fixed index (`inverted_live_mask`, which fails its
+gate on either value, and the dense-layout branch of `flipped_raw_ibm32_word`, a legacy layout)
+were outside this change and are unchanged.

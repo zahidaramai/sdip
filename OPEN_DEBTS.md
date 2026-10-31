@@ -2935,3 +2935,26 @@ grid, 30 live, 6 padding, with `(0, 0)` padding. Any real survey whose first gri
 empty would hit this. **Candidate fix:** each such control targets the first **live** cell
 (from `trace_mask`) instead of cell 0, with the five controls re-measured on a store whose cell
 0 is padding. Not built pending the ruling.
+
+---
+
+## D73 — CLOSED 2026-10-31 — G7's controls corrupt a live trace, not grid cell 0
+
+- **Closed by:** `DECISIONS.md` D-0119 · **Probe:** P20, passed · **Authority:** owner, "Approve
+  the fix"
+
+`flipped_header_byte`, `flipped_sample_bit`, `flipped_raw_header_byte` and
+`corrupted_cdp_coordinate` now corrupt the first live cell (`trace_mask`, C order).
+`transposed_traces` swaps the first two live cells. Each control records its target on the
+certificate.
+
+Measured:
+- the three P18 stores whose cell `(0, 0)` is padding now pass G7 and certify EQUIVALENT;
+- all 26 P19 stores are EQUIVALENT, with nothing else changed;
+- on a full grid the targets are exactly the old cells, so a verdict that passed before cannot
+  move;
+- a real Volve 2-D line (1-D grid), which the old transpose control could not even index, now
+  certifies EQUIVALENT.
+
+**Not changed:** `inverted_live_mask` (fails its gate on either value) and the dense-layout
+branch of `flipped_raw_ibm32_word` (legacy).

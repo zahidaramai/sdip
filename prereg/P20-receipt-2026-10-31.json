@@ -1,0 +1,1839 @@
+{
+ "probe": "P20",
+ "debt": "D73",
+ "run_date": "2026-10-31",
+ "registration_commit": "e171443",
+ "build_commit": "aa0b68b",
+ "run_commit": "aa0b68b (clean tree)",
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "host": "macOS arm64, CPython 3.12.13",
+ "results": {
+  "A": {
+   "mutant_000": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_009": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_010": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_012": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_013": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_016": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_019": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_020": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_026": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_029": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_031": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_036": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_039": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       5
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       5
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       5
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       5
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       5
+      ],
+      [
+       1,
+       0
+      ]
+     ]
+    },
+    "cell0_live": false,
+    "targets_live": true
+   },
+   "mutant_043": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_047": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_055": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_058": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       3
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       3
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       3
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       3
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       3
+      ],
+      [
+       1,
+       1
+      ]
+     ]
+    },
+    "cell0_live": false,
+    "targets_live": true
+   },
+   "mutant_065": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_066": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_071": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_080": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       1
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       1
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       1
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       1
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       1
+      ],
+      [
+       0,
+       2
+      ]
+     ]
+    },
+    "cell0_live": false,
+    "targets_live": true
+   },
+   "mutant_083": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "mutant_086": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "B1": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "B2": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   },
+   "B3": {
+    "exit": 0,
+    "verdict": "EQUIVALENT",
+    "G3": "PASS",
+    "closure": "PASS",
+    "planes": {
+     "plane_1": "PASS",
+     "plane_2": "PASS",
+     "plane_3": "PASS",
+     "plane_4": "PASS",
+     "plane_5": "PASS"
+    },
+    "controls_not_pass": [],
+    "targets": {
+     "flipped_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_sample_bit": [
+      [
+       0,
+       0
+      ]
+     ],
+     "flipped_raw_header_byte": [
+      [
+       0,
+       0
+      ]
+     ],
+     "corrupted_cdp_coordinate": [
+      [
+       0,
+       0
+      ]
+     ],
+     "transposed_traces": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    "cell0_live": true,
+    "targets_live": true
+   }
+  },
+  "R": {
+   "exit": 0,
+   "verdict": "EQUIVALENT",
+   "G3": "PASS",
+   "closure": "PASS",
+   "planes": {
+    "plane_1": "PASS",
+    "plane_2": "PASS",
+    "plane_3": "PASS",
+    "plane_4": "PASS",
+    "plane_5": "PASS"
+   },
+   "controls_not_pass": [],
+   "targets": {
+    "flipped_header_byte": [
+     [
+      0,
+      0
+     ]
+    ],
+    "flipped_sample_bit": [
+     [
+      0,
+      0
+     ]
+    ],
+    "flipped_raw_header_byte": [
+     [
+      0,
+      0
+     ]
+    ],
+    "corrupted_cdp_coordinate": [
+     [
+      0,
+      0
+     ]
+    ],
+    "transposed_traces": [
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      1
+     ]
+    ]
+   },
+   "cell0_live": true,
+   "targets_live": true
+  },
+  "compare": {
+   "mutant_000": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_009": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_010": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_012": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_013": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_016": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_019": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_020": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_026": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_029": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_031": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_036": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_039": {
+    "verdict": [
+     "NON-EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_043": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_047": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_055": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_058": {
+    "verdict": [
+     "NON-EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_065": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_066": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_071": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_080": {
+    "verdict": [
+     "NON-EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_083": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "mutant_086": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "B1": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "B2": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   },
+   "B3": {
+    "verdict": [
+     "EQUIVALENT",
+     "EQUIVALENT"
+    ],
+    "G3": [
+     "PASS",
+     "PASS"
+    ],
+    "closure": [
+     "PASS",
+     "PASS"
+    ]
+   }
+  }
+ },
+ "extra_observation_real_2d_line": {
+  "source": "AI-ML-Seismic-Zahid-V1/data/raw/volve_seismic/st10010_github/volve10r12-full-twt-arb.sgy",
+  "source_sha256": "75a4bae98a6c82fe6a01e2e66aab747306836c34296a42bf2252b5e074e5af44",
+  "source_bytes": 822600,
+  "declaration": "--revision 1 --template PostStack2DTime --override overrides/rev1-cdp-alias.toml",
+  "at_403fefb": {
+   "verdict": "NON-EQUIVALENT",
+   "g7_failed": [
+    "transposed_traces"
+   ],
+   "errors": [
+    "could not apply: IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed"
+   ]
+  },
+  "at_aa0b68b": {
+   "verdict": "EQUIVALENT",
+   "G3": "ROUNDTRIP-SCOPED",
+   "blocking": [
+    "gate G5 is NOT_RUN"
+   ],
+   "targets": {
+    "flipped_header_byte": [
+     [
+      0
+     ]
+    ],
+    "flipped_sample_bit": [
+     [
+      0
+     ]
+    ],
+    "flipped_raw_header_byte": [
+     [
+      0
+     ]
+    ],
+    "transposed_traces": [
+     [
+      0
+     ],
+     [
+      1
+     ]
+    ],
+    "corrupted_cdp_coordinate": [
+     [
+      0
+     ]
+    ]
+   }
+  }
+ }
+}
