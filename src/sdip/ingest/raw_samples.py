@@ -271,6 +271,56 @@ def read_source_words(source: str | Path, *, samples_per_trace: int) -> NDArray[
     return words
 
 
+def read_source_words_at(
+    source: str | Path, ordinals: NDArray[np.int64], *, samples_per_trace: int
+) -> NDArray[np.uint32]:
+    """Read the raw sample words of the given traces only, undecoded (``OPEN_DEBTS`` D38).
+
+    The same words :func:`read_source_words` exposes, read by explicit file reads instead
+    of through a mapping. A mapping's touched pages count as resident memory, so reading a
+    whole survey through it held the whole file in RSS. Here only the requested traces are
+    read, one contiguous run of ordinals per read.
+
+    Args:
+        source: SEG-Y file.
+        ordinals: Trace ordinals, strictly increasing.
+        samples_per_trace: Declared samples per trace, reconciled against the file size
+            by :func:`source_trace_layout` before any offset is computed.
+
+    Returns:
+        Shape ``(len(ordinals), samples_per_trace)``, native ``uint32``, in ``ordinals`` order.
+
+    Raises:
+        UntrustedInputError: If the declared trace length and the file disagree, or an
+            ordinal is outside the file.
+    """
+    path = Path(source)
+    trace_count, stride = source_trace_layout(path.stat().st_size, samples_per_trace)
+    wanted = np.asarray(ordinals, dtype=np.int64)
+    out = np.empty((wanted.size, samples_per_trace), dtype=np.uint32)
+    if wanted.size == 0:
+        return out
+    if int(wanted[0]) < 0 or int(wanted[-1]) >= trace_count or np.any(np.diff(wanted) <= 0):
+        msg = f"trace ordinals must be strictly increasing and inside 0..{trace_count - 1}"
+        raise UntrustedInputError(msg)
+    record = np.dtype(
+        [
+            ("header", f"V{SEGY_TRACE_HEADER_BYTES}"),
+            ("samples", ">u4", (samples_per_trace,)),
+        ]
+    )
+    breaks = np.flatnonzero(np.diff(wanted) != 1) + 1
+    with path.open("rb") as handle:
+        for run in np.split(np.arange(wanted.size), breaks):
+            first = int(wanted[run[0]])
+            handle.seek(TRACE_DATA_OFFSET + first * stride)
+            buffer = handle.read(run.size * stride)
+            out[run[0] : run[-1] + 1] = np.frombuffer(buffer, dtype=record, count=run.size)[
+                "samples"
+            ]
+    return out
+
+
 def open_raw_sample_view(store: str | Path) -> Any | None:
     """Open the parallel raw view on a store, or ``None`` when it carries none.
 
@@ -453,6 +503,33 @@ def reconstruct_slab(
         stored = np.asarray(view[WORDS_ARRAY][lo:hi], dtype=np.uint32)
         flat = words.reshape(-1)
         flat[(index[lo:hi] - outer * slab_size).astype(np.int64)] = stored
+    return words
+
+
+def reconstruct_block(
+    amplitude_block: NDArray[np.float32],
+    starts: tuple[int, ...],
+    entry_cells: NDArray[np.int64],
+    entry_samples: NDArray[np.int64],
+    entry_words: NDArray[np.uint32],
+) -> NDArray[np.uint32]:
+    """Source words for one block of a ``sparse/1`` store (``OPEN_DEBTS`` D38).
+
+    :func:`reconstruct_slab` for any block of grid cells instead of one whole outermost
+    slab: ``ieee2ibm`` of the stored float32, element by element, then the view's entries
+    whose cell lies in the block written over it. ``entry_cells`` holds each entry's grid
+    cell (one row per entry), and ``entry_samples`` its sample position.
+    """
+    from segy.ibm import ieee2ibm
+
+    words = np.asarray(ieee2ibm(np.asarray(amplitude_block, dtype=np.float32)), np.uint32).copy()
+    if entry_cells.shape[0]:
+        lo = np.asarray(starts, dtype=np.int64)
+        hi = lo + np.asarray(words.shape[:-1], dtype=np.int64)
+        inside = np.all((entry_cells >= lo) & (entry_cells < hi), axis=1)
+        if inside.any():
+            local = entry_cells[inside] - lo
+            words[(*local.T, entry_samples[inside])] = entry_words[inside]
     return words
 
 

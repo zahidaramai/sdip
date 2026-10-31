@@ -18,6 +18,8 @@ in-memory copy is a tautology: it would pass on a store that was never written.
 
 from __future__ import annotations
 
+import bisect
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
@@ -1207,6 +1209,40 @@ RAW_IBM32_NOTE = (
 )
 
 
+def _chunk_blocks(
+    array: Any, trace_map: Any
+) -> Iterator[tuple[tuple[int, ...], tuple[int, ...], tuple[slice, ...], list[Any]]]:
+    """Live traces grouped by the store chunk that holds them (``OPEN_DEBTS`` D38).
+
+    Plane 4 read the whole source and the whole store volume at once, so its memory grew
+    with the file: 7.73 MB of RSS per MB of source (``DECISIONS.md`` D-0060). This walks
+    the chunk grid of the non-sample dimensions instead. Each block is one chunk's cells,
+    across every sample.
+
+    Yields ``(key, starts, region, traces)``: the block's chunk index, its first cell, the
+    slices that select it, and its live ``(ordinal, cell)`` pairs in ordinal order. Blocks
+    come in chunk-index order, so the outermost chunk row varies slowest. Blocks with no
+    live trace are skipped, because padding is never compared (SP12).
+    """
+    grid = tuple(int(n) for n in array.shape[:-1])
+    chunks = tuple(int(c) for c in array.chunks[:-1])
+    groups: dict[tuple[int, ...], list[Any]] = {}
+    for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
+        key = tuple(int(c) // k for c, k in zip(cell, chunks, strict=True))
+        groups.setdefault(key, []).append((ordinal, cell))
+    for key in sorted(groups):
+        starts = tuple(k * c for k, c in zip(key, chunks, strict=True))
+        region = tuple(
+            slice(s, min(s + c, n)) for s, c, n in zip(starts, chunks, grid, strict=True)
+        )
+        yield key, starts, region, groups[key]
+
+
+def _local(cell: tuple[int, ...], starts: tuple[int, ...]) -> tuple[int, ...]:
+    """A grid cell's position inside the block that starts at ``starts``."""
+    return tuple(int(c) - s for c, s in zip(cell, starts, strict=True))
+
+
 def _raw_ibm32_evidence(
     source: str | Path, group: Any, trace_map: Any, variable: str = "amplitude"
 ) -> dict[str, Any]:
@@ -1220,7 +1256,7 @@ def _raw_ibm32_evidence(
     word, so comparing it against anything would be comparing against a number nobody
     measured.
     """
-    from sdip.ingest.raw_samples import ARRAY_NAME, read_source_words
+    from sdip.ingest.raw_samples import ARRAY_NAME, read_source_words_at, source_trace_layout
 
     if ARRAY_NAME not in group:
         return {
@@ -1248,9 +1284,43 @@ def _raw_ibm32_evidence(
             "raw_ibm32_note": RAW_IBM32_NOTE,
         }
 
-    stored = np.asarray(group[ARRAY_NAME][:])
+    stored = group[ARRAY_NAME]
+    samples_per_trace = int(stored.shape[-1])
     try:
-        words = read_source_words(source, samples_per_trace=int(stored.shape[-1]))
+        source_trace_layout(Path(source).stat().st_size, samples_per_trace)
+        # Block by block (D38): each block reads only its own store cells and the source
+        # traces that map to them. The comparison is the one it always was: every live
+        # trace, in ordinal order, stopping at the 20th mismatch. Visiting blocks in chunk
+        # order and then keeping the 20 lowest mismatching ordinals reports exactly that.
+        mismatches: list[dict[str, Any]] = []
+        for _, starts, region, traces in _chunk_blocks(stored, trace_map):
+            block = np.asarray(stored[region])
+            words = read_source_words_at(
+                source,
+                np.fromiter((o for o, _ in traces), dtype=np.int64, count=len(traces)),
+                samples_per_trace=samples_per_trace,
+            )
+            for row, (ordinal, cell) in enumerate(traces):
+                expected = words[row]
+                observed = np.asarray(block[_local(cell, starts)])
+                if not identical(expected, observed):
+                    differing = np.flatnonzero(expected != observed)
+                    first = int(differing[0]) if differing.size else None
+                    mismatches.append(
+                        {
+                            "source_ordinal": ordinal,
+                            "cell": list(cell),
+                            "first_sample": first,
+                            "expected_word": (
+                                None if first is None else f"0x{int(expected[first]):08X}"
+                            ),
+                            "observed_word": (
+                                None if first is None else f"0x{int(observed[first]):08X}"
+                            ),
+                            "differing_words": int(differing.size),
+                        }
+                    )
+            mismatches = sorted(mismatches, key=lambda m: m["source_ordinal"])[:20]
     except UntrustedInputError as exc:
         # Recorded rather than raised: this leg must never be able to convert the
         # decoded comparison's verdict into an exception. A raw-view defect masking a
@@ -1263,27 +1333,12 @@ def _raw_ibm32_evidence(
             "raw_ibm32_note": RAW_IBM32_NOTE,
         }
 
-    mismatches: list[dict[str, Any]] = []
-    compared = 0
-    for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
-        compared += 1
-        expected = np.asarray(words[ordinal], dtype=np.uint32)
-        observed = np.asarray(stored[cell])
-        if not identical(expected, observed):
-            differing = np.flatnonzero(expected != observed)
-            first = int(differing[0]) if differing.size else None
-            mismatches.append(
-                {
-                    "source_ordinal": ordinal,
-                    "cell": list(cell),
-                    "first_sample": first,
-                    "expected_word": None if first is None else f"0x{int(expected[first]):08X}",
-                    "observed_word": None if first is None else f"0x{int(observed[first]):08X}",
-                    "differing_words": int(differing.size),
-                }
-            )
-            if len(mismatches) >= 20:
-                break
+    ordinals = sorted(trace_map.ordinal_to_cell)
+    compared = len(ordinals)
+    if len(mismatches) >= 20:
+        # The comparison stopped at the 20th mismatch: it had compared every live trace up
+        # to and including that one.
+        compared = bisect.bisect_left(ordinals, mismatches[19]["source_ordinal"]) + 1
 
     return {
         "raw_ibm32_view_present": True,
@@ -1315,8 +1370,9 @@ def _sparse_raw_evidence(
         INDEX_ARRAY,
         LAYOUT_SPARSE,
         WORDS_ARRAY,
-        read_source_words,
-        reconstruct_slab,
+        read_source_words_at,
+        reconstruct_block,
+        source_trace_layout,
     )
 
     view = group[ARRAY_NAME]
@@ -1328,7 +1384,7 @@ def _sparse_raw_evidence(
         "raw_ibm32_note": RAW_IBM32_NOTE,
     }
     try:
-        words = read_source_words(source, samples_per_trace=shape[-1])
+        source_trace_layout(Path(source).stat().st_size, shape[-1])
     except UntrustedInputError as exc:
         return base | {
             "raw_ibm32_words_verified": False,
@@ -1369,33 +1425,70 @@ def _sparse_raw_evidence(
             "raw_ibm32_mismatch_count": len(problems),
         }
 
-    slab = int(np.prod(shape[1:], dtype=np.int64))
-    by_outer: dict[int, list[tuple[int, tuple[int, ...]]]] = {}
-    for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
-        by_outer.setdefault(cell[0], []).append((ordinal, cell))
+    # Block by block (D38). The comparison and its stopping rule are the ones it always
+    # had: outermost slab by slab in order, each slab's traces in ordinal order, stopping
+    # after the first slab that brings the count of mismatches to 20. A slab's verdict is
+    # final only once every block in its chunk row is done, so the rule is applied row by
+    # row.
+    entry_cells = np.stack(
+        np.unravel_index(index.astype(np.int64) // shape[-1], shape[:-1]), axis=1
+    ).astype(np.int64)
+    entry_samples = index.astype(np.int64) % shape[-1]
+    entry_words = (
+        np.asarray(view[WORDS_ARRAY][:], dtype=np.uint32)
+        if index.size
+        else np.zeros(0, dtype=np.uint32)
+    )
     mismatches: list[dict[str, Any]] = []
     compared = 0
-    for outer, traces in sorted(by_outer.items()):
-        rebuilt = reconstruct_slab(np.asarray(amplitude[outer]), outer, slab, view)
-        for ordinal, cell in traces:
-            compared += 1
-            expected = np.asarray(words[ordinal], dtype=np.uint32)
-            observed = rebuilt[cell[1:]]
-            if not identical(expected, observed):
-                differing = np.flatnonzero(expected != observed)
-                first = int(differing[0])
-                mismatches.append(
-                    {
-                        "source_ordinal": ordinal,
-                        "cell": list(cell),
-                        "first_sample": first,
-                        "expected_word": f"0x{int(expected[first]):08X}",
-                        "observed_word": f"0x{int(observed[first]):08X}",
-                        "differing_words": int(differing.size),
-                    }
+    rows: dict[int, list[Any]] = {}
+    for key, starts, region, traces in _chunk_blocks(amplitude, trace_map):
+        rows.setdefault(key[0], []).append((starts, region, traces))
+    try:
+        for row in sorted(rows):
+            per_outer: dict[int, list[tuple[int, dict[str, Any] | None]]] = {}
+            for starts, region, traces in rows[row]:
+                rebuilt = reconstruct_block(
+                    np.asarray(amplitude[region]), starts, entry_cells, entry_samples, entry_words
                 )
-        if len(mismatches) >= 20:
-            break
+                words = read_source_words_at(
+                    source,
+                    np.fromiter((o for o, _ in traces), dtype=np.int64, count=len(traces)),
+                    samples_per_trace=shape[-1],
+                )
+                for position, (ordinal, cell) in enumerate(traces):
+                    expected = words[position]
+                    observed = rebuilt[_local(cell, starts)]
+                    record = None
+                    if not identical(expected, observed):
+                        differing = np.flatnonzero(expected != observed)
+                        first = int(differing[0])
+                        record = {
+                            "source_ordinal": ordinal,
+                            "cell": list(cell),
+                            "first_sample": first,
+                            "expected_word": f"0x{int(expected[first]):08X}",
+                            "observed_word": f"0x{int(observed[first]):08X}",
+                            "differing_words": int(differing.size),
+                        }
+                    per_outer.setdefault(int(cell[0]), []).append((ordinal, record))
+            stop = False
+            for outer in sorted(per_outer):
+                for _, record in sorted(per_outer[outer], key=lambda t: t[0]):
+                    compared += 1
+                    if record is not None:
+                        mismatches.append(record)
+                if len(mismatches) >= 20:
+                    stop = True
+                    break
+            if stop:
+                break
+    except UntrustedInputError as exc:
+        return base | {
+            "raw_ibm32_words_verified": False,
+            "raw_ibm32_identical": None,
+            "raw_ibm32_error": f"{type(exc).__name__}: {exc}",
+        }
     return base | {
         "raw_ibm32_words_verified": True,
         "raw_ibm32_identical": not mismatches,
@@ -1456,25 +1549,32 @@ def plane_4(
     handle = _open_source(source, spec)
     group = _open_store(store)
     source_headers = handle.header[:]
-    samples = handle.sample[:]
-    volume = group[variable][:]
+    volume = group[variable]
 
     dimensions = store_dimensions(group)
     trace_map = build_trace_map(source_headers, grid_coordinates(group, dimensions), dimensions)
 
+    # Block by block (D38): a block reads its own store cells and only the source traces
+    # that map to them, decoded by the same `segy` accessor. Every live trace is compared,
+    # every mismatch is counted, and the examples quoted are the lowest ordinals, exactly
+    # as the whole-file loop produced them.
     mismatches: list[dict[str, Any]] = []
     sample_mismatch_count = 0
     compared = 0
-    for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
-        compared += 1
-        expected = np.asarray(samples[ordinal])
-        observed = np.asarray(volume[cell])
-        if not identical(expected, observed):
-            differing = np.flatnonzero(expected != observed)
-            first = int(differing[0]) if differing.size else None
-            # Counted in full; only the quoted examples are capped (D52 audit, D-0088).
-            sample_mismatch_count += 1
-            if len(mismatches) < MISMATCH_EXAMPLES:
+    for _, starts, region, traces in _chunk_blocks(volume, trace_map):
+        block = np.asarray(volume[region])
+        decoded = handle.sample[
+            np.fromiter((o for o, _ in traces), dtype=np.int64, count=len(traces))
+        ]
+        for row, (ordinal, cell) in enumerate(traces):
+            compared += 1
+            expected = np.asarray(decoded[row])
+            observed = np.asarray(block[_local(cell, starts)])
+            if not identical(expected, observed):
+                differing = np.flatnonzero(expected != observed)
+                first = int(differing[0]) if differing.size else None
+                # Counted in full; only the quoted examples are capped (D52 audit, D-0088).
+                sample_mismatch_count += 1
                 mismatches.append(
                     {
                         "source_ordinal": ordinal,
@@ -1485,6 +1585,7 @@ def plane_4(
                         "differing_samples": int(differing.size),
                     }
                 )
+        mismatches = sorted(mismatches, key=lambda m: m["source_ordinal"])[:MISMATCH_EXAMPLES]
 
     # The raw-word leg is ANDed into the verdict, not merely reported.
     #
