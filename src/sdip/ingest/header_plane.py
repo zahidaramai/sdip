@@ -378,6 +378,57 @@ def read_source_header_bytes(
     return header_bytes
 
 
+def read_source_header_bytes_at(
+    source: str | Path,
+    ordinals: NDArray[np.int64],
+    *,
+    samples_per_trace: int,
+    bytes_per_sample: int,
+    data_offset: int = TRACE_DATA_OFFSET,
+) -> NDArray[np.uint8]:
+    """Read the 240 header bytes of the given traces only, undecoded (``OPEN_DEBTS`` D38).
+
+    The same bytes :func:`read_source_header_bytes` exposes, read by explicit file reads
+    instead of through a mapping. A header sits inside its trace, so touching every header
+    through the mapping made almost every page of the file resident: 1.67 GB of RSS for a
+    1.60 GB source (probe P24). Here only the requested headers are read, one read per
+    trace, so a run of traces never brings their samples into memory.
+
+    Args:
+        source: SEG-Y file.
+        ordinals: Trace ordinals, strictly increasing.
+        samples_per_trace: Declared samples per trace.
+        bytes_per_sample: Declared width of one sample.
+        data_offset: Byte offset of the first trace header.
+
+    Returns:
+        Shape ``(len(ordinals), 240)``, in ``ordinals`` order.
+
+    Raises:
+        UntrustedInputError: If the declared trace length and the file disagree, or an
+            ordinal is outside the file.
+    """
+    path = Path(source)
+    trace_count, stride = source_trace_layout(
+        path.stat().st_size,
+        samples_per_trace=samples_per_trace,
+        bytes_per_sample=bytes_per_sample,
+        data_offset=data_offset,
+    )
+    wanted = np.asarray(ordinals, dtype=np.int64)
+    out = np.empty((wanted.size, SEGY_TRACE_HEADER_BYTES), dtype=np.uint8)
+    if wanted.size == 0:
+        return out
+    if int(wanted[0]) < 0 or int(wanted[-1]) >= trace_count or np.any(np.diff(wanted) <= 0):
+        msg = f"trace ordinals must be strictly increasing and inside 0..{trace_count - 1}"
+        raise UntrustedInputError(msg)
+    with path.open("rb") as handle:
+        for row, ordinal in enumerate(wanted.tolist()):
+            handle.seek(data_offset + ordinal * stride)
+            out[row] = np.frombuffer(handle.read(SEGY_TRACE_HEADER_BYTES), dtype=np.uint8)
+    return out
+
+
 def open_header_plane(store: str | Path) -> Any | None:
     """Open the parallel header plane on a store, or ``None`` when it carries none.
 

@@ -350,8 +350,9 @@ def _raw_header_evidence(
     """
     from sdip.ingest.header_plane import (
         ARRAY_NAME,
-        read_source_header_bytes,
+        read_source_header_bytes_at,
         sample_bytes,
+        source_trace_layout,
         trace_data_offset,
     )
 
@@ -367,14 +368,48 @@ def _raw_header_evidence(
             ),
         }
 
-    stored = np.asarray(group[ARRAY_NAME][:])
+    stored = group[ARRAY_NAME]
+    layout = {
+        "samples_per_trace": int(handle.samples_per_trace),
+        "bytes_per_sample": sample_bytes(spec),
+        "data_offset": trace_data_offset(handle),
+    }
+    # Block by block (D38, P24): each block reads its own store region and only its own
+    # traces' header bytes, by explicit reads. Through the old memory map, touching every
+    # header made almost the whole file resident. Every live trace is compared, every
+    # mismatch counted, and the examples are the lowest ordinals, as before.
+    mismatches: list[dict[str, Any]] = []
+    mismatch_count = 0
+    compared = 0
     try:
-        expected_all = read_source_header_bytes(
-            source,
-            samples_per_trace=int(handle.samples_per_trace),
-            bytes_per_sample=sample_bytes(spec),
-            data_offset=trace_data_offset(handle),
-        )
+        source_trace_layout(Path(source).stat().st_size, **layout)
+        for _, starts, region, traces in _chunk_blocks(stored, trace_map):
+            block = np.asarray(stored[region])
+            expected_rows = read_source_header_bytes_at(
+                source,
+                np.fromiter((o for o, _ in traces), dtype=np.int64, count=len(traces)),
+                **layout,
+            )
+            for row, (ordinal, cell) in enumerate(traces):
+                compared += 1
+                expected = expected_rows[row]
+                observed = np.asarray(block[_local(cell, starts)])
+                if not identical(expected, observed):
+                    differing = np.flatnonzero(expected != observed)
+                    first = int(differing[0]) if differing.size else None
+                    # Counted in full; only the quoted examples are capped (D52, D-0088).
+                    mismatch_count += 1
+                    mismatches.append(
+                        {
+                            "source_ordinal": ordinal,
+                            "cell": list(cell),
+                            "byte_offset": first,
+                            "expected": None if first is None else int(expected[first]),
+                            "observed": None if first is None else int(observed[first]),
+                            "differing_bytes": int(differing.size),
+                        }
+                    )
+            mismatches = sorted(mismatches, key=lambda m: m["source_ordinal"])[:MISMATCH_EXAMPLES]
     except UntrustedInputError as exc:
         # Recorded rather than raised: this leg must never be able to convert the
         # field-wise comparison's verdict into an exception. A plane defect masking a
@@ -387,30 +422,6 @@ def _raw_header_evidence(
             "raw_header_error": f"{type(exc).__name__}: {exc}",
             "raw_header_note": RAW_HEADER_NOTE,
         }
-
-    mismatches: list[dict[str, Any]] = []
-    mismatch_count = 0
-    compared = 0
-    for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
-        compared += 1
-        expected = np.asarray(expected_all[ordinal], dtype=np.uint8)
-        observed = np.asarray(stored[cell])
-        if not identical(expected, observed):
-            differing = np.flatnonzero(expected != observed)
-            first = int(differing[0]) if differing.size else None
-            # Counted in full; only the quoted examples are capped (D52 audit, D-0088).
-            mismatch_count += 1
-            if len(mismatches) < MISMATCH_EXAMPLES:
-                mismatches.append(
-                    {
-                        "source_ordinal": ordinal,
-                        "cell": list(cell),
-                        "byte_offset": first,
-                        "expected": None if first is None else int(expected[first]),
-                        "observed": None if first is None else int(observed[first]),
-                        "differing_bytes": int(differing.size),
-                    }
-                )
 
     return {
         "raw_header_plane_present": True,
@@ -1059,39 +1070,53 @@ def plane_3(source: str | Path, store: str | Path, spec: Any, *, g1_passed: bool
     handle = _open_source(source, spec)
     group = _open_store(store)
     source_headers = handle.header[:]
-    store_headers = group["headers"][:]
+    store_node = group["headers"]
 
     dimensions = store_dimensions(group)
     trace_map = build_trace_map(source_headers, grid_coordinates(group, dimensions), dimensions)
 
     field_names = tuple(source_headers.dtype.names or ())
-    store_names = tuple(store_headers.dtype.names or ())
+    # The store's field names, from one cell rather than the whole array (D38, P24).
+    first_cell = tuple(slice(0, 1) for _ in store_node.shape)
+    store_names = tuple(np.asarray(store_node[first_cell]).dtype.names or ())
     missing_fields = sorted(set(field_names) - set(store_names))
+    compared_fields = [
+        (k, name) for k, name in enumerate(field_names) if name not in missing_fields
+    ]
 
-    mismatches: list[dict[str, Any]] = []
+    # Block by block (D38, P24): the store's structured headers are read one chunk region
+    # at a time. Every live trace and every field is compared, every mismatch counted, and
+    # the examples are the first in (ordinal, field) order, as the whole-array loop
+    # produced them.
+    keyed: list[tuple[tuple[int, int], dict[str, Any]]] = []
     field_mismatch_count = 0
     compared = 0
-    for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
-        compared += 1
-        for name in field_names:
-            if name in missing_fields:
-                continue
-            expected = source_headers[name][ordinal]
-            observed = store_headers[name][cell]
-            if not identical(expected, observed):
-                # Counted in full; only the quoted examples are capped (D52 audit, D-0088).
-                # The loop used to break at 20, which also stopped `compared`.
-                field_mismatch_count += 1
-                if len(mismatches) < MISMATCH_EXAMPLES:
-                    mismatches.append(
-                        {
-                            "source_ordinal": ordinal,
-                            "cell": list(cell),
-                            "field": name,
-                            "expected": expected.item(),
-                            "observed": observed.item(),
-                        }
+    for _, starts, region, traces in _chunk_blocks(store_node, trace_map, trailing=0):
+        block = np.asarray(store_node[region])
+        for ordinal, cell in traces:
+            compared += 1
+            local = _local(cell, starts)
+            for k, name in compared_fields:
+                expected = source_headers[name][ordinal]
+                observed = block[name][local]
+                if not identical(expected, observed):
+                    # Counted in full; only the quoted examples are capped (D52, D-0088).
+                    # The loop used to break at 20, which also stopped `compared`.
+                    field_mismatch_count += 1
+                    keyed.append(
+                        (
+                            (ordinal, k),
+                            {
+                                "source_ordinal": ordinal,
+                                "cell": list(cell),
+                                "field": name,
+                                "expected": expected.item(),
+                                "observed": observed.item(),
+                            },
+                        )
                     )
+        keyed = sorted(keyed, key=lambda item: item[0])[:MISMATCH_EXAMPLES]
+    mismatches = [record for _, record in keyed]
 
     # The byte leg is ANDed into the verdict, not merely reported - the same ruling
     # D-0049 made for Plane 4's raw-word leg. `headers_raw_uint8` is the copy of the
@@ -1210,7 +1235,7 @@ RAW_IBM32_NOTE = (
 
 
 def _chunk_blocks(
-    array: Any, trace_map: Any
+    array: Any, trace_map: Any, *, trailing: int = 1
 ) -> Iterator[tuple[tuple[int, ...], tuple[int, ...], tuple[slice, ...], list[Any]]]:
     """Live traces grouped by the store chunk that holds them (``OPEN_DEBTS`` D38).
 
@@ -1222,10 +1247,13 @@ def _chunk_blocks(
     Yields ``(key, starts, region, traces)``: the block's chunk index, its first cell, the
     slices that select it, and its live ``(ordinal, cell)`` pairs in ordinal order. Blocks
     come in chunk-index order, so the outermost chunk row varies slowest. Blocks with no
-    live trace are skipped, because padding is never compared (SP12).
+    live trace are skipped, because padding is never compared (SP12). ``trailing`` is the
+    number of per-trace axes after the grid: 1 for samples or header bytes, 0 for the
+    structured ``headers`` array.
     """
-    grid = tuple(int(n) for n in array.shape[:-1])
-    chunks = tuple(int(c) for c in array.chunks[:-1])
+    ndim = len(array.shape) - trailing
+    grid = tuple(int(n) for n in array.shape[:ndim])
+    chunks = tuple(int(c) for c in array.chunks[:ndim])
     groups: dict[tuple[int, ...], list[Any]] = {}
     for ordinal, cell in sorted(trace_map.ordinal_to_cell.items()):
         key = tuple(int(c) // k for c, k in zip(cell, chunks, strict=True))

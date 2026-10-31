@@ -253,7 +253,9 @@ def test_reading_words_by_ordinal_equals_the_mapping(built):
     source, _, _ = built
     mapped = read_source_words(source, samples_per_trace=16)
     wanted = np.array([0, 1, 2, 5, 9, 10, 41], dtype=np.int64)
-    assert np.array_equal(read_source_words_at(source, wanted, samples_per_trace=16), mapped[wanted])
+    assert np.array_equal(
+        read_source_words_at(source, wanted, samples_per_trace=16), mapped[wanted]
+    )
     for bad in ([3, 2], [0, 42], [-1, 4], [5, 5]):
         with pytest.raises(UntrustedInputError):
             read_source_words_at(source, np.array(bad, dtype=np.int64), samples_per_trace=16)
@@ -274,3 +276,144 @@ def test_a_block_rebuilds_the_same_words_as_its_slabs():
             block = amplitude[i0 : i0 + 2, j0 : j0 + 4]
             rebuilt = reconstruct_block(block, (i0, j0), cells, samples, words)
             assert np.array_equal(rebuilt, whole[i0 : i0 + 2, j0 : j0 + 4])
+
+
+# --- P24 stage B: Plane 3's field leg and byte leg, block by block ----------------------
+
+
+def _oracle_plane3_fields(source: Path, store: Path, spec: Any) -> dict[str, Any]:
+    """Plane 3's field-wise loop before P24: every trace, every field, whole arrays."""
+    source_headers = SegyFile(str(source), spec=spec).header[:]
+    store_headers = zarr.open_group(str(store), mode="r")["headers"][:]
+    names = tuple(source_headers.dtype.names or ())
+    missing = set(names) - set(store_headers.dtype.names or ())
+    examples: list[dict[str, Any]] = []
+    count = compared = 0
+    for ordinal, cell in sorted(_trace_map(source, store, spec).ordinal_to_cell.items()):
+        compared += 1
+        for name in names:
+            if name in missing:
+                continue
+            expected, observed = source_headers[name][ordinal], store_headers[name][cell]
+            if not identical(expected, observed):
+                count += 1
+                if len(examples) < 20:
+                    examples.append(
+                        {
+                            "source_ordinal": ordinal,
+                            "cell": list(cell),
+                            "field": name,
+                            "expected": expected.item(),
+                            "observed": observed.item(),
+                        }
+                    )
+    return {"n": compared, "mismatch_count": count, "mismatch_examples": examples}
+
+
+def _oracle_plane3_bytes(source: Path, store: Path, spec: Any) -> dict[str, Any]:
+    """Plane 3's byte leg before P24: the memory-mapped header bytes, whole arrays."""
+    from sdip.ingest.header_plane import read_source_header_bytes, sample_bytes, trace_data_offset
+
+    handle = SegyFile(str(source), spec=spec)
+    stored = np.asarray(zarr.open_group(str(store), mode="r")["headers_raw_uint8"][:])
+    expected_all = read_source_header_bytes(
+        source,
+        samples_per_trace=int(handle.samples_per_trace),
+        bytes_per_sample=sample_bytes(spec),
+        data_offset=trace_data_offset(handle),
+    )
+    examples: list[dict[str, Any]] = []
+    count = compared = 0
+    for ordinal, cell in sorted(_trace_map(source, store, spec).ordinal_to_cell.items()):
+        compared += 1
+        expected = np.asarray(expected_all[ordinal], dtype=np.uint8)
+        observed = np.asarray(stored[cell])
+        if not identical(expected, observed):
+            differing = np.flatnonzero(expected != observed)
+            first = int(differing[0])
+            count += 1
+            if len(examples) < 20:
+                examples.append(
+                    {
+                        "source_ordinal": ordinal,
+                        "cell": list(cell),
+                        "byte_offset": first,
+                        "expected": int(expected[first]),
+                        "observed": int(observed[first]),
+                        "differing_bytes": int(differing.size),
+                    }
+                )
+    return {"n": compared, "mismatch_count": count, "mismatch_examples": examples}
+
+
+def _assert_plane3_matches(plane: Any, fields: dict[str, Any], raw: dict[str, Any]) -> None:
+    evidence = plane.evidence
+    assert evidence["n"] == fields["n"]
+    assert evidence["mismatch_count"] == fields["mismatch_count"]
+    assert evidence["mismatch_examples"] == fields["mismatch_examples"]
+    assert evidence["first_difference"] == (fields["mismatch_examples"] or [None])[0]
+    assert evidence["raw_header_n"] == raw["n"]
+    assert evidence["raw_header_mismatch_count"] == raw["mismatch_count"]
+    assert evidence["raw_header_mismatch_examples"] == raw["mismatch_examples"]
+    assert evidence["raw_header_first_difference"] == (raw["mismatch_examples"] or [None])[0]
+
+
+def _plane_3(source: Path, store: Path, result: Any) -> Any:
+    from sdip.equivalence import plane_3
+
+    return plane_3(source, store, result.spec.segy_spec, g1_passed=True)
+
+
+def test_plane_3_header_arrays_are_chunked_into_nine_blocks(built):
+    _, store, _ = built
+    group = zarr.open_group(str(store), mode="r")
+    assert tuple(group["headers"].chunks) == CHUNKS[:2]
+    assert tuple(group["headers_raw_uint8"].chunks)[:2] == CHUNKS[:2]
+
+
+def test_plane_3_on_a_correct_store_reports_the_oracles_numbers(built):
+    source, store, result = built
+    spec = result.spec.segy_spec
+    plane = _plane_3(source, store, result)
+    assert plane.status == "PASS"
+    _assert_plane3_matches(
+        plane, _oracle_plane3_fields(source, store, spec), _oracle_plane3_bytes(source, store, spec)
+    )
+
+
+def test_plane_3_on_corrupted_headers_reports_what_the_whole_array_loops_reported(built, tmp_path):
+    source, store, result = built
+    spec = result.spec.segy_spec
+    copy = tmp_path / "headers.mdio"
+    shutil.copytree(store, copy)
+    group = zarr.open_group(str(copy), mode="r+")
+    headers = np.asarray(group["headers"][:])
+    raw = np.asarray(group["headers_raw_uint8"][:])
+    rng = np.random.default_rng(31)
+    fields = [n for n in headers.dtype.names if n not in ("inline", "crossline")]
+    for flat in rng.choice(42, size=25, replace=False):
+        i, j = divmod(int(flat), 7)
+        name = fields[int(rng.integers(0, len(fields)))]
+        headers[name][i, j] = headers[name][i, j] + 1
+        raw[i, j, int(rng.integers(0, 240))] ^= np.uint8(1)
+    group["headers"][:] = headers
+    group["headers_raw_uint8"][:] = raw
+    plane = _plane_3(source, copy, result)
+    oracle_fields = _oracle_plane3_fields(source, copy, spec)
+    oracle_bytes = _oracle_plane3_bytes(source, copy, spec)
+    assert plane.status == "FAIL"
+    assert oracle_fields["mismatch_count"] >= 25 and oracle_bytes["mismatch_count"] == 25
+    _assert_plane3_matches(plane, oracle_fields, oracle_bytes)
+
+
+def test_reading_header_bytes_by_ordinal_equals_the_mapping(built):
+    from sdip.ingest.header_plane import read_source_header_bytes, read_source_header_bytes_at
+
+    source, _, _ = built
+    layout = {"samples_per_trace": 16, "bytes_per_sample": 4}
+    mapped = read_source_header_bytes(source, **layout)
+    wanted = np.array([0, 1, 2, 5, 9, 10, 41], dtype=np.int64)
+    assert np.array_equal(read_source_header_bytes_at(source, wanted, **layout), mapped[wanted])
+    for bad in ([3, 2], [0, 42], [-1, 4], [5, 5]):
+        with pytest.raises(UntrustedInputError):
+            read_source_header_bytes_at(source, np.array(bad, dtype=np.int64), **layout)
