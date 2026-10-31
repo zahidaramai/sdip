@@ -72,3 +72,38 @@ installed. It says nothing about a different installer or a different index.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-11-01 |
+| Commits | Registration `d3b118c`, before either fetch. Installed environment: the main checkout at `29ae032` |
+| Receipt | `prereg/P25-receipt-2026-11-01.json`: the fetched commits, every compared file's sha256, and the lists |
+| Verdict | **MATCH for both distributions** |
+
+### Measured
+
+Both fetches checked out exactly the declared commit (`git rev-parse HEAD` equal to the pin).
+
+| Distribution | Commit | Compared | Equal | Differ | Installed without source | Source not in wheel | Outcome |
+|---|---|---:|---:|---:|---:|---:|---|
+| `multidimio` 1.2.1 | `76df396e5450` | 93 | **93** | 0 | 0 | 0 | **MATCH** |
+| `segy` 0.6.0 | `557bceba4abc` | 38 | **38** | 0 | 0 | 0 | **MATCH** |
+
+Not compared, as registered: each distribution's 7 `.dist-info` files and its console script
+(`bin/mdio`, `bin/segy`).
+
+**Negative control.** Overwriting one byte of the fetched `segy/src/segy/ibm.py` made its hash
+differ from the installed file's. Restored, it was equal again. The comparison can see a
+one-byte difference.
+
+### What this attests
+
+Every installed package file of both pinned distributions is byte-identical to the source
+tree at the declared commit. With `doctor`'s existing check, which ties the installed files to
+each wheel's `RECORD` at every run, this is a commit attestation by source comparison. The
+receipt's per-file hashes are a committed manifest of the commit's content.
+
+### Scope
+
+This environment's installed files, one platform, pure-Python wheels. No wheel was rebuilt. A
+pin bump needs this probe run again.

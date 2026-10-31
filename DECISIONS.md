@@ -6024,3 +6024,29 @@ of the header-sized reads under fresh criteria.
 
 **Consumer-visible:** none in output. `sdip verify` uses less memory on large files; its
 reports are unchanged.
+
+---
+
+## D-0126 — 2026-11-01 — D9: the pinned commits match the installed files (P25); ruling requested
+
+**Context.** GeoSuite's order and approval of two read-only fetches. P25 registered at `d3b118c`
+before either fetch, with its outcome classes.
+
+**Result.** MATCH for both distributions:
+- `multidimio` 1.2.1 against `76df396`: 93 of 93 package files identical.
+- `segy` 0.6.0 against `557bceba`: 38 of 38 identical.
+
+No installed file lacks a source counterpart, and no source file is missing from either wheel.
+The negative control (one flipped byte) was detected. Both fetched trees were deleted. The
+per-file hashes are committed in `prereg/P25-receipt-2026-11-01.json`.
+
+**Asked, not decided.** How should the certificate state this?
+- **(a) Recommended.** `doctor` compares each installed package file's sha256 with the
+  committed P25 manifest at every run, with no network, and `commit_sha_verified` becomes true
+  when all match. This makes the attestation runtime-verified, which is what D9 asked for. It
+  changes a certificate field's meaning from "never verifiable" to "verified against a committed
+  source manifest". Tests and negative controls come first. D9 then closes, and a pin bump must
+  re-run P25 to regenerate the manifest.
+- **(b)** Leave the certificate unchanged and close D9 on the P25 record alone. Each certificate
+  then keeps saying "declared-not-runtime-verified".
+- **(c)** Keep D9 open.

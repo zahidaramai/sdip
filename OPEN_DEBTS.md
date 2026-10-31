@@ -3147,3 +3147,20 @@ Of D8's remaining items, coverage-guided fuzzing and four-way combinations can r
 x86-64 Linux could run under emulation. **Windows cannot.** This machine is macOS arm64, and
 nothing on it can host a Windows run, so that leg waits for a Windows host. D8 stays OPEN for
 all of them, as documented.
+
+---
+
+## D9 — NARROWED 2026-11-01 — the commits are attested by source comparison (P25)
+
+- **Narrows:** D9 NARROWED 2026-08-22 above (**SP10**) · **Decision:** `DECISIONS.md` D-0126 ·
+  **Probe:** P25, outcome **MATCH** for both distributions
+- **Status:** `OPEN`, pending a ruling on how the certificate states it
+
+D9's remaining gap was that nothing tied the installed wheels to the declared commits. P25
+fetched each pinned commit read-only and compared every installed package file by sha256:
+`multidimio` 1.2.1 against `76df396`, **93 of 93 identical**, and `segy` 0.6.0 against
+`557bceba`, **38 of 38 identical**. Nothing was missing either way. A one-byte negative
+control was detected.
+
+**Still open:** the certificate still says `commit_sha_verified: false`. Changing what it says
+is a certificate-semantics question (D-0126), asked and not done here.
