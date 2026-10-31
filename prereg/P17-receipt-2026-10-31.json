@@ -1,0 +1,191 @@
+{
+ "probe": "P17",
+ "debt": "D8 residual 4",
+ "run_date": "2026-10-31",
+ "registration_commit": "38920a6",
+ "fix_commit": "8c0821f",
+ "base_image": "python:3.12.13-slim-bookworm@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2",
+ "test_image": "sdip-p17:20261031: build 1 sha256:f5400e917d1188afeef8dc26196293927d11c865953b83455f165b91fcb36135 (no tests, .dockerignore); build 2 sha256:bb4cac559e41e1d296271d3938d3dc307902c2fa6a464f904a6abe3f88568aba (used for every result); both removed after harvest",
+ "uv_lock_sha256": "e355c9a197ff3f7f1243932439996382f7e30ebe0592c47d2727fc96f3d1a9d7",
+ "uv": "0.11.17",
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "installed_packages": 84,
+ "kernel": "Linux c1b60be61d79 6.12.76-linuxkit #1 SMP Tue Jul 21 14:38:37 UTC 2026 aarch64 GNU/Linux",
+ "network": "none during every test step",
+ "deviations": [
+  "Build 1 honoured the repository .dockerignore, which excludes tests/, prereg/, overrides/: no test ran (pytest exit 4). The build context copy then had .dockerignore removed; docs/, local/, CLAUDE.md were never in the git archive.",
+  "Rerun 1 of step (a) via 'uv run' tried to re-sync (hatchling from PyPI) with no network: no test ran. Rerun 2 used /src/.venv/bin/python -m pytest directly.",
+  "Steps (a)-rerun mounted the two files changed by 8c0821f read-only over the image's copies; everything else is the 38920a6 tree."
+ ],
+ "step_a_at_38920a6": {
+  "result": "28 failed, 446 passed, 202 deselected in 472.74s (0:07:52)",
+  "failed_test": "test_every_sdip_refusal_happens_before_upstream_sees_the_file (28 params)",
+  "cause": "_raised_in read the first 'src' anchor: /src/src/sdip/... -> 'src'"
+ },
+ "step_b_at_38920a6": {
+  "result": "202 passed, 24 deselected in 541.99s (0:09:01)"
+ },
+ "step_c_at_38920a6": {
+  "platform": "linux",
+  "members": {
+   "positive_control": {
+    "class": "converted",
+    "peak_rss": 382320640
+   },
+   "empty_file": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "one_byte": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "textual_header_only": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "one_byte_short_of_file_headers": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "file_headers_only": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "truncated_mid_trace_header": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "truncated_mid_sample_block": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "truncated_mid_sample_word": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "declared_samples_exceed_file": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "declared_samples_exceed_file_unsigned": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "declared_trace_samples_exceed_file": {
+    "class": "converted",
+    "peak_rss": 378413056
+   },
+   "declared_extended_headers_exceed_file": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "samples_per_trace_zero": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "samples_per_trace_negative": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "trace_samples_zero": {
+    "class": "converted",
+    "peak_rss": 377999360
+   },
+   "trace_samples_negative": {
+    "class": "converted",
+    "peak_rss": 383332352
+   },
+   "sample_format_undefined": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "sample_format_zero": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "sample_format_negative": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "revision_undefined": {
+    "class": "converted",
+    "peak_rss": 382529536
+   },
+   "sample_interval_zero": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "sample_interval_negative": {
+    "class": "sdip-typed",
+    "peak_rss": 303030272
+   },
+   "sample_interval_enormous": {
+    "class": "converted",
+    "peak_rss": 389632000
+   },
+   "grid_sparse_enormous": {
+    "class": "mdio-grid:GridTraceSparsityError",
+    "peak_rss": 303030272
+   },
+   "grid_index_negative": {
+    "class": "mdio-grid:GridTraceSparsityError",
+    "peak_rss": 303030272
+   },
+   "grid_all_identical": {
+    "class": "mdio-grid:GridTraceCountError",
+    "peak_rss": 306819072
+   },
+   "random_bytes_throughout": {
+    "class": "sdip-typed",
+    "peak_rss": 306819072
+   },
+   "plausible_text_random_body": {
+    "class": "sdip-typed",
+    "peak_rss": 306819072
+   },
+   "all_zero_bytes": {
+    "class": "sdip-typed",
+    "peak_rss": 306819072
+   },
+   "all_ff_bytes": {
+    "class": "sdip-typed",
+    "peak_rss": 306819072
+   },
+   "path_bait_in_headers": {
+    "class": "converted",
+    "peak_rss": 382140416
+   },
+   "source_is_a_directory": {
+    "class": "sdip-typed",
+    "peak_rss": 306819072
+   },
+   "source_is_a_dangling_symlink": {
+    "class": "sdip-typed",
+    "peak_rss": 306819072
+   },
+   "variable_extended_one_stanza": {
+    "class": "sdip-typed",
+    "peak_rss": 306819072
+   },
+   "variable_extended_two_records": {
+    "class": "sdip-typed",
+    "peak_rss": 306819072
+   },
+   "variable_extended_no_records": {
+    "class": "sdip-typed",
+    "peak_rss": 306819072
+   },
+   "variable_extended_unterminated": {
+    "class": "sdip-typed",
+    "peak_rss": 306819072
+   }
+  }
+ },
+ "step_a_at_8c0821f": {
+  "result": "481 passed, 202 deselected in 464.30s (0:07:44)"
+ }
+}

@@ -2820,3 +2820,21 @@ must be bounded by the file size and refuse an unterminated run. Then hand upstr
 count through a public route; `segy`'s `num_extended_text_headers` header override is the
 candidate to check first (§3.3: public API only). Build it when a file that needs it arrives,
 with the P16 members as its controls. Until then, the refusal names this debt.
+
+---
+
+## D8 — NARROWED 2026-10-31 — residual 4 closed for Linux aarch64 (P17)
+
+- **Narrows:** D8 NARROWED 2026-10-31 (P16) above (**SP10**) · **Decision:** `DECISIONS.md`
+  D-0116 · **Probe:** P17, fired on a harness defect, fixed
+
+Residual 4 said D8 had been measured on one platform. P17 ran the corpus (37 members), all 223
+pairs, and a per-member RSS record on Linux 6.12 aarch64, in a container with no network. The
+outcome classes are identical to macOS. The Linux `ru_maxrss` unit is right (positive control
+364.6 MiB). The one failure was in the instrument: the child named the raising package from
+the first `src` in the path, which a checkout at `/src` breaks. It was fixed at `8c0821f` with
+a permanent unit test, and the corpus re-ran clean on Linux: 481 passed. Receipt
+`prereg/P17-receipt-2026-10-31.json`.
+
+**Still open on D8:** triples and mutation search (residual 3 beyond pairs); x86-64 and
+Windows (residual 4 beyond Linux aarch64). **D8 stays OPEN.**

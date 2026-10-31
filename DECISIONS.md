@@ -5783,3 +5783,30 @@ was misread and no store was written. The CLI already gave D60's one-line refusa
 - The refusal narrows supported input (a legal revision 1 layout), so it opens **D70** and is
   reported to the owner through GeoSuite before `main` moves.
 - No gate, pin or Equivalence Contract change.
+
+---
+
+## D-0116 — 2026-10-31 — D8 on Linux: SDIP held; the D8 child's package naming did not (P17)
+
+**Context.** D8 residual 4 (one platform), under owner D-216 relayed by GeoSuite. Network for
+the base-image pull and the PyPI install was authorised by GeoSuite under D-222 as inbound only.
+Own image and container names were used, and both were removed after harvest.
+
+**Registered before the run** at `38920a6` (local).
+
+**Result.**
+- On Linux aarch64, the 202 campaign pairs passed.
+- Every corpus member's outcome class matched macOS.
+- The `ru_maxrss` unit is right: positive control 364.6 MiB.
+- 28 corpus tests failed. The D8 child's `_raised_in` read the package after the first `src`
+  in a frame's path, and a checkout at `/src` makes SDIP's own frames read `src`. The refusals
+  themselves were SDIP's typed errors. The instrument was wrong, not the product.
+
+**Decision.**
+- `_package_of` reads the last `site-packages`/`src` anchor (`8c0821f`). A unit test pins the
+  container path, with the old rule as its negative control.
+- The corpus re-ran clean on Linux: 481 passed.
+- D8 residual 4 closes for Linux aarch64. x86-64 and Windows stay open.
+- Recorded deviations: the product `.dockerignore` had to be dropped from the test build
+  context, and `uv run` was replaced by the venv's interpreter under `--network none`.
+- No `src/`, gate or pin change.
