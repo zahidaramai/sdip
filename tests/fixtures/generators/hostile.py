@@ -904,15 +904,88 @@ def pair_name(a: str, b: str) -> str:
     return f"{a}+{b}"
 
 
-def build_pair(root: str | Path, a: str, b: str) -> Path:
-    """Write the well-formed file with mutations ``a`` and ``b`` applied, in layer order."""
+def build_combination(root: str | Path, names: tuple[str, ...]) -> Path:
+    """Write the well-formed file with every named mutation applied, in layer order."""
     target = Path(root)
     target.mkdir(parents=True, exist_ok=True)
-    name = pair_name(a, b)
+    name = "+".join(names)
     base = _well_formed(target, f".base_for_{name}.sgy")
     payload = bytearray(base.read_bytes())
-    for _layer, mutate in sorted((MUTATIONS[a], MUTATIONS[b]), key=lambda m: m[0]):
+    for _layer, mutate in sorted((MUTATIONS[n] for n in names), key=lambda m: m[0]):
         mutate(payload)
+    out = target / f"{name}.sgy"
+    out.write_bytes(bytes(payload))
+    base.unlink()
+    return out
+
+
+def build_pair(root: str | Path, a: str, b: str) -> Path:
+    """Write the well-formed file with mutations ``a`` and ``b`` applied, in layer order."""
+    return build_combination(root, (a, b))
+
+
+# --- triples and seeded byte mutants (probe P18, prereg/P18-...) ----------------------
+
+P18_SEED: Final[int] = 20261031
+
+TRIPLES: Final[tuple[tuple[str, str, str], ...]] = tuple(
+    (a, b, c)
+    for a, b, c in combinations(MUTATIONS, 3)
+    if len({_CLASS_OF[a], _CLASS_OF[b], _CLASS_OF[c]}) == 3
+)
+"""Every triple from three different classes: 1,177."""
+
+TRIPLE_SAMPLE: Final[tuple[tuple[str, str, str], ...]] = tuple(
+    TRIPLES[int(i)]
+    for i in np.random.default_rng(P18_SEED).choice(len(TRIPLES), size=300, replace=False)
+)
+"""P18's registered sample: 300 of :data:`TRIPLES`, in draw order."""
+
+MUTANT_COUNT: Final[int] = 400
+"""P18's registered number of seeded byte mutants."""
+
+
+def _structural_offsets(payload: bytes) -> np.ndarray:
+    """File offsets of the binary header and of every trace's 240 header bytes."""
+    stride = _trace_stride(payload)
+    count = (len(payload) - FILE_HEADER_BYTES) // stride
+    trace_headers = [
+        np.arange(FILE_HEADER_BYTES + t * stride, FILE_HEADER_BYTES + t * stride + 240)
+        for t in range(count)
+    ]
+    binary = np.arange(SEGY_TEXTUAL_HEADER_BYTES, FILE_HEADER_BYTES)
+    return np.concatenate([binary, *trace_headers])
+
+
+def mutant_name(i: int) -> str:
+    """The file stem for mutant ``i``."""
+    return f"mutant_{i:03d}"
+
+
+def mutate_structural_bytes(payload: bytearray, i: int) -> list[tuple[int, int]]:
+    """Overwrite 1-8 structural bytes of ``payload`` from seed ``P18_SEED + i``.
+
+    Returns the ``(offset, new value)`` pairs written, in draw order.
+    """
+    rng = np.random.default_rng(P18_SEED + i)
+    k = int(rng.integers(1, 9))
+    offsets = rng.choice(_structural_offsets(payload), size=k, replace=False)
+    written = []
+    for offset in offsets:
+        value = int(rng.integers(0, 256))
+        payload[int(offset)] = value
+        written.append((int(offset), value))
+    return written
+
+
+def build_mutant(root: str | Path, i: int) -> Path:
+    """Write P18's mutant ``i``: the well-formed file with seeded structural bytes overwritten."""
+    target = Path(root)
+    target.mkdir(parents=True, exist_ok=True)
+    name = mutant_name(i)
+    base = _well_formed(target, f".base_for_{name}.sgy")
+    payload = bytearray(base.read_bytes())
+    mutate_structural_bytes(payload, i)
     out = target / f"{name}.sgy"
     out.write_bytes(bytes(payload))
     base.unlink()
