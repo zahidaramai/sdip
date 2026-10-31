@@ -87,3 +87,52 @@ those and for x86-64 and Windows.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-10-31 |
+| Run commit | `5aec2a0`, clean tree. Registration at `03a594b`, before the run |
+| Receipt | `prereg/P18-receipt-2026-10-31.json`: every record, and the classification of every `certify` failure |
+| Environment | `multidimio` 1.2.1 · `segy` 0.6.0 · CPython 3.12.13 · macOS arm64 |
+| Verdict | **The falsifier did not fire.** 0 of 388 files met any clause |
+
+### Measured
+
+| Set | Registered | Ran | Cap | Elapsed | Clauses hit |
+|---|---:|---:|---:|---:|---:|
+| Triples | 300 | **300** | 1,800 s | 640.0 s | **0** |
+| Mutants | 400 | **88** | 2,400 s | 2,400.4 s (cap reached before `mutant_088`) | **0** |
+
+- **Triples:** 284 SDIP-typed refusals, 10 `GridTraceSparsityError`, 1 `GridTraceCountError`,
+  5 converted. Max peak RSS 245.9 MB.
+- **Mutants:** 87 converted, 1 SDIP-typed refusal. Max peak RSS 251.6 MB. Most random
+  structural-byte overwrites leave a file that still converts, and each conversion runs the
+  whole `certify` chain (about 27 s). That is why the cap stopped the mutant set at 88. By the
+  registration, **N = 88** is what is reported.
+
+### A finding outside the falsifier: `export` does not round-trip 24 of the 87 converted mutants
+
+P18's clauses are about crashes and leaks, and none fired. But `certify` exited 1
+(**NON-EQUIVALENT**) on 24 mutants that ingested with all five planes passing. Each was
+re-ingested and exported with the `sdip` executable, and the export was diffed against the
+source byte by byte:
+
+| Cause | Mutants |
+|---|---:|
+| **Unassigned binary-header bytes come back as 0.** The source carries a nonzero byte at binary-header bytes 66, 97, 124, 227, 231, 249, 264, 266, 278, 279, 368, 390 or 400 (all unassigned in revision 1). The store holds it (Plane 2 PASS on the raw copy), and the export writes `0x00` | 12 |
+| **Traces come back in grid order, not source order.** A mutated inline or crossline number puts the source out of grid order. Export writes the same 30 traces (identical multiset, identical file headers) in grid order | 12 |
+| Export exits 2 (`mutant_022`: binary-header byte 306, the low byte of the extended-header count, changed) | 1 |
+
+(One mutant has both of the first two causes, so the rows sum to 25 over 24 mutants.)
+
+**G3 behaves correctly:** it fails, and the certificate says NON-EQUIVALENT. Nothing passes
+falsely. What these show is that the round trip cannot reproduce two kinds of source that the
+store itself holds faithfully. They are opened as debts **D71** and **D72**. The question goes
+to the owner (operating contract §9, a gate failing). Nothing is fixed here.
+
+### Scope
+
+- 300 of 1,177 triples. 88 of 400 registered mutants (cap). One 30-trace poststack file,
+  revision 1, macOS arm64.
+- Not coverage-guided. No four-way combinations.
+- The 24-mutant classification is a diagnosis made after the run, not a registered criterion.

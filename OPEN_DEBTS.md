@@ -2838,3 +2838,50 @@ a permanent unit test, and the corpus re-ran clean on Linux: 481 passed. Receipt
 
 **Still open on D8:** triples and mutation search (residual 3 beyond pairs); x86-64 and
 Windows (residual 4 beyond Linux aarch64). **D8 stays OPEN.**
+
+---
+
+## D8 — NARROWED 2026-10-31 — triples and a seeded mutation search (P18)
+
+- **Narrows:** D8 NARROWED 2026-10-31 (P17) above (**SP10**) · **Decision:** `DECISIONS.md`
+  D-0117 · **Probe:** P18, falsifier did **not** fire
+
+300 of 1,177 cross-class triples, and 88 seeded structural-byte mutants (the 2,400 s cap stopped
+the registered 400), all went through the D8 harness. **0 of 388 met any clause.** Ten of each
+now run by default, and the rest under `campaign`.
+
+**Still open on D8:** the other 877 triples and 312 mutants (unrun, not failed);
+coverage-guided fuzzing; four-way combinations; x86-64 and Windows. **D8 stays OPEN.**
+
+---
+
+## D71 — `export` writes 0 over nonzero unassigned binary-header bytes
+
+- **Status:** `OPEN` (raised 2026-10-31) · **Found by:** P18 · **Decision:** `DECISIONS.md` D-0117
+- **Needs:** an owner ruling (§9: a gate fails)
+
+A source whose binary header carries a nonzero byte in a revision 1 **unassigned** range
+(measured: bytes 66, 97, 124, 227, 231, 249, 264, 266, 278, 279, 368, 390, 400) ingests with all
+five planes passing. Plane 2 compares the store's raw copy, and the store holds the byte. But
+`sdip export` writes `0x00` there. G3 fails and `certify` says NON-EQUIVALENT: **12 of 87**
+converted P18 mutants. Real files do carry vendor data in unassigned header bytes, so this is
+not only a synthetic case.
+
+**Not fixed, pending a ruling.** The store's raw binary header is authoritative on conflict
+(§4.3), which argues for writing it back. Whether export may do that through upstream's public
+API, and whether the result changes what G3 certifies, is the owner's call.
+
+---
+
+## D72 — `export` writes traces in grid order; a source not in grid order fails G3
+
+- **Status:** `OPEN` (raised 2026-10-31) · **Found by:** P18 · **Decision:** `DECISIONS.md` D-0117
+- **Needs:** an owner ruling (§9: a gate fails)
+
+When a source's traces are not in grid order (measured: one trace's inline or crossline moved
+by a byte overwrite), `sdip export` writes the same traces in grid order, with identical file
+headers and an identical multiset of 368-byte trace records. The whole-file SHA-256 differs, so
+G3 fails: **12 of 87** converted P18 mutants. Plane 5 passes on the store. Whether the store
+records source order, and whether export can or should restore it, is unmeasured. Real surveys
+are often written out of grid order (by acquisition sequence), so this may reach real files.
+**Not fixed, pending a ruling.**

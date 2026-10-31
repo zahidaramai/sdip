@@ -5810,3 +5810,29 @@ Own image and container names were used, and both were removed after harvest.
 - Recorded deviations: the product `.dockerignore` had to be dropped from the test build
   context, and `uv run` was replaced by the venv's interpreter under `--network none`.
 - No `src/`, gate or pin change.
+
+---
+
+## D-0117 — 2026-10-31 — D8 triples and mutants: no crash; `export` does not round-trip two kinds of source (P18). Ruling asked
+
+**Context.** D8 residual 3 beyond pairs, under owner D-216 relayed by GeoSuite. Registered at
+`03a594b` before the run: a seeded 300-triple sample and 400 seeded mutants, each under a time
+cap.
+
+**Result against the registration.** 0 of 388 files fired any of P15's six clauses. All 300
+triples ran. The mutant cap stopped the set at 88. Ten of each join the default suite, and the
+rest are `campaign`.
+
+**A finding the registration did not ask about.** 24 of the 87 mutants that converted were
+certified NON-EQUIVALENT, every one through G3. Diagnosed with the `sdip` executable:
+- **12:** export writes 0 over nonzero unassigned binary-header bytes the store holds (**D71**).
+- **12:** export writes traces in grid order where the source was not (**D72**).
+- **1:** export exits 2.
+
+In every case G3 told the truth. Nothing passed falsely.
+
+**Decision.**
+- D8 narrows (D-0117 scope above).
+- D71 and D72 open, and **no fix is made**: changing what `export` writes, or what G3 accepts,
+  is the owner's call under §9. Asked through GeoSuite.
+- No `src/`, gate or pin change.
