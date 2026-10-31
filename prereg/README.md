@@ -45,6 +45,7 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | [P17](P17-linux-hostile-corpus.md) | Does the D8 corpus behave the same on Linux? | **FIRED** on a harness defect (path naming); clean on Linux since (D-0116) | — | D8 |
 | [P18](P18-hostile-triples-and-mutants.md) | Do three hostilities at once, or seeded byte overwrites, break any command? | did not fire — 300 triples, 88 mutants (cap); export finding D71, D72 | — | D8, D71, D72 |
 | [P19](P19-export-roundtrip.md) | Do the D71/D72 fixes make the 24 mutants round-trip, with controls? | **PASSED** — 23/23, B1-B3, C scoped; G7 finding D73 | — | D71, D72, D73 |
+| [P20](P20-g7-live-cell.md) | Do G7 controls on the first live cell pass correct stores, verdicts kept? | **REGISTERED** 2026-10-31, not run | — | D73 |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a
