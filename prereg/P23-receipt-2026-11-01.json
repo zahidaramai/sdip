@@ -1,0 +1,78 @@
+{
+ "probe": "P23",
+ "debt": "D38",
+ "run_date": "2026-11-01",
+ "registration_commit": "4b07cbd",
+ "before_commit": "44539d9 (main checkout, clean)",
+ "after_commit": "16b85c7 (clean tree)",
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "host": "macOS arm64, 36 GiB RAM, CPython 3.12.13",
+ "command": "/usr/bin/time -l sdip verify --json --skip-portability --envelope-gib 0 SOURCE STORE",
+ "fixtures": {
+  "small": {
+   "generator": "make_poststack3d(n_inline=150, n_crossline=630, n_samples=1000)",
+   "bytes": 400683600,
+   "sha256": "ac6001f611319a41d45d2729844d834c10ad340d0ce8a2f94f620796927ca03a"
+  },
+  "large": {
+   "generator": "make_poststack3d(n_inline=600, n_crossline=630, n_samples=1000)",
+   "bytes": 1602723600,
+   "sha256": "2b8b7aa0851771ae8d2981ed173de63f7dd94f0b50124d3a7bf2881b9cd3eb2e"
+  }
+ },
+ "ingest": {
+  "small": {
+   "peak_rss_bytes": 1008599040,
+   "real_s": 32.47
+  },
+  "large": {
+   "peak_rss_bytes": 2199552000,
+   "real_s": 87.09
+  }
+ },
+ "verify_before": {
+  "small": {
+   "peak_rss_bytes": 2263007232,
+   "real_s": 33.97
+  },
+  "large": {
+   "peak_rss_bytes": 8127381504,
+   "real_s": 130.83
+  }
+ },
+ "verify_after": {
+  "small": {
+   "peak_rss_bytes": 1006206976,
+   "real_s": 28.74
+  },
+  "large": {
+   "peak_rss_bytes": 2253045760,
+   "real_s": 120.03
+  }
+ },
+ "verify_json_sha256": {
+  "small": {
+   "before": "15537810b94e7fea7eb072fcc0f663e71183a064c4fe5a996b2282345926495c",
+   "after": "15537810b94e7fea7eb072fcc0f663e71183a064c4fe5a996b2282345926495c"
+  },
+  "large": {
+   "before": "e1d125beb0e7bfb9a64aebfd6b9ef4e10e4907db43318c91d6b13c0d61400d63",
+   "after": "e1d125beb0e7bfb9a64aebfd6b9ef4e10e4907db43318c91d6b13c0d61400d63"
+  }
+ },
+ "slope_mb_per_mb": {
+  "before": 4.879,
+  "after": 1.037
+ },
+ "criteria": {
+  "before_falsifier_under_8GiB": true,
+  "after_1_json_identical": true,
+  "after_2_large_at_most_2GiB": false,
+  "after_3_slope_at_most_0_5": false
+ },
+ "gate_at_after_commit": "1898 passed, 886 deselected, 2,019.7 s (16b85c7)",
+ "ruling": "GeoSuite 2026-11-01: merge 16b85c7; the two failed criteria stand; envelope default stays until P24; P24 after the D9 probe"
+}

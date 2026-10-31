@@ -3114,3 +3114,36 @@ held. Two default-suite tests in `tests/unit/test_p2_ibm32.py` hold it:
 `test_the_overflow_clamp_target_is_itself_a_valid_ibm_word` pins that `0x61100000` decodes to
 `inf` and round-trips unchanged, and `test_the_overflow_warning_is_recorded_and_not_suppressed`
 fails any P2 sweep that never reaches the overflow regime. The tests stay.
+
+---
+
+## D38 — NARROWED 2026-11-01 — the falsifier fired, and Plane 4 now reads block by block (P23)
+
+- **Narrows:** D38 above (**SP10**) · **Decision:** `DECISIONS.md` D-0125 · **Probe:** P23
+- **Status:** `OPEN`
+
+**Correction to D38's model.** D38 predicted that verifying a source of 1.5 GB or more breaches
+the 8.0 GiB ceiling, between about 1.1 and 1.4 GB. Measured on a 1.60 GB synthetic source,
+peak RSS was **7.57 GiB, no breach**. Memory is still linear in the file, but at **4.88 MB per
+MB** of source on these files, not 7.73.
+
+**Narrowed.** Plane 4's decoded leg and both raw-word legs now walk the store's chunk grid
+instead of reading the whole source and store (`16b85c7`). The verify output is byte-identical
+before and after. Peak RSS on the 1.60 GB source fell from 8.13 GB to **2.25 GB**, and the
+slope fell to **1.04 MB per MB**. P23's registered bounds were not met (2.0 GiB and 0.5), and
+they stand as failed.
+
+**Still open:** what remains linear. P24 registers per-plane peak attribution as its first
+criterion, then streams the header-sized reads with fresh criteria. That comes after the D9
+probe, by GeoSuite's ruling. The 1.0 GiB `--envelope-gib` default stays until then.
+
+---
+
+## D8 — note 2026-11-01 — the Windows leg cannot be built on this machine
+
+- **Concerns:** D8 NARROWED 2026-11-01 (P22) above · **Status:** `OPEN`, unchanged
+
+Of D8's remaining items, coverage-guided fuzzing and four-way combinations can run here, and
+x86-64 Linux could run under emulation. **Windows cannot.** This machine is macOS arm64, and
+nothing on it can host a Windows run, so that leg waits for a Windows host. D8 stays OPEN for
+all of them, as documented.

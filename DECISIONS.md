@@ -5999,3 +5999,28 @@ The alternative is to keep it OPEN as a permanent marker, which leaves "open" me
 
 Recorded in `OPEN_DEBTS.md` as D23 CLOSED and D31 CLOSED. No gate, criterion, test or code
 changed.
+
+---
+
+## D-0125 — 2026-11-01 — D38 narrowed: the falsifier fired, Plane 4 streams (P23)
+
+**Context.** GeoSuite's order under owner D-216. P23 registered at `4b07cbd` before either
+run.
+
+**Result.**
+- **Before** (`44539d9`): `sdip verify` on a 1.60 GB synthetic source peaked at 7.57 GiB,
+  under the 8.0 GiB ceiling. D38's falsifier fired. Its model over-predicted the breach.
+  Measured slope: 4.88 MB of RSS per MB of source.
+- **After** (`16b85c7`): Plane 4's decoded leg and both raw-word legs read block by block.
+  - Peak memory: 2.25 GB, slope 1.04.
+  - The verify JSON is byte-identical before and after on both files.
+  - Gate: 1,898 passed.
+  - Criterion 1 holds. Criteria 2 (at most 2.0 GiB) and 3 (slope at most 0.5) fail.
+
+**Ruling** (GeoSuite, 2026-11-01): merge `16b85c7`, a 72 % cut with identical output. The two
+failed criteria stand as recorded. The 1.0 GiB envelope default stays until P24. P24 comes
+after the D9 probe, with per-plane peak attribution as its first criterion and then streaming
+of the header-sized reads under fresh criteria.
+
+**Consumer-visible:** none in output. `sdip verify` uses less memory on large files; its
+reports are unchanged.

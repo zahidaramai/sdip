@@ -88,3 +88,47 @@ are independent of it.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-11-01 |
+| Commits | Registration `4b07cbd`. Before: `main` `44539d9`, clean. After: `16b85c7`, clean |
+| Receipt | `prereg/P23-receipt-2026-11-01.json`: fixture hashes, every peak RSS and wall clock, and the verify JSON hashes |
+| Environment | `multidimio` 1.2.1 · `segy` 0.6.0 · CPython 3.12.13 · macOS arm64, 36 GiB RAM |
+| Verdict | **Before: D38's falsifier fired.** No breach. **After: criterion 1 holds; criteria 2 and 3 fail** |
+
+### Measured
+
+Peak RSS of `sdip verify --json --skip-portability --envelope-gib 0`, from `/usr/bin/time -l`:
+
+| Fixture | Before | After | Before wall clock | After wall clock |
+|---|---:|---:|---:|---:|
+| `small` (0.40 GB) | 2,263,007,232 B | 1,006,206,976 B | 34.0 s | 28.7 s |
+| `large` (1.60 GB) | **8,127,381,504 B (7.57 GiB)** | **2,253,045,760 B (2.098 GiB)** | 130.8 s | 120.0 s |
+| Slope, MB of RSS per MB of source | **4.88** | **1.04** | | |
+
+Ingest peaks, not gated: 1.01 GB (`small`) and 2.20 GB (`large`).
+
+### Against the criteria
+
+- **Before.** `large` peaked at 7.57 GiB, **under** the 8.0 GiB ceiling. D38's falsifier fired:
+  the predicted breach (9.9 to 12.6 GB) did not happen. Verification memory is still linear in
+  the file, but at 4.88 MB per MB of source on these files, not D-0060's 7.73. At 4.88, the
+  8.0 GiB ceiling would be reached near 1.7 GB of source. That is an extrapolation, not a
+  measurement.
+- **After, criterion 1 (unchanged): HOLDS.** For both fixtures the `sdip verify --json`
+  document is byte-identical before and after (same sha256). No field differs, including time
+  fields. The full default gate passes at `16b85c7`: 1,898 passed.
+- **After, criterion 2 (at most 2.0 GiB): FAILS.** 2.098 GiB, 4.9 % over.
+- **After, criterion 3 (slope at most 0.5): FAILS.** 1.04.
+
+The refactor was not changed after the "before" run, as registered. Peak memory on `large`
+fell by 72 %, and the slope fell from 4.88 to 1.04, but verification memory still grows with
+the file. What still grows is not attributed. The likely cause is the header-sized arrays and
+per-trace maps that planes 3, 4 and 5 still read whole, but that is inferred, not measured.
+
+### Scope
+
+- One synthetic poststack geometry, `ibm32`, a `sparse/1` raw view, at two sizes, on macOS
+  arm64. No real survey, no prestack, no dense raw view at scale, no source above 1.6 GB.
+- `sdip verify` without G4. The whole `certify` chain was not measured.

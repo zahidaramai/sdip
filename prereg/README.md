@@ -48,7 +48,7 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | [P20](P20-g7-live-cell.md) | Do G7 controls on the first live cell pass correct stores, verdicts kept? | **PASSED** — 26/26 EQUIVALENT, invariance held | — | D73 |
 | [P21](P21-sparsity-bound.md) | Where is the 3-D sparsity bound, and is each side clean? | bound measured: ratio > 10 refused; one-line refusal fixed | — | D30 |
 | [P22](P22-d8-remaining-campaign.md) | Do P18's unrun 877 triples and 312 mutants break any command? | did not fire — 877 triples, 312 mutants (all ran); 26 `certify` failures all D54, D55 or D61 | — | D8 |
-| [P23](P23-d38-streaming-verify.md) | Does a 1.6 GB verify breach 8.0 GiB, and does a streaming Plane 4 bound it with nothing changed? | **REGISTERED** 2026-11-01, not run | — | D38 |
+| [P23](P23-d38-streaming-verify.md) | Does a 1.6 GB verify breach 8.0 GiB, and does a streaming Plane 4 bound it with nothing changed? | before: no breach (7.57 GiB), D38 falsifier fired; after: output identical, 8.13 → 2.25 GB, criteria 2 and 3 failed | — | D38 |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a
