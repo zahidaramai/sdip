@@ -3043,3 +3043,25 @@ breaks). It is one line since `0e0761d`.
 
 Nothing in SDIP can lawfully move the bound: the setting is barred, and reshaping the grid is
 processing. D30 stays open only for the ruling on whether that closes it.
+
+---
+
+## D30 — CLOSED 2026-10-31 — an accepted, documented limit at these pins
+
+- **Closes:** D30 above (**SP10**) · **Decision:** `DECISIONS.md` D-0121 · **Ruling:** GeoSuite
+  under D-222, 2026-10-31 (asked in D-0120)
+- **Revisit:** at the next `multidimio` pin bump, which could move the bound
+
+**The limit.** `multidimio` 1.2.1 refuses a 3-D grid whose `inline × crossline` cell count
+exceeds 10 times its trace count. For example, an oblique swath sparser than 1 in 10 of its
+bounding grid is refused. There is no lawful route past it: the setting that moves the bound is
+barred (§9.1), and reshaping the grid to fit would be processing (§1.3). A 2-D line is not
+affected: it ingests through `PostStack2DTime` (P20).
+
+**What a consumer sees** (P21, at `0e0761d` and later): exit **1**, nothing on stdout, and one
+stderr line:
+
+    sdip: UpstreamRefusal: GridTraceSparsityError raised in mdio/ingestion/grid_qc.py:69: Grid shape: (11, 11, 16) but SEG-Y tracecount: 12. This grid is very sparse and most likely user error with indexing. Ingestion grid is sparse. Sparsity ratio: 10.08. ...
+
+`verify` and `certify` refuse the same file too. Setting `MDIO__GRID__SPARSITY_RATIO_LIMIT` is
+refused with exit **2** before the file is read.

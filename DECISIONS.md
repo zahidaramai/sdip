@@ -5913,3 +5913,15 @@ to span several lines is now one line, with the same text.
 
 **Asked, not decided:** whether D30 closes as an accepted limit (no lawful route past it at these
 pins) or stays open for a future upstream change.
+
+---
+
+## D-0121 — 2026-10-31 — D30 closed as an accepted limit; a citation corrected
+
+**Ruling** (GeoSuite under D-222, answering D-0120): close D30 as an accepted, documented limit at
+these pins, recording the limit, the refusal text consumers see and the one-line stderr form, and
+revisit at the next pin bump. Recorded in `OPEN_DEBTS.md` D30 CLOSED.
+
+**Correction.** P21's registration cited "§12 SP12". SP12 belongs to spec §2, and §12 has no
+public restatement, so the section-citation test failed the gate at `f495024`. The cell now reads
+"SP12", with a correction note in the P21 file. No criterion changed.
