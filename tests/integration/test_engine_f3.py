@@ -132,6 +132,8 @@ def test_plane_5_reports_an_invertible_map(article):
         # D29 / SP12: padding is VERIFIED as padding - every cell no source trace maps
         # to holds the declared fill and nothing else. A value there came from nowhere.
         "padding_is_only_fill": True,
+        # D72 / P19: the recorded source order equals the map rebuilt from the source.
+        "source_order_matches_map": True,
     }
     assert plane.evidence["padding_cells"] == 0
 

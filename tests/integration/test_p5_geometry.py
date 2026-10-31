@@ -334,7 +334,14 @@ def test_the_engine_surfaces_a_duplicate_even_if_a_store_ever_held_one(tmp_path)
     plane = plane_5(duplicated.path, store, result.spec.segy_spec)
 
     assert plane.status == "FAIL"
-    assert plane.evidence["failed_checks"] == ["count_matches", "map_invertible", "no_duplicates"]
+    # Since P19 the recorded source order fails too, and rightly: the store records the
+    # deduplicated file's order, so every ordinal after 11 is one off this source's.
+    assert plane.evidence["failed_checks"] == [
+        "count_matches",
+        "map_invertible",
+        "no_duplicates",
+        "source_order_matches_map",
+    ]
     assert plane.evidence["trace_map"]["duplicate_cells"] == [
         {"cell": [1, 4], "source_ordinals": [10, 11]}
     ]

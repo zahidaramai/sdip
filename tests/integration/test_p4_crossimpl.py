@@ -87,6 +87,7 @@ CORE_SPEC_ARRAYS: tuple[str, ...] = (
     "amplitude_raw_ibm32/index",
     "amplitude_raw_ibm32/words",
     "headers_raw_uint8",
+    "source_trace_ordinal",
     "inline",
     "crossline",
     "time",
@@ -117,6 +118,10 @@ reason: the pre-registered criterion is that every core-spec array crosses the
 implementation boundary byte-identically, and this array is now one of them. The leg-1
 and leg-2 result tables in ``prereg/P4-portability.md`` describe the store **as it was on
 those run dates** and are never edited; this list describes the store today.
+
+``source_trace_ordinal`` (``int64``, core-spec) is written for every store since D72 / P19:
+where each live cell's trace sat in the source, which ``sdip export`` restores. It crosses the
+boundary here like every other core array; P4's addendum of 2026-10-31 records it.
 """
 
 EXTENSION_ARRAYS: tuple[str, ...] = ("headers", "segy_file_header")
