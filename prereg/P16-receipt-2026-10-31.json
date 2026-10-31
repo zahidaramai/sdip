@@ -1,0 +1,168 @@
+{
+ "probe": "P16",
+ "debt": "D8 residual 2; opens D70",
+ "run_date": "2026-10-31",
+ "registration_commit": "e54a04a",
+ "members_commit": "d68a121",
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "host": "macOS arm64, CPython 3.12.13",
+ "before_fix": {
+  "commit": "d68a121 (clean tree)",
+  "verdict": "FIRED: clause 2 on 4 of 4",
+  "runs": [
+   {
+    "member": "variable_extended_one_stanza",
+    "bytes": 17840,
+    "hits": [
+     "2: library raised pydantic_core._pydantic_core.ValidationError: 1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://err"
+    ],
+    "api": "raised",
+    "type": "ValidationError",
+    "raised_in": "pydantic",
+    "message": "1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal",
+    "exit": {
+     "cli": 1,
+     "verify": 1,
+     "export": 1,
+     "certify": 1
+    },
+    "cli_stderr": "eamRefusal: ValidationError raised in segy/file.py:224: 1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal.\n",
+    "peak_rss": 219791360
+   },
+   {
+    "member": "variable_extended_two_records",
+    "bytes": 21040,
+    "hits": [
+     "2: library raised pydantic_core._pydantic_core.ValidationError: 1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://err"
+    ],
+    "api": "raised",
+    "type": "ValidationError",
+    "raised_in": "pydantic",
+    "message": "1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal",
+    "exit": {
+     "cli": 1,
+     "verify": 1,
+     "export": 1,
+     "certify": 1
+    },
+    "cli_stderr": "eamRefusal: ValidationError raised in segy/file.py:224: 1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal.\n",
+    "peak_rss": 219709440
+   },
+   {
+    "member": "variable_extended_no_records",
+    "bytes": 14640,
+    "hits": [
+     "2: library raised pydantic_core._pydantic_core.ValidationError: 1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://err"
+    ],
+    "api": "raised",
+    "type": "ValidationError",
+    "raised_in": "pydantic",
+    "message": "1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal",
+    "exit": {
+     "cli": 1,
+     "verify": 1,
+     "export": 1,
+     "certify": 1
+    },
+    "cli_stderr": "eamRefusal: ValidationError raised in segy/file.py:224: 1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal.\n",
+    "peak_rss": 218284032
+   },
+   {
+    "member": "variable_extended_unterminated",
+    "bytes": 17840,
+    "hits": [
+     "2: library raised pydantic_core._pydantic_core.ValidationError: 1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://err"
+    ],
+    "api": "raised",
+    "type": "ValidationError",
+    "raised_in": "pydantic",
+    "message": "1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal",
+    "exit": {
+     "cli": 1,
+     "verify": 1,
+     "export": 1,
+     "certify": 1
+    },
+    "cli_stderr": "eamRefusal: ValidationError raised in segy/file.py:224: 1 validation error for ExtendedTextHeaderSpec\ncount\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal.\n",
+    "peak_rss": 219791360
+   }
+  ]
+ },
+ "after_fix": {
+  "commit": "d68a121 + preflight refusal (working tree, committed with these records)",
+  "verdict": "no clause on 4 of 4",
+  "runs": [
+   {
+    "member": "variable_extended_one_stanza",
+    "bytes": 17840,
+    "hits": [],
+    "api": "raised",
+    "type": "UntrustedInputError",
+    "raised_in": "sdip",
+    "message": "binary header (bytes 3505-3506) declares a variable number of extended textual headers (-1, ended by a ((SEG: EndText)) stanza). SDIP and the pinned segy 0.6.0 read extended headers by count only, so the first trace cannot be located; the file is refused rather than read from a guessed offset (OPEN_",
+    "exit": {
+     "cli": 1,
+     "verify": 1,
+     "export": 1,
+     "certify": 1
+    },
+    "cli_stderr": "er (bytes 3505-3506) declares a variable number of extended textual headers (-1, ended by a ((SEG: EndText)) stanza). SDIP and the pinned segy 0.6.0 read extended headers by count only, so the first trace cannot be located; the file is refused rather than read from a guessed offset (OPEN_DEBTS D70)\n",
+    "peak_rss": 218038272
+   },
+   {
+    "member": "variable_extended_two_records",
+    "bytes": 21040,
+    "hits": [],
+    "api": "raised",
+    "type": "UntrustedInputError",
+    "raised_in": "sdip",
+    "message": "binary header (bytes 3505-3506) declares a variable number of extended textual headers (-1, ended by a ((SEG: EndText)) stanza). SDIP and the pinned segy 0.6.0 read extended headers by count only, so the first trace cannot be located; the file is refused rather than read from a guessed offset (OPEN_",
+    "exit": {
+     "cli": 1,
+     "verify": 1,
+     "export": 1,
+     "certify": 1
+    },
+    "cli_stderr": "er (bytes 3505-3506) declares a variable number of extended textual headers (-1, ended by a ((SEG: EndText)) stanza). SDIP and the pinned segy 0.6.0 read extended headers by count only, so the first trace cannot be located; the file is refused rather than read from a guessed offset (OPEN_DEBTS D70)\n",
+    "peak_rss": 218071040
+   },
+   {
+    "member": "variable_extended_no_records",
+    "bytes": 14640,
+    "hits": [],
+    "api": "raised",
+    "type": "UntrustedInputError",
+    "raised_in": "sdip",
+    "message": "binary header (bytes 3505-3506) declares a variable number of extended textual headers (-1, ended by a ((SEG: EndText)) stanza). SDIP and the pinned segy 0.6.0 read extended headers by count only, so the first trace cannot be located; the file is refused rather than read from a guessed offset (OPEN_",
+    "exit": {
+     "cli": 1,
+     "verify": 1,
+     "export": 1,
+     "certify": 1
+    },
+    "cli_stderr": "er (bytes 3505-3506) declares a variable number of extended textual headers (-1, ended by a ((SEG: EndText)) stanza). SDIP and the pinned segy 0.6.0 read extended headers by count only, so the first trace cannot be located; the file is refused rather than read from a guessed offset (OPEN_DEBTS D70)\n",
+    "peak_rss": 216907776
+   },
+   {
+    "member": "variable_extended_unterminated",
+    "bytes": 17840,
+    "hits": [],
+    "api": "raised",
+    "type": "UntrustedInputError",
+    "raised_in": "sdip",
+    "message": "binary header (bytes 3505-3506) declares a variable number of extended textual headers (-1, ended by a ((SEG: EndText)) stanza). SDIP and the pinned segy 0.6.0 read extended headers by count only, so the first trace cannot be located; the file is refused rather than read from a guessed offset (OPEN_",
+    "exit": {
+     "cli": 1,
+     "verify": 1,
+     "export": 1,
+     "certify": 1
+    },
+    "cli_stderr": "er (bytes 3505-3506) declares a variable number of extended textual headers (-1, ended by a ((SEG: EndText)) stanza). SDIP and the pinned segy 0.6.0 read extended headers by count only, so the first trace cannot be located; the file is refused rather than read from a guessed offset (OPEN_DEBTS D70)\n",
+    "peak_rss": 217415680
+   }
+  ]
+ }
+}

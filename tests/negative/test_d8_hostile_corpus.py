@@ -7,9 +7,10 @@
 
 Until this suite existed that was four sentences with nothing behind them. **SP8**: no
 fidelity claim without a number. The corpus in
-:mod:`tests.fixtures.generators.hostile` supplies **33 members over 9 hostility
-classes**, every one written by committed code from a fixed seed, and every one is run
-through a real ingest in its own process.
+:mod:`tests.fixtures.generators.hostile` supplies **37 members over 10 hostility
+classes** (33 over 9 until probe P16 added four variable extended-header layouts),
+every one written by committed code from a fixed seed, and every one is run through a
+real ingest in its own process.
 
 Four questions per member, all four answered from one child run:
 
@@ -554,9 +555,9 @@ def test_the_cli_reports_a_refusal_as_one_line_not_a_traceback(corpus_runs, name
 def test_the_measured_outcome_counts_are_the_ones_on_record(corpus_runs):
     """One assertion carrying the whole result, so a drift in any direction is loud.
 
-    33 members: **24 refused by SDIP with a typed error**, **3 refused by MDIO's typed
-    grid errors** (the recorded residual), **6 converted**. Measured 2026-08-23 under
-    ``multidimio==1.2.1`` / ``segy==0.6.0``.
+    37 members: **28 refused by SDIP with a typed error**, **3 refused by MDIO's typed
+    grid errors** (the recorded residual), **6 converted**. Measured 2026-08-23 for the
+    first 33 and 2026-10-31 for P16's four, under ``multidimio==1.2.1`` / ``segy==0.6.0``.
     """
     members = [run for name, run in corpus_runs.items() if name != "positive_control"]
     converted = [run.name for run in members if run.ingested]
@@ -572,10 +573,10 @@ def test_the_measured_outcome_counts_are_the_ones_on_record(corpus_runs):
         if not run.ingested and run.name not in UPSTREAM_TYPED and not run.api["is_sdip_error"]
     ]
     assert untyped == [], f"untyped refusals have reappeared: {untyped}"
-    assert len(members) == 33
+    assert len(members) == 37
     assert sorted(converted) == sorted(EXPECTED_INGESTS), converted
     assert sorted(upstream) == sorted(UPSTREAM_TYPED), upstream
-    assert len(sdip_typed) == 24, sdip_typed
+    assert len(sdip_typed) == 28, sdip_typed
 
 
 # ---------------------------------------------------------------------------

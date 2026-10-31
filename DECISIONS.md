@@ -5755,3 +5755,31 @@ refusals, 14 conversions, max peak RSS 248.9 MB, 838.2 s in total.
 - By the registered rule (838 s > 600 s), 21 pairs stay in the default suite. A new `campaign`
   marker holds the other 202, deselected by the default `addopts` as `benchmark` is.
 - No change to `src/`, a gate, a pin or the Equivalence Contract.
+
+---
+
+## D-0115 — 2026-10-31 — Bytes 3505–3506 = −1 are refused before upstream; D8 residual 2 closed, D70 opened (P16)
+
+**Context.** Continuing D8 under owner D-216, relayed by GeoSuite. Residual 2: no corpus
+member declared a variable extended-header count. Preflight let `-1` through as "layout
+unknown", for "the parser that can read stanzas".
+
+**Registered before the run** at `e54a04a` (local; GeoSuite pushes). The registration fixed the
+falsifier (P15's six clauses, plus a silent-misread clause against ground truth) and the remedy
+if it fired.
+
+**Result.** It fired, on clause 2, for all four members. The library ingest raised an untyped
+`pydantic` `ValidationError` from `segy/file.py:224`: `segy` 0.6.0 copies the field into
+`ExtendedTextHeaderSpec.count`, which must be ≥ 0. There is no stanza reader at the pin. Nothing
+was misread and no store was written. The CLI already gave D60's one-line refusal.
+
+**Decision**, as registered:
+- `preflight` refuses `-1` with `UntrustedInputError` naming D70, before any parser opens the
+  file. That covers every command that runs the preflight.
+- Re-run: all four members are refused inside `sdip`, every command exits 1, and no clause
+  fires.
+- The members join `CORPUS` (class `extended_headers`). The corpus is now 37 members in 10
+  classes, with 28 SDIP-typed refusals.
+- The refusal narrows supported input (a legal revision 1 layout), so it opens **D70** and is
+  reported to the owner through GeoSuite before `main` moves.
+- No gate, pin or Equivalence Contract change.

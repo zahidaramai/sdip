@@ -2783,3 +2783,40 @@ The permanent suite keeps **21 representative pairs** by default, plus the other
 **Still open:** three or more hostilities at once and any mutation search (residual 3 beyond
 pairs); residual 2 (no stanza-terminated rev 2 member); residual 4 (one platform).
 **D8 stays OPEN.**
+
+---
+
+## D8 — NARROWED 2026-10-31 — residual 2 closed: a variable extended-header count is refused (P16)
+
+- **Narrows:** D8 NARROWED 2026-10-31 (P15) above (**SP10**) · **Decision:** `DECISIONS.md`
+  D-0115 · **Probe:** P16, **FIRED**, remedy applied as registered
+
+Residual 2 said no corpus member declared a variable number of extended textual headers
+(bytes 3505–3506 = `-1`). P16 built four such members byte by byte (one stanza, two records,
+none, unterminated). All four leaked an untyped `pydantic` `ValidationError` from
+`segy/file.py:224` through the library ingest, because the pinned `segy` takes the field as a
+count and its schema rejects `-1`. No file was misread and no store was written. Preflight now
+refuses `-1` with a typed `UntrustedInputError` before any parser sees the file. All four
+members are in the corpus (37 members, 10 classes). Receipt
+`prereg/P16-receipt-2026-10-31.json`.
+
+**Still open on D8:** triples and mutation search (residual 3 beyond pairs) and residual 4 (one
+platform). **D8 stays OPEN.**
+
+---
+
+## D70 — A revision 1 file with a variable number of extended textual headers is refused
+
+- **Status:** `OPEN` (raised 2026-10-31) · **Found by:** P16 · **Decision:** `DECISIONS.md` D-0115
+- **Blocks:** any survey whose binary header says `-1` at bytes 3505–3506
+
+SEG-Y revision 1 allows `-1` here: a variable run of 3200-byte extended textual records ending
+with `((SEG: EndText))`. Neither SDIP nor the pinned `segy` 0.6.0 reads that run. `segy` takes
+the field as a count and rejects `-1`. So `preflight` refuses the file with a typed error, which
+is a clean refusal (P16) and not support.
+
+**To close it:** locate the first trace by reading 3200-byte records up to the end stanza. It
+must be bounded by the file size and refuse an unterminated run. Then hand upstream the found
+count through a public route; `segy`'s `num_extended_text_headers` header override is the
+candidate to check first (§3.3: public API only). Build it when a file that needs it arrives,
+with the P16 members as its controls. Until then, the refusal names this debt.

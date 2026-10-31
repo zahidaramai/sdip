@@ -88,3 +88,52 @@ measured outcomes.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-10-31 |
+| Run commit | `d68a121` (members), clean tree. Registration at `e54a04a`, before the run |
+| Receipt | `prereg/P16-receipt-2026-10-31.json`: both runs, before and after the remedy |
+| Environment | `multidimio` 1.2.1 · `segy` 0.6.0 · CPython 3.12.13 · macOS arm64 |
+| Verdict | **FIRED: clause 2 on 4 of 4 members.** Clause 7 was never reached: no member converted |
+
+### Measured, before the remedy
+
+| Member | Bytes | Library ingest | CLI ingest / verify / export / certify |
+|---|---:|---|---|
+| `variable_extended_one_stanza` | 17,840 | `pydantic` `ValidationError`, raised in `segy/file.py:224` | 1 / 1 / 1 / 1 |
+| `variable_extended_two_records` | 21,040 | same | 1 / 1 / 1 / 1 |
+| `variable_extended_no_records` | 14,640 | same | 1 / 1 / 1 / 1 |
+| `variable_extended_unterminated` | 17,840 | same | 1 / 1 / 1 / 1 |
+
+The message on all four: `1 validation error for ExtendedTextHeaderSpec / count / Input
+should be greater than or equal to 0 [input_value=-1]`. `segy` 0.6.0 copies bytes 3505–3506
+into `ExtendedTextHeaderSpec.count`, and its schema rejects `-1`. Preflight's comment, that it
+passes the file to "the parser that can read stanzas", rested on a parser that does not exist
+at the pin.
+
+What did **not** happen: no file was read from a guessed offset. No store was written, so
+clause 7 had nothing to judge. The CLI already ended each command with D60's one-line upstream
+refusal (exit 1, no traceback). The leak is the library API's untyped exception, which is
+clause 2.
+
+### The pre-registered remedy, measured
+
+`preflight` now refuses bytes 3505–3506 = `-1` with `UntrustedInputError`, before any parser
+opens the file. The same driver, re-run:
+
+| Member | Library ingest | Raised in | CLI ingest / verify / export / certify | Clauses |
+|---|---|---|---|---|
+| all four | `UntrustedInputError` | `sdip` | 1 / 1 / 1 / 1 | **none** |
+
+Peak RSS 216.9–218.1 MB per child, all four commands included. The four members join `CORPUS`
+as class `extended_headers` (37 members, 10 classes, 28 SDIP-typed refusals). The run before
+the remedy is their negative control: each failed
+`test_every_refused_member_is_refused_with_a_typed_sdip_error`.
+
+### Scope
+
+- Revision 1 layouts on one 30-trace file. Revision 2 is refused earlier (D6), so the remedy
+  does not change what a revision 2 file sees.
+- The refusal narrows the supported input: a legal revision 1 file with a variable count is now
+  refused. That is debt D70, and the branch is reported before `main` moves, as registered.

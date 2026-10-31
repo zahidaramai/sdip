@@ -115,9 +115,6 @@ class SourceLayout:
     data_offset: int
     bytes_per_trace: int
     trace_count: int
-    """``-1`` when the file declares a variable number of extended textual headers, which
-    puts the first trace at an offset no fixed-offset arithmetic can find. See
-    :func:`validate_segy_structure`."""
 
     endianness: str = "big"
     """The byte order every field above was read in: declared, or resolved from ``infer``."""
@@ -307,24 +304,19 @@ def validate_segy_structure(
     bytes_per_trace = SEGY_TRACE_HEADER_BYTES + samples * bytes_per_sample
 
     if extended == EXTENDED_HEADERS_VARIABLE:
-        # The first trace sits after an unknown number of 3200-byte stanzas, so no
-        # fixed-offset arithmetic can locate it and the divisibility check below cannot
-        # run. Refusing here would refuse a legal rev 2 file; pretending the offset is
-        # 3600 would compute a trace count from the wrong place. Both are worse than
-        # declaring the layout unknown and letting the parser that can read stanzas
-        # decide. Recorded as the residual in OPEN_DEBTS D8.
-        return SourceLayout(
-            size=size,
-            samples_per_trace=samples,
-            sample_interval_us=interval,
-            sample_format_code=code,
-            bytes_per_sample=bytes_per_sample,
-            extended_text_headers=extended,
-            data_offset=-1,
-            bytes_per_trace=bytes_per_trace,
-            trace_count=-1,
-            endianness=order,
+        # Legal since revision 1, and nothing here can read it. The pinned segy 0.6.0
+        # takes this field as a count and does not search for the end stanza: with -1 it
+        # raised an untyped pydantic ValidationError on every layout probe P16 built
+        # (DECISIONS.md D-0115). No fixed-offset arithmetic can find the first trace, so
+        # the file is refused before any parser sees it. OPEN_DEBTS D70 holds the gap.
+        msg = (
+            "binary header (bytes 3505-3506) declares a variable number of extended "
+            "textual headers (-1, ended by a ((SEG: EndText)) stanza). SDIP and the pinned "
+            "segy 0.6.0 read extended headers by count only, so the first trace cannot be "
+            "located; the file is refused rather than read from a guessed offset "
+            "(OPEN_DEBTS D70)"
         )
+        raise UntrustedInputError(msg)
 
     declared_headers = FILE_HEADER_BYTES + extended * EXTENDED_TEXT_HEADER_BYTES
     if declared_headers >= size:
