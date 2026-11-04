@@ -53,6 +53,7 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | [P25](P25-d9-source-attestation.md) | Is every installed multidimio and segy file identical to the pinned commit's source? | **MATCH** — 93/93 multidimio and 38/38 segy files identical to the pinned commits' source | — | D9 |
 | [P26](P26-envelope-refit.md) | What does verify need at 4.8 GB, and where does the 3-point fit reach 8 GiB? | verify 1.78 GB at 4.81 GB; fit slope 0.178, intercept 0.92 GB; envelope default 1.0 → 40.1 GiB; ingest found linear (D74) | — | D38, D74 |
 | [P28](P28-d74-ingest-attribution.md) | Which ingest stage sets the peak, SDIP's or upstream's, and does streaming it bound memory? | registered (stage A) | — | D74 |
+| [P29](P29-d8-four-way.md) | Do four hostilities at once, every four-class combination, break any command? | registered | — | D8 |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a

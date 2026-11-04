@@ -941,6 +941,13 @@ TRIPLE_SAMPLE: Final[tuple[tuple[str, str, str], ...]] = tuple(
 )
 """P18's registered sample: 300 of :data:`TRIPLES`, in draw order."""
 
+QUADS: Final[tuple[tuple[str, str, str, str], ...]] = tuple(
+    (a, b, c, d)
+    for a, b, c, d in combinations(MUTATIONS, 4)
+    if len({_CLASS_OF[a], _CLASS_OF[b], _CLASS_OF[c], _CLASS_OF[d]}) == 4
+)
+"""Every four-member combination from four different classes: 3,632 (probe P29)."""
+
 MUTANT_COUNT: Final[int] = 400
 """P18's registered number of seeded byte mutants."""
 
