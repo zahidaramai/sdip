@@ -519,12 +519,6 @@ def attach_header_plane(
         )
         raise UntrustedInputError(msg)
 
-    raw = read_source_header_bytes(
-        source,
-        samples_per_trace=samples_per_trace,
-        bytes_per_sample=bytes_per_sample,
-        data_offset=data_offset,
-    )
     trace_map = build_trace_map(
         handle.header[:], grid_coordinates(group, grid_dimensions), grid_dimensions
     )
@@ -561,10 +555,21 @@ def attach_header_plane(
         grouped[cell[0]].append((ordinal, cell))
 
     written = 0
+    # Each slab's header bytes by explicit reads: through a mapping, touching every header
+    # made almost every page of the file resident (OPEN_DEBTS D74, probe P28).
     for outer in sorted(grouped):
         block = np.full(shape[1:], FILL_BYTE, dtype=np.uint8)
-        for ordinal, cell in grouped[outer]:
-            block[cell[1:]] = raw[ordinal]
+        members = sorted(grouped[outer])
+        ordinals = np.fromiter((o for o, _ in members), dtype=np.int64, count=len(members))
+        raw = read_source_header_bytes_at(
+            source,
+            ordinals,
+            samples_per_trace=samples_per_trace,
+            bytes_per_sample=bytes_per_sample,
+            data_offset=data_offset,
+        )
+        for k, (_ordinal, cell) in enumerate(members):
+            block[cell[1:]] = raw[k]
             written += 1
         array[outer] = block
 

@@ -391,7 +391,10 @@ def attach_raw_sample_view(
     dimensions = tuple(str(n) for n in decoded.metadata.to_dict().get("dimension_names") or ())
     samples_per_trace = shape[-1]
 
-    words = read_source_words(source, samples_per_trace=samples_per_trace)
+    # Reconciled against the file size before any offset is computed, as the mapped reader
+    # did. The words themselves are read slab by slab below: through a mapping, indexing
+    # every trace made the whole file resident (OPEN_DEBTS D74, probe P28).
+    source_count, _ = source_trace_layout(Path(source).stat().st_size, samples_per_trace)
     handle = SegyFile(str(Path(source)), spec=segy_spec)
     grid_dimensions = store_dimensions(group)
     trace_map = build_trace_map(
@@ -415,8 +418,11 @@ def attach_raw_sample_view(
     for outer in sorted(grouped):
         source_block = np.full(shape[1:], FILL_WORD, dtype=np.uint32)
         live = np.zeros(shape[1:], dtype=bool)
-        for ordinal, cell in grouped[outer]:
-            source_block[cell[1:]] = words[ordinal]
+        members = sorted(grouped[outer])
+        ordinals = np.fromiter((o for o, _ in members), dtype=np.int64, count=len(members))
+        words = read_source_words_at(source, ordinals, samples_per_trace=samples_per_trace)
+        for k, (_ordinal, cell) in enumerate(members):
+            source_block[cell[1:]] = words[k]
             live[cell[1:]] = True
             written += 1
         encoded = np.asarray(ieee2ibm(np.asarray(decoded[outer], dtype=np.float32)), np.uint32)
@@ -470,7 +476,7 @@ def attach_raw_sample_view(
         sample_format=sample_format,
         samples_per_trace=samples_per_trace,
         traces_written=written,
-        source_trace_count=int(words.shape[0]),
+        source_trace_count=int(source_count),
         source_bytes_per_trace=SEGY_TRACE_HEADER_BYTES + samples_per_trace * SAMPLE_WORD_BYTES,
         layout=LAYOUT_SPARSE,
         entries=int(index.size),
