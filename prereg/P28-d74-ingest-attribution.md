@@ -95,3 +95,57 @@ measured.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+## Stage A results, 2026-11-05
+
+| Field | Value |
+|---|---|
+| Code | `main` `ff5e13c` (registration), clean; source code identical to `077c8e6` |
+| Receipt | `prereg/P28-receipt-2026-11-05.json`: every peak, the slopes, the stage A store hashes and the driver's source |
+| Fixtures | both regenerated and hash-checked against P23's sha256 |
+
+Peak RSS, each stage alone in a fresh process (`ru_maxrss`), and the whole command
+(`/usr/bin/time -l`). Source sizes 400.68 and 1,602.72 MB:
+
+| Stage | `small` (0.40 GB) | `large` (1.60 GB) | MB per MB of source |
+|---|---:|---:|---:|
+| baseline, preflight, hash, g1, file_headers | 57–63 MB each | 57–61 MB each | 0.00 |
+| convert (`segy_to_mdio`) | 143.3 MB | 174.4 MB | 0.03 |
+| axis_origin (parsed headers) | 162.1 MB | 448.3 MB | 0.24 |
+| **raw_samples** | 765.2 MB | **2,148.2 MB** | **1.15** |
+| **header_plane** | 665.8 MB | 2,054.0 MB | **1.15** |
+| marker (with the parsed-header read before it) | 161.3 MB | 468.3 MB | 0.26 |
+| **whole `sdip ingest`** | 1,004.8 MB | **2,368.4 MB** | 1.13 |
+
+- **Criterion 1 (reproduces P23): holds.** 2,368.4 MB against P23's 2,199.6 MB, 7.7 % apart.
+- **Criterion 2 (attributes the peak): `raw_samples` sets it**, at 90.7 % of the whole
+  command. `header_plane` is at 86.7 %, so it would set nearly the same peak alone.
+- **Criterion 3 (attributes the growth):** `raw_samples` and `header_plane` grow at 1.15 MB per
+  MB each, about the whole file. The parsed source headers grow at 0.24. Upstream's conversion
+  grows at 0.03.
+- **Criterion 4 (names the owner): SDIP.** `convert` is 7.4 % of the peak. Stage B runs.
+
+**What this means.** Both stages read the source through a memory map
+(`read_source_words`, `read_source_header_bytes`) and index every trace, so nearly every page of
+the file becomes resident. That is the cause P24 found in verify's Plane 3. On these fixtures
+the raw sample view stores **0 entries**, so none of `raw_samples`' 2.1 GB is data it keeps.
+`ru_maxrss` counts this process only: upstream's worker processes are outside both the stage
+and the whole-command numbers, as in P23 and P26.
+
+## Amendment B, 2026-11-05 — stage B criteria, before any stage B code is measured
+
+**Scope.** `attach_raw_sample_view` reads each outermost slab's live source words with
+`read_source_words_at`, and `attach_header_plane` each slab's live header bytes with
+`read_source_header_bytes_at`. Both are the explicit-read functions verify has used since
+D38, at the same offsets as the mapped readers they replace. Nothing else changes: the parsed
+source headers (0.24 MB per MB) stay as they are.
+
+**Criteria**, measured as stage A was, on the same fixtures:
+1. **Peak.** The whole `sdip ingest` on `large` peaks at **1,200 MB or less**.
+2. **Slope.** The whole command grows at **0.40 MB per MB or less** between `small` and `large`.
+3. **Store identity.** On both fixtures, every array's sha256 over its decoded bytes, and its
+   attributes' sha256, equal stage A's (in the receipt). One difference fails the stage.
+4. **Gate.** The default suite, `ruff` and `mypy` pass.
+
+A failed bound stands failed, as P23's did, and is reported. The 7.2 GiB ingest envelope stays
+until the result is ruled on.
