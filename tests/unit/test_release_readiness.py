@@ -245,8 +245,11 @@ def test_a_header_scoped_certificate_still_needs_every_other_gate():
 
 @pytest.mark.parametrize("gate", ["G5", "G6"])
 def test_an_unrun_g5_or_g6_makes_the_certificate_not_release_ready(gate):
-    """**D20, superseded by `release_readiness`.** The verdict tolerates G5 and G6 being
-    `NOT_RUN`; the release bar must not. Each gate alone, from a green baseline."""
+    """**D20, superseded by `release_readiness`.** An unrun G5 or G6 fails the release bar.
+
+    The verdict tolerates G5 and G6 being `NOT_RUN`; the release bar must not. Each gate
+    alone, from a green baseline.
+    """
     payload = _green()
     payload["gates"][gate] = "NOT_RUN"
     verdict = release_readiness(payload)

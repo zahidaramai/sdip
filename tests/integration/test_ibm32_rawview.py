@@ -27,9 +27,9 @@ import zarr
 
 from sdip._pins import SEGY_TRACE_HEADER_BYTES as HEADER
 from sdip.equivalence import plane_4, plane_5
+from sdip.equivalence.nonvacuity import _flip_raw_ibm32_word
 from sdip.export import export
 from sdip.ingest import ingest
-from sdip.equivalence.nonvacuity import _flip_raw_ibm32_word
 from sdip.ingest.raw_samples import (
     ARRAY_NAME,
     ATTR_CONTAINER,
