@@ -6405,3 +6405,18 @@ D61 for G3). Through the `sdip` executable, as P29 diagnosed its nine.
 
 **D8 stays OPEN:** the 1,207 unrun five-way files, six- and seven-way combinations,
 coverage-guided fuzzing, x86-64 and Windows.
+
+## D-0139 — 2026-11-05 — P35's fuzzer takes no dependency: coverage from `sys.monitoring`
+
+GeoSuite ordered coverage-guided fuzzing, and suggested a tool "you can pin in your own .venv
+(atheris, or hypothesis with coverage feedback)". Neither is added:
+- the operating contract bars new dependencies ("what good looks like": no new dependency);
+- ExS and GeoAIBrain run SDIP from this checkout's `.venv`;
+- atheris needs libFuzzer, which Apple clang does not ship.
+
+Coverage comes from CPython 3.12's `sys.monitoring` (LINE and BRANCH), so the interpreter version
+pins it. GeoSuite accepted this on 2026-11-05. The harness (`tests/fuzz/coverage_fuzz.py`) and
+its controls are committed with P35's registration. They found one defect in the harness itself
+before any run: `sys.monitoring` keeps a location disabled across tool registrations until
+`restart_events()` is called, so the first version measured no growth. The coverage control
+caught it.
