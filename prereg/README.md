@@ -54,6 +54,8 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | [P26](P26-envelope-refit.md) | What does verify need at 4.8 GB, and where does the 3-point fit reach 8 GiB? | verify 1.78 GB at 4.81 GB; fit slope 0.178, intercept 0.92 GB; envelope default 1.0 → 40.1 GiB; ingest found linear (D74) | — | D38, D74 |
 | [P28](P28-d74-ingest-attribution.md) | Which ingest stage sets the peak, SDIP's or upstream's, and does streaming it bound memory? | stage A: SDIP's memory-mapped raw view and header plane set it (1.15 MB/MB); stage B: 2,368 → 874 MB, data identical, criteria 1, 2 and 4 hold, 3 failed on upstream statsV1 (D75) | — | D74, D75 |
 | [P29](P29-d8-four-way.md) | Do four hostilities at once, every four-class combination, break any command? | registered | — | D8 |
+| [P30](P30-ingest-envelope-refit.md) | What does ingest need at 4.8 GB after P28, and where does the 3-point fit reach 8 GiB? | registered | — | D74 |
+| [P31](P31-content-variance-at-scale.md) | Which store bytes differ between ingests of a survey-scale source? | registered | — | D75 |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a
