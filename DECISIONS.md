@@ -6392,3 +6392,16 @@ only after the receipt file is checked to exist.
 **Consumer-visible.** Sources from 26.9 to 40.1 GiB that `ingest` and `certify` refused now run.
 Above 14.4 GB that rests on the bound, not on a measurement. Ingest memory on 14.4 GB is about
 2.1 GB. Store contents are unchanged.
+
+## D-0138 — 2026-11-05 — D8 narrowed by P34: no sampled five-way combination breaks any command
+
+**Measured** (P34, run at its registration commit `a0fdf48`). Under the ordered 7,200 s cap,
+5,289 of the 6,496 five-class combinations ran, in a seeded order that makes them a uniform
+sample. None met any of P15's six clauses. Two converted, and `certify` refused both for D54 (and
+D61 for G3). Through the `sdip` executable, as P29 diagnosed its nine.
+
+**Built.** `FIVES` and `FIVE_ORDER` in `tests/fixtures/generators/hostile.py`, held by
+`tests/negative/test_d8_hostile_fives.py`. The first 10 of the order run in the default suite.
+
+**D8 stays OPEN:** the 1,207 unrun five-way files, six- and seven-way combinations,
+coverage-guided fuzzing, x86-64 and Windows.

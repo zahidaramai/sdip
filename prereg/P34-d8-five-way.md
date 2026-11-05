@@ -69,3 +69,41 @@ stay open.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-11-05 |
+| Run commit | `a0fdf48`, the registration commit, from a clean `git worktree` |
+| Receipt | `prereg/P34-receipt-2026-11-05.json`: every record, and the classification of both `certify` failures |
+| Environment | `multidimio` 1.2.1 · `segy` 0.6.0 · CPython 3.12.13 · macOS arm64 |
+| Verdict | **The falsifier did not fire.** 0 of 5,289 files met any clause |
+
+### Measured
+
+| Registered | Ran | Cap | Elapsed | Clauses hit |
+|---:|---:|---:|---:|---:|
+| 6,496 | **5,289** (cap reached) | 7,200 s | 7,201.2 s | **0** |
+
+The cap was reached, so the N is **5,289**: the first 5,289 of `FIVE_ORDER`, which is a uniform
+sample of the 6,496 (81 %). The 1,207 not reached are listed in no record and are unmeasured.
+- **5,261** SDIP-typed refusals (`UntrustedInputError`).
+- **26** MDIO grid refusals: 17 `GridTraceSparsityError`, 9 `GridTraceCountError`.
+- **2** converted.
+- Slowest 20.89 s; max peak RSS 240.1 MB, under the harness's 512 MiB.
+
+### `certify` on the 2 converted files
+
+Both exited 1. Each was rebuilt at `a0fdf48` and run through the `sdip` executable, as P29's
+were. **Both are D54:**
+- Plane 4 fails on the 32,767 us interval, so the certificate is NON-EQUIVALENT.
+- Both also carry `revision_undefined`, so G3 is ROUNDTRIP-SCOPED (D61).
+- G7 refuses controls on the unclean baseline, as in P29.
+
+Nothing passed falsely, and nothing is new.
+
+### Scope
+
+- One 30-trace poststack base file, revision 1, macOS arm64.
+- 1,207 five-way files are unmeasured.
+- Not run: six- and seven-way combinations, and coverage-guided fuzzing. x86-64 and Windows are
+  unmeasured.

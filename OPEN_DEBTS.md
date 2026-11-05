@@ -3439,3 +3439,18 @@ that way. On an unseen 14.4 GB source, `sdip ingest` peaks at **2,065.2 MB** aga
 What still grows is the trace map, at about 0.087 MB per MB: two Python dicts per trace. At the
 40.1 GiB default it is bounded at about 5.1 GB, inside 8 GiB, so it is not a debt. It is the
 term a future consumer above 40 GiB would ask about.
+
+---
+
+## D8 — NARROWED 2026-11-05 — five-way combinations sampled to the cap (P34)
+
+- **Narrows:** D8 NARROWED 2026-11-05 (P29) above (**SP10**) · **Decision:** `DECISIONS.md`
+  D-0138 · **Probe:** P34, falsifier did **not** fire
+
+5,289 of the 6,496 five-class combinations ran in a seeded order before the 7,200 s cap. That is
+a uniform 81 % sample. **0 met any of P15's six clauses.** Two converted, and `certify` refused
+both for D54. With P15, P18, P22 and P29, every pair, triple and four-way combination is
+measured, along with 81 % of the five-way ones.
+
+**Still open on D8:** the 1,207 unrun five-way files; six- and seven-way combinations;
+coverage-guided fuzzing; x86-64 and Windows. **D8 stays OPEN.**
