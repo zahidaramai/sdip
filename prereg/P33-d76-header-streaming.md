@@ -89,3 +89,64 @@ chain are not measured.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+## Stage A results, 2026-11-05
+
+| Field | Value |
+|---|---|
+| Code | `main` `278984c` (registration), clean |
+| Fixtures | both regenerated and hash-checked against P23's sha256 |
+| Equality | **held on both:** the four blocked columns `array_equal` the whole read's, and the maps are identical (94,500 and 378,000 traces) |
+
+Peak RSS, each step alone in a fresh process. Source sizes 400.68 and 1,602.72 MB:
+
+| Step | `small` | `large` | MB per MB |
+|---|---:|---:|---:|
+| baseline | 57.6 MB | 57.2 MB | 0.000 |
+| **headers_whole** (`header[:]`) | 160.1 MB | **460.5 MB** | **0.250** |
+| **columns_blocked** (4 columns, 65,536 per block) | 134.7 MB | **134.7 MB** | **0.000** |
+| map_from_whole | 168.2 MB | 488.3 MB | 0.266 |
+| map_from_columns | 159.4 MB | 264.1 MB | 0.087 |
+| axis_origin_now (P28's stage) | 160.6 MB | 429.1 MB | 0.223 |
+
+1. **Reproduces P28: holds.** 0.223 MB per MB against P28's 0.2381, 6 % apart.
+2. **Attributes the term.**
+   - **The parsed header array is 0.250 MB per MB**, and reading four columns in blocks makes it
+     flat.
+   - **The trace map's own share is 0.087 MB per MB** (`map_from_columns` minus
+     `columns_blocked`).
+3. **Stage B's scope: the header array.** Its share is more than half of 0.2381. The map's
+   share, 0.087, is less than half (0.119), so the map stays out of scope, and it is what
+   remains growing.
+
+## Amendment B, 2026-11-05 — stage B criteria, before any stage B code is measured
+
+**Scope.** In `sdip ingest`, the three whole reads of the source headers become blocked reads of
+only the columns each stage uses, through `segy`'s public `header[i:j]` slicing in blocks of
+65,536 traces:
+- the axis origin reads `delay_recording_time` and `times_scalar`;
+- the raw sample view's and the header plane's trace maps read the grid's index fields.
+
+The trace map itself is unchanged. Nothing else changes.
+
+**The bound, from stage A's and P28's numbers only.** What remains growing is the trace map's
+**0.0871 MB per MB** (stage A). The fixed term is the larger of `peak − 0.0871 × size` over P28
+stage B's two whole-command points: **966.83 MB**. The margin is 1.10, as P32's. That gives
+**`B(S) = 1.10 × (966.83 + 0.0871 × S)` MB.** Those points still carry the header term, so this
+fixed term is an overestimate, and that is its safe side.
+
+**Criteria**, the whole `sdip ingest` under `/usr/bin/time -l` at stage B's code:
+1. **The measured sizes:** at most `B(S)` on `small` (1,101.9 MB) and on `large` (1,217.1 MB).
+2. **An unseen size, the gate.** `xxxl` is 18 pieces built the P32 way (piece `k` =
+   `make_poststack3d(n_inline=300, n_crossline=630, n_samples=1000, inline_start=100 + 300 k)`,
+   `k` = 0..17): **14,424,483,600 B**, never ingested. It is ingested once with `--envelope-gib
+   14.0`, the raise for that run only, recorded. Its peak must be at most
+   **`B` = 2,445.5 MB**.
+3. **Store identity.** On `small` and `large`, every array's decoded-bytes sha256 and attribute
+   sha256 equal stage A's stores (hashes in the receipt). Both sides are taken without
+   `statsV1.sumSquares`, the one key P31 measured varying.
+4. **Gate.** The default suite, `ruff` and `mypy` pass.
+
+**If 1 to 4 hold:** the ingest envelope becomes `B`. Its default is where `B` reaches 8 GiB,
+73.2 GiB, **capped at verify's 40.1 GiB**, because `certify` runs both. That makes **40.1 GiB**.
+If any criterion fails, it stands failed, and 26.9 GiB stays.
