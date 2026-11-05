@@ -99,3 +99,50 @@ seven-way combinations, x86-64 and Windows stay open.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-11-05 |
+| Run commit | `b74373e`, the registration commit, from a clean `git worktree` |
+| Receipt | `prereg/P35-receipt-2026-11-05.json`: the coverage time series, the 6 corpus additions (bytes included), and all 652 child records |
+| Verdict | **The falsifier did not fire.** No H1, H2, H3 or H4 in 5,872,413 executions and 652 child runs |
+
+### Measured
+
+| Measure | Value |
+|---|---:|
+| Executions in the 7,200 s cap | **5,872,413** (about 816 per second) |
+| Worker restarts (H3) | 0 |
+| Hits: H1 / H2 / H3 / H4 | **0 / 0 / 0 / 0** |
+| Coverage, seeds → end | 5,091 → **5,112** locations (`sdip/` and `segy/`, LINE + BRANCH) |
+| Corpus, seeds → end | 35 → 41 |
+| Last new coverage | at **33.8 s** |
+| Distinct upstream exceptions at step 3 | 0 |
+| D8 child runs | 652: 533 converted, 70 `GridTraceSparsityError`, 43 `GridTraceCountError`, 6 SDIP-typed refusals; 0 clause hits; max peak RSS 253.6 MB |
+| Admitted inputs not sent to the child (best effort) | 1,583,572 |
+
+### What this does and does not show
+
+- **The guidance saturated in 34 seconds.** All 6 corpus additions are step-1 refusals: new
+  branches in `validate_source`'s rejection logic. After that, 5.87 million mutations of 41
+  inputs reached no new location in `sdip/` or `segy/`. These mutators, at the binary header and
+  the first four trace headers, therefore do not drive the target deeper than the seeds already
+  go. **That is a limit of this harness, not evidence that the deeper code is clean.**
+- **No mutation made `read_header_columns` (step 3) raise** at all. No input reached upstream
+  with a malformed header that `segy` rejected after SDIP's preflight admitted it.
+- **Reported, not diagnosed, as registered.** Of the 533 converted children:
+  - 162 had `certify` exit 0;
+  - 363 had `certify` exit 1 while CLI `ingest` exited 0;
+  - 8 had every command at exit 0.
+
+  `verify` and `export` exit 1 on most of them by construction: they read the positive control's
+  store against a mutated source. A `certify` refusal is a verdict, not a clause hit. Which mutants
+  certified, and whether each certificate is right, is not checked here.
+
+### Scope
+
+- The in-process target's coverage only. The child path (MDIO's grid build, the planes, export)
+  ran 652 times but its coverage is not measured.
+- One 30-trace poststack base file family, revision 1, macOS arm64.
+- Mutators limited to the binary header, the first four trace headers, truncation, extension and
+  header splice.

@@ -3454,3 +3454,26 @@ measured, along with 81 % of the five-way ones.
 
 **Still open on D8:** the 1,207 unrun five-way files; six- and seven-way combinations;
 coverage-guided fuzzing; x86-64 and Windows. **D8 stays OPEN.**
+
+---
+
+## D8 — NARROWED 2026-11-05 — coverage-guided fuzzing ran; the guidance saturated (P35)
+
+- **Narrows:** D8 NARROWED 2026-11-05 (P34) above (**SP10**) · **Decision:** `DECISIONS.md`
+  D-0140 · **Probe:** P35, falsifier did **not** fire
+
+5,872,413 coverage-guided executions over 7,200 s, with stdlib `sys.monitoring` coverage (D-0139):
+- **no crash, hang, untyped exception or worker death;**
+- 652 D8 child runs, with 0 of P15's clauses hit.
+
+Coverage rose from 5,091 to 5,112 locations and stopped at 34 s. The mutators reached only new
+preflight rejections, so the depth they could test is shallow.
+
+**Still open on D8:**
+- **deeper coverage-guided fuzzing:** structure-aware mutators, and the child path's coverage
+  measured;
+- the 1,207 unrun five-way files;
+- six- and seven-way combinations;
+- x86-64 and Windows.
+
+**D8 stays OPEN.**

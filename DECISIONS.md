@@ -6420,3 +6420,21 @@ its controls are committed with P35's registration. They found one defect in the
 before any run: `sys.monitoring` keeps a location disabled across tool registrations until
 `restart_events()` is called, so the first version measured no growth. The coverage control
 caught it.
+
+## D-0140 — 2026-11-05 — D8 narrowed by P35: no hit in 5.87 M coverage-guided executions; guidance saturated
+
+**Measured** (P35, at its registration commit `b74373e`). The harness ran 5,872,413 executions
+in 7,200 s and 652 D8 child runs:
+- no H1 (untyped exception in SDIP's own steps), no H2 (hang), no H3 (worker death);
+- no H4 (any of P15's six clauses).
+
+Coverage plateaued at 5,112 locations after 34 s. The six inputs that reached new code are all
+preflight refusals. The result is read narrowly: these mutators do not reach deeper than the
+seeds. It is not a claim that the deeper code is clean.
+
+**Built.** `tests/fuzz/coverage_fuzz.py` and `tests/negative/test_p35_harness_controls.py`,
+committed with the registration (D-0139).
+
+**D8 stays OPEN.** The next useful step is a structure-aware mutator: one that keeps a file
+parseable while varying the geometry, sample format and per-trace fields together, with the D8
+child's own coverage measured. It needs its own registration.
