@@ -948,6 +948,21 @@ QUADS: Final[tuple[tuple[str, str, str, str], ...]] = tuple(
 )
 """Every four-member combination from four different classes: 3,632 (probe P29)."""
 
+FIVES: Final[tuple[tuple[str, str, str, str, str], ...]] = tuple(
+    (a, b, c, d, e)
+    for a, b, c, d, e in combinations(MUTATIONS, 5)
+    if len({_CLASS_OF[a], _CLASS_OF[b], _CLASS_OF[c], _CLASS_OF[d], _CLASS_OF[e]}) == 5
+)
+"""Every five-member combination from five different classes: 6,496 (probe P34)."""
+
+P34_SEED: Final[int] = 20261105
+
+FIVE_ORDER: Final[tuple[tuple[str, str, str, str, str], ...]] = tuple(
+    FIVES[int(i)] for i in np.random.default_rng(P34_SEED).permutation(len(FIVES))
+)
+"""P34's registered run order: every member of :data:`FIVES`, seeded, so a capped run is a
+uniform sample of them rather than the head of ``combinations`` order."""
+
 MUTANT_COUNT: Final[int] = 400
 """P18's registered number of seeded byte mutants."""
 

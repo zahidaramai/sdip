@@ -58,6 +58,7 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | [P31](P31-content-variance-at-scale.md) | Which store bytes differ between ingests of a survey-scale source? | no chunk differs in 13 ingests; only root `createdOn` and `amplitude` `statsV1.sumSquares` vary; rule 2 holds | — | D75 |
 | [P32](P32-ingest-envelope-unseen-point.md) | Does an ingest bound written from P28 alone hold at an unseen 9.6 GB point? | **held** — 2,810.5 MB vs bound 3,515.6 at 9.6 GB; default 7.2 → 26.9 GiB (registration's "27.0" was a rounding slip) | — | D74, D76 |
 | [P33](P33-d76-header-streaming.md) | How much of ingest's 0.24 MB/MB is the parsed header array vs the trace map, and does a blocked column read remove it? | stage A: header array 0.250, blocked read 0.000, trace map 0.087; stage B: unseen 14.4 GB at 2,065 MB vs bound 2,446, identity held; ingest default 26.9 → 40.1 GiB | — | D76 |
+| [P34](P34-d8-five-way.md) | Do five hostilities at once, the five-class combinations in a seeded order, break any command? | registered | — | D8 |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a
