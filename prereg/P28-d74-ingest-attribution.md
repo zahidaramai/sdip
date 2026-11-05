@@ -149,3 +149,39 @@ source headers (0.24 MB per MB) stay as they are.
 
 A failed bound stands failed, as P23's did, and is reported. The 7.2 GiB ingest envelope stays
 until the result is ruled on.
+
+## Stage B results, 2026-11-05
+
+| Field | Value |
+|---|---|
+| Code | `main` `87f9c38`, clean. Amendment B at `90f80e7`, before any stage B code was measured |
+| Receipt | `prereg/P28-receipt-2026-11-05.json`: stage A and B peaks, slopes, every array hash on both stores, and the criterion 3 diagnosis |
+| Verdict | **Criteria 1, 2 and 4 hold. Criterion 3 failed as registered**, on upstream's summary statistics, which vary between runs of the same code |
+
+| Measure | `small` (0.40 GB) | `large` (1.60 GB) | MB per MB |
+|---|---:|---:|---:|
+| raw_samples alone | 765.2 → **359.0 MB** | 2,148.2 → **677.3 MB** | 1.15 → 0.26 |
+| header_plane alone | 665.8 → **263.1 MB** | 2,054.0 → **578.1 MB** | 1.15 → 0.26 |
+| **whole `sdip ingest`** | 1,004.8 → **1,001.7 MB** | 2,368.4 → **874.3 MB** | 1.13 → **−0.11** |
+
+1. **Peak: holds.** 874.3 MB on `large`, against a bound of 1,200 MB.
+2. **Slope: holds.** −0.11 MB per MB, against a bound of 0.40. The whole command peaks
+   **higher on `small` than on `large`**, at about 1.0 GB, while no isolated stage on `small`
+   exceeds 359 MB. The whole command's remaining peak is not set by any one stage, and it does
+   not grow with the file over this range. It is not attributed here.
+3. **Store identity: FAILED as registered.** On `small`, every array and every attribute
+   hash equals stage A's. On `large`, **every array's data is identical**, including
+   `headers_raw_uint8`, `amplitude_raw_ibm32`, `source_trace_ordinal` and `amplitude`.
+   `amplitude`'s **attributes** differ: in `statsV1.sumSquares`, which upstream's
+   `segy_to_mdio` writes. The change does not touch that stage.
+4. **Gate: holds.** At `87f9c38`: `sdip doctor` exit 0; the default suite 1,945 passed, 0 failed (4,508 campaign and benchmark tests deselected by the default marker), 2,345 s; `ruff check .`, `ruff format --check .` and `mypy` clean.
+
+**Diagnosis of criterion 3**, made after the run and not a gated criterion. Six ingests of
+`large` with `sdip ingest` at `87f9c38` gave three different `sumSquares` values: 4.776611781649446,
+…446, …443, …444, …444 and …443 × 10¹⁹. The sum is a floating-point reduction whose order
+varies between runs. Stage A's single store is one draw of the same variable. Three of those
+ingests recorded **two different content digests** (`ad503df5…` twice, `ae99cbe7…` once). That
+contradicts D-0101, and it is recorded as D75 and asked about, not fixed here.
+
+A failed criterion stands failed. Data identity, the thing the criterion was registered to
+protect, held on both fixtures.

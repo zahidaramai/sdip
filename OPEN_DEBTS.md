@@ -3262,3 +3262,57 @@ ceiling at ingest without saying so.
 **Still open:** option (a). A registered probe attributes ingest memory by stage. If the cause
 is in SDIP's code, a streaming fix follows with fresh criteria. If it is in `multidimio`, the
 fit is recorded as the limit.
+
+---
+
+## D74 — NARROWED 2026-11-05 — ingest reads its two planes slab by slab (P28)
+
+- **Narrows:** D74 NARROWED 2026-11-01 above (**SP10**) · **Decision:** `DECISIONS.md` D-0131 ·
+  **Probe:** P28, criteria 1, 2 and 4 held, criterion 3 failed as registered
+- **Status:** `OPEN`, pending the ruling asked in D-0131
+
+**Attributed.** Each ingest stage was measured alone in a fresh process. The growth was
+SDIP's, not upstream's:
+- the raw sample view and the header plane read the whole source through a memory map;
+- each peaked at about 2.1 GB on a 1.60 GB source, 1.15 MB per MB;
+- `segy_to_mdio` grew at 0.03 MB per MB.
+
+**Narrowed.** Both stages now read each slab's live traces by explicit reads (`87f9c38`).
+- **Whole `sdip ingest`:** **874.3 MB** on 1.60 GB (2,368.4 before), and 1,001.7 MB on 0.40 GB.
+- **Each stage alone:** 677 and 578 MB, growing at 0.26 MB per MB.
+- **Data:** every array identical on both fixtures.
+
+**Still open:**
+- the 7.2 GiB interim envelope, which was fitted to the old line;
+- the whole command's remaining peak of about 1.0 GB, which no single stage sets;
+- the parsed source headers, about 0.24 MB per MB.
+
+A refit needs a 4.8 GB point, as P26 took for verify.
+
+---
+
+## D75 — the content digest is not reproducible between ingests of a 1.60 GB source
+
+- **Status:** `OPEN` (raised 2026-11-05) · **Found by:** P28, diagnosing criterion 3 ·
+  **Decision:** `DECISIONS.md` D-0131 · **Needs:** a ruling (section 9: a measurement
+  contradicts a documented conclusion)
+
+D-0101 says two ingests of one source under one declaration give the same content digest. P13
+measured that on five small store shapes. **At 1.60 GB it is false.** Three `sdip ingest` runs
+of P23's `large` fixture, same code (`87f9c38`), recorded content digests `ad503df5…`,
+`ad503df5…` and `ae99cbe7…`.
+
+The cause is in upstream's output, not SDIP's:
+- `segy_to_mdio` writes `statsV1` into `amplitude`'s attributes;
+- its `sumSquares` is a floating-point sum whose order varies between runs;
+- six ingests gave three values, from 4.776611781649443 to …446 × 10¹⁹;
+- the content digest covers every array's `zarr.json`, so it covers `statsV1`.
+
+**Not affected:**
+- **G6**, which compares chunk bytes and skips `zarr.json`;
+- **each store's own MATCH**, because the recorded and recomputed digests are of the same bytes;
+- **every array's data**, identical in all of P28's comparisons.
+
+**Affected:** the certificate's claim that the content digest is "the value a re-ingest of this
+source must reproduce", and any consumer that compares content digests across ingests. Not
+measured: at what size the variation starts, and whether `sum`, `min` or `max` can vary too.

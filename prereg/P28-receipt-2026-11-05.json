@@ -1,0 +1,561 @@
+{
+ "amendment_b_commit": "90f80e7",
+ "criterion_3_diagnosis": {
+  "differing": "large: amplitude attributes only (statsV1, written by upstream segy_to_mdio); every array's data identical",
+  "recorded_content_digest_three_ingests": [
+   "ad503df50b95bfceb5ff2b3e4f557288d6b03fee8e1921a20acf8c59ed39098c",
+   "ad503df50b95bfceb5ff2b3e4f557288d6b03fee8e1921a20acf8c59ed39098c",
+   "ae99cbe7b19abe38a3b0b57ddd78785f76bc5c157d656b8d9afaeaab4e822c54"
+  ],
+  "sumSquares_six_ingests_at_87f9c38": [
+   4.776611781649446e+19,
+   4.776611781649446e+19,
+   4.776611781649443e+19,
+   4.776611781649444e+19,
+   4.776611781649444e+19,
+   4.776611781649443e+19
+  ]
+ },
+ "debt": "D74",
+ "driver": {
+  "p28_run.sh": "#!/bin/bash\n# P28 stage A at main ff5e13c: fixtures, whole ingest, then each stage alone.\nset -u\nL=$1; R=$L/run; M=/Users/zahidaramai/Local_Sites/seis-mdio-zarr; mkdir -p $R; cd $M\nPYTHONPATH=$M .venv/bin/python - $R <<'PY'\nimport sys, hashlib\nfrom pathlib import Path\nfrom tests.fixtures.generators.poststack3d import make_poststack3d\nwant = {\"small\": \"ac6001f611319a41d45d2729844d834c10ad340d0ce8a2f94f620796927ca03a\",\n        \"large\": \"2b8b7aa0851771ae8d2981ed173de63f7dd94f0b50124d3a7bf2881b9cd3eb2e\"}\nr = Path(sys.argv[1])\nfor name, ni in ((\"small\", 150), (\"large\", 600)):\n    p = make_poststack3d(r / f\"{name}.sgy\", n_inline=ni, n_crossline=630, n_samples=1000).path\n    h = hashlib.sha256()\n    with p.open(\"rb\") as f:\n        for b in iter(lambda: f.read(1 << 24), b\"\"): h.update(b)\n    assert h.hexdigest() == want[name], (name, h.hexdigest())\n    print(\"fixture\", name, \"sha256 ok\", flush=True)\nPY\n[ $? -eq 0 ] || { echo \"FIXTURE MISMATCH, stopped\"; exit 3; }\nfor n in small large; do\n  /usr/bin/time -l .venv/bin/sdip ingest $R/$n.sgy $R/$n.mdio > $R/$n.ingest.out 2> $R/$n.ingest.time\n  echo \"whole $n exit $? $(grep 'maximum resident' $R/$n.ingest.time)\"\n  for s in baseline preflight hash g1 file_headers convert axis_origin raw_samples header_plane marker; do\n    out=$(PYTHONPATH=$M .venv/bin/python $L/p28_step.py $s $R/$n.sgy $R/$n.mdio $R/$n.convert.mdio 2>$R/$n.$s.err | tail -1)\n    echo \"$n $s $out\"\n  done\n  rm -rf $R/$n.convert.mdio\ndone\n",
+  "p28_stageB.sh": "#!/bin/bash\n# P28 stage B: whole ingest, the two changed stages alone, store hashes vs stage A.\nset -u\nL=$1; R=$L/run; M=/Users/zahidaramai/Local_Sites/seis-mdio-zarr; S=$(dirname $L); cd $M\nfor n in small large; do\n  rm -rf $R/$n.mdio\n  /usr/bin/time -l .venv/bin/sdip ingest $R/$n.sgy $R/$n.mdio > $R/$n.ingestB.out 2> $R/$n.ingestB.time\n  echo \"wholeB $n exit $? $(grep 'maximum resident' $R/$n.ingestB.time)\"\n  .venv/bin/python $S/store_hashes.py $R/$n.mdio > $L/$n.stageB.hashes.json\n  cmp -s $L/$n.stageA.hashes.json $L/$n.stageB.hashes.json && echo \"hashes $n IDENTICAL\" || echo \"hashes $n DIFFER\"\n  for s in raw_samples header_plane; do\n    out=$(PYTHONPATH=$M .venv/bin/python $L/p28_step.py $s $R/$n.sgy $R/$n.mdio $R/$n.convert.mdio 2>$R/$n.$s.B.err | tail -1)\n    echo \"$n B $s $out\"\n  done\n  .venv/bin/python $S/store_hashes.py $R/$n.mdio | cmp -s - $L/$n.stageA.hashes.json && echo \"hashes-after-rewrite $n IDENTICAL\" || echo \"hashes-after-rewrite $n DIFFER\"\ndone\n",
+  "p28_step.py": "\"\"\"P28 stage A: run ONE ingest stage alone and print its process's peak RSS (bytes, macOS).\"\"\"\nimport json, resource, shutil, sys\nfrom pathlib import Path\n\nif __name__ == \"__main__\":\n    stage, source, store, scratch = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3]), Path(sys.argv[4])\n    from sdip.cli.main import _declaration\n    declaration = _declaration(\"1\", \"PostStack3DTime\", None, None)\n    if stage == \"baseline\":\n        pass\n    elif stage == \"preflight\":\n        from sdip.ingest.orchestrator import validate_source; validate_source(source, declaration)\n    elif stage == \"hash\":\n        from sdip.provenance.hashing import sha256_file; sha256_file(source)\n    elif stage == \"g1\":\n        from sdip.spec.gate import g1_for_spec; g1_for_spec(declaration.build_spec())\n    elif stage == \"file_headers\":\n        from sdip.ingest.file_headers import classify_textual_header, read_raw_file_headers\n        raw = read_raw_file_headers(source)\n        classify_textual_header(raw.textual, declaration.build_spec().segy_spec.text_header)\n    elif stage == \"convert\":\n        from sdip.ingest.file_headers import file_headers_persisted\n        from mdio import segy_to_mdio\n        from mdio.builder.template_registry import get_template\n        if scratch.exists():\n            shutil.rmtree(scratch)\n        built = declaration.build_spec()\n        with file_headers_persisted():\n            segy_to_mdio(segy_spec=built.segy_spec, mdio_template=get_template(declaration.template),\n                         input_path=source, output_path=scratch, overwrite=True, grid_overrides=None)\n    elif stage == \"axis_origin\":\n        from segy import SegyFile\n        from sdip.ingest.sample_axis import decide_for_store\n        spec = declaration.build_spec().segy_spec\n        decide_for_store(store, SegyFile(str(source), spec=spec).header[:])\n    elif stage == \"raw_samples\":\n        from sdip.ingest.raw_samples import attach_raw_sample_view\n        attach_raw_sample_view(store, source, declaration.build_spec().segy_spec)\n    elif stage == \"header_plane\":\n        from sdip.ingest.header_plane import attach_header_plane\n        attach_header_plane(store, source, declaration.build_spec().segy_spec)\n    elif stage == \"marker\":\n        from segy import SegyFile\n        from sdip.ingest.provenance_marker import attach_provenance_marker\n        from sdip.ingest.sample_axis import decide_for_store\n        spec = declaration.build_spec().segy_spec\n        origin = decide_for_store(store, SegyFile(str(source), spec=spec).header[:])\n        r0 = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n        attach_provenance_marker(store, declaration=declaration, sample_axis_origin=origin.marker_block())\n    else:\n        raise SystemExit(f\"unknown stage {stage}\")\n    print(json.dumps({\"stage\": stage, \"ru_maxrss\": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}))\n",
+  "store_hashes.py": "\"\"\"sha256 of every array's decoded bytes in a Zarr store, plus its attributes, block by outer index.\"\"\"\nimport hashlib, json, sys\nimport numpy as np, zarr\n\ndef walk(g, prefix=\"\"):\n    for name, node in sorted(g.members()):\n        path = f\"{prefix}{name}\"\n        if isinstance(node, zarr.Group):\n            yield from walk(node, path + \"/\")\n        else:\n            yield path, node\n\nif __name__ == \"__main__\":\n    g = zarr.open_group(sys.argv[1], mode=\"r\")\n    out = {}\n    for path, a in walk(g):\n        h = hashlib.sha256()\n        if a.ndim == 0 or a.shape[0] == 0:\n            h.update(np.asarray(a[...]).tobytes())\n        else:\n            for i in range(a.shape[0]):\n                h.update(np.ascontiguousarray(a[i]).tobytes())\n        out[path] = {\"shape\": list(a.shape), \"dtype\": str(a.dtype), \"sha256\": h.hexdigest(),\n                     \"attrs_sha256\": hashlib.sha256(json.dumps(dict(a.attrs), sort_keys=True, default=str).encode()).hexdigest()}\n    print(json.dumps(out, indent=1, sort_keys=True))\n"
+ },
+ "fixtures_sha256_checked": {
+  "large": "2b8b7aa0851771ae8d2981ed173de63f7dd94f0b50124d3a7bf2881b9cd3eb2e",
+  "small": "ac6001f611319a41d45d2729844d834c10ad340d0ce8a2f94f620796927ca03a"
+ },
+ "host": "macOS arm64, 36 GiB RAM, CPython 3.12.13",
+ "p23_whole_ingest_large_mb": 2199.6,
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "probe": "P28",
+ "registration_commit": "ff5e13c",
+ "run_date": "2026-11-05",
+ "source_bytes": {
+  "large": 1602723600,
+  "small": 400683600
+ },
+ "stage_a_code": "ff5e13c (src identical to 077c8e6)",
+ "stage_a_peak_rss_bytes": {
+  "large": {
+   "axis_origin": 448299008,
+   "baseline": 57311232,
+   "convert": 174358528,
+   "file_headers": 57327616,
+   "g1": 57065472,
+   "hash": 60882944,
+   "header_plane": 2053996544,
+   "marker": 468254720,
+   "preflight": 57262080,
+   "raw_samples": 2148220928,
+   "whole_exit": 0,
+   "whole_sdip_ingest": 2368405504
+  },
+  "small": {
+   "axis_origin": 162070528,
+   "baseline": 57065472,
+   "convert": 143343616,
+   "file_headers": 57475072,
+   "g1": 57556992,
+   "hash": 62537728,
+   "header_plane": 665796608,
+   "marker": 161300480,
+   "preflight": 57180160,
+   "raw_samples": 765198336,
+   "whole_exit": 0,
+   "whole_sdip_ingest": 1004830720
+  }
+ },
+ "stage_a_slope_mb_per_mb": {
+  "axis_origin": 0.2381,
+  "baseline": 0.0002,
+  "convert": 0.0258,
+  "file_headers": -0.0001,
+  "g1": -0.0004,
+  "hash": -0.0014,
+  "header_plane": 1.1549,
+  "marker": 0.2554,
+  "preflight": 0.0001,
+  "raw_samples": 1.1506,
+  "whole_sdip_ingest": 1.1344
+ },
+ "stage_b_code": "87f9c38",
+ "stage_b_peak_rss_bytes": {
+  "large": {
+   "header_plane": 578109440,
+   "raw_samples": 677298176,
+   "whole_exit": 0,
+   "whole_sdip_ingest": 874266624
+  },
+  "small": {
+   "header_plane": 263127040,
+   "raw_samples": 359006208,
+   "whole_exit": 0,
+   "whole_sdip_ingest": 1001734144
+  }
+ },
+ "stage_b_slope_mb_per_mb": {
+  "header_plane": 0.262,
+  "raw_samples": 0.2648,
+  "whole_sdip_ingest": -0.106
+ },
+ "store_hashes": {
+  "large_A": {
+   "amplitude": {
+    "attrs_sha256": "5f8e6a0698b195440b70f117c599cec8c4135970f5e3e742d3d948a1263d4110",
+    "dtype": "float32",
+    "sha256": "c712cdf89108e11a160a623b4ecf50a8a33f665649d42b4db0c2496cbe6f2b2d",
+    "shape": [
+     600,
+     630,
+     1000
+    ]
+   },
+   "amplitude_raw_ibm32/index": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "uint64",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shape": [
+     0
+    ]
+   },
+   "amplitude_raw_ibm32/words": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "uint32",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shape": [
+     0
+    ]
+   },
+   "cdp_x": {
+    "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+    "dtype": "float64",
+    "sha256": "b4de1fe79640419c0cc18c445940874b78def78d9d10472910a196b35947004d",
+    "shape": [
+     600,
+     630
+    ]
+   },
+   "cdp_y": {
+    "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+    "dtype": "float64",
+    "sha256": "9e02c9dabe5c6e6f87662b626b99a78aeaaef16708d50190e283cc47d55ba13a",
+    "shape": [
+     600,
+     630
+    ]
+   },
+   "crossline": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "81012d8997db7688e009cbe1995859f8ccc301210ff31cff74c442455d60322d",
+    "shape": [
+     630
+    ]
+   },
+   "headers": {
+    "attrs_sha256": "358ada3867eac7d0fcf49a08444f3ba330682136fddeb3ce9b0b6b2a3a95a09a",
+    "dtype": "[('trace_seq_num_line', '<i4'), ('trace_seq_num_reel', '<i4'), ('orig_field_record_num', '<i4'), ('trace_num_orig_record', '<i4'), ('energy_source_point_num', '<i4'), ('ensemble_num', '<i4'), ('trace_num_ensemble', '<i4'), ('trace_id_code', '<i2'), ('vertically_summed_traces', '<i2'), ('horizontally_stacked_traces', '<i2'), ('data_use', '<i2'), ('source_to_receiver_distance', '<i4'), ('receiver_group_elevation', '<i4'), ('source_surface_elevation', '<i4'), ('source_depth_below_surface', '<i4'), ('receiver_datum_elevation', '<i4'), ('source_datum_elevation', '<i4'), ('source_water_depth', '<i4'), ('receiver_water_depth', '<i4'), ('elevation_depth_scalar', '<i2'), ('coordinate_scalar', '<i2'), ('source_coord_x', '<i4'), ('source_coord_y', '<i4'), ('group_coord_x', '<i4'), ('group_coord_y', '<i4'), ('coordinate_unit', '<i2'), ('weathering_velocity', '<i2'), ('subweathering_velocity', '<i2'), ('source_uphole_time', '<i2'), ('group_uphole_time', '<i2'), ('source_static_correction', '<i2'), ('receiver_static_correction', '<i2'), ('total_static_applied', '<i2'), ('lag_time_a', '<i2'), ('lag_time_b', '<i2'), ('delay_recording_time', '<i2'), ('mute_time_start', '<i2'), ('mute_time_end', '<i2'), ('samples_per_trace', '<i2'), ('sample_interval', '<i2'), ('instrument_gain_type', '<i2'), ('instrument_gain_const', '<i2'), ('instrument_gain_initial', '<i2'), ('correlated_data', '<i2'), ('sweep_freq_start', '<i2'), ('sweep_freq_end', '<i2'), ('sweep_length', '<i2'), ('sweep_type', '<i2'), ('sweep_taper_start', '<i2'), ('sweep_taper_end', '<i2'), ('taper_type', '<i2'), ('alias_filter_freq', '<i2'), ('alias_filter_slope', '<i2'), ('notch_filter_freq', '<i2'), ('notch_filter_slope', '<i2'), ('low_cut_freq', '<i2'), ('high_cut_freq', '<i2'), ('low_cut_slope', '<i2'), ('high_cut_slope', '<i2'), ('year_recorded', '<i2'), ('day_of_year', '<i2'), ('hour_of_day', '<i2'), ('minute_of_hour', '<i2'), ('second_of_minute', '<i2'), ('time_basis_code', '<i2'), ('trace_weighting_factor', '<i2'), ('group_num_roll_switch', '<i2'), ('group_num_first_trace', '<i2'), ('group_num_last_trace', '<i2'), ('gap_size', '<i2'), ('taper_overtravel', '<i2'), ('cdp_x', '<i4'), ('cdp_y', '<i4'), ('inline', '<i4'), ('crossline', '<i4'), ('shot_point', '<i4'), ('shot_point_scalar', '<i2'), ('trace_value_unit', '<i2'), ('transduction_const_mantissa', '<i4'), ('transduction_const_exponent', '<i2'), ('transduction_unit', '<i2'), ('device_trace_id', '<i2'), ('times_scalar', '<i2'), ('source_type_orientation', '<i2'), ('source_energy_dir_mantissa', '<i4'), ('source_energy_dir_exponent', '<i2'), ('source_measurement_mantissa', '<i4'), ('source_measurement_exponent', '<i2'), ('source_measurement_unit', '<i2'), ('pad_233', 'u1'), ('pad_234', 'u1'), ('pad_235', 'u1'), ('pad_236', 'u1'), ('pad_237', 'u1'), ('pad_238', 'u1'), ('pad_239', 'u1'), ('pad_240', 'u1')]",
+    "sha256": "f7301d255c6e754afc3d13bd402dda50fff0ec7edd08f572503c23cce84acc7b",
+    "shape": [
+     600,
+     630
+    ]
+   },
+   "headers_raw_uint8": {
+    "attrs_sha256": "3ba7fd07e33ba9c96034e56c4e34ac281ebb6fe7a6345a92bfed89a9e6da3283",
+    "dtype": "uint8",
+    "sha256": "4cedc47c29e6c226aa3cb2ecee3cf14edbb1ced8d464f8ae0fe742373c0db116",
+    "shape": [
+     600,
+     630,
+     240
+    ]
+   },
+   "inline": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "190badb30a4f509d4f2f250e6d1395b2ef71369134787530c16f31a711eab6cd",
+    "shape": [
+     600
+    ]
+   },
+   "segy_file_header": {
+    "attrs_sha256": "227a3b16ee91ee8d4d17fb9f54cdd425a9a4d92a81405152d485fc8a06450a6e",
+    "dtype": "<U1",
+    "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+    "shape": []
+   },
+   "source_trace_ordinal": {
+    "attrs_sha256": "669c78de4f2c3fa86c48689f6c79cb18d275b1a40620d1b3ab80252093b8470c",
+    "dtype": "int64",
+    "sha256": "128c4224af007b942b5ddb04a8665cb65e74df86a3614741c7c349e527b290f2",
+    "shape": [
+     600,
+     630
+    ]
+   },
+   "time": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "119e337a162d0e12ceb126c947730aa14e3b34aeb309c38737d065236c9c168e",
+    "shape": [
+     1000
+    ]
+   },
+   "trace_mask": {
+    "attrs_sha256": "33f4e6cd8c33d5440396a815b3969bfe294c3bda29b6b2b238223e072a4aa5bd",
+    "dtype": "int8",
+    "sha256": "09d18fa510d32347ab68ed77468e9406a16c271df89e1592ad90be5e79f6ad92",
+    "shape": [
+     600,
+     630
+    ]
+   }
+  },
+  "large_B": {
+   "amplitude": {
+    "attrs_sha256": "6e6a622d549509ad8febc926f8678f9e3f9d9fa9e58b2745f2dd8645535643a7",
+    "dtype": "float32",
+    "sha256": "c712cdf89108e11a160a623b4ecf50a8a33f665649d42b4db0c2496cbe6f2b2d",
+    "shape": [
+     600,
+     630,
+     1000
+    ]
+   },
+   "amplitude_raw_ibm32/index": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "uint64",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shape": [
+     0
+    ]
+   },
+   "amplitude_raw_ibm32/words": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "uint32",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shape": [
+     0
+    ]
+   },
+   "cdp_x": {
+    "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+    "dtype": "float64",
+    "sha256": "b4de1fe79640419c0cc18c445940874b78def78d9d10472910a196b35947004d",
+    "shape": [
+     600,
+     630
+    ]
+   },
+   "cdp_y": {
+    "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+    "dtype": "float64",
+    "sha256": "9e02c9dabe5c6e6f87662b626b99a78aeaaef16708d50190e283cc47d55ba13a",
+    "shape": [
+     600,
+     630
+    ]
+   },
+   "crossline": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "81012d8997db7688e009cbe1995859f8ccc301210ff31cff74c442455d60322d",
+    "shape": [
+     630
+    ]
+   },
+   "headers": {
+    "attrs_sha256": "358ada3867eac7d0fcf49a08444f3ba330682136fddeb3ce9b0b6b2a3a95a09a",
+    "dtype": "[('trace_seq_num_line', '<i4'), ('trace_seq_num_reel', '<i4'), ('orig_field_record_num', '<i4'), ('trace_num_orig_record', '<i4'), ('energy_source_point_num', '<i4'), ('ensemble_num', '<i4'), ('trace_num_ensemble', '<i4'), ('trace_id_code', '<i2'), ('vertically_summed_traces', '<i2'), ('horizontally_stacked_traces', '<i2'), ('data_use', '<i2'), ('source_to_receiver_distance', '<i4'), ('receiver_group_elevation', '<i4'), ('source_surface_elevation', '<i4'), ('source_depth_below_surface', '<i4'), ('receiver_datum_elevation', '<i4'), ('source_datum_elevation', '<i4'), ('source_water_depth', '<i4'), ('receiver_water_depth', '<i4'), ('elevation_depth_scalar', '<i2'), ('coordinate_scalar', '<i2'), ('source_coord_x', '<i4'), ('source_coord_y', '<i4'), ('group_coord_x', '<i4'), ('group_coord_y', '<i4'), ('coordinate_unit', '<i2'), ('weathering_velocity', '<i2'), ('subweathering_velocity', '<i2'), ('source_uphole_time', '<i2'), ('group_uphole_time', '<i2'), ('source_static_correction', '<i2'), ('receiver_static_correction', '<i2'), ('total_static_applied', '<i2'), ('lag_time_a', '<i2'), ('lag_time_b', '<i2'), ('delay_recording_time', '<i2'), ('mute_time_start', '<i2'), ('mute_time_end', '<i2'), ('samples_per_trace', '<i2'), ('sample_interval', '<i2'), ('instrument_gain_type', '<i2'), ('instrument_gain_const', '<i2'), ('instrument_gain_initial', '<i2'), ('correlated_data', '<i2'), ('sweep_freq_start', '<i2'), ('sweep_freq_end', '<i2'), ('sweep_length', '<i2'), ('sweep_type', '<i2'), ('sweep_taper_start', '<i2'), ('sweep_taper_end', '<i2'), ('taper_type', '<i2'), ('alias_filter_freq', '<i2'), ('alias_filter_slope', '<i2'), ('notch_filter_freq', '<i2'), ('notch_filter_slope', '<i2'), ('low_cut_freq', '<i2'), ('high_cut_freq', '<i2'), ('low_cut_slope', '<i2'), ('high_cut_slope', '<i2'), ('year_recorded', '<i2'), ('day_of_year', '<i2'), ('hour_of_day', '<i2'), ('minute_of_hour', '<i2'), ('second_of_minute', '<i2'), ('time_basis_code', '<i2'), ('trace_weighting_factor', '<i2'), ('group_num_roll_switch', '<i2'), ('group_num_first_trace', '<i2'), ('group_num_last_trace', '<i2'), ('gap_size', '<i2'), ('taper_overtravel', '<i2'), ('cdp_x', '<i4'), ('cdp_y', '<i4'), ('inline', '<i4'), ('crossline', '<i4'), ('shot_point', '<i4'), ('shot_point_scalar', '<i2'), ('trace_value_unit', '<i2'), ('transduction_const_mantissa', '<i4'), ('transduction_const_exponent', '<i2'), ('transduction_unit', '<i2'), ('device_trace_id', '<i2'), ('times_scalar', '<i2'), ('source_type_orientation', '<i2'), ('source_energy_dir_mantissa', '<i4'), ('source_energy_dir_exponent', '<i2'), ('source_measurement_mantissa', '<i4'), ('source_measurement_exponent', '<i2'), ('source_measurement_unit', '<i2'), ('pad_233', 'u1'), ('pad_234', 'u1'), ('pad_235', 'u1'), ('pad_236', 'u1'), ('pad_237', 'u1'), ('pad_238', 'u1'), ('pad_239', 'u1'), ('pad_240', 'u1')]",
+    "sha256": "f7301d255c6e754afc3d13bd402dda50fff0ec7edd08f572503c23cce84acc7b",
+    "shape": [
+     600,
+     630
+    ]
+   },
+   "headers_raw_uint8": {
+    "attrs_sha256": "3ba7fd07e33ba9c96034e56c4e34ac281ebb6fe7a6345a92bfed89a9e6da3283",
+    "dtype": "uint8",
+    "sha256": "4cedc47c29e6c226aa3cb2ecee3cf14edbb1ced8d464f8ae0fe742373c0db116",
+    "shape": [
+     600,
+     630,
+     240
+    ]
+   },
+   "inline": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "190badb30a4f509d4f2f250e6d1395b2ef71369134787530c16f31a711eab6cd",
+    "shape": [
+     600
+    ]
+   },
+   "segy_file_header": {
+    "attrs_sha256": "227a3b16ee91ee8d4d17fb9f54cdd425a9a4d92a81405152d485fc8a06450a6e",
+    "dtype": "<U1",
+    "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+    "shape": []
+   },
+   "source_trace_ordinal": {
+    "attrs_sha256": "669c78de4f2c3fa86c48689f6c79cb18d275b1a40620d1b3ab80252093b8470c",
+    "dtype": "int64",
+    "sha256": "128c4224af007b942b5ddb04a8665cb65e74df86a3614741c7c349e527b290f2",
+    "shape": [
+     600,
+     630
+    ]
+   },
+   "time": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "119e337a162d0e12ceb126c947730aa14e3b34aeb309c38737d065236c9c168e",
+    "shape": [
+     1000
+    ]
+   },
+   "trace_mask": {
+    "attrs_sha256": "33f4e6cd8c33d5440396a815b3969bfe294c3bda29b6b2b238223e072a4aa5bd",
+    "dtype": "int8",
+    "sha256": "09d18fa510d32347ab68ed77468e9406a16c271df89e1592ad90be5e79f6ad92",
+    "shape": [
+     600,
+     630
+    ]
+   }
+  },
+  "small_A": {
+   "amplitude": {
+    "attrs_sha256": "3e76c5675e202e0bdaffb0be0d7d069fc17a4c42716a27e1f472e9671a89d891",
+    "dtype": "float32",
+    "sha256": "f9da2f9dc5b88345560f5f6f3e9902e036edb34e2fec7fef973638211a549117",
+    "shape": [
+     150,
+     630,
+     1000
+    ]
+   },
+   "amplitude_raw_ibm32/index": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "uint64",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shape": [
+     0
+    ]
+   },
+   "amplitude_raw_ibm32/words": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "uint32",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shape": [
+     0
+    ]
+   },
+   "cdp_x": {
+    "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+    "dtype": "float64",
+    "sha256": "30cd236d05e41b093f4c80f7f78da70a0a39219383e80ad11b96ae9848d3c389",
+    "shape": [
+     150,
+     630
+    ]
+   },
+   "cdp_y": {
+    "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+    "dtype": "float64",
+    "sha256": "af5728c4dd9396528b8397627880261a3d88f52fddbbd2813bb33ae0ab9e01cd",
+    "shape": [
+     150,
+     630
+    ]
+   },
+   "crossline": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "81012d8997db7688e009cbe1995859f8ccc301210ff31cff74c442455d60322d",
+    "shape": [
+     630
+    ]
+   },
+   "headers": {
+    "attrs_sha256": "358ada3867eac7d0fcf49a08444f3ba330682136fddeb3ce9b0b6b2a3a95a09a",
+    "dtype": "[('trace_seq_num_line', '<i4'), ('trace_seq_num_reel', '<i4'), ('orig_field_record_num', '<i4'), ('trace_num_orig_record', '<i4'), ('energy_source_point_num', '<i4'), ('ensemble_num', '<i4'), ('trace_num_ensemble', '<i4'), ('trace_id_code', '<i2'), ('vertically_summed_traces', '<i2'), ('horizontally_stacked_traces', '<i2'), ('data_use', '<i2'), ('source_to_receiver_distance', '<i4'), ('receiver_group_elevation', '<i4'), ('source_surface_elevation', '<i4'), ('source_depth_below_surface', '<i4'), ('receiver_datum_elevation', '<i4'), ('source_datum_elevation', '<i4'), ('source_water_depth', '<i4'), ('receiver_water_depth', '<i4'), ('elevation_depth_scalar', '<i2'), ('coordinate_scalar', '<i2'), ('source_coord_x', '<i4'), ('source_coord_y', '<i4'), ('group_coord_x', '<i4'), ('group_coord_y', '<i4'), ('coordinate_unit', '<i2'), ('weathering_velocity', '<i2'), ('subweathering_velocity', '<i2'), ('source_uphole_time', '<i2'), ('group_uphole_time', '<i2'), ('source_static_correction', '<i2'), ('receiver_static_correction', '<i2'), ('total_static_applied', '<i2'), ('lag_time_a', '<i2'), ('lag_time_b', '<i2'), ('delay_recording_time', '<i2'), ('mute_time_start', '<i2'), ('mute_time_end', '<i2'), ('samples_per_trace', '<i2'), ('sample_interval', '<i2'), ('instrument_gain_type', '<i2'), ('instrument_gain_const', '<i2'), ('instrument_gain_initial', '<i2'), ('correlated_data', '<i2'), ('sweep_freq_start', '<i2'), ('sweep_freq_end', '<i2'), ('sweep_length', '<i2'), ('sweep_type', '<i2'), ('sweep_taper_start', '<i2'), ('sweep_taper_end', '<i2'), ('taper_type', '<i2'), ('alias_filter_freq', '<i2'), ('alias_filter_slope', '<i2'), ('notch_filter_freq', '<i2'), ('notch_filter_slope', '<i2'), ('low_cut_freq', '<i2'), ('high_cut_freq', '<i2'), ('low_cut_slope', '<i2'), ('high_cut_slope', '<i2'), ('year_recorded', '<i2'), ('day_of_year', '<i2'), ('hour_of_day', '<i2'), ('minute_of_hour', '<i2'), ('second_of_minute', '<i2'), ('time_basis_code', '<i2'), ('trace_weighting_factor', '<i2'), ('group_num_roll_switch', '<i2'), ('group_num_first_trace', '<i2'), ('group_num_last_trace', '<i2'), ('gap_size', '<i2'), ('taper_overtravel', '<i2'), ('cdp_x', '<i4'), ('cdp_y', '<i4'), ('inline', '<i4'), ('crossline', '<i4'), ('shot_point', '<i4'), ('shot_point_scalar', '<i2'), ('trace_value_unit', '<i2'), ('transduction_const_mantissa', '<i4'), ('transduction_const_exponent', '<i2'), ('transduction_unit', '<i2'), ('device_trace_id', '<i2'), ('times_scalar', '<i2'), ('source_type_orientation', '<i2'), ('source_energy_dir_mantissa', '<i4'), ('source_energy_dir_exponent', '<i2'), ('source_measurement_mantissa', '<i4'), ('source_measurement_exponent', '<i2'), ('source_measurement_unit', '<i2'), ('pad_233', 'u1'), ('pad_234', 'u1'), ('pad_235', 'u1'), ('pad_236', 'u1'), ('pad_237', 'u1'), ('pad_238', 'u1'), ('pad_239', 'u1'), ('pad_240', 'u1')]",
+    "sha256": "f1d4d53d795946385ecc72a751d7a10e77408e47cc27f8e166c0bad7480380a8",
+    "shape": [
+     150,
+     630
+    ]
+   },
+   "headers_raw_uint8": {
+    "attrs_sha256": "3ba7fd07e33ba9c96034e56c4e34ac281ebb6fe7a6345a92bfed89a9e6da3283",
+    "dtype": "uint8",
+    "sha256": "d3525bdec3aca12a5c50b3d38728975d07676280e1989bfa11ada7539e29c769",
+    "shape": [
+     150,
+     630,
+     240
+    ]
+   },
+   "inline": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "56c22dfa978c5b6e4eb6f3536d7d68ff68d74ebfe74828951b7179095fc86fe1",
+    "shape": [
+     150
+    ]
+   },
+   "segy_file_header": {
+    "attrs_sha256": "227a3b16ee91ee8d4d17fb9f54cdd425a9a4d92a81405152d485fc8a06450a6e",
+    "dtype": "<U1",
+    "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+    "shape": []
+   },
+   "source_trace_ordinal": {
+    "attrs_sha256": "669c78de4f2c3fa86c48689f6c79cb18d275b1a40620d1b3ab80252093b8470c",
+    "dtype": "int64",
+    "sha256": "7ccaa5d43036e0d4835e73fa2a73ceed4c11fb56bc34b98fdaaae0fcc6ed5248",
+    "shape": [
+     150,
+     630
+    ]
+   },
+   "time": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "119e337a162d0e12ceb126c947730aa14e3b34aeb309c38737d065236c9c168e",
+    "shape": [
+     1000
+    ]
+   },
+   "trace_mask": {
+    "attrs_sha256": "33f4e6cd8c33d5440396a815b3969bfe294c3bda29b6b2b238223e072a4aa5bd",
+    "dtype": "int8",
+    "sha256": "67ae8d1f40521cc637392a23434c039aa50310f3430be4e495df66aec949ad85",
+    "shape": [
+     150,
+     630
+    ]
+   }
+  },
+  "small_B": {
+   "amplitude": {
+    "attrs_sha256": "3e76c5675e202e0bdaffb0be0d7d069fc17a4c42716a27e1f472e9671a89d891",
+    "dtype": "float32",
+    "sha256": "f9da2f9dc5b88345560f5f6f3e9902e036edb34e2fec7fef973638211a549117",
+    "shape": [
+     150,
+     630,
+     1000
+    ]
+   },
+   "amplitude_raw_ibm32/index": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "uint64",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shape": [
+     0
+    ]
+   },
+   "amplitude_raw_ibm32/words": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "uint32",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shape": [
+     0
+    ]
+   },
+   "cdp_x": {
+    "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+    "dtype": "float64",
+    "sha256": "30cd236d05e41b093f4c80f7f78da70a0a39219383e80ad11b96ae9848d3c389",
+    "shape": [
+     150,
+     630
+    ]
+   },
+   "cdp_y": {
+    "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+    "dtype": "float64",
+    "sha256": "af5728c4dd9396528b8397627880261a3d88f52fddbbd2813bb33ae0ab9e01cd",
+    "shape": [
+     150,
+     630
+    ]
+   },
+   "crossline": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "81012d8997db7688e009cbe1995859f8ccc301210ff31cff74c442455d60322d",
+    "shape": [
+     630
+    ]
+   },
+   "headers": {
+    "attrs_sha256": "358ada3867eac7d0fcf49a08444f3ba330682136fddeb3ce9b0b6b2a3a95a09a",
+    "dtype": "[('trace_seq_num_line', '<i4'), ('trace_seq_num_reel', '<i4'), ('orig_field_record_num', '<i4'), ('trace_num_orig_record', '<i4'), ('energy_source_point_num', '<i4'), ('ensemble_num', '<i4'), ('trace_num_ensemble', '<i4'), ('trace_id_code', '<i2'), ('vertically_summed_traces', '<i2'), ('horizontally_stacked_traces', '<i2'), ('data_use', '<i2'), ('source_to_receiver_distance', '<i4'), ('receiver_group_elevation', '<i4'), ('source_surface_elevation', '<i4'), ('source_depth_below_surface', '<i4'), ('receiver_datum_elevation', '<i4'), ('source_datum_elevation', '<i4'), ('source_water_depth', '<i4'), ('receiver_water_depth', '<i4'), ('elevation_depth_scalar', '<i2'), ('coordinate_scalar', '<i2'), ('source_coord_x', '<i4'), ('source_coord_y', '<i4'), ('group_coord_x', '<i4'), ('group_coord_y', '<i4'), ('coordinate_unit', '<i2'), ('weathering_velocity', '<i2'), ('subweathering_velocity', '<i2'), ('source_uphole_time', '<i2'), ('group_uphole_time', '<i2'), ('source_static_correction', '<i2'), ('receiver_static_correction', '<i2'), ('total_static_applied', '<i2'), ('lag_time_a', '<i2'), ('lag_time_b', '<i2'), ('delay_recording_time', '<i2'), ('mute_time_start', '<i2'), ('mute_time_end', '<i2'), ('samples_per_trace', '<i2'), ('sample_interval', '<i2'), ('instrument_gain_type', '<i2'), ('instrument_gain_const', '<i2'), ('instrument_gain_initial', '<i2'), ('correlated_data', '<i2'), ('sweep_freq_start', '<i2'), ('sweep_freq_end', '<i2'), ('sweep_length', '<i2'), ('sweep_type', '<i2'), ('sweep_taper_start', '<i2'), ('sweep_taper_end', '<i2'), ('taper_type', '<i2'), ('alias_filter_freq', '<i2'), ('alias_filter_slope', '<i2'), ('notch_filter_freq', '<i2'), ('notch_filter_slope', '<i2'), ('low_cut_freq', '<i2'), ('high_cut_freq', '<i2'), ('low_cut_slope', '<i2'), ('high_cut_slope', '<i2'), ('year_recorded', '<i2'), ('day_of_year', '<i2'), ('hour_of_day', '<i2'), ('minute_of_hour', '<i2'), ('second_of_minute', '<i2'), ('time_basis_code', '<i2'), ('trace_weighting_factor', '<i2'), ('group_num_roll_switch', '<i2'), ('group_num_first_trace', '<i2'), ('group_num_last_trace', '<i2'), ('gap_size', '<i2'), ('taper_overtravel', '<i2'), ('cdp_x', '<i4'), ('cdp_y', '<i4'), ('inline', '<i4'), ('crossline', '<i4'), ('shot_point', '<i4'), ('shot_point_scalar', '<i2'), ('trace_value_unit', '<i2'), ('transduction_const_mantissa', '<i4'), ('transduction_const_exponent', '<i2'), ('transduction_unit', '<i2'), ('device_trace_id', '<i2'), ('times_scalar', '<i2'), ('source_type_orientation', '<i2'), ('source_energy_dir_mantissa', '<i4'), ('source_energy_dir_exponent', '<i2'), ('source_measurement_mantissa', '<i4'), ('source_measurement_exponent', '<i2'), ('source_measurement_unit', '<i2'), ('pad_233', 'u1'), ('pad_234', 'u1'), ('pad_235', 'u1'), ('pad_236', 'u1'), ('pad_237', 'u1'), ('pad_238', 'u1'), ('pad_239', 'u1'), ('pad_240', 'u1')]",
+    "sha256": "f1d4d53d795946385ecc72a751d7a10e77408e47cc27f8e166c0bad7480380a8",
+    "shape": [
+     150,
+     630
+    ]
+   },
+   "headers_raw_uint8": {
+    "attrs_sha256": "3ba7fd07e33ba9c96034e56c4e34ac281ebb6fe7a6345a92bfed89a9e6da3283",
+    "dtype": "uint8",
+    "sha256": "d3525bdec3aca12a5c50b3d38728975d07676280e1989bfa11ada7539e29c769",
+    "shape": [
+     150,
+     630,
+     240
+    ]
+   },
+   "inline": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "56c22dfa978c5b6e4eb6f3536d7d68ff68d74ebfe74828951b7179095fc86fe1",
+    "shape": [
+     150
+    ]
+   },
+   "segy_file_header": {
+    "attrs_sha256": "227a3b16ee91ee8d4d17fb9f54cdd425a9a4d92a81405152d485fc8a06450a6e",
+    "dtype": "<U1",
+    "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+    "shape": []
+   },
+   "source_trace_ordinal": {
+    "attrs_sha256": "669c78de4f2c3fa86c48689f6c79cb18d275b1a40620d1b3ab80252093b8470c",
+    "dtype": "int64",
+    "sha256": "7ccaa5d43036e0d4835e73fa2a73ceed4c11fb56bc34b98fdaaae0fcc6ed5248",
+    "shape": [
+     150,
+     630
+    ]
+   },
+   "time": {
+    "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "dtype": "int32",
+    "sha256": "119e337a162d0e12ceb126c947730aa14e3b34aeb309c38737d065236c9c168e",
+    "shape": [
+     1000
+    ]
+   },
+   "trace_mask": {
+    "attrs_sha256": "33f4e6cd8c33d5440396a815b3969bfe294c3bda29b6b2b238223e072a4aa5bd",
+    "dtype": "int8",
+    "sha256": "67ae8d1f40521cc637392a23434c039aa50310f3430be4e495df66aec949ad85",
+    "shape": [
+     150,
+     630
+    ]
+   }
+  }
+ }
+}

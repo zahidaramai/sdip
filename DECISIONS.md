@@ -6183,3 +6183,50 @@ ingest that growth comes from is not yet measured.
 **Consumer-visible.** `sdip ingest` and `sdip certify` refuse sources above 7.2 GiB by default,
 which they did not before. The certificates SFM holds name 58 MB sources, far below it. The
 README's scope table gains a "Source size" row.
+
+## D-0131 — 2026-11-05 — D74 narrowed (P28); D75 opened; rulings requested
+
+**Measured** (P28, `prereg/P28-d74-ingest-attribution.md`). Ingest's peak was set by SDIP's
+raw sample view and header plane, each of which read the source through a memory map. They
+now read slab by slab (`87f9c38`). On 1.60 GB, `sdip ingest` peaks at 874.3 MB instead of
+2,368.4 MB, with every array's data identical. Amendment B's criterion 3 failed as registered:
+`amplitude`'s attributes differ in upstream's `statsV1.sumSquares`, which varies between runs
+of the same code. Three ingests recorded two different content digests (D75).
+
+**Rulings requested** (section 9):
+1. **The ingest envelope (D74).** Keep the 7.2 GiB interim, or register a P26-style refit with
+   a 4.8 GB point.
+2. **The content digest (D75).** D-0101 adds a key to the exclusion list only on a measurement
+   of P13's kind, as a new scheme. The options:
+   - (a) register that measurement at survey scale and, if it shows only `statsV1` varying,
+     issue `sdip-content-digest/2` excluding it;
+   - (b) record the limit and reword the certificate's claim;
+   - (c) something else.
+
+   Nothing is changed until the ruling (GeoSuite, 2026-11-05: "Do not change the digest
+   definition before the ruling").
+
+**What GeoSuite asked to be stated** (2026-11-05):
+- **(a) Already-bound stores stay valid.** A digest is of the bytes a store holds. A bound store
+  that is unchanged still recomputes to its recorded value: all four `large` stores P28 kept
+  report `MATCH` on `check_content_digest`. What fails is a comparison between two *separate*
+  ingests of one source. A binding that names a store's own digest is unaffected. A binding
+  that expects a re-ingest to reproduce it is affected.
+- **(b) The spread.** Over six ingests, `sumSquares` took three values, spread 24,576 on
+  4.776611781649 × 10¹⁹: **3 ulps** of a float64 (ulp 8,192), relative 5.1 × 10⁻¹⁶. `count`,
+  `sum`, `min` and `max` were identical in the four stores read for them.
+  - **Excluding** `statsV1` from the content digest would make it deterministic for this cause.
+    Option (a) above would measure whether anything else varies.
+  - **Rounding** `sumSquares` before digesting reduces the flips but cannot remove them. Any
+    rounding has boundaries, and a 3-ulp jitter that straddles one still changes the digest.
+    Rounding is also a tolerance, which this project bars from comparisons (operating contract
+    §1.1). It is not proposed.
+- **(c) Consumers.** GeoSuite's `impact` lists `artifact:sdip-mdio-store`, with open handoffs
+  from GeoCRS and GeoVisualization. GeoSuite names more: GeoCRS binds stores by SDIP digest
+  (D-239 `store_refs`), and GeoGIS and SFM read those digests. Any of them that re-ingests a
+  source and compares content digests is affected above an unmeasured size. Any that only
+  re-verifies a bound store is not. The store digest (`sdip-store-digest/1`) never reproduced
+  across ingests, because it covers `createdOn`, so it is unchanged by D75.
+
+**Consumer-visible.** Ingest needs less memory; no store's data changes. The content-digest
+contract does not hold at 1.60 GB, as D75 records. SDIP's own checks are not affected.
