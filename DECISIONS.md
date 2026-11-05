@@ -6254,3 +6254,18 @@ paragraph, the schema's `content_digest` description, the certificate builder's 
 entry. GeoSuite pushed `de91c17`, so `origin/main` carries that failure until the next push.
 The fix adds the missing `§1.1` entry; the unit suite then passes, 710 of 710. From here on a
 records-only commit is gated like any other before it is reported.
+
+## D-0133 — 2026-11-05 — D8 narrowed by P29: no four-way combination breaks any command
+
+**Measured** (P29, `prereg/P29-d8-four-way.md`, run at its registration commit `6f2e057`). All
+3,632 four-class combinations of the D8 corpus ran through the D8 child in 5,944.6 s, and none
+met any of P15's six clauses. Nine converted, and `certify` refused all nine, for recorded
+upstream limits: D54 (7) and D61 (2). On the D54 files, G7 reports FAIL because the baseline
+store already fails Plane 4. G7 is designed to refuse controls on a store that is not clean.
+
+**Built.** `QUADS` in `tests/fixtures/generators/hostile.py`, held at 3,632 by
+`tests/negative/test_d8_hostile_quads.py`, with a builder non-vacuity test. The first 10 quads
+run in the default suite and the rest are `campaign`, as registered.
+
+**D8 stays OPEN:** coverage-guided fuzzing, five-way and larger combinations, x86-64 and
+Windows.

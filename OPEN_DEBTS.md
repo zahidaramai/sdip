@@ -3327,3 +3327,22 @@ The README, the certificate schema and two docstrings now state that two ingests
 digests can differ through MDIO's `statsV1`, while the data stay identical. Next: the
 survey-scale P13-kind measurement, then `sdip-content-digest/2` if `statsV1` is the only key
 that varies. It will be recorded beside `/1`, never in place.
+
+---
+
+## D8 — NARROWED 2026-11-05 — every four-class combination has run (P29)
+
+- **Narrows:** D8 NARROWED 2026-11-01 (P22) above (**SP10**) · **Decision:** `DECISIONS.md`
+  D-0133 · **Probe:** P29, falsifier did **not** fire
+
+All 3,632 four-member combinations of the corpus from four different classes ran through the
+D8 harness in 5,944.6 s. The cap was 10,800 s. **0 of 3,632 met any of P15's six clauses.**
+- 3,575 were refused by SDIP with a typed error.
+- 48 were refused by MDIO's grid checks.
+- 9 converted; `certify` refused all 9, for D54 (7) and D61 (2). Nothing passed falsely.
+
+With P15, P18 and P22, every pair, triple and four-way combination of the 23 mutations is now
+measured: 223 + 1,177 + 3,632.
+
+**Still open on D8:** coverage-guided fuzzing; five-way and larger combinations; x86-64 and
+Windows. **D8 stays OPEN.**

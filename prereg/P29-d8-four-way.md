@@ -71,3 +71,48 @@ Five-, six- and seven-way combinations. One 30-trace poststack base file, revisi
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-11-05 |
+| Run commit | `6f2e057`, the registration commit, from a clean `git worktree` |
+| Receipt | `prereg/P29-receipt-2026-11-05.json`: every record, and the classification of every `certify` failure |
+| Environment | `multidimio` 1.2.1 · `segy` 0.6.0 · CPython 3.12.13 · macOS arm64 |
+| Verdict | **The falsifier did not fire.** 0 of 3,632 files met any clause |
+
+### Measured
+
+| Registered | Ran | Cap | Elapsed | Clauses hit |
+|---:|---:|---:|---:|---:|
+| 3,632 | **3,632** | 10,800 s | 5,944.6 s | **0** |
+
+The cap was not reached, so every registered file ran.
+- **3,575** SDIP-typed refusals (`UntrustedInputError`).
+- **48** MDIO grid refusals: 32 `GridTraceSparsityError`, 16 `GridTraceCountError`.
+- **9** converted.
+- Slowest 41.37 s; max peak RSS 243.2 MB, under the harness's 512 MiB.
+
+### `certify` on the 9 converted files
+
+All 9 exited 1. Each was rebuilt at `6f2e057` and run through the `sdip` executable:
+`certify` in a clean, empty git repository, with its certificate's planes, gates and G7 read.
+**Every cause is an already recorded upstream limit. None is new:**
+
+| Cause | Files | Certificate | Record |
+|---|---:|---|---|
+| `sample_interval_enormous`: a binary-header interval of 32,767 us, stored as whole milliseconds (`32.767` → `32.0`). Plane 4 fails | 7 | NON-EQUIVALENT | D54 |
+| `revision_undefined` without the interval mutation: every plane passes; MDIO will not export | 2 | PROVISIONAL (G3 ROUNDTRIP-SCOPED, D-0106) | D61 |
+
+Five of the seven D54 files also carry `revision_undefined`, so their G3 is ROUNDTRIP-SCOPED as
+well. **G7 reports FAIL on the seven D54 files** with "baseline is not clean - clean store
+already fails G2d". G7 refuses to run its controls on a store that already fails a plane. That
+is its design, not a finding. In all nine the engine refused to certify, and nothing passed
+falsely.
+
+### Scope
+
+- One 30-trace poststack base file, revision 1, macOS arm64.
+- Not coverage-guided. Five-way and larger combinations are not run. x86-64 and Windows are
+  unmeasured.
+- The nine-file classification is a diagnosis made after the run, as the registration asked. It
+  is not a gated criterion.
