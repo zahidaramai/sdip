@@ -1,0 +1,574 @@
+{
+ "amendment_b_commit": "5f14778",
+ "bound": {
+  "fixed_term_mb": 966.83,
+  "formula": "1.10 x (966.83 + 0.0871 x S_MB)",
+  "margin": 1.1,
+  "trace_map_term": 0.0871
+ },
+ "debt": "D76",
+ "driver": {
+  "p33_run.sh": "#!/bin/bash\n# P33 stage A: fixtures (hash-checked), ingest once each, equality, then each step alone.\nset -u\nL=$1; R=$L/run; M=/Users/zahidaramai/Local_Sites/seis-mdio-zarr; S=$(dirname $L); mkdir -p $R; cd $M\ngit log --oneline -1; git status --porcelain | head -3\nPYTHONPATH=$M .venv/bin/python - $R <<'PY'\nimport sys, hashlib\nfrom pathlib import Path\nfrom tests.fixtures.generators.poststack3d import make_poststack3d\nwant = {\"small\": \"ac6001f611319a41d45d2729844d834c10ad340d0ce8a2f94f620796927ca03a\",\n        \"large\": \"2b8b7aa0851771ae8d2981ed173de63f7dd94f0b50124d3a7bf2881b9cd3eb2e\"}\nr = Path(sys.argv[1])\nfor name, ni in ((\"small\", 150), (\"large\", 600)):\n    p = make_poststack3d(r / f\"{name}.sgy\", n_inline=ni, n_crossline=630, n_samples=1000).path\n    h = hashlib.sha256()\n    with p.open(\"rb\") as f:\n        for b in iter(lambda: f.read(1 << 24), b\"\"): h.update(b)\n    assert h.hexdigest() == want[name], (name, h.hexdigest())\n    print(\"fixture\", name, \"sha256 ok\", flush=True)\nPY\n[ $? -eq 0 ] || { echo \"FIXTURE MISMATCH, stopped\"; exit 3; }\nfor n in small large; do\n  .venv/bin/sdip ingest $R/$n.sgy $R/$n.mdio > /dev/null 2>&1; echo \"ingest $n exit $?\"\n  out=$(PYTHONPATH=$M .venv/bin/python $S/p33_step.py equality $R/$n.sgy $R/$n.mdio 2>$R/$n.eq.err | tail -1); echo \"$n $out\"\n  echo \"$out\" | grep -q '\"maps_equal\": true' && ! echo \"$out\" | grep -q 'false' || { echo \"EQUALITY FAILED, stopped\"; exit 4; }\n  for s in baseline headers_whole columns_blocked map_from_whole map_from_columns axis_origin_now; do\n    out=$(PYTHONPATH=$M .venv/bin/python $S/p33_step.py $s $R/$n.sgy $R/$n.mdio 2>$R/$n.$s.err | tail -1); echo \"$n $out\"\n  done\ndone\n",
+  "p33_step.py": "\"\"\"P33 stage A: run ONE step alone and print ru_maxrss (bytes, macOS). 'equality' checks first.\"\"\"\nimport json, resource, sys\nfrom pathlib import Path\nimport numpy as np\nBLOCK = 65536\nCOLS = (\"inline\", \"crossline\", \"delay_recording_time\", \"times_scalar\")\n\ndef columns_blocked(source, spec):\n    from segy import SegyFile\n    f = SegyFile(str(source), spec=spec); n = int(f.num_traces)\n    parts = {c: [] for c in COLS}\n    for i in range(0, n, BLOCK):\n        block = f.header[i:min(i + BLOCK, n)]\n        for c in COLS: parts[c].append(np.asarray(block[c]).copy())\n        del block\n    return {c: np.concatenate(v) for c, v in parts.items()}\n\ndef grid(store):\n    from sdip.equivalence.planes import _open_store, grid_coordinates, store_dimensions\n    g = _open_store(store); dims = store_dimensions(g)\n    return grid_coordinates(g, dims), dims\n\nif __name__ == \"__main__\":\n    step, source, store = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3])\n    from sdip.cli.main import _declaration\n    spec = _declaration(\"1\", \"PostStack3DTime\", None, None).build_spec().segy_spec\n    from segy import SegyFile\n    from sdip.equivalence.trace_map import build_trace_map\n    out = {\"step\": step}\n    if step == \"baseline\":\n        pass\n    elif step == \"headers_whole\":\n        h = SegyFile(str(source), spec=spec).header[:]\n    elif step == \"columns_blocked\":\n        cols = columns_blocked(source, spec)\n    elif step == \"map_from_whole\":\n        h = SegyFile(str(source), spec=spec).header[:]; coords, dims = grid(store)\n        m = build_trace_map(h, coords, dims)\n    elif step == \"map_from_columns\":\n        cols = columns_blocked(source, spec); coords, dims = grid(store)\n        m = build_trace_map(cols, coords, dims)\n    elif step == \"axis_origin_now\":\n        from sdip.ingest.sample_axis import decide_for_store\n        decide_for_store(store, SegyFile(str(source), spec=spec).header[:])\n    elif step == \"equality\":\n        h = SegyFile(str(source), spec=spec).header[:]; cols = columns_blocked(source, spec)\n        out[\"columns_equal\"] = {c: bool(np.array_equal(np.asarray(h[c]), cols[c])) for c in COLS}\n        coords, dims = grid(store)\n        a, b = build_trace_map(h, coords, dims), build_trace_map(cols, coords, dims)\n        out[\"maps_equal\"] = (a.ordinal_to_cell == b.ordinal_to_cell and a.cell_to_ordinals == b.cell_to_ordinals\n                             and a.unmapped == b.unmapped)\n        out[\"traces\"] = len(a.ordinal_to_cell)\n    else:\n        raise SystemExit(f\"unknown step {step}\")\n    out[\"ru_maxrss\"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n    print(json.dumps(out))\n",
+  "stageB.sh": "#!/bin/bash\nset -u\nL=$1; R=$L/run; M=/Users/zahidaramai/Local_Sites/seis-mdio-zarr; S=$(dirname $L); cd $M\ngit log --oneline -1; git status --porcelain | head -3\nfor n in small large; do\n  rm -rf $R/$n.mdio\n  /usr/bin/time -l .venv/bin/sdip ingest $R/$n.sgy $R/$n.mdio > /dev/null 2> $R/$n.B.time\n  echo \"wholeB $n exit $? $(grep 'maximum resident' $R/$n.B.time)\"\n  .venv/bin/python $S/store_hashes_v2.py $R/$n.mdio > $L/$n.stageB.hashes.json\n  cmp -s $L/$n.stageA.hashes.json $L/$n.stageB.hashes.json && echo \"hashes $n IDENTICAL\" || echo \"hashes $n DIFFER\"\n  rm -rf $R/$n.mdio\ndone\nrm -f $R/small.sgy $R/large.sgy\nPYTHONPATH=$M .venv/bin/python - $R <<'PY'\nimport sys, hashlib, shutil\nfrom pathlib import Path\nfrom tests.fixtures.generators.poststack3d import make_poststack3d\nr = Path(sys.argv[1]); out = r / \"xxxl.sgy\"\nwith out.open(\"wb\") as f:\n    for k in range(18):\n        piece = make_poststack3d(r / f\"piece{k}.sgy\", n_inline=300, n_crossline=630, n_samples=1000, inline_start=100 + 300 * k).path\n        with piece.open(\"rb\") as p:\n            head = p.read(3600)\n            if k == 0: f.write(head)\n            shutil.copyfileobj(p, f, 1 << 24)\n        piece.unlink()\nh = hashlib.sha256()\nwith out.open(\"rb\") as f:\n    for b in iter(lambda: f.read(1 << 24), b\"\"): h.update(b)\nprint(\"xxxl\", out.stat().st_size, h.hexdigest(), flush=True)\nPY\n/usr/bin/time -l .venv/bin/sdip ingest $R/xxxl.sgy $R/xxxl.mdio --envelope-gib 14.0 > /dev/null 2> $R/xxxl.time\necho \"xxxl exit $? $(grep 'maximum resident' $R/xxxl.time) $(grep ' real ' $R/xxxl.time)\"\n",
+  "store_hashes_v2.py": "\"\"\"sha256 of every array's decoded bytes in a Zarr store, plus its attributes, block by outer index.\"\"\"\nimport hashlib, json, sys\nimport numpy as np, zarr\n\ndef strip(attrs):\n    \"\"\"Drop statsV1.sumSquares, the one key P31 measured varying between ingests.\"\"\"\n    v = attrs.get(\"statsV1\")\n    if isinstance(v, str):\n        d = json.loads(v); d.pop(\"sumSquares\", None); attrs[\"statsV1\"] = json.dumps(d, sort_keys=True)\n    return attrs\n\ndef walk(g, prefix=\"\"):\n    for name, node in sorted(g.members()):\n        path = f\"{prefix}{name}\"\n        if isinstance(node, zarr.Group):\n            yield from walk(node, path + \"/\")\n        else:\n            yield path, node\n\nif __name__ == \"__main__\":\n    g = zarr.open_group(sys.argv[1], mode=\"r\")\n    out = {}\n    for path, a in walk(g):\n        h = hashlib.sha256()\n        if a.ndim == 0 or a.shape[0] == 0:\n            h.update(np.asarray(a[...]).tobytes())\n        else:\n            for i in range(a.shape[0]):\n                h.update(np.ascontiguousarray(a[i]).tobytes())\n        out[path] = {\"shape\": list(a.shape), \"dtype\": str(a.dtype), \"sha256\": h.hexdigest(),\n                     \"attrs_sha256\": hashlib.sha256(json.dumps(strip(dict(a.attrs)), sort_keys=True, default=str).encode()).hexdigest()}\n    print(json.dumps(out, indent=1, sort_keys=True))\n"
+ },
+ "host": "macOS arm64, 36 GiB RAM, CPython 3.12.13",
+ "logs": {
+  "note": "both logs reconstructed verbatim from the session's printed output after the deletion",
+  "stageA.log": "278984c Register P33: attribute ingest's 0.24 MB/MB header term, then stream it (D76)\nfixture small sha256 ok\nfixture large sha256 ok\ningest small exit 0\nsmall {\"step\": \"equality\", \"columns_equal\": {\"inline\": true, \"crossline\": true, \"delay_recording_time\": true, \"times_scalar\": true}, \"maps_equal\": true, \"traces\": 94500, \"ru_maxrss\": 218202112}\nsmall {\"step\": \"baseline\", \"ru_maxrss\": 57638912}\nsmall {\"step\": \"headers_whole\", \"ru_maxrss\": 160120832}\nsmall {\"step\": \"columns_blocked\", \"ru_maxrss\": 134676480}\nsmall {\"step\": \"map_from_whole\", \"ru_maxrss\": 168247296}\nsmall {\"step\": \"map_from_columns\", \"ru_maxrss\": 159432704}\nsmall {\"step\": \"axis_origin_now\", \"ru_maxrss\": 160645120}\ningest large exit 0\nlarge {\"step\": \"equality\", \"columns_equal\": {\"inline\": true, \"crossline\": true, \"delay_recording_time\": true, \"times_scalar\": true}, \"maps_equal\": true, \"traces\": 378000, \"ru_maxrss\": 616136704}\nlarge {\"step\": \"baseline\", \"ru_maxrss\": 57212928}\nlarge {\"step\": \"headers_whole\", \"ru_maxrss\": 460455936}\nlarge {\"step\": \"columns_blocked\", \"ru_maxrss\": 134725632}\nlarge {\"step\": \"map_from_whole\", \"ru_maxrss\": 488341504}\nlarge {\"step\": \"map_from_columns\", \"ru_maxrss\": 264077312}\nlarge {\"step\": \"axis_origin_now\", \"ru_maxrss\": 429064192}\n",
+  "stageB.log": "66d1107 Ingest reads only the header columns it uses, in blocks (D76, P33 stage B)\nwholeB small exit 0            816381952  maximum resident set size\nhashes small IDENTICAL\nwholeB large exit 0           1023246336  maximum resident set size\nhashes large IDENTICAL\nxxxl 14424483600 5340dbd149f1f5f9357a8da92a20c121cfa3890d8b9196fb98f964629517550b\nxxxl exit 0           2065203200  maximum resident set size       802.66 real      2162.71 user       697.09 sys\n"
+ },
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "probe": "P33",
+ "registration_commit": "278984c",
+ "run_date": "2026-11-05",
+ "source_bytes": {
+  "large": 1602723600,
+  "small": 400683600
+ },
+ "stage_a": {
+  "equality": {
+   "large": {
+    "columns_equal": {
+     "crossline": true,
+     "delay_recording_time": true,
+     "inline": true,
+     "times_scalar": true
+    },
+    "maps_equal": true,
+    "ru_maxrss": 616136704,
+    "step": "equality",
+    "traces": 378000
+   },
+   "small": {
+    "columns_equal": {
+     "crossline": true,
+     "delay_recording_time": true,
+     "inline": true,
+     "times_scalar": true
+    },
+    "maps_equal": true,
+    "ru_maxrss": 218202112,
+    "step": "equality",
+    "traces": 94500
+   }
+  },
+  "peak_rss_bytes": {
+   "large": {
+    "axis_origin_now": 429064192,
+    "baseline": 57212928,
+    "columns_blocked": 134725632,
+    "headers_whole": 460455936,
+    "map_from_columns": 264077312,
+    "map_from_whole": 488341504
+   },
+   "small": {
+    "axis_origin_now": 160645120,
+    "baseline": 57638912,
+    "columns_blocked": 134676480,
+    "headers_whole": 160120832,
+    "map_from_columns": 159432704,
+    "map_from_whole": 168247296
+   }
+  },
+  "slope_mb_per_mb": {
+   "axis_origin_now": 0.2233,
+   "baseline": -0.0004,
+   "columns_blocked": 0.0,
+   "headers_whole": 0.2499,
+   "map_from_columns": 0.0871,
+   "map_from_whole": 0.2663
+  }
+ },
+ "stage_a_code": "278984c",
+ "stage_b": {
+  "bound_mb": {
+   "large": 1217.1,
+   "small": 1101.9
+  },
+  "store_identity_first_run": {
+   "large": "IDENTICAL",
+   "small": "IDENTICAL"
+  },
+  "unseen": {
+   "bound_mb": 2445.5,
+   "bytes": 14424483600,
+   "envelope_gib_raised_for_this_run": 14.0,
+   "exit": 0,
+   "name": "xxxl",
+   "peak_rss_bytes": 2065203200,
+   "real_s": 802.66,
+   "sha256": "5340dbd149f1f5f9357a8da92a20c121cfa3890d8b9196fb98f964629517550b"
+  },
+  "whole_sdip_ingest_peak_rss_bytes": {
+   "large": 1023246336,
+   "small": 816381952
+  }
+ },
+ "stage_b_code": "66d1107",
+ "store_identity_remeasured": {
+  "hashes": {
+   "large_A": {
+    "amplitude": {
+     "attrs_sha256": "b95df5ef5440d31ec8c6b2abb56178d67aa3301c93f2a3796f56dd6d91a8d484",
+     "dtype": "float32",
+     "sha256": "c712cdf89108e11a160a623b4ecf50a8a33f665649d42b4db0c2496cbe6f2b2d",
+     "shape": [
+      600,
+      630,
+      1000
+     ]
+    },
+    "amplitude_raw_ibm32/index": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "uint64",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "shape": [
+      0
+     ]
+    },
+    "amplitude_raw_ibm32/words": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "uint32",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "shape": [
+      0
+     ]
+    },
+    "cdp_x": {
+     "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+     "dtype": "float64",
+     "sha256": "b4de1fe79640419c0cc18c445940874b78def78d9d10472910a196b35947004d",
+     "shape": [
+      600,
+      630
+     ]
+    },
+    "cdp_y": {
+     "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+     "dtype": "float64",
+     "sha256": "9e02c9dabe5c6e6f87662b626b99a78aeaaef16708d50190e283cc47d55ba13a",
+     "shape": [
+      600,
+      630
+     ]
+    },
+    "crossline": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "81012d8997db7688e009cbe1995859f8ccc301210ff31cff74c442455d60322d",
+     "shape": [
+      630
+     ]
+    },
+    "headers": {
+     "attrs_sha256": "358ada3867eac7d0fcf49a08444f3ba330682136fddeb3ce9b0b6b2a3a95a09a",
+     "dtype": "[('trace_seq_num_line', '<i4'), ('trace_seq_num_reel', '<i4'), ('orig_field_record_num', '<i4'), ('trace_num_orig_record', '<i4'), ('energy_source_point_num', '<i4'), ('ensemble_num', '<i4'), ('trace_num_ensemble', '<i4'), ('trace_id_code', '<i2'), ('vertically_summed_traces', '<i2'), ('horizontally_stacked_traces', '<i2'), ('data_use', '<i2'), ('source_to_receiver_distance', '<i4'), ('receiver_group_elevation', '<i4'), ('source_surface_elevation', '<i4'), ('source_depth_below_surface', '<i4'), ('receiver_datum_elevation', '<i4'), ('source_datum_elevation', '<i4'), ('source_water_depth', '<i4'), ('receiver_water_depth', '<i4'), ('elevation_depth_scalar', '<i2'), ('coordinate_scalar', '<i2'), ('source_coord_x', '<i4'), ('source_coord_y', '<i4'), ('group_coord_x', '<i4'), ('group_coord_y', '<i4'), ('coordinate_unit', '<i2'), ('weathering_velocity', '<i2'), ('subweathering_velocity', '<i2'), ('source_uphole_time', '<i2'), ('group_uphole_time', '<i2'), ('source_static_correction', '<i2'), ('receiver_static_correction', '<i2'), ('total_static_applied', '<i2'), ('lag_time_a', '<i2'), ('lag_time_b', '<i2'), ('delay_recording_time', '<i2'), ('mute_time_start', '<i2'), ('mute_time_end', '<i2'), ('samples_per_trace', '<i2'), ('sample_interval', '<i2'), ('instrument_gain_type', '<i2'), ('instrument_gain_const', '<i2'), ('instrument_gain_initial', '<i2'), ('correlated_data', '<i2'), ('sweep_freq_start', '<i2'), ('sweep_freq_end', '<i2'), ('sweep_length', '<i2'), ('sweep_type', '<i2'), ('sweep_taper_start', '<i2'), ('sweep_taper_end', '<i2'), ('taper_type', '<i2'), ('alias_filter_freq', '<i2'), ('alias_filter_slope', '<i2'), ('notch_filter_freq', '<i2'), ('notch_filter_slope', '<i2'), ('low_cut_freq', '<i2'), ('high_cut_freq', '<i2'), ('low_cut_slope', '<i2'), ('high_cut_slope', '<i2'), ('year_recorded', '<i2'), ('day_of_year', '<i2'), ('hour_of_day', '<i2'), ('minute_of_hour', '<i2'), ('second_of_minute', '<i2'), ('time_basis_code', '<i2'), ('trace_weighting_factor', '<i2'), ('group_num_roll_switch', '<i2'), ('group_num_first_trace', '<i2'), ('group_num_last_trace', '<i2'), ('gap_size', '<i2'), ('taper_overtravel', '<i2'), ('cdp_x', '<i4'), ('cdp_y', '<i4'), ('inline', '<i4'), ('crossline', '<i4'), ('shot_point', '<i4'), ('shot_point_scalar', '<i2'), ('trace_value_unit', '<i2'), ('transduction_const_mantissa', '<i4'), ('transduction_const_exponent', '<i2'), ('transduction_unit', '<i2'), ('device_trace_id', '<i2'), ('times_scalar', '<i2'), ('source_type_orientation', '<i2'), ('source_energy_dir_mantissa', '<i4'), ('source_energy_dir_exponent', '<i2'), ('source_measurement_mantissa', '<i4'), ('source_measurement_exponent', '<i2'), ('source_measurement_unit', '<i2'), ('pad_233', 'u1'), ('pad_234', 'u1'), ('pad_235', 'u1'), ('pad_236', 'u1'), ('pad_237', 'u1'), ('pad_238', 'u1'), ('pad_239', 'u1'), ('pad_240', 'u1')]",
+     "sha256": "f7301d255c6e754afc3d13bd402dda50fff0ec7edd08f572503c23cce84acc7b",
+     "shape": [
+      600,
+      630
+     ]
+    },
+    "headers_raw_uint8": {
+     "attrs_sha256": "3ba7fd07e33ba9c96034e56c4e34ac281ebb6fe7a6345a92bfed89a9e6da3283",
+     "dtype": "uint8",
+     "sha256": "4cedc47c29e6c226aa3cb2ecee3cf14edbb1ced8d464f8ae0fe742373c0db116",
+     "shape": [
+      600,
+      630,
+      240
+     ]
+    },
+    "inline": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "190badb30a4f509d4f2f250e6d1395b2ef71369134787530c16f31a711eab6cd",
+     "shape": [
+      600
+     ]
+    },
+    "segy_file_header": {
+     "attrs_sha256": "227a3b16ee91ee8d4d17fb9f54cdd425a9a4d92a81405152d485fc8a06450a6e",
+     "dtype": "<U1",
+     "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+     "shape": []
+    },
+    "source_trace_ordinal": {
+     "attrs_sha256": "669c78de4f2c3fa86c48689f6c79cb18d275b1a40620d1b3ab80252093b8470c",
+     "dtype": "int64",
+     "sha256": "128c4224af007b942b5ddb04a8665cb65e74df86a3614741c7c349e527b290f2",
+     "shape": [
+      600,
+      630
+     ]
+    },
+    "time": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "119e337a162d0e12ceb126c947730aa14e3b34aeb309c38737d065236c9c168e",
+     "shape": [
+      1000
+     ]
+    },
+    "trace_mask": {
+     "attrs_sha256": "33f4e6cd8c33d5440396a815b3969bfe294c3bda29b6b2b238223e072a4aa5bd",
+     "dtype": "int8",
+     "sha256": "09d18fa510d32347ab68ed77468e9406a16c271df89e1592ad90be5e79f6ad92",
+     "shape": [
+      600,
+      630
+     ]
+    }
+   },
+   "large_B": {
+    "amplitude": {
+     "attrs_sha256": "b95df5ef5440d31ec8c6b2abb56178d67aa3301c93f2a3796f56dd6d91a8d484",
+     "dtype": "float32",
+     "sha256": "c712cdf89108e11a160a623b4ecf50a8a33f665649d42b4db0c2496cbe6f2b2d",
+     "shape": [
+      600,
+      630,
+      1000
+     ]
+    },
+    "amplitude_raw_ibm32/index": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "uint64",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "shape": [
+      0
+     ]
+    },
+    "amplitude_raw_ibm32/words": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "uint32",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "shape": [
+      0
+     ]
+    },
+    "cdp_x": {
+     "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+     "dtype": "float64",
+     "sha256": "b4de1fe79640419c0cc18c445940874b78def78d9d10472910a196b35947004d",
+     "shape": [
+      600,
+      630
+     ]
+    },
+    "cdp_y": {
+     "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+     "dtype": "float64",
+     "sha256": "9e02c9dabe5c6e6f87662b626b99a78aeaaef16708d50190e283cc47d55ba13a",
+     "shape": [
+      600,
+      630
+     ]
+    },
+    "crossline": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "81012d8997db7688e009cbe1995859f8ccc301210ff31cff74c442455d60322d",
+     "shape": [
+      630
+     ]
+    },
+    "headers": {
+     "attrs_sha256": "358ada3867eac7d0fcf49a08444f3ba330682136fddeb3ce9b0b6b2a3a95a09a",
+     "dtype": "[('trace_seq_num_line', '<i4'), ('trace_seq_num_reel', '<i4'), ('orig_field_record_num', '<i4'), ('trace_num_orig_record', '<i4'), ('energy_source_point_num', '<i4'), ('ensemble_num', '<i4'), ('trace_num_ensemble', '<i4'), ('trace_id_code', '<i2'), ('vertically_summed_traces', '<i2'), ('horizontally_stacked_traces', '<i2'), ('data_use', '<i2'), ('source_to_receiver_distance', '<i4'), ('receiver_group_elevation', '<i4'), ('source_surface_elevation', '<i4'), ('source_depth_below_surface', '<i4'), ('receiver_datum_elevation', '<i4'), ('source_datum_elevation', '<i4'), ('source_water_depth', '<i4'), ('receiver_water_depth', '<i4'), ('elevation_depth_scalar', '<i2'), ('coordinate_scalar', '<i2'), ('source_coord_x', '<i4'), ('source_coord_y', '<i4'), ('group_coord_x', '<i4'), ('group_coord_y', '<i4'), ('coordinate_unit', '<i2'), ('weathering_velocity', '<i2'), ('subweathering_velocity', '<i2'), ('source_uphole_time', '<i2'), ('group_uphole_time', '<i2'), ('source_static_correction', '<i2'), ('receiver_static_correction', '<i2'), ('total_static_applied', '<i2'), ('lag_time_a', '<i2'), ('lag_time_b', '<i2'), ('delay_recording_time', '<i2'), ('mute_time_start', '<i2'), ('mute_time_end', '<i2'), ('samples_per_trace', '<i2'), ('sample_interval', '<i2'), ('instrument_gain_type', '<i2'), ('instrument_gain_const', '<i2'), ('instrument_gain_initial', '<i2'), ('correlated_data', '<i2'), ('sweep_freq_start', '<i2'), ('sweep_freq_end', '<i2'), ('sweep_length', '<i2'), ('sweep_type', '<i2'), ('sweep_taper_start', '<i2'), ('sweep_taper_end', '<i2'), ('taper_type', '<i2'), ('alias_filter_freq', '<i2'), ('alias_filter_slope', '<i2'), ('notch_filter_freq', '<i2'), ('notch_filter_slope', '<i2'), ('low_cut_freq', '<i2'), ('high_cut_freq', '<i2'), ('low_cut_slope', '<i2'), ('high_cut_slope', '<i2'), ('year_recorded', '<i2'), ('day_of_year', '<i2'), ('hour_of_day', '<i2'), ('minute_of_hour', '<i2'), ('second_of_minute', '<i2'), ('time_basis_code', '<i2'), ('trace_weighting_factor', '<i2'), ('group_num_roll_switch', '<i2'), ('group_num_first_trace', '<i2'), ('group_num_last_trace', '<i2'), ('gap_size', '<i2'), ('taper_overtravel', '<i2'), ('cdp_x', '<i4'), ('cdp_y', '<i4'), ('inline', '<i4'), ('crossline', '<i4'), ('shot_point', '<i4'), ('shot_point_scalar', '<i2'), ('trace_value_unit', '<i2'), ('transduction_const_mantissa', '<i4'), ('transduction_const_exponent', '<i2'), ('transduction_unit', '<i2'), ('device_trace_id', '<i2'), ('times_scalar', '<i2'), ('source_type_orientation', '<i2'), ('source_energy_dir_mantissa', '<i4'), ('source_energy_dir_exponent', '<i2'), ('source_measurement_mantissa', '<i4'), ('source_measurement_exponent', '<i2'), ('source_measurement_unit', '<i2'), ('pad_233', 'u1'), ('pad_234', 'u1'), ('pad_235', 'u1'), ('pad_236', 'u1'), ('pad_237', 'u1'), ('pad_238', 'u1'), ('pad_239', 'u1'), ('pad_240', 'u1')]",
+     "sha256": "f7301d255c6e754afc3d13bd402dda50fff0ec7edd08f572503c23cce84acc7b",
+     "shape": [
+      600,
+      630
+     ]
+    },
+    "headers_raw_uint8": {
+     "attrs_sha256": "3ba7fd07e33ba9c96034e56c4e34ac281ebb6fe7a6345a92bfed89a9e6da3283",
+     "dtype": "uint8",
+     "sha256": "4cedc47c29e6c226aa3cb2ecee3cf14edbb1ced8d464f8ae0fe742373c0db116",
+     "shape": [
+      600,
+      630,
+      240
+     ]
+    },
+    "inline": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "190badb30a4f509d4f2f250e6d1395b2ef71369134787530c16f31a711eab6cd",
+     "shape": [
+      600
+     ]
+    },
+    "segy_file_header": {
+     "attrs_sha256": "227a3b16ee91ee8d4d17fb9f54cdd425a9a4d92a81405152d485fc8a06450a6e",
+     "dtype": "<U1",
+     "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+     "shape": []
+    },
+    "source_trace_ordinal": {
+     "attrs_sha256": "669c78de4f2c3fa86c48689f6c79cb18d275b1a40620d1b3ab80252093b8470c",
+     "dtype": "int64",
+     "sha256": "128c4224af007b942b5ddb04a8665cb65e74df86a3614741c7c349e527b290f2",
+     "shape": [
+      600,
+      630
+     ]
+    },
+    "time": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "119e337a162d0e12ceb126c947730aa14e3b34aeb309c38737d065236c9c168e",
+     "shape": [
+      1000
+     ]
+    },
+    "trace_mask": {
+     "attrs_sha256": "33f4e6cd8c33d5440396a815b3969bfe294c3bda29b6b2b238223e072a4aa5bd",
+     "dtype": "int8",
+     "sha256": "09d18fa510d32347ab68ed77468e9406a16c271df89e1592ad90be5e79f6ad92",
+     "shape": [
+      600,
+      630
+     ]
+    }
+   },
+   "small_A": {
+    "amplitude": {
+     "attrs_sha256": "97bbdf314db62b8f9ff807b9ed00e43307daa635dd44576dac5510aa0df54056",
+     "dtype": "float32",
+     "sha256": "f9da2f9dc5b88345560f5f6f3e9902e036edb34e2fec7fef973638211a549117",
+     "shape": [
+      150,
+      630,
+      1000
+     ]
+    },
+    "amplitude_raw_ibm32/index": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "uint64",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "shape": [
+      0
+     ]
+    },
+    "amplitude_raw_ibm32/words": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "uint32",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "shape": [
+      0
+     ]
+    },
+    "cdp_x": {
+     "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+     "dtype": "float64",
+     "sha256": "30cd236d05e41b093f4c80f7f78da70a0a39219383e80ad11b96ae9848d3c389",
+     "shape": [
+      150,
+      630
+     ]
+    },
+    "cdp_y": {
+     "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+     "dtype": "float64",
+     "sha256": "af5728c4dd9396528b8397627880261a3d88f52fddbbd2813bb33ae0ab9e01cd",
+     "shape": [
+      150,
+      630
+     ]
+    },
+    "crossline": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "81012d8997db7688e009cbe1995859f8ccc301210ff31cff74c442455d60322d",
+     "shape": [
+      630
+     ]
+    },
+    "headers": {
+     "attrs_sha256": "358ada3867eac7d0fcf49a08444f3ba330682136fddeb3ce9b0b6b2a3a95a09a",
+     "dtype": "[('trace_seq_num_line', '<i4'), ('trace_seq_num_reel', '<i4'), ('orig_field_record_num', '<i4'), ('trace_num_orig_record', '<i4'), ('energy_source_point_num', '<i4'), ('ensemble_num', '<i4'), ('trace_num_ensemble', '<i4'), ('trace_id_code', '<i2'), ('vertically_summed_traces', '<i2'), ('horizontally_stacked_traces', '<i2'), ('data_use', '<i2'), ('source_to_receiver_distance', '<i4'), ('receiver_group_elevation', '<i4'), ('source_surface_elevation', '<i4'), ('source_depth_below_surface', '<i4'), ('receiver_datum_elevation', '<i4'), ('source_datum_elevation', '<i4'), ('source_water_depth', '<i4'), ('receiver_water_depth', '<i4'), ('elevation_depth_scalar', '<i2'), ('coordinate_scalar', '<i2'), ('source_coord_x', '<i4'), ('source_coord_y', '<i4'), ('group_coord_x', '<i4'), ('group_coord_y', '<i4'), ('coordinate_unit', '<i2'), ('weathering_velocity', '<i2'), ('subweathering_velocity', '<i2'), ('source_uphole_time', '<i2'), ('group_uphole_time', '<i2'), ('source_static_correction', '<i2'), ('receiver_static_correction', '<i2'), ('total_static_applied', '<i2'), ('lag_time_a', '<i2'), ('lag_time_b', '<i2'), ('delay_recording_time', '<i2'), ('mute_time_start', '<i2'), ('mute_time_end', '<i2'), ('samples_per_trace', '<i2'), ('sample_interval', '<i2'), ('instrument_gain_type', '<i2'), ('instrument_gain_const', '<i2'), ('instrument_gain_initial', '<i2'), ('correlated_data', '<i2'), ('sweep_freq_start', '<i2'), ('sweep_freq_end', '<i2'), ('sweep_length', '<i2'), ('sweep_type', '<i2'), ('sweep_taper_start', '<i2'), ('sweep_taper_end', '<i2'), ('taper_type', '<i2'), ('alias_filter_freq', '<i2'), ('alias_filter_slope', '<i2'), ('notch_filter_freq', '<i2'), ('notch_filter_slope', '<i2'), ('low_cut_freq', '<i2'), ('high_cut_freq', '<i2'), ('low_cut_slope', '<i2'), ('high_cut_slope', '<i2'), ('year_recorded', '<i2'), ('day_of_year', '<i2'), ('hour_of_day', '<i2'), ('minute_of_hour', '<i2'), ('second_of_minute', '<i2'), ('time_basis_code', '<i2'), ('trace_weighting_factor', '<i2'), ('group_num_roll_switch', '<i2'), ('group_num_first_trace', '<i2'), ('group_num_last_trace', '<i2'), ('gap_size', '<i2'), ('taper_overtravel', '<i2'), ('cdp_x', '<i4'), ('cdp_y', '<i4'), ('inline', '<i4'), ('crossline', '<i4'), ('shot_point', '<i4'), ('shot_point_scalar', '<i2'), ('trace_value_unit', '<i2'), ('transduction_const_mantissa', '<i4'), ('transduction_const_exponent', '<i2'), ('transduction_unit', '<i2'), ('device_trace_id', '<i2'), ('times_scalar', '<i2'), ('source_type_orientation', '<i2'), ('source_energy_dir_mantissa', '<i4'), ('source_energy_dir_exponent', '<i2'), ('source_measurement_mantissa', '<i4'), ('source_measurement_exponent', '<i2'), ('source_measurement_unit', '<i2'), ('pad_233', 'u1'), ('pad_234', 'u1'), ('pad_235', 'u1'), ('pad_236', 'u1'), ('pad_237', 'u1'), ('pad_238', 'u1'), ('pad_239', 'u1'), ('pad_240', 'u1')]",
+     "sha256": "f1d4d53d795946385ecc72a751d7a10e77408e47cc27f8e166c0bad7480380a8",
+     "shape": [
+      150,
+      630
+     ]
+    },
+    "headers_raw_uint8": {
+     "attrs_sha256": "3ba7fd07e33ba9c96034e56c4e34ac281ebb6fe7a6345a92bfed89a9e6da3283",
+     "dtype": "uint8",
+     "sha256": "d3525bdec3aca12a5c50b3d38728975d07676280e1989bfa11ada7539e29c769",
+     "shape": [
+      150,
+      630,
+      240
+     ]
+    },
+    "inline": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "56c22dfa978c5b6e4eb6f3536d7d68ff68d74ebfe74828951b7179095fc86fe1",
+     "shape": [
+      150
+     ]
+    },
+    "segy_file_header": {
+     "attrs_sha256": "227a3b16ee91ee8d4d17fb9f54cdd425a9a4d92a81405152d485fc8a06450a6e",
+     "dtype": "<U1",
+     "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+     "shape": []
+    },
+    "source_trace_ordinal": {
+     "attrs_sha256": "669c78de4f2c3fa86c48689f6c79cb18d275b1a40620d1b3ab80252093b8470c",
+     "dtype": "int64",
+     "sha256": "7ccaa5d43036e0d4835e73fa2a73ceed4c11fb56bc34b98fdaaae0fcc6ed5248",
+     "shape": [
+      150,
+      630
+     ]
+    },
+    "time": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "119e337a162d0e12ceb126c947730aa14e3b34aeb309c38737d065236c9c168e",
+     "shape": [
+      1000
+     ]
+    },
+    "trace_mask": {
+     "attrs_sha256": "33f4e6cd8c33d5440396a815b3969bfe294c3bda29b6b2b238223e072a4aa5bd",
+     "dtype": "int8",
+     "sha256": "67ae8d1f40521cc637392a23434c039aa50310f3430be4e495df66aec949ad85",
+     "shape": [
+      150,
+      630
+     ]
+    }
+   },
+   "small_B": {
+    "amplitude": {
+     "attrs_sha256": "97bbdf314db62b8f9ff807b9ed00e43307daa635dd44576dac5510aa0df54056",
+     "dtype": "float32",
+     "sha256": "f9da2f9dc5b88345560f5f6f3e9902e036edb34e2fec7fef973638211a549117",
+     "shape": [
+      150,
+      630,
+      1000
+     ]
+    },
+    "amplitude_raw_ibm32/index": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "uint64",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "shape": [
+      0
+     ]
+    },
+    "amplitude_raw_ibm32/words": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "uint32",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "shape": [
+      0
+     ]
+    },
+    "cdp_x": {
+     "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+     "dtype": "float64",
+     "sha256": "30cd236d05e41b093f4c80f7f78da70a0a39219383e80ad11b96ae9848d3c389",
+     "shape": [
+      150,
+      630
+     ]
+    },
+    "cdp_y": {
+     "attrs_sha256": "72e434979cbf29961f8db15fd738adfcd1fa04ebed1477b12b2e1b22e9ac59b2",
+     "dtype": "float64",
+     "sha256": "af5728c4dd9396528b8397627880261a3d88f52fddbbd2813bb33ae0ab9e01cd",
+     "shape": [
+      150,
+      630
+     ]
+    },
+    "crossline": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "81012d8997db7688e009cbe1995859f8ccc301210ff31cff74c442455d60322d",
+     "shape": [
+      630
+     ]
+    },
+    "headers": {
+     "attrs_sha256": "358ada3867eac7d0fcf49a08444f3ba330682136fddeb3ce9b0b6b2a3a95a09a",
+     "dtype": "[('trace_seq_num_line', '<i4'), ('trace_seq_num_reel', '<i4'), ('orig_field_record_num', '<i4'), ('trace_num_orig_record', '<i4'), ('energy_source_point_num', '<i4'), ('ensemble_num', '<i4'), ('trace_num_ensemble', '<i4'), ('trace_id_code', '<i2'), ('vertically_summed_traces', '<i2'), ('horizontally_stacked_traces', '<i2'), ('data_use', '<i2'), ('source_to_receiver_distance', '<i4'), ('receiver_group_elevation', '<i4'), ('source_surface_elevation', '<i4'), ('source_depth_below_surface', '<i4'), ('receiver_datum_elevation', '<i4'), ('source_datum_elevation', '<i4'), ('source_water_depth', '<i4'), ('receiver_water_depth', '<i4'), ('elevation_depth_scalar', '<i2'), ('coordinate_scalar', '<i2'), ('source_coord_x', '<i4'), ('source_coord_y', '<i4'), ('group_coord_x', '<i4'), ('group_coord_y', '<i4'), ('coordinate_unit', '<i2'), ('weathering_velocity', '<i2'), ('subweathering_velocity', '<i2'), ('source_uphole_time', '<i2'), ('group_uphole_time', '<i2'), ('source_static_correction', '<i2'), ('receiver_static_correction', '<i2'), ('total_static_applied', '<i2'), ('lag_time_a', '<i2'), ('lag_time_b', '<i2'), ('delay_recording_time', '<i2'), ('mute_time_start', '<i2'), ('mute_time_end', '<i2'), ('samples_per_trace', '<i2'), ('sample_interval', '<i2'), ('instrument_gain_type', '<i2'), ('instrument_gain_const', '<i2'), ('instrument_gain_initial', '<i2'), ('correlated_data', '<i2'), ('sweep_freq_start', '<i2'), ('sweep_freq_end', '<i2'), ('sweep_length', '<i2'), ('sweep_type', '<i2'), ('sweep_taper_start', '<i2'), ('sweep_taper_end', '<i2'), ('taper_type', '<i2'), ('alias_filter_freq', '<i2'), ('alias_filter_slope', '<i2'), ('notch_filter_freq', '<i2'), ('notch_filter_slope', '<i2'), ('low_cut_freq', '<i2'), ('high_cut_freq', '<i2'), ('low_cut_slope', '<i2'), ('high_cut_slope', '<i2'), ('year_recorded', '<i2'), ('day_of_year', '<i2'), ('hour_of_day', '<i2'), ('minute_of_hour', '<i2'), ('second_of_minute', '<i2'), ('time_basis_code', '<i2'), ('trace_weighting_factor', '<i2'), ('group_num_roll_switch', '<i2'), ('group_num_first_trace', '<i2'), ('group_num_last_trace', '<i2'), ('gap_size', '<i2'), ('taper_overtravel', '<i2'), ('cdp_x', '<i4'), ('cdp_y', '<i4'), ('inline', '<i4'), ('crossline', '<i4'), ('shot_point', '<i4'), ('shot_point_scalar', '<i2'), ('trace_value_unit', '<i2'), ('transduction_const_mantissa', '<i4'), ('transduction_const_exponent', '<i2'), ('transduction_unit', '<i2'), ('device_trace_id', '<i2'), ('times_scalar', '<i2'), ('source_type_orientation', '<i2'), ('source_energy_dir_mantissa', '<i4'), ('source_energy_dir_exponent', '<i2'), ('source_measurement_mantissa', '<i4'), ('source_measurement_exponent', '<i2'), ('source_measurement_unit', '<i2'), ('pad_233', 'u1'), ('pad_234', 'u1'), ('pad_235', 'u1'), ('pad_236', 'u1'), ('pad_237', 'u1'), ('pad_238', 'u1'), ('pad_239', 'u1'), ('pad_240', 'u1')]",
+     "sha256": "f1d4d53d795946385ecc72a751d7a10e77408e47cc27f8e166c0bad7480380a8",
+     "shape": [
+      150,
+      630
+     ]
+    },
+    "headers_raw_uint8": {
+     "attrs_sha256": "3ba7fd07e33ba9c96034e56c4e34ac281ebb6fe7a6345a92bfed89a9e6da3283",
+     "dtype": "uint8",
+     "sha256": "d3525bdec3aca12a5c50b3d38728975d07676280e1989bfa11ada7539e29c769",
+     "shape": [
+      150,
+      630,
+      240
+     ]
+    },
+    "inline": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "56c22dfa978c5b6e4eb6f3536d7d68ff68d74ebfe74828951b7179095fc86fe1",
+     "shape": [
+      150
+     ]
+    },
+    "segy_file_header": {
+     "attrs_sha256": "227a3b16ee91ee8d4d17fb9f54cdd425a9a4d92a81405152d485fc8a06450a6e",
+     "dtype": "<U1",
+     "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+     "shape": []
+    },
+    "source_trace_ordinal": {
+     "attrs_sha256": "669c78de4f2c3fa86c48689f6c79cb18d275b1a40620d1b3ab80252093b8470c",
+     "dtype": "int64",
+     "sha256": "7ccaa5d43036e0d4835e73fa2a73ceed4c11fb56bc34b98fdaaae0fcc6ed5248",
+     "shape": [
+      150,
+      630
+     ]
+    },
+    "time": {
+     "attrs_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+     "dtype": "int32",
+     "sha256": "119e337a162d0e12ceb126c947730aa14e3b34aeb309c38737d065236c9c168e",
+     "shape": [
+      1000
+     ]
+    },
+    "trace_mask": {
+     "attrs_sha256": "33f4e6cd8c33d5440396a815b3969bfe294c3bda29b6b2b238223e072a4aa5bd",
+     "dtype": "int8",
+     "sha256": "67ae8d1f40521cc637392a23434c039aa50310f3430be4e495df66aec949ad85",
+     "shape": [
+      150,
+      630
+     ]
+    }
+   }
+  },
+  "result": {
+   "large": "IDENTICAL",
+   "small": "IDENTICAL"
+  },
+  "why": "the first run's hash files were deleted with the run root before this receipt was written (a harvest error: the delete was chained with ';' after a receipt script that failed); its IDENTICAL verdicts survive in its log, its hashes do not. Criterion 3 was therefore re-measured: both fixtures ingested at 278984c (git worktree, PYTHONPATH to its src) and at 66d1107, every array and attribute hashed less statsV1.sumSquares"
+ }
+}

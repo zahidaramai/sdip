@@ -150,3 +150,41 @@ fixed term is an overestimate, and that is its safe side.
 **If 1 to 4 hold:** the ingest envelope becomes `B`. Its default is where `B` reaches 8 GiB,
 73.2 GiB, **capped at verify's 40.1 GiB**, because `certify` runs both. That makes **40.1 GiB**.
 If any criterion fails, it stands failed, and 26.9 GiB stays.
+
+## Stage B results, 2026-11-05
+
+| Field | Value |
+|---|---|
+| Code | `main` `66d1107`, clean. Amendment B at `5f14778`, before any stage B code was measured |
+| Receipt | `prereg/P33-receipt-2026-11-05.json` |
+| Verdict | **Criteria 1, 2 and 3 hold. Criterion 4 is the gate at the landing commit, reported with it** |
+
+| Measure | Source | Peak RSS | Bound `B(S)` |
+|---|---:|---:|---:|
+| whole `sdip ingest`, `small` | 0.40 GB | **816.4 MB** | 1,101.9 MB |
+| whole `sdip ingest`, `large` | 1.60 GB | **1,023.2 MB** | 1,217.1 MB |
+| **whole `sdip ingest`, `xxxl` (unseen)** | **14.42 GB** | **2,065.2 MB** | **2,445.5 MB** |
+
+- **Criterion 1 (measured sizes): holds.**
+- **Criterion 2 (the unseen size): holds.** `xxxl` (14,424,483,600 B, sha256 `5340dbd1…9517550b`)
+  ran once with `--envelope-gib 14.0` for that run: exit 0, 802.7 s, 84 % of the bound. P32
+  measured 2,810.5 MB at 9.6 GB with the header term, two thirds of `xxxl`'s size.
+- **Growth.** Between `large` and `xxxl` it is **0.081 MB per MB**, which is the trace map's
+  0.087 that stage A left in place. The header term is gone.
+- **Criterion 3 (store identity): holds,** on both fixtures, and it was measured twice (see the
+  error below).
+- **Not attributed.** `large`'s whole-command peak is 1,023.2 MB, above P28's 874.3 MB at the
+  same size and code path, though under the bound. Whole-command peaks at this size vary from
+  run to run, and this probe does not measure that variance.
+
+**A harvest error, recorded (SP10).** The first stage B run's receipt script failed on a
+regular expression. The command deleting the run root was chained after it with `;` instead of
+`&&`, so the root was deleted before any receipt was written. Lost: both logs, and the stage A
+and stage B hash files.
+- **Recovered:** the logs, word for word from the session's printed output. They are in the
+  receipt, marked as reconstructed.
+- **Re-measured:** criterion 3, the only one whose evidence was the lost hash files. Both
+  fixtures were regenerated (hash-checked) and ingested at `278984c` (a worktree) and at
+  `66d1107`. Every array and attribute was hashed, less `statsV1.sumSquares`. **IDENTICAL on
+  both.** Those hashes are in the receipt.
+- From here on, a run root is deleted only after `test -s <receipt>`, chained with `&&`.

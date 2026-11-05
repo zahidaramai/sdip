@@ -6365,3 +6365,30 @@ safe side, and the slip is recorded in P32's results.
 **Consumer-visible.** Sources from 7.2 to 26.9 GiB that `ingest` and `certify` refused now run.
 Above 9.6 GB that rests on the bound, not on a measurement. `verify`'s 40.1 GiB is unchanged.
 D76 (header streaming) stays open.
+
+## D-0137 — 2026-11-05 — P33: the header term is gone; ingest default 26.9 → 40.1 GiB; D76 closed
+
+**Measured** (P33, on GeoSuite's order to build D76 the P28 way).
+- **Stage A** (`278984c`, no code change) attributed the header term: `header[:]` grows at 0.250
+  MB per MB, a four-column blocked read at 0.000, and the trace map alone at 0.087.
+- **Amendment B** (`5f14778`) set the bound `1.10 × (966.83 + 0.0871 S)` MB from those numbers
+  and P28's, and an unseen 14.4 GB gate, before any build code was measured.
+- **Stage B** (`66d1107`): small 816.4 MB, large 1,023.2 MB, and the unseen 14.4 GB source
+  **2,065.2 MB against 2,445.5**. Store identity held.
+
+**Built.**
+- `sdip.ingest.source_headers.read_header_columns` reads named trace-header fields in blocks of
+  65,536 through `segy`'s public `header` slicing. The axis origin and both trace maps use it.
+- `envelope.py`'s ingest bound is P33's. **`ingest` and `certify` default to 40.1 GiB**, verify's
+  envelope, because the bound reaches 8 GiB only at 73.1 GiB and `certify` runs both.
+- Tests: `tests/integration/test_d76_header_columns.py` (10) and the envelope tests, which tie
+  each term to its receipt.
+
+**Correction (SP10).** I deleted P33's first run root before its receipt existed, after a failed
+receipt script. The logs are reconstructed from the session's output, and store identity was
+re-measured with its hashes recorded. P33's results give the detail. A run root is now deleted
+only after the receipt file is checked to exist.
+
+**Consumer-visible.** Sources from 26.9 to 40.1 GiB that `ingest` and `certify` refused now run.
+Above 14.4 GB that rests on the bound, not on a measurement. Ingest memory on 14.4 GB is about
+2.1 GB. Store contents are unchanged.

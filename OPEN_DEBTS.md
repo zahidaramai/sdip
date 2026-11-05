@@ -3423,3 +3423,19 @@ D74 said `sdip ingest` grew at 1.03 MB per MB, toward 8 GiB near 7.8 GB.
   on an unseen 9.6 GB source: **2,810.5 MB against 3,515.6**.
 
 **The default is now 26.9 GiB** (was 7.2). What still grows is the parsed source headers, D76.
+
+---
+
+## D76 — CLOSED 2026-11-05 — ingest reads only the header columns it uses (P33)
+
+- **Closes:** D76 above (**SP10**) · **Decision:** `DECISIONS.md` D-0137 · **Probe:** P33
+- **Revisit:** if a consumer needs `ingest` above 40.1 GiB, or a measurement breaks the bound
+
+The parsed header array was 0.250 MB per MB, and a four-column blocked read of the same fields
+is flat (P33 stage A, identical values and trace maps). Ingest now reads its three header uses
+that way. On an unseen 14.4 GB source, `sdip ingest` peaks at **2,065.2 MB** against a bound of
+2,445.5. Every array is identical.
+
+What still grows is the trace map, at about 0.087 MB per MB: two Python dicts per trace. At the
+40.1 GiB default it is bounded at about 5.1 GB, inside 8 GiB, so it is not a debt. It is the
+term a future consumer above 40 GiB would ask about.

@@ -292,7 +292,7 @@ That is the difference between a tool that reports success and a tool whose succ
 | **Trace headers** | Gap-free spec, **97 named fields**, all 240 bytes covered |
 | **Output** | **MDIO v1.2.1** on **Zarr v3**, lossless codecs only |
 | **Storage** | Local filesystem measured; cloud object-store backends are an open debt |
-| **Source size** | Refused by default above **26.9 GiB** for `ingest` and `certify`, and above **40.1 GiB** for `verify`: where each command's memory bound reaches 8 GiB. Ingest's bound was written from 0.4 and 1.6 GB measurements and held at an unseen 9.6 GB source (P32); verify's is fitted over 0.4–4.8 GB. Above the largest measured size either is an extrapolation. `--envelope-gib` declares another limit, and `0` disables it |
+| **Source size** | Refused by default above **40.1 GiB** for `ingest`, `certify` and `verify`. `verify`'s limit is where its fitted memory line reaches 8 GiB (0.4–4.8 GB measured). `ingest`'s bound reaches 8 GiB only at 73.1 GiB, so its limit is capped at `verify`'s: `certify` runs both. That bound was written from 0.4 and 1.6 GB measurements and held at an unseen 14.4 GB source (P33). Above the largest measured size either is an extrapolation. `--envelope-gib` declares another limit, and `0` disables it |
 
 SDIP has issued a certificate at survey scale: **494,565,408 bytes, 116,532 traces**, SEG-Y rev 1, big-endian, poststack 3-D — every check passing, from a clean working tree.
 
