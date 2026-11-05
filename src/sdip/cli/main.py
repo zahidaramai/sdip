@@ -481,7 +481,11 @@ def verify_cmd(
     from sdip.equivalence.binding import check_binding
     from sdip.equivalence.envelope import envelope_refusal
     from sdip.ingest.orchestrator import validate_source
-    from sdip.provenance.store_digest import check_content_digest, check_store_digest
+    from sdip.provenance.store_digest import (
+        check_content_digest,
+        check_content_digest_v2,
+        check_store_digest,
+    )
     from sdip.spec import g1_for_spec
 
     # Checked BEFORE any read, on the file's size alone - the same fail-before-you-
@@ -514,6 +518,7 @@ def verify_cmd(
     # digest is ABSENT and says so, verdict unchanged.
     digest = check_store_digest(store)
     content = check_content_digest(store)
+    content_v2 = check_content_digest_v2(store)
 
     ok = (
         gate1.passed
@@ -521,6 +526,7 @@ def verify_cmd(
         and (portability is None or portability.passed)
         and digest.passed
         and content.passed
+        and content_v2.passed
     )
 
     if as_json:
@@ -534,6 +540,7 @@ def verify_cmd(
                     "G4": portability.to_json() if portability else None,
                     "store_digest": digest.to_json(),
                     "content_digest": content.to_json(),
+                    "content_digest_v2": content_v2.to_json(),
                     "verdict": "PASS" if ok else "FAIL",
                 },
                 indent=2,
@@ -552,6 +559,7 @@ def verify_cmd(
             )
         click.echo(f"[{digest.status}] store     {digest.describe()}")
         click.echo(f"[{content.status}] content   {content.describe()}")
+        click.echo(f"[{content_v2.status}] content/2 {content_v2.describe()}")
         click.echo("")
         click.echo(f"verify: {'PASS' if ok else 'FAIL'}")
 
@@ -764,7 +772,11 @@ def certify_cmd(
     from sdip.export.roundtrip import header_scope, revision_scope
     from sdip.ingest import ingest_declared as run_ingest
     from sdip.provenance.git import capture_git_state
-    from sdip.provenance.store_digest import check_content_digest, check_store_digest
+    from sdip.provenance.store_digest import (
+        check_content_digest,
+        check_content_digest_v2,
+        check_store_digest,
+    )
     from sdip.spec import g1_for_spec
 
     # The tree check runs BEFORE any work, not only at issue time. `issue` refuses from
@@ -918,6 +930,7 @@ def certify_cmd(
         # digest the certificate carries is the store as it stood when the chain finished.
         digest = check_store_digest(output)
         content = check_content_digest(output)
+        content_v2 = check_content_digest_v2(output)
 
         issued_at = _dt.datetime.now(tz=_dt.UTC).isoformat(timespec="seconds")
         certificate = issue(
@@ -935,6 +948,7 @@ def certify_cmd(
             binding=binding,
             store_digest=digest,
             content_digest=content,
+            content_digest_v2=content_v2,
             issued_at=issued_at,
             issued_by=f"sdip {__version__}",
         )
@@ -947,6 +961,7 @@ def certify_cmd(
     click.echo(f"[{binding.status}] declaration  {binding.describe()}")
     click.echo(f"[{digest.status}] store     {digest.describe()}")
     click.echo(f"[{content.status}] content   {content.describe()}")
+    click.echo(f"[{content_v2.status}] content/2 {content_v2.describe()}")
     _print_planes(planes)
     click.echo(
         f"[{roundtrip.status}] G3        "

@@ -107,6 +107,13 @@ field inside it is invisible to them. Measured: a 1.5.0 verifier on a store carr
 ``sdipContentDigest`` reported MISMATCH (D67). **New marker data nests; it never adds a key.**
 """
 
+CONTENT_V2_FIELD: Final[str] = "contentV2"
+"""Where ``sdip-content-digest/2`` lives: inside ``sdipStoreDigest``, beside ``content`` (D-0135).
+
+Nested for the reason ``content`` is: an older verifier never sees it. It carries its own
+per-node digests, because ``/2`` digests ``amplitude`` differently from ``/1``.
+"""
+
 MARKER_KEYS: Final[tuple[str, ...]] = (
     ATTR_WRITER,
     ATTR_VERSION,
@@ -135,9 +142,15 @@ def marker_attrs(
     store_digest: dict[str, Any],
     content_digest: dict[str, Any],
     sample_axis_origin: dict[str, Any] | None,
+    content_digest_v2: dict[str, Any] | None = None,
     mitigations: tuple[str, ...] = DEFAULT_MITIGATIONS,
 ) -> dict[str, Any]:
     """The attribute mapping ``sdip ingest`` writes onto the root group."""
+    v2 = (
+        {CONTENT_V2_FIELD: {k: content_digest_v2[k] for k in ("scheme", "nodes", "root", "sha256")}}
+        if content_digest_v2 is not None
+        else {}
+    )
     from sdip import __version__
 
     return {
@@ -147,9 +160,8 @@ def marker_attrs(
         ATTR_MITIGATIONS: list(mitigations),
         ATTR_DECLARATION: declaration.to_json(),
         ATTR_STORE_DIGEST: store_digest
-        | {
-            CONTENT_DIGEST_FIELD: {key: content_digest[key] for key in ("scheme", "root", "sha256")}
-        },
+        | {CONTENT_DIGEST_FIELD: {key: content_digest[key] for key in ("scheme", "root", "sha256")}}
+        | v2,
     } | ({ATTR_SAMPLE_AXIS_ORIGIN: sample_axis_origin} if sample_axis_origin else {})
 
 
@@ -183,15 +195,21 @@ def attach_provenance_marker(
     """
     import zarr
 
-    from sdip.provenance.store_digest import CONTENT_SCHEME, compute_store_digest
+    from sdip.provenance.store_digest import (
+        CONTENT_SCHEME,
+        CONTENT_SCHEME_V2,
+        compute_store_digest,
+    )
 
     digest = compute_store_digest(store_path, marker_keys=MARKER_KEYS)
     content = compute_store_digest(store_path, marker_keys=MARKER_KEYS, scheme=CONTENT_SCHEME)
+    content_v2 = compute_store_digest(store_path, marker_keys=MARKER_KEYS, scheme=CONTENT_SCHEME_V2)
     attrs = marker_attrs(
         mitigations=mitigations,
         declaration=declaration,
         store_digest=digest,
         content_digest=content,
+        content_digest_v2=content_v2,
         sample_axis_origin=sample_axis_origin,
     )
     zarr.open_group(str(store_path), mode="r+").attrs.update(attrs)
@@ -234,6 +252,12 @@ def recorded_content_digest(group: Any) -> dict[str, Any] | None:
     if not isinstance(content, dict):
         return None
     return dict(content) | {"nodes": dict(store.get("nodes") or {})}
+
+
+def recorded_content_digest_v2(group: Any) -> dict[str, Any] | None:
+    """The ``/2`` content digest this store records, or ``None`` if it predates ``/2``."""
+    block = (recorded_store_digest(group) or {}).get(CONTENT_V2_FIELD)
+    return dict(block) if isinstance(block, dict) else None
 
 
 def recorded_sample_axis_origin(group: Any) -> dict[str, Any] | None:

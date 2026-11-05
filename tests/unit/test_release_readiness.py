@@ -270,3 +270,23 @@ def test_a_certificate_issued_before_the_content_digest_is_not_re_judged():
     payload = _green()
     payload["content_digest"] = None
     assert release_readiness(payload)["release_ready"] is True
+
+
+@pytest.mark.parametrize("status", ["MISMATCH", "ABSENT", "FOREIGN"])
+def test_a_v2_content_digest_other_than_match_blocks_release(status):
+    """**D-0135.** A certificate whose ``/2`` is not MATCH cannot release.
+
+    ``/2`` is the value a re-ingest reproduces.
+    """
+    payload = _green()
+    payload["content_digest_v2"] = {"status": status}
+    blocking = release_readiness(payload)["blocking"]
+    assert any("content digest /2" in item and status in item for item in blocking)
+
+
+def test_a_v2_match_releases_and_a_certificate_before_v2_is_not_re_judged():
+    payload = _green()
+    payload["content_digest_v2"] = {"status": "MATCH"}
+    assert release_readiness(payload)["release_ready"] is True
+    payload["content_digest_v2"] = None
+    assert release_readiness(payload)["release_ready"] is True

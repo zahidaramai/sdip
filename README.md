@@ -331,11 +331,14 @@ line on standard error.
 was written), or `ABSENT` for a store written before 1.3.0, which is reported but not failed.
 Since 1.6.0 the marker also records a **content digest** (`sdipStoreDigest.content`): the same
 coverage less MDIO's creation timestamp, so two ingests of one source give the same value —
-record it to show a re-ingest reproduced a store. `verify` checks both. **One limit is
-measured** (D75): on a 1.60 GB source, MDIO's `amplitude` summary statistics (`statsV1`) differ
-between ingests by a few float64 ulps, so two ingests can record different content digests while
-every array's data is identical. Until `sdip-content-digest/2`, which will exclude them, a
-mismatch between two ingests is not on its own evidence that their data differ.
+record it to show a re-ingest reproduced a store. **One limit is measured** (D75): on a 1.60 GB
+source, MDIO's `amplitude` `statsV1.sumSquares` differs between ingests by a few float64 ulps, so
+two ingests can record different content digests while every array's data is identical. Stores
+written since D-0135 therefore also record **`sdip-content-digest/2`**
+(`sdipStoreDigest.contentV2`): the content digest less that one member, the only other key probe
+P31 measured varying across 13 ingests. **`/2` is the value a re-ingest reproduces; `/1`
+identifies a bound store.** `verify` checks all three, and a store written before `/2` reports it
+`ABSENT` without failing.
 
 **In the container, `certify` needs a git working tree** — it refuses to issue from one
 that is dirty or absent, so mount a repository if you want a certificate. `ingest`,

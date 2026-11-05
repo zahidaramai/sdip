@@ -3371,3 +3371,38 @@ Over 13 fresh ingests (4.81 GB ibm32 ×3, 1.60 GB ibm32 ×5, 1.60 GB float32 ×5
 - only MDIO's root `createdOn` and `amplitude`'s `statsV1.sumSquares` varied.
 
 `/2` therefore excludes exactly those two keys, beside `/1`, per D-0132.
+
+---
+
+## D75 — CLOSED 2026-11-05 — `sdip-content-digest/2` is the reproducibility claim
+
+- **Closes:** D75 above (**SP10**) · **Decision:** `DECISIONS.md` D-0135 · **Probe:** P31 ·
+  **Ruling:** GeoSuite D-273
+- **Revisit:** if any other key is found varying between ingests (a new scheme), at a pin bump,
+  or on a measurement at a size or platform P31 did not reach
+
+`/2` excludes exactly what P31 found varying: root `createdOn` and `amplitude`'s
+`statsV1.sumSquares`. It is recorded beside `/1`, which stays the identity of a bound store, and
+no existing marker is rewritten. Held by `tests/integration/test_content_digest_v2.py`, both
+halves.
+
+---
+
+## D76 — `sdip ingest` still grows with the source through the parsed trace headers
+
+- **Status:** `OPEN` (raised 2026-11-05) · **Found by:** P28 (stage A, `axis_origin` and `marker`),
+  P30 · **Decision:** `DECISIONS.md` D-0135 · **Not built now,** by GeoSuite D-273
+
+After P28, what remains growing in ingest is the source's trace headers, which `SegyFile(...).header[:]`
+reads and parses whole:
+- once for the axis-origin decision;
+- once for each trace map that the raw view and the header plane build.
+
+Alone, that read grows at **0.24 MB per MB** of source (P28). The whole command grows at
+**0.227 MB per MB** between 1.60 and 4.81 GB (P30).
+
+**Expected saving if streamed**, derived and not measured: about 0.23 MB per MB, so roughly
+1.1 GB at 4.8 GB and 9 GB at 40 GB, leaving the about 0.8 GB intercept. Upstream's parser is
+used through its public API (operating contract §3.3), so a streamed form must read the headers
+in blocks by public calls and rebuild the same trace map. The output must stay byte-identical
+and register its own probe.

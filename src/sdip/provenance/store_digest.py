@@ -55,9 +55,9 @@ The store digest proves a store is unchanged since it was written; it cannot sho
 reproduced it, because MDIO writes a creation time into the root metadata. The content digest
 covers exactly what the store digest covers except :data:`CONTENT_EXCLUDED_ROOT_ATTRIBUTES`, so
 two ingests of one source under one declaration give the same value - **except** where MDIO's
-``amplitude`` ``statsV1`` differs between runs by a few float64 ulps, measured on a 1.60 GB
-source (OPEN_DEBTS D75). Until ``sdip-content-digest/2`` excludes it (D-0132), a mismatch
-between two ingests is not on its own evidence that their data differ.
+``amplitude`` ``statsV1.sumSquares`` differs between runs by a few float64 ulps, measured on a
+1.60 GB source (OPEN_DEBTS D75). :data:`CONTENT_SCHEME_V2` excludes it (D-0135) and is the
+reproducibility claim; ``/1`` stays the identity of a bound store.
 """
 
 CONTENT_EXCLUDED_ROOT_ATTRIBUTES: Final[tuple[str, ...]] = ("createdOn",)
@@ -68,6 +68,22 @@ fresh ingests each: every chunk byte and every array's ``zarr.json`` identical; 
 ``createdOn`` the only key that differed (``prereg/P13-store-content-variance.md``). A key is
 added here only on a measurement of the same kind, as a new scheme.
 """
+
+CONTENT_SCHEME_V2: Final[str] = "sdip-content-digest/2"
+"""The content digest that reproduces at survey scale (D-0134, D-0135; ``OPEN_DEBTS`` D75).
+
+``/1`` with exactly one more exclusion: the ``sumSquares`` member of ``amplitude``'s ``statsV1``
+attribute. Probe P31 ingested 1.60 and 4.81 GB sources 13 times. No chunk file differed, and the
+only keys that varied were root ``createdOn`` and that member: a float64 sum MDIO accumulates in
+an order that changes between runs (3 ulps, P28). ``statsV1``'s other members (``count``, ``sum``,
+``min``, ``max``) never varied and stay covered. ``/1`` stays recorded beside it, unchanged: it
+identifies a bound store; ``/2`` is the value a re-ingest reproduces.
+"""
+
+CONTENT_V2_EXCLUDED_ARRAY_MEMBERS: Final[dict[str, tuple[str, str]]] = {
+    "amplitude": ("statsV1", "sumSquares"),
+}
+"""Array path -> (attribute holding a JSON string, member removed from it). Exactly P31's."""
 
 METADATA_FILENAME: Final[str] = "zarr.json"
 
@@ -90,13 +106,44 @@ def _root_document(store: Path, marker_keys: tuple[str, ...]) -> dict[str, Any]:
     return document
 
 
-def _array_digest(array_dir: Path) -> str:
-    """One array: every file under its directory, sorted by relative path, by content."""
+def _metadata_without_member(path: Path, attribute: str, member: str) -> str:
+    """sha256 of an array's ``zarr.json`` in canonical form, one JSON-string member removed.
+
+    The attribute is a JSON **string** (MDIO writes ``statsV1`` that way), so it is parsed, the
+    member dropped, and the rest kept as canonical JSON. Anything that is not such a string is
+    digested as it stands, so a store without ``statsV1`` loses nothing.
+    """
+    document: dict[str, Any] = json.loads(path.read_bytes())
+    attributes = dict(document.get("attributes") or {})
+    value = attributes.get(attribute)
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except ValueError:
+            parsed = None
+        if isinstance(parsed, dict):
+            parsed.pop(member, None)
+            attributes[attribute] = _canonical(parsed).decode()
+    document["attributes"] = attributes
+    return sha256_bytes(_canonical(document))
+
+
+def _array_digest(array_dir: Path, without: tuple[str, str] | None = None) -> str:
+    """One array: every file under its directory, sorted by relative path, by content.
+
+    ``without`` names an attribute member :data:`CONTENT_SCHEME_V2` leaves out of this array's
+    ``zarr.json``; every other file, chunks included, is digested byte for byte.
+    """
     lines = []
     if array_dir.is_dir():
         for path in sorted(array_dir.rglob("*"), key=lambda p: p.relative_to(array_dir).as_posix()):
             if path.is_file():
-                lines.append(f"{path.relative_to(array_dir).as_posix()}\0{sha256_file(path)}\n")
+                rel = path.relative_to(array_dir).as_posix()
+                if without is not None and rel == METADATA_FILENAME:
+                    digest = _metadata_without_member(path, *without)
+                else:
+                    digest = sha256_file(path)
+                lines.append(f"{rel}\0{digest}\n")
     return hashlib.sha256("".join(lines).encode()).hexdigest()
 
 
@@ -108,8 +155,10 @@ def compute_store_digest(
     Args:
         store: A Zarr v3 store on local disk.
         marker_keys: Root attributes excluded from the digest - the marker's own.
-        scheme: :data:`SCHEME` (the default) or :data:`CONTENT_SCHEME`, which also excludes
-            :data:`CONTENT_EXCLUDED_ROOT_ATTRIBUTES` from the root metadata.
+        scheme: :data:`SCHEME` (the default); :data:`CONTENT_SCHEME`, which also excludes
+            :data:`CONTENT_EXCLUDED_ROOT_ATTRIBUTES` from the root metadata; or
+            :data:`CONTENT_SCHEME_V2`, which excludes those and
+            :data:`CONTENT_V2_EXCLUDED_ARRAY_MEMBERS` too.
 
     Returns:
         ``{"scheme", "nodes": {path: sha256}, "root": sha256, "sha256": ...}``. ``sha256``
@@ -119,17 +168,19 @@ def compute_store_digest(
 
     root = Path(store)
     group = zarr.open_group(str(root), mode="r")
+    if scheme not in (SCHEME, CONTENT_SCHEME, CONTENT_SCHEME_V2):
+        msg = f"unknown digest scheme {scheme!r}"
+        raise ValueError(msg)
+    members = CONTENT_V2_EXCLUDED_ARRAY_MEMBERS if scheme == CONTENT_SCHEME_V2 else {}
     nodes: dict[str, str] = {}
     for _name, member in group.members(max_depth=None):
         node_dir = root / str(member.path)
         if isinstance(member, zarr.Array):
-            nodes[str(member.path)] = _array_digest(node_dir)
+            nodes[str(member.path)] = _array_digest(node_dir, members.get(str(member.path)))
         else:
             nodes[str(member.path) + "/"] = sha256_file(node_dir / METADATA_FILENAME)
-    if scheme not in (SCHEME, CONTENT_SCHEME):
-        msg = f"unknown digest scheme {scheme!r}"
-        raise ValueError(msg)
-    excluded = marker_keys + (CONTENT_EXCLUDED_ROOT_ATTRIBUTES if scheme == CONTENT_SCHEME else ())
+    content = scheme in (CONTENT_SCHEME, CONTENT_SCHEME_V2)
+    excluded = marker_keys + (CONTENT_EXCLUDED_ROOT_ATTRIBUTES if content else ())
     root_digest = sha256_bytes(_canonical(_root_document(root, excluded)))
     body = {"scheme": scheme, "nodes": dict(sorted(nodes.items())), "root": root_digest}
     return body | {"sha256": sha256_bytes(_canonical(body))}
@@ -152,7 +203,9 @@ class StoreDigestResult:
 
     def describe(self) -> str:
         """One line for the operator."""
-        what = "content" if self.scheme == CONTENT_SCHEME else "store"
+        what = {CONTENT_SCHEME: "content", CONTENT_SCHEME_V2: "content /2"}.get(
+            self.scheme, "store"
+        )
         if self.status == MATCH:
             return f"sha256 {(self.computed or '')[:12]}, as sdip ingest recorded it"
         if self.status == MISMATCH:
@@ -187,6 +240,17 @@ def check_content_digest(store: str | Path) -> StoreDigestResult:
     from sdip.ingest.provenance_marker import recorded_content_digest
 
     return _check(store, CONTENT_SCHEME, recorded_content_digest)
+
+
+def check_content_digest_v2(store: str | Path) -> StoreDigestResult:
+    """Recompute ``store``'s ``/2`` content digest and compare it with the one its marker records.
+
+    ``ABSENT`` for a store written before ``/2`` existed: its marker is never rewritten to add one
+    (D-0135), so such a store keeps ``/1`` alone.
+    """
+    from sdip.ingest.provenance_marker import recorded_content_digest_v2
+
+    return _check(store, CONTENT_SCHEME_V2, recorded_content_digest_v2)
 
 
 def _check(store: str | Path, scheme: str, read_recorded: Any) -> StoreDigestResult:

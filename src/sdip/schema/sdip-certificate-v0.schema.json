@@ -245,7 +245,7 @@
         "null"
       ],
       "title": "Content digest",
-      "description": "The store digest less the per-ingest metadata (MDIO's root createdOn, the only key probe P13 measured varying between ingests), recomputed after the chain against the value sdip ingest recorded (DECISIONS.md D-0101). Two ingests of one source under one declaration give the same value, up to MDIO's amplitude statsV1 summary statistics, which can differ between ingests by a few float64 ulps (OPEN_DEBTS D75; sdip-content-digest/2 will exclude them, D-0132). Release readiness requires MATCH. Absent on certificates issued before 1.6.0.",
+      "description": "The store digest less the per-ingest metadata (MDIO's root createdOn, the only key probe P13 measured varying between ingests), recomputed after the chain against the value sdip ingest recorded (DECISIONS.md D-0101). It identifies a bound store. It is not the reproducibility claim: MDIO's amplitude statsV1.sumSquares differs between ingests by a few float64 ulps (OPEN_DEBTS D75), so two ingests can record different values; content_digest_v2 is the value a re-ingest reproduces (D-0135). Release readiness requires MATCH. Absent on certificates issued before 1.6.0.",
       "additionalProperties": false,
       "required": [
         "status",
@@ -265,6 +265,55 @@
         },
         "scheme": {
           "const": "sdip-content-digest/1"
+        },
+        "recorded_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "computed_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "changed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "content_digest_v2": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "title": "Content digest /2",
+      "description": "sdip-content-digest/2: the content digest less amplitude's statsV1.sumSquares, the only other key probe P31 measured varying across 13 ingests at 1.60 and 4.81 GB (no chunk file differed). The value a re-ingest of this source under the same declaration reproduces (DECISIONS.md D-0134, D-0135). Recorded beside content_digest, never in place of it. Release readiness requires MATCH when present. Absent on certificates issued before it existed, and ABSENT for a store written before it.",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "scheme",
+        "recorded_sha256",
+        "computed_sha256",
+        "changed"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "MATCH",
+            "MISMATCH",
+            "ABSENT",
+            "FOREIGN"
+          ]
+        },
+        "scheme": {
+          "const": "sdip-content-digest/2"
         },
         "recorded_sha256": {
           "type": [

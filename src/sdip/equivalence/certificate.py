@@ -211,6 +211,7 @@ def issue(
     binding: BindingResult | None = None,
     store_digest: StoreDigestResult | None = None,
     content_digest: StoreDigestResult | None = None,
+    content_digest_v2: StoreDigestResult | None = None,
     root: str | Path = ".",
     require_clean_tree: bool = True,
     baseline: GitState | None = None,
@@ -243,7 +244,10 @@ def issue(
         content_digest: The same for the content digest (D-0101): the value a re-ingest of
             this source must reproduce, up to MDIO's ``statsV1`` summary statistics, which
             can differ between ingests by a few float64 ulps (OPEN_DEBTS D75, D-0132).
-            Release readiness requires ``MATCH``.
+            Release readiness requires ``MATCH``. **The identity of a bound store** (D-0135).
+        content_digest_v2: The same for ``sdip-content-digest/2`` (D-0135): ``/1`` less
+            ``amplitude``'s ``statsV1.sumSquares``, **the value a re-ingest of this source
+            reproduces** (probe P31). Release readiness requires ``MATCH`` when present.
         nonvacuity: G7 result. **Absent means ``NOT_RUN``, and the verdict cannot reach
             ``EQUIVALENT``** - a store whose planes pass against an engine never shown
             capable of failing has not been checked.
@@ -420,6 +424,9 @@ def issue(
         "declaration": binding.to_json() if binding is not None else None,
         "store_digest": store_digest.to_json() if store_digest is not None else None,
         "content_digest": content_digest.to_json() if content_digest is not None else None,
+        "content_digest_v2": (
+            content_digest_v2.to_json() if content_digest_v2 is not None else None
+        ),
         "transforms_declared": (
             ([exposure.to_json(raw_view_stored=raw_view_present)] if exposure is not None else [])
             + (
@@ -584,8 +591,14 @@ def release_readiness(payload: dict[str, Any]) -> dict[str, Any]:
     content = payload.get("content_digest")
     if content is not None and content.get("status") != "MATCH":
         blocking.append(
-            f"content digest is {content.get('status')} - a re-ingest could not be shown to "
-            "reproduce this store"
+            f"content digest is {content.get('status')} - the store cannot be shown to hold "
+            "the content sdip ingest recorded"
+        )
+    content_v2 = payload.get("content_digest_v2")
+    if content_v2 is not None and content_v2.get("status") != "MATCH":
+        blocking.append(
+            f"content digest /2 is {content_v2.get('status')} - a re-ingest could not be shown "
+            "to reproduce this store"
         )
 
     return {

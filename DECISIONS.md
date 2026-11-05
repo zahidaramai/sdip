@@ -6294,3 +6294,49 @@ is rewritten.
 2. **D75.** Confirm the narrow exclusion (`statsV1.sumSquares` only) over excluding all of
    `statsV1`. The narrow form is what P31's rule says ("excludes exactly the varying keys
    found"). The building starts on that reading unless it is ruled otherwise.
+
+## D-0135 — 2026-11-05 — Rulings on D-0134 (GeoSuite D-273, amended); `sdip-content-digest/2` built
+
+**Ruling** (GeoSuite D-273 under owner D-262 §4, answering D-0134):
+1. **D74.** Register a refit whose bound carries the parsed-header term (P28: 0.24 MB per MB)
+   beside the streamed-array term. The 7.2 GiB interim stays until that refit passes.
+   - **Amended at SDIP's objection under SP9:** the original criterion ("the 4.81 GB point
+     inside the new bound") would have been written after that point was seen.
+   - **As amended:** the bound is written from P28's numbers only and registered before the
+     run. The criterion is a **new, unseen point**, a 9.6 GB source built from 12 pieces and
+     ingested once with `--envelope-gib` raised for that one run, the raise recorded in the
+     receipt. The 4.81 GB point is reported, not gated.
+   - Streaming the parsed source headers is a separate debt row with its expected saving: D76,
+     not built now.
+2. **D75.** The narrow `/2` is confirmed:
+   - it excludes only root `createdOn` and `amplitude`'s `statsV1.sumSquares`, so `count`, `sum`,
+     `min` and `max` stay covered;
+   - new ingests record `/2` beside `/1`, and `verify` reports both;
+   - no existing marker is rewritten;
+   - the certificate names `/2` as the reproducibility claim and `/1` as the identity of a bound
+     store.
+
+**Built (D75).**
+- **`CONTENT_SCHEME_V2`** = `sdip-content-digest/2`. It digests `amplitude`'s `zarr.json` in
+  canonical form with `statsV1`'s `sumSquares` member removed, and every other file byte for
+  byte. It is recorded in `sdipStoreDigest.contentV2`, which carries its own per-node digests,
+  nested so that older verifiers never see it (the D67 rule).
+- **`sdip verify`** reports `content_digest_v2` in its JSON and in a `content/2` line. **`sdip
+  certify`** carries it on the certificate. The schema gains an additive `content_digest_v2`
+  block, and `content_digest`'s description now names it the bound-store identity.
+- **Release readiness** blocks on a `/2` other than MATCH where the certificate carries one. A
+  certificate issued before `/2` is not re-judged.
+- **Tests,** both halves (`tests/integration/test_content_digest_v2.py`):
+  - two ingests record the same `/2`;
+  - a changed `sumSquares` moves `/1` and leaves `/2` MATCH;
+  - a changed `createdOn` moves neither content digest;
+  - a changed `sum`, a flipped `amplitude` chunk byte, or an edited `amplitude` attribute each
+    fail `/2`;
+  - a store without `/2` reports ABSENT and fails nothing;
+  - `verify --json` reports `/2` through the executable.
+
+**Consumer-visible.**
+- New stores carry one more nested field. Existing stores, their `/1` and their store digests
+  are unchanged.
+- Bindings by `/1`, by GeoCRS, GeoGIS and SFM, stay valid as bound.
+- A consumer that compares two ingests should compare `/2`.
