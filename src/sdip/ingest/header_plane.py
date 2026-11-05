@@ -488,6 +488,7 @@ def attach_header_plane(
     # import here would close the cycle at import time.
     from sdip.equivalence.planes import grid_coordinates, store_dimensions
     from sdip.equivalence.trace_map import build_trace_map
+    from sdip.ingest.source_headers import read_header_columns
 
     group = zarr.open_group(str(store), mode="r+")
     structured: Any = group[variable]
@@ -519,8 +520,11 @@ def attach_header_plane(
         )
         raise UntrustedInputError(msg)
 
+    # The grid's index fields only, in blocks (OPEN_DEBTS D76, probe P33).
     trace_map = build_trace_map(
-        handle.header[:], grid_coordinates(group, grid_dimensions), grid_dimensions
+        read_header_columns(source, segy_spec, grid_dimensions),
+        grid_coordinates(group, grid_dimensions),
+        grid_dimensions,
     )
 
     array = group.create_array(

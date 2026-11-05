@@ -375,6 +375,7 @@ def attach_raw_sample_view(
     # import here would close the cycle at import time.
     from sdip.equivalence.planes import grid_coordinates, store_dimensions
     from sdip.equivalence.trace_map import build_trace_map
+    from sdip.ingest.source_headers import read_header_columns
     from sdip.spec.transforms import detect_ibm32
 
     sample_format = detect_ibm32(segy_spec).sample_format
@@ -382,7 +383,6 @@ def attach_raw_sample_view(
         return None
 
     import zarr
-    from segy import SegyFile
     from zarr.codecs import BloscCodec
 
     group = zarr.open_group(str(store), mode="r+")
@@ -395,10 +395,12 @@ def attach_raw_sample_view(
     # did. The words themselves are read slab by slab below: through a mapping, indexing
     # every trace made the whole file resident (OPEN_DEBTS D74, probe P28).
     source_count, _ = source_trace_layout(Path(source).stat().st_size, samples_per_trace)
-    handle = SegyFile(str(Path(source)), spec=segy_spec)
     grid_dimensions = store_dimensions(group)
+    # The grid's index fields only, in blocks (OPEN_DEBTS D76, probe P33).
     trace_map = build_trace_map(
-        handle.header[:], grid_coordinates(group, grid_dimensions), grid_dimensions
+        read_header_columns(source, segy_spec, grid_dimensions),
+        grid_coordinates(group, grid_dimensions),
+        grid_dimensions,
     )
 
     # D-0110. Only the live words the store cannot reproduce: for each outermost slab, the

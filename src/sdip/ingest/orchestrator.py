@@ -55,7 +55,13 @@ from sdip.ingest.header_plane import HeaderPlane, attach_header_plane
 from sdip.ingest.preflight import SourceLayout, validate_segy_structure
 from sdip.ingest.provenance_marker import attach_provenance_marker
 from sdip.ingest.raw_samples import RawSampleView, attach_raw_sample_view
-from sdip.ingest.sample_axis import apply_axis_origin, decide_for_store
+from sdip.ingest.sample_axis import (
+    DELAY_FIELD,
+    SCALAR_FIELD,
+    apply_axis_origin,
+    decide_for_store,
+)
+from sdip.ingest.source_headers import read_header_columns
 from sdip.provenance.hashing import sha256_file
 from sdip.spec.declaration import SurveyDeclaration
 from sdip.spec.gate import G1Result, g1_for_spec
@@ -482,10 +488,11 @@ def ingest_declared(
     # the other industry readers start it at the delay. Where the delay is one exact value
     # on a time axis, the axis is moved there, from the source's own bytes, and the marker
     # says so. Anything else is left as written and Plane 4's finding still blocks release.
-    from segy import SegyFile
-
+    # Only the two columns the rule reads, in blocks: the whole parsed headers grew at 0.25 MB
+    # per MB of source (OPEN_DEBTS D76, probe P33).
     origin = decide_for_store(
-        output_path, SegyFile(str(source_path), spec=built.segy_spec).header[:]
+        output_path,
+        read_header_columns(source_path, built.segy_spec, (DELAY_FIELD, SCALAR_FIELD)),
     )
     apply_axis_origin(output_path, origin)
 
