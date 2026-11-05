@@ -330,8 +330,12 @@ line on standard error.
 `sdip ingest` finished writing it: `MATCH`, or `MISMATCH` (fails — the store changed after it
 was written), or `ABSENT` for a store written before 1.3.0, which is reported but not failed.
 Since 1.6.0 the marker also records a **content digest** (`sdipStoreDigest.content`): the same
-coverage less MDIO's creation timestamp, so **two ingests of one source give the same value** —
-record it to show a re-ingest reproduced a store. `verify` checks both.
+coverage less MDIO's creation timestamp, so two ingests of one source give the same value —
+record it to show a re-ingest reproduced a store. `verify` checks both. **One limit is
+measured** (D75): on a 1.60 GB source, MDIO's `amplitude` summary statistics (`statsV1`) differ
+between ingests by a few float64 ulps, so two ingests can record different content digests while
+every array's data is identical. Until `sdip-content-digest/2`, which will exclude them, a
+mismatch between two ingests is not on its own evidence that their data differ.
 
 **In the container, `certify` needs a git working tree** — it refuses to issue from one
 that is dirty or absent, so mount a repository if you want a certificate. `ingest`,

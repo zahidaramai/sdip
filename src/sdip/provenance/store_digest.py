@@ -54,7 +54,10 @@ CONTENT_SCHEME: Final[str] = "sdip-content-digest/1"
 The store digest proves a store is unchanged since it was written; it cannot show a re-ingest
 reproduced it, because MDIO writes a creation time into the root metadata. The content digest
 covers exactly what the store digest covers except :data:`CONTENT_EXCLUDED_ROOT_ATTRIBUTES`, so
-two ingests of one source under one declaration give the same value.
+two ingests of one source under one declaration give the same value - **except** where MDIO's
+``amplitude`` ``statsV1`` differs between runs by a few float64 ulps, measured on a 1.60 GB
+source (OPEN_DEBTS D75). Until ``sdip-content-digest/2`` excludes it (D-0132), a mismatch
+between two ingests is not on its own evidence that their data differ.
 """
 
 CONTENT_EXCLUDED_ROOT_ATTRIBUTES: Final[tuple[str, ...]] = ("createdOn",)

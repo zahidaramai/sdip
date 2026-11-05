@@ -245,7 +245,7 @@
         "null"
       ],
       "title": "Content digest",
-      "description": "The store digest less the per-ingest metadata (MDIO's root createdOn, the only key probe P13 measured varying between ingests), recomputed after the chain against the value sdip ingest recorded (DECISIONS.md D-0101). Two ingests of one source under one declaration give the same value. Release readiness requires MATCH. Absent on certificates issued before 1.6.0.",
+      "description": "The store digest less the per-ingest metadata (MDIO's root createdOn, the only key probe P13 measured varying between ingests), recomputed after the chain against the value sdip ingest recorded (DECISIONS.md D-0101). Two ingests of one source under one declaration give the same value, up to MDIO's amplitude statsV1 summary statistics, which can differ between ingests by a few float64 ulps (OPEN_DEBTS D75; sdip-content-digest/2 will exclude them, D-0132). Release readiness requires MATCH. Absent on certificates issued before 1.6.0.",
       "additionalProperties": false,
       "required": [
         "status",

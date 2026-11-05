@@ -6230,3 +6230,27 @@ of the same code. Three ingests recorded two different content digests (D75).
 
 **Consumer-visible.** Ingest needs less memory; no store's data changes. The content-digest
 contract does not hold at 1.60 GB, as D75 records. SDIP's own checks are not affected.
+
+## D-0132 — 2026-11-05 — Rulings on D-0131 (GeoSuite D-264); interim content-digest wording
+
+**Ruling** (GeoSuite D-264 under owner D-262 §4, answering D-0131):
+1. **D74.** Register a P26-style refit of the ingest envelope with a 4.8 GB point. The 7.2 GiB
+   interim stays until that receipt lands; then the fitted envelope replaces it.
+2. **D75.** Option (a): register a P13-kind measurement at survey scale. If `statsV1` is the
+   only key that varies, define `sdip-content-digest/2` excluding it. No rounding. Interim
+   (b) until `/2` is in force: the claim that a re-ingest reproduces the content digest names
+   the ulp-level `statsV1` limit.
+3. **Bound stores.** They stay valid as bound, and the GeoCRS, GeoGIS and SFM bindings are not
+   re-made. A `/2` digest is recorded **beside** `/1` for existing stores, never in place.
+
+**Built (interim b).** Four texts now name the limit and cite D75: the README's digest
+paragraph, the schema's `content_digest` description, the certificate builder's docstring and
+`CONTENT_SCHEME`'s docstring. The digest's definition, scheme and values are unchanged.
+
+**Correction** (**SP10**; D-0131 is left unedited). At `de91c17` I reported "gate green at
+`87f9c38`" and described `de91c17` as "records only". **The gate was not re-run on
+`de91c17`, and it fails one default-suite test.** D-0131 cites "operating contract §1.1", and
+`tests/unit/test_section_citations.py` fails on any public citation that has no `CITATIONS.md`
+entry. GeoSuite pushed `de91c17`, so `origin/main` carries that failure until the next push.
+The fix adds the missing `§1.1` entry; the unit suite then passes, 710 of 710. From here on a
+records-only commit is gated like any other before it is reported.

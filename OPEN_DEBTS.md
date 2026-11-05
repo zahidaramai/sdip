@@ -3316,3 +3316,14 @@ The cause is in upstream's output, not SDIP's:
 **Affected:** the certificate's claim that the content digest is "the value a re-ingest of this
 source must reproduce", and any consumer that compares content digests across ingests. Not
 measured: at what size the variation starts, and whether `sum`, `min` or `max` can vary too.
+
+---
+
+## D75 — note 2026-11-05 — interim wording; the measurement is ruled (D-0132)
+
+- **Concerns:** D75 above · **Status:** `OPEN`, unchanged · **Decision:** `DECISIONS.md` D-0132
+
+The README, the certificate schema and two docstrings now state that two ingests' content
+digests can differ through MDIO's `statsV1`, while the data stay identical. Next: the
+survey-scale P13-kind measurement, then `sdip-content-digest/2` if `statsV1` is the only key
+that varies. It will be recorded beside `/1`, never in place.

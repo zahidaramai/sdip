@@ -241,7 +241,9 @@ def issue(
         store_digest: The store recomputed against the digest its marker records (D-0093),
             after the chain finished reading it. Release readiness requires ``MATCH``.
         content_digest: The same for the content digest (D-0101): the value a re-ingest of
-            this source must reproduce. Release readiness requires ``MATCH``.
+            this source must reproduce, up to MDIO's ``statsV1`` summary statistics, which
+            can differ between ingests by a few float64 ulps (OPEN_DEBTS D75, D-0132).
+            Release readiness requires ``MATCH``.
         nonvacuity: G7 result. **Absent means ``NOT_RUN``, and the verdict cannot reach
             ``EQUIVALENT``** - a store whose planes pass against an engine never shown
             capable of failing has not been checked.

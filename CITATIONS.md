@@ -38,6 +38,13 @@ maintainer's reading; this index makes drift visible instead of silent.
   "note": "a section of NOTICE itself"
  },
  {
+  "section": "1.1",
+  "scheme": "contract",
+  "file": "README.md",
+  "anchor": "There is no tolerance anywhere in the engine",
+  "note": "The operating contract's first rejection rule: no tolerance-based comparison (cited by D-0131)."
+ },
+ {
   "section": "1.2",
   "scheme": "spec",
   "file": "README.md",
