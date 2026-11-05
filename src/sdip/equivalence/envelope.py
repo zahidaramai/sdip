@@ -90,35 +90,44 @@ def envelope_refusal(source: str | Path, *, envelope_gib: float) -> str | None:
     )
 
 
-# --- The ingest envelope (OPEN_DEBTS D74, GeoSuite D-245) ---------------------------------
+# --- The ingest envelope (OPEN_DEBTS D74; P28, P32; DECISIONS.md D-0136) -----------------
 
-INGEST_MEASURED_POINTS: Final[tuple[tuple[int, int], ...]] = (
-    (400_683_600, 1_008_599_040),
-    (1_602_723_600, 2_199_552_000),
-    (4_808_163_600, 5_528_076_288),
+INGEST_BOUND_POINTS: Final[tuple[tuple[int, int], ...]] = (
+    (400_683_600, 1_001_734_144),
+    (1_602_723_600, 874_266_624),
 )
-"""``(source bytes, peak RSS bytes)`` of ``sdip ingest`` (recorded by probes P23 and P26).
+"""``(source bytes, peak RSS bytes)`` of the whole ``sdip ingest``, after P28 streamed the raw
+sample view and the header plane (``prereg/P28-receipt-2026-11-05.json``, stage B). The bound's
+fixed term is taken from these two points and nothing else (SP9)."""
 
-The same fixtures and measurement as :data:`MEASURED_POINTS`. Ingest memory is linear in the
-source, contradicting ``DECISIONS.md`` D-0042's statement (D74). It is not yet attributed;
-this envelope is the interim GeoSuite ruled (D-245) so that ``certify``, which ingests first,
-never silently breaches its ceiling."""
+INGEST_HEADER_TERM: Final[float] = 0.2381
+"""MB of peak RSS per MB of source: the parsed source headers alone (P28 stage A,
+``axis_origin``). They are read whole and still grow with the file (OPEN_DEBTS D76)."""
 
-INGEST_RSS_INTERCEPT_MB: Final[float] = 577.8
-INGEST_RSS_SLOPE: Final[float] = 1.0281
-"""``RSS_MB = 577.8 + 1.0281 x source_MB``: least squares over
-:data:`INGEST_MEASURED_POINTS`, in MB of 10^6 bytes."""
+INGEST_FIXED_TERM_MB: Final[float] = 906.33
+"""The larger of ``peak - INGEST_HEADER_TERM x size`` over :data:`INGEST_BOUND_POINTS`, in MB
+(906.331; P32's registration writes it to one decimal, 906.3)."""
 
-DEFAULT_INGEST_ENVELOPE_GIB: Final[float] = 7.2
+INGEST_MARGIN: Final[float] = 1.10
+"""A margin on the memory ceiling, fixed in P32's registration. Not a tolerance on any value."""
+
+INGEST_UNSEEN_POINT: Final[tuple[int, int]] = (9_616_323_600, 2_810_462_208)
+"""P32's gate: a 9.6 GB source never ingested before the bound was written. It peaked at
+2,810.5 MB against a bound of 3,515.6 MB (``prereg/P32-receipt-2026-11-05.json``)."""
+
+DEFAULT_INGEST_ENVELOPE_GIB: Final[float] = 26.9
 """Largest single source file `sdip ingest` and `sdip certify` will attempt, in GiB.
 
-Where the fitted ingest line reaches the 8 GiB ceiling (7,793 MB, 7.26 GiB), rounded **down**
-to one decimal. Override it with ``--envelope-gib``, or pass 0 to disable it."""
+Where the bound ``1.10 x (906.33 + 0.2381 x size)`` reaches the 8 GiB ceiling (28,990.8 MB,
+26.9998 GiB), rounded **down** to one decimal, as P32 registered. Its registration also wrote
+"27.0 GiB", having rounded instead (DECISIONS.md D-0136). It is adopted because the bound
+held at P32's unseen 9.6 GB point. Above 9.6 GB it is an extrapolation of the bound, not a
+measurement. Override it with ``--envelope-gib``, or pass 0 to disable it."""
 
 
 def projected_ingest_peak_rss_mb(source_bytes: int) -> float:
-    """Projected peak RSS in MB for ingesting a source of this size."""
-    return INGEST_RSS_INTERCEPT_MB + INGEST_RSS_SLOPE * (source_bytes / 1e6)
+    """The bound on peak RSS in MB for ingesting a source of this size (P32)."""
+    return INGEST_MARGIN * (INGEST_FIXED_TERM_MB + INGEST_HEADER_TERM * (source_bytes / 1e6))
 
 
 def ingest_envelope_refusal(source: str | Path, *, envelope_gib: float) -> str | None:
@@ -138,10 +147,10 @@ def ingest_envelope_refusal(source: str | Path, *, envelope_gib: float) -> str |
         return None
     return (
         f"{REASON_CODE}: refusing to ingest a {size / 1024**3:.2f} GiB source against a "
-        f"declared {envelope_gib:.2f} GiB envelope. Ingest memory was measured at "
-        f"0.4/1.6/4.8 GB, slope {INGEST_RSS_SLOPE:.3f} MB/MB, intercept "
-        f"{INGEST_RSS_INTERCEPT_MB / 1000:.2f} GB (OPEN_DEBTS D74, DECISIONS.md D-0130), so "
-        f"this file projects to roughly {projected_ingest_peak_rss_mb(size) / 1024:.1f} GiB "
+        f"declared {envelope_gib:.2f} GiB envelope. Ingest memory is bounded by "
+        f"{INGEST_MARGIN:.2f} x ({INGEST_FIXED_TERM_MB:.0f} MB + {INGEST_HEADER_TERM:.3f} MB/MB), "
+        "from P28; held at 9.6 GB (P32; OPEN_DEBTS D74, DECISIONS.md D-0136), so this file "
+        f"is bounded at roughly {projected_ingest_peak_rss_mb(size) / 1024:.1f} GiB "
         f"against the {CEILING_GIB:.1f} GiB ceiling. Refusing is deliberate: a process that "
         "runs out of memory is killed and returns NO result, which is worse than declining "
         "to start. Pass --envelope-gib to declare a larger one, or 0 to disable."

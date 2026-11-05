@@ -56,7 +56,7 @@ tighten a gate post hoc; worse-than-expected does not relax one.
 | [P29](P29-d8-four-way.md) | Do four hostilities at once, every four-class combination, break any command? | did not fire — 3,632 of 3,632 ran, 0 clause hits; 9 converted, `certify` refused all 9 (D54, D61) | — | D8 |
 | [P30](P30-ingest-envelope-refit.md) | What does ingest need at 4.8 GB after P28, and where does the 3-point fit reach 8 GiB? | ingest 1,600.5 MB at 4.81 GB; criterion 2 (<= 1,500) **FAILED**, fit not adopted, 7.2 GiB stays; growth 0.227 MB/MB = parsed headers | — | D74 |
 | [P31](P31-content-variance-at-scale.md) | Which store bytes differ between ingests of a survey-scale source? | no chunk differs in 13 ingests; only root `createdOn` and `amplitude` `statsV1.sumSquares` vary; rule 2 holds | — | D75 |
-| [P32](P32-ingest-envelope-unseen-point.md) | Does an ingest bound written from P28 alone hold at an unseen 9.6 GB point? | registered | — | D74, D76 |
+| [P32](P32-ingest-envelope-unseen-point.md) | Does an ingest bound written from P28 alone hold at an unseen 9.6 GB point? | **held** — 2,810.5 MB vs bound 3,515.6 at 9.6 GB; default 7.2 → 26.9 GiB (registration's "27.0" was a rounding slip) | — | D74, D76 |
 
 A probe with no pre-registration file cannot report a result. A pre-registration whose
 falsifier is vague is sent back at review: **"if fidelity looks poor" is not a

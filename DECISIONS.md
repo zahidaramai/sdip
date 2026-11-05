@@ -6340,3 +6340,28 @@ is rewritten.
   are unchanged.
 - Bindings by `/1`, by GeoCRS, GeoGIS and SFM, stay valid as bound.
 - A consumer that compares two ingests should compare `/2`.
+
+## D-0136 — 2026-11-05 — P32: the ingest bound held at an unseen 9.6 GB point; default 26.9 GiB; D74 closed
+
+**Measured** (P32, registered at `124f04f` before the run, on GeoSuite D-273 as amended). The
+bound `1.10 × (906.33 + 0.2381 × S)` MB was written from P28's receipt alone. `sdip ingest` on a
+9,616,323,600 B source, never ingested before, ran with `--envelope-gib 10.0` for that one run.
+It exited 0 and peaked at **2,810.5 MB**, against the bound's 3,515.6 MB.
+
+**Built.**
+- `envelope.py`'s ingest model is now the bound: P28 stage B's two points, the header term, the
+  fixed term, the margin and P32's point.
+- **`--envelope-gib` defaults to 26.9 GiB for `ingest` and `certify`** (was 7.2). The refusal
+  states the bound.
+- `tests/unit/test_envelope.py` holds each term to its receipt, holds the bound at every
+  measured point, and holds the default where the rule puts it. Non-vacuity: 0.1 GiB more, or
+  27.0, crosses 8 GiB.
+
+**Correction (SP10).** P32's registration wrote the default as "28,991 MB, which is 27.0 GiB,
+rounded down". Exactly, the size is 28,990.8 MB = 26.9998 GiB, so the registered rule gives
+**26.9**. I had rounded where the rule says round down. The rule is adopted as written, on its
+safe side, and the slip is recorded in P32's results.
+
+**Consumer-visible.** Sources from 7.2 to 26.9 GiB that `ingest` and `certify` refused now run.
+Above 9.6 GB that rests on the bound, not on a measurement. `verify`'s 40.1 GiB is unchanged.
+D76 (header streaming) stays open.

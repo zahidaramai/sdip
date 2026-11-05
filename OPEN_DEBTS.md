@@ -3406,3 +3406,20 @@ Alone, that read grows at **0.24 MB per MB** of source (P28). The whole command 
 used through its public API (operating contract §3.3), so a streamed form must read the headers
 in blocks by public calls and rebuild the same trace map. The output must stay byte-identical
 and register its own probe.
+
+---
+
+## D74 — CLOSED 2026-11-05 — ingest memory is attributed, streamed and bounded (P28, P32)
+
+- **Closes:** D74 above (**SP10**) · **Decision:** `DECISIONS.md` D-0136 · **Probes:** P28,
+  P30, P32 · **Rulings:** GeoSuite D-245, D-264, D-273
+- **Revisit:** if a consumer needs `ingest` above 26.9 GiB, or a measurement breaks the bound
+
+D74 said `sdip ingest` grew at 1.03 MB per MB, toward 8 GiB near 7.8 GB.
+- **P28** found the cause in SDIP: two stages read the source through a memory map. Both now
+  read block by block, with every array's data identical.
+- **P30** measured what remains: 1,600.5 MB at 4.81 GB, where 5,528 MB was measured before.
+- **P32** tested a bound written from P28's numbers alone, `1.10 × (906.33 MB + 0.2381 MB/MB)`,
+  on an unseen 9.6 GB source: **2,810.5 MB against 3,515.6**.
+
+**The default is now 26.9 GiB** (was 7.2). What still grows is the parsed source headers, D76.

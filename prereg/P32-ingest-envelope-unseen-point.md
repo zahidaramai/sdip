@@ -78,3 +78,26 @@ host.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-11-05 |
+| Run commit | `124f04f`, the registration commit, clean |
+| Receipt | `prereg/P32-receipt-2026-11-05.json` |
+| Verdict | **Criteria 1 and 2 hold. The bound is adopted; the default is 26.9 GiB, not 27.0** |
+
+- **`xxl`**: 9,616,323,600 B, sha256 `ee546bf9…683f419c`, never ingested before. Run with
+  `sdip ingest --envelope-gib 10.0`, the raise for this one run. Exit 0, 552.1 s.
+- **Criterion 1 (succeeds): holds.**
+- **Criterion 2 (bound): holds.** Peak RSS **2,810.5 MB**, against a bound of 3,515.6 MB, which
+  is 79.9 % of it. Reported, not gated: at 4.81 GB the bound is 2,256.3 MB and P30 measured
+  1,600.5 MB.
+- **Criterion 3 (default): adopted as 26.9 GiB.** The rule registered above is: the size where
+  `B(S)` reaches 8 GiB, rounded **down** to one decimal. Computed exactly, that size is
+  28,990.8 MB, or 26.9998 GiB, which rounds down to **26.9**.
+  - **The registration's "28,991 MB, which is 27.0 GiB" was an arithmetic slip.** I rounded
+    where the rule says round down, and wrote the fixed term to one decimal (906.3; exactly
+    906.331).
+  - The rule governs, and 26.9 is its safe side: at 27.0 GiB the bound is just past 8 GiB.
+  - `envelope.py` carries the fixed term at full precision. A test holds the default where
+    the rule puts it, and fails on 27.0.

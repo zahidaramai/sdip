@@ -17,15 +17,18 @@ from sdip.equivalence.envelope import (
     CEILING_GIB,
     DEFAULT_ENVELOPE_GIB,
     DEFAULT_INGEST_ENVELOPE_GIB,
-    INGEST_MEASURED_POINTS,
-    INGEST_RSS_INTERCEPT_MB,
-    INGEST_RSS_SLOPE,
+    INGEST_BOUND_POINTS,
+    INGEST_FIXED_TERM_MB,
+    INGEST_HEADER_TERM,
+    INGEST_MARGIN,
+    INGEST_UNSEEN_POINT,
     MEASURED_POINTS,
     REASON_CODE,
     RSS_INTERCEPT_MB,
     RSS_SLOPE,
     envelope_refusal,
     ingest_envelope_refusal,
+    projected_ingest_peak_rss_mb,
     projected_peak_rss_mb,
 )
 
@@ -109,39 +112,57 @@ def test_zero_disables_the_check_because_that_is_an_operator_decision(tmp_path):
 # --- the ingest envelope (D74, GeoSuite D-245) --------------------------------------------
 
 
-def test_the_ingest_points_are_p23_and_p26s_receipts(repo_root):
+def test_the_ingest_bound_comes_from_p28s_receipt_alone(repo_root):
+    """SP9: the bound's two terms are P28's numbers, written before P32's point was seen."""
     import json
 
-    p23 = json.loads((repo_root / "prereg/P23-receipt-2026-11-01.json").read_text())["ingest"]
-    p26 = json.loads((repo_root / "prereg/P26-receipt-2026-11-01.json").read_text())
-    assert INGEST_MEASURED_POINTS == (
-        (400_683_600, p23["small"]["peak_rss_bytes"]),
-        (1_602_723_600, p23["large"]["peak_rss_bytes"]),
-        (p26["fixture"]["bytes"], p26["ingest"]["peak_rss_bytes"]),
+    p28 = json.loads((repo_root / "prereg/P28-receipt-2026-11-05.json").read_text())
+    b = p28["stage_b_peak_rss_bytes"]
+    assert INGEST_BOUND_POINTS == (
+        (p28["source_bytes"]["small"], b["small"]["whole_sdip_ingest"]),
+        (p28["source_bytes"]["large"], b["large"]["whole_sdip_ingest"]),
     )
+    assert p28["stage_a_slope_mb_per_mb"]["axis_origin"] == INGEST_HEADER_TERM
+    fixed = max(r / 1e6 - INGEST_HEADER_TERM * s / 1e6 for s, r in INGEST_BOUND_POINTS)
+    assert round(fixed, 2) == INGEST_FIXED_TERM_MB
 
 
-def test_the_ingest_constants_are_the_least_squares_fit_of_its_points():
-    x = np.array([s / 1e6 for s, _ in INGEST_MEASURED_POINTS])
-    y = np.array([r / 1e6 for _, r in INGEST_MEASURED_POINTS])
-    slope, intercept = np.polyfit(x, y, 1)
-    assert round(float(slope), 4) == INGEST_RSS_SLOPE
-    assert round(float(intercept), 1) == INGEST_RSS_INTERCEPT_MB
+def test_the_bound_held_at_p32s_unseen_point_and_at_every_measured_one(repo_root):
+    import json
+
+    p32 = json.loads((repo_root / "prereg/P32-receipt-2026-11-05.json").read_text())
+    assert INGEST_UNSEEN_POINT == (p32["fixture"]["bytes"], p32["ingest"]["peak_rss_bytes"])
+    for size, peak in (*INGEST_BOUND_POINTS, INGEST_UNSEEN_POINT):
+        assert peak / 1e6 <= projected_ingest_peak_rss_mb(size), size
+    assert round(projected_ingest_peak_rss_mb(INGEST_UNSEEN_POINT[0]), 1) == 3515.6
 
 
-def test_the_ingest_default_is_where_its_line_reaches_the_ceiling_rounded_down():
+def test_the_ingest_default_is_where_its_bound_reaches_the_ceiling_rounded_down():
     ceiling_mb = CEILING_GIB * 1024**3 / 1e6
-    reach_gib = (ceiling_mb - INGEST_RSS_INTERCEPT_MB) / INGEST_RSS_SLOPE * 1e6 / 1024**3
-    assert math.floor(reach_gib * 10) / 10 == DEFAULT_INGEST_ENVELOPE_GIB
+    reach_mb = (ceiling_mb / INGEST_MARGIN - INGEST_FIXED_TERM_MB) / INGEST_HEADER_TERM
+    assert math.floor(reach_mb * 1e6 / 1024**3 * 10) / 10 == DEFAULT_INGEST_ENVELOPE_GIB
     assert DEFAULT_INGEST_ENVELOPE_GIB < DEFAULT_ENVELOPE_GIB, "ingest binds first"
 
 
-def test_the_ingest_refusal_states_its_fit(tmp_path):
+def test_a_source_just_past_the_default_is_bounded_above_the_ceiling():
+    """Non-vacuity: the default is not arbitrary; 0.1 GiB more and the bound crosses 8 GiB.
+
+    It also catches the arithmetic slip in P32's registration: at 27.0 GiB the bound is past 8 GiB.
+    """
+    over = int((DEFAULT_INGEST_ENVELOPE_GIB + 0.1) * 1024**3)
+    under = int(DEFAULT_INGEST_ENVELOPE_GIB * 1024**3)
+    ceiling_mb = CEILING_GIB * 1024**3 / 1e6
+    assert projected_ingest_peak_rss_mb(over) > ceiling_mb
+    assert projected_ingest_peak_rss_mb(under) <= ceiling_mb
+    assert projected_ingest_peak_rss_mb(int(27.0 * 1024**3)) > ceiling_mb
+
+
+def test_the_ingest_refusal_states_its_bound(tmp_path):
     source = _sized(tmp_path / "big.sgy", int((DEFAULT_INGEST_ENVELOPE_GIB + 0.1) * 1024**3))
     message = ingest_envelope_refusal(source, envelope_gib=DEFAULT_INGEST_ENVELOPE_GIB)
     assert message is not None and message.startswith(REASON_CODE)
     assert "refusing to ingest" in message
-    assert "measured at 0.4/1.6/4.8 GB, slope 1.028 MB/MB, intercept 0.58 GB" in message
+    assert "bounded by 1.10 x (906 MB + 0.238 MB/MB), from P28; held at 9.6 GB (P32" in message
     below = _sized(tmp_path / "ok.sgy", int((DEFAULT_INGEST_ENVELOPE_GIB - 0.1) * 1024**3))
     assert ingest_envelope_refusal(below, envelope_gib=DEFAULT_INGEST_ENVELOPE_GIB) is None
     assert ingest_envelope_refusal(source, envelope_gib=0) is None

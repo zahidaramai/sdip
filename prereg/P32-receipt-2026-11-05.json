@@ -1,0 +1,55 @@
+{
+ "bound": {
+  "fixed_term_mb": 906.3,
+  "formula": "1.10 x (906.3 + 0.2381 x S_MB)",
+  "from": "prereg/P28-receipt-2026-11-05.json only",
+  "header_term_mb_per_mb": 0.2381,
+  "margin": 1.1
+ },
+ "bound_at_xxl_mb": 3515.6,
+ "criteria": {
+  "1_ingest_succeeds": "holds (exit 0)",
+  "2_peak_at_most_3515_6_mb": "holds: 2,810.5 MB (79.9 % of the bound)",
+  "3_default": "adopted: 27.0 GiB, where the bound reaches 8 GiB (28,991 MB)"
+ },
+ "debt": "D74",
+ "driver": {
+  "p32_run.py": "\"\"\"P32: build xxl (12 pieces), sha256 it, one sdip ingest under /usr/bin/time -l with --envelope-gib 10.0.\"\"\"\nimport hashlib, json, re, shutil, subprocess, sys, time\nfrom pathlib import Path\nRUN, REPO = Path(sys.argv[1]).resolve(), Path(sys.argv[2]).resolve()\nsys.path.insert(0, str(REPO))\nfrom tests.fixtures.generators.poststack3d import make_poststack3d\nRUN.mkdir(parents=True, exist_ok=False)\ncommit = subprocess.run([\"git\", \"-C\", str(REPO), \"rev-parse\", \"HEAD\"], capture_output=True, text=True).stdout.strip()\ndirty = subprocess.run([\"git\", \"-C\", str(REPO), \"status\", \"--porcelain\"], capture_output=True, text=True).stdout\nsrc = RUN / \"xxl.sgy\"\nwith src.open(\"wb\") as f:\n    for k in range(12):\n        piece = make_poststack3d(RUN / f\"piece{k}.sgy\", n_inline=300, n_crossline=630, n_samples=1000,\n                                 inline_start=100 + 300 * k).path\n        with piece.open(\"rb\") as p:\n            head = p.read(3600)\n            if k == 0: f.write(head)\n            shutil.copyfileobj(p, f, 1 << 24)\n        piece.unlink()\nh = hashlib.sha256()\nwith src.open(\"rb\") as f:\n    for b in iter(lambda: f.read(1 << 24), b\"\"): h.update(b)\nargv = [\"/usr/bin/time\", \"-l\", str(REPO / \".venv/bin/sdip\"), \"ingest\", str(src), str(RUN / \"xxl.mdio\"), \"--envelope-gib\", \"10.0\"]\nt = time.monotonic()\np = subprocess.run(argv, capture_output=True, text=True, cwd=REPO)\nm = re.search(r\"(\\d+)\\s+maximum resident set size\", p.stderr)\nprint(json.dumps({\"commit\": commit, \"tree_clean\": not dirty, \"source_bytes\": src.stat().st_size, \"source_sha256\": h.hexdigest(),\n                  \"argv\": argv[2:], \"envelope_gib_raised_for_this_run\": 10.0, \"exit\": p.returncode,\n                  \"peak_rss_bytes\": int(m.group(1)) if m else None, \"real_s\": round(time.monotonic() - t, 1),\n                  \"stderr_tail\": p.stderr.strip().splitlines()[-25:]}, indent=1))\n"
+ },
+ "fixture": {
+  "bytes": 9616323600,
+  "construction": "piece k=0..11: make_poststack3d(n_inline=300, n_crossline=630, n_samples=1000, inline_start=100+300k); piece 0's 3,600 header bytes, then each piece's bytes after its first 3,600, in order",
+  "name": "xxl",
+  "sha256": "ee546bf99c68895b5a7318d6169f8a87ab6666808d54e35a72bcb109683f419c"
+ },
+ "host": "macOS arm64, 36 GiB RAM, CPython 3.12.13",
+ "ingest": {
+  "argv": [
+   "sdip",
+   "ingest",
+   "<run root>/xxl.sgy",
+   "<run root>/xxl.mdio",
+   "--envelope-gib",
+   "10.0"
+  ],
+  "envelope_gib_raised_for_this_run": 10.0,
+  "exit": 0,
+  "peak_rss_bytes": 2810462208,
+  "real_s": 552.1
+ },
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "probe": "P32",
+ "registration_commit": "124f04f",
+ "reported_not_gated": {
+  "xl_4808163600_bytes": {
+   "bound_mb": 2256.3,
+   "measured_mb_p30": 1600.5
+  }
+ },
+ "run_commit": "124f04f",
+ "run_date": "2026-11-05",
+ "tree_clean": true
+}
