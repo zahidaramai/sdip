@@ -66,3 +66,25 @@ streamed.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-11-05 |
+| Run commit | `981bde5`, clean. Registration `e275698`, before the run |
+| Receipt | `prereg/P30-receipt-2026-11-05.json` |
+| Verdict | **Criterion 2 FAILED. The fit is not adopted; the 7.2 GiB interim stays** |
+
+- **`xl`** (4,808,163,600 B, sha256 `7ac9dfb2…a89a30817`, matching P26): `sdip ingest` exit 0,
+  peak RSS **1,600.5 MB**, 244.8 s.
+- **Criterion 1 (succeeds): holds.**
+- **Criterion 2 (at most 1,500 MB): FAILED**, at 1,600.5 MB. Before P28, P26 measured 5,528 MB
+  here, so memory no longer tracks the file at 1.15 MB per MB. It still grows, at **0.227 MB
+  per MB** between 1.60 and 4.81 GB.
+- **Criterion 3 (the default): not adopted**, because criterion 2 failed. For the record only:
+  OLS over the three points gives slope 0.1546 MB per MB, intercept 807.9 MB, R² 0.825. The
+  line would reach 8 GiB at 46.9 GiB, so the 40.1 GiB cap would have applied.
+
+**Diagnosis**, after the run and not gated. The growth between 1.60 and 4.81 GB matches the
+parsed source headers, which P28 measured at 0.24 MB per MB and left unstreamed. P28's stage B
+point plus that slope predicts 1,637.5 MB, against 1,600.5 measured. **The 1,500 MB bound was set
+without that known growth. That is a registration error, and the bound stands failed.**

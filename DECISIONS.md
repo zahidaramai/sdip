@@ -6269,3 +6269,28 @@ run in the default suite and the rest are `campaign`, as registered.
 
 **D8 stays OPEN:** coverage-guided fuzzing, five-way and larger combinations, x86-64 and
 Windows.
+
+## D-0134 — 2026-11-05 — P30: the ingest refit is not adopted; P31: what `/2` excludes; rulings asked
+
+**Measured.** P30 and P31 ran at `981bde5`, with a clean tree.
+- **P30.** `sdip ingest` on 4.81 GB peaks at **1,600.5 MB**. The bound registered was 1,500 MB,
+  so the fit is not adopted and the 7.2 GiB interim stays. For the record only: the fit is slope
+  0.1546 MB per MB, intercept 807.9 MB, R² 0.825. Between 1.60 and 4.81 GB memory grows at 0.227
+  MB per MB, which is the parsed source headers P28 measured at 0.24 and left unstreamed.
+  **I set the bound without that known growth.** P28's numbers predicted about 1,637 MB.
+- **P31.** No chunk file differed across 13 ingests at 1.60 and 4.81 GB. The only varying keys
+  are root `createdOn` and `amplitude`'s `statsV1.sumSquares`. Rule 2 holds.
+
+**What `/2` will be, under D-0132 and P31's rule.** `sdip-content-digest/2` is `/1` with one more
+exclusion: inside `amplitude`'s `zarr.json`, the `sumSquares` member of the `statsV1` attribute.
+That attribute is a JSON string, so it is parsed, the member removed, and the rest digested in
+canonical form. Exactly what P31 found varying is excluded, and the other `statsV1` members stay
+covered. New ingests record `/2` beside `/1`. `verify` reports both. No existing store's marker
+is rewritten.
+
+**Rulings asked:**
+1. **D74.** Keep the 7.2 GiB interim, or register a refit with a bound that carries the 0.24 MB
+   per MB header growth, or stream the parsed source headers first, as P27 would for verify.
+2. **D75.** Confirm the narrow exclusion (`statsV1.sumSquares` only) over excluding all of
+   `statsV1`. The narrow form is what P31's rule says ("excludes exactly the varying keys
+   found"). The building starts on that reading unless it is ruled otherwise.

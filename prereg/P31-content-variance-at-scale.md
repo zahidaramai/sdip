@@ -62,3 +62,30 @@ shapes are the small end, and this probe is the large end.
 ---
 
 ## Results — *appended after the run, never edited into the sections above*
+
+| Field | Value |
+|---|---|
+| Run date | 2026-11-05 |
+| Run commit | `981bde5`, clean. Registration `e275698`, before the run |
+| Receipt | `prereg/P31-receipt-2026-11-05.json`: every varying key, with its values per ingest |
+| Verdict | **The falsifier did not fire. Rule 2 holds** |
+
+| Case | N | Chunk files | Chunks differing | Varying keys (primary) |
+|---|---:|---:|---:|---|
+| `xl_ibm32` (4.81 GB) | 3 | 831 | **0** | root `createdOn` only |
+| `large_ibm32` (1.60 GB) | 5 | 281 | **0** | root `createdOn`; `amplitude` `statsV1/sumSquares`, 3 values |
+| `large_float32` (1.60 GB) | 5 | 281 | **0** | root `createdOn`; `amplitude` `statsV1/sumSquares`, 2 values |
+
+- **Falsifier: did not fire.** No chunk file differed in 13 ingests, so G6's claim holds at
+  these sizes.
+- **Varying keys.** Only two vary at their source: MDIO's root `createdOn` and `amplitude`'s
+  `statsV1.sumSquares`. The latter took 4.776611781649443, …444 and …446 × 10¹⁹. Every other
+  differing key sits under the root marker's `sdipStoreDigest`: the digests of those two, and
+  the marker's own attributes, which no digest covers. `count`, `sum`, `min` and `max` never
+  varied.
+- **The content digest (`/1`)** took three values over five `large_ibm32` ingests, two over five
+  `large_float32` ingests, and one over three `xl_ibm32` ingests. At `xl`, `sumSquares` happened
+  not to vary in three runs. That says nothing about larger sizes, and it is not read as one.
+- **Rule 2 holds.** `sdip-content-digest/2` excludes exactly the varying keys found: root
+  `createdOn` and `amplitude`'s `statsV1.sumSquares`. Nothing else is excluded, and nothing is
+  rounded. `/2` is recorded beside `/1`, never in place.

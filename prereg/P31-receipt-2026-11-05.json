@@ -1,0 +1,170 @@
+{
+ "cases": {
+  "large_float32": {
+   "N": 5,
+   "chunk_files": 281,
+   "chunk_files_differing": [],
+   "ingest_s": [
+    73.8,
+    59.7,
+    107.6,
+    110.2,
+    67.3
+   ],
+   "metadata_keys_differing": {
+    "amplitude/zarr.json#/attributes/statsV1/sumSquares": [
+     "4.776611781649444e+19",
+     "4.776611781649444e+19",
+     "4.776611781649444e+19",
+     "4.776611781649444e+19",
+     "4.776611781649443e+19"
+    ],
+    "zarr.json#/attributes/createdOn": [
+     "\"2026-11-05 03:07:11.912482+00:00\"",
+     "\"2026-11-05 03:08:26.988795+00:00\"",
+     "\"2026-11-05 03:09:28.220335+00:00\"",
+     "\"2026-11-05 03:11:20.227667+00:00\"",
+     "\"2026-11-05 03:13:09.964480+00:00\""
+    ],
+    "zarr.json#/attributes/sdipStoreDigest/content/sha256": [
+     "\"0b6d9e782f8e7b5162fa6940db3fcd4619101dfa8c70311b521c7a9bf5c7e141\"",
+     "\"0b6d9e782f8e7b5162fa6940db3fcd4619101dfa8c70311b521c7a9bf5c7e141\"",
+     "\"0b6d9e782f8e7b5162fa6940db3fcd4619101dfa8c70311b521c7a9bf5c7e141\"",
+     "\"0b6d9e782f8e7b5162fa6940db3fcd4619101dfa8c70311b521c7a9bf5c7e141\"",
+     "\"788683f9b9fb38e67819c653cd060db7aab2368e9c24f9e38d1fea649d3dfc63\""
+    ],
+    "zarr.json#/attributes/sdipStoreDigest/nodes/amplitude": [
+     "\"e85dce2c39f361ab8d06e874040c6cf43730d23c188522e957231a90ef990043\"",
+     "\"e85dce2c39f361ab8d06e874040c6cf43730d23c188522e957231a90ef990043\"",
+     "\"e85dce2c39f361ab8d06e874040c6cf43730d23c188522e957231a90ef990043\"",
+     "\"e85dce2c39f361ab8d06e874040c6cf43730d23c188522e957231a90ef990043\"",
+     "\"92351fecb5f404b77d3721ae7c5286bed40e167e2dff09e91f247ddf2e272272\""
+    ],
+    "zarr.json#/attributes/sdipStoreDigest/root": [
+     "\"6b2fb457e1111543b7236f0b36b686217ada8575e76dfeb3d5be71e8a8c8e57c\"",
+     "\"750d28014b1b11ae5e305446bcf864e02d348e2bfc0b88bb91b89c825d24b5c6\"",
+     "\"4296149fd2f199a2f45b4525f180c161210742996119472c806b9229b4797451\"",
+     "\"2793e78a5352cdbe0420ae8912137a47822fc4a4b7019d7e62dcddfb4aba7987\"",
+     "\"821b6d9f460c7a0ddfaa82686e9de5615771a219d7490e3dd184a15d79f2d85a\""
+    ],
+    "zarr.json#/attributes/sdipStoreDigest/sha256": [
+     "\"95ada0a6a357f27f860782a8380097fd83425e624275e672c83f76d0c2ab132d\"",
+     "\"cc2355a5b714a3248a54e3385184ad80b786a7d68c5b27334e90397747943cb0\"",
+     "\"d0c2459f930e6cacc801ccc6d7e878e6e52f5aa8135eca527359551ef2680258\"",
+     "\"0f0d6bb3610986a691eedc0751f34cc39aaabf8e6ba5179e67981aa01ade2aaa\"",
+     "\"1d83dd9ca58de86949c71ce7001e9007006df87df3bb4ee22a6ffc27a3b3a626\""
+    ]
+   },
+   "source_bytes": 1602723600,
+   "source_sha256": "f58624a2279e5c5ae2dc2508c79220b66338251e812278771ece6c3e7b80cc77"
+  },
+  "large_ibm32": {
+   "N": 5,
+   "chunk_files": 281,
+   "chunk_files_differing": [],
+   "ingest_s": [
+    95.0,
+    93.6,
+    89.2,
+    101.7,
+    120.0
+   ],
+   "metadata_keys_differing": {
+    "amplitude/zarr.json#/attributes/statsV1/sumSquares": [
+     "4.776611781649446e+19",
+     "4.776611781649444e+19",
+     "4.776611781649444e+19",
+     "4.776611781649443e+19",
+     "4.776611781649443e+19"
+    ],
+    "zarr.json#/attributes/createdOn": [
+     "\"2026-11-05 02:58:36.680794+00:00\"",
+     "\"2026-11-05 03:00:14.836515+00:00\"",
+     "\"2026-11-05 03:01:48.464253+00:00\"",
+     "\"2026-11-05 03:03:18.959801+00:00\"",
+     "\"2026-11-05 03:05:02.240565+00:00\""
+    ],
+    "zarr.json#/attributes/sdipStoreDigest/content/sha256": [
+     "\"969d31f06dd51a3228058b808ad9f196eec3dd1c1abe5ee47c53891a46937ec9\"",
+     "\"ad503df50b95bfceb5ff2b3e4f557288d6b03fee8e1921a20acf8c59ed39098c\"",
+     "\"ad503df50b95bfceb5ff2b3e4f557288d6b03fee8e1921a20acf8c59ed39098c\"",
+     "\"ae99cbe7b19abe38a3b0b57ddd78785f76bc5c157d656b8d9afaeaab4e822c54\"",
+     "\"ae99cbe7b19abe38a3b0b57ddd78785f76bc5c157d656b8d9afaeaab4e822c54\""
+    ],
+    "zarr.json#/attributes/sdipStoreDigest/nodes/amplitude": [
+     "\"42ebfc709853c8734cfc7f5bb9472da757773f18470fb11271e7d2a07aa79f70\"",
+     "\"e85dce2c39f361ab8d06e874040c6cf43730d23c188522e957231a90ef990043\"",
+     "\"e85dce2c39f361ab8d06e874040c6cf43730d23c188522e957231a90ef990043\"",
+     "\"92351fecb5f404b77d3721ae7c5286bed40e167e2dff09e91f247ddf2e272272\"",
+     "\"92351fecb5f404b77d3721ae7c5286bed40e167e2dff09e91f247ddf2e272272\""
+    ],
+    "zarr.json#/attributes/sdipStoreDigest/root": [
+     "\"66b33a8d75b2391894e8fc7e42c1f88e8b3b98e60ab110ee264748327846c9ac\"",
+     "\"3fd9498570aa9dfa9fe63ba30c0d2629263bdaefd379f1e13026b0fb4a888127\"",
+     "\"ec7bc12da330b4a07aad704a766df20841f364a4d51acbb90ff03b7c5291e9f5\"",
+     "\"70b72cdefdad6c865199e2b4113a98719ddb26539edd3304b5e455c41845f739\"",
+     "\"87a696967c2efc0df2d67b8884170c2fd718fca0ca38ff798bad2fdc340e5e63\""
+    ],
+    "zarr.json#/attributes/sdipStoreDigest/sha256": [
+     "\"d7ef396fa3746430f7314e40648dd291071519a4371c8f015de8f93f4008ebfe\"",
+     "\"103961985a1f3a07a44e1a6416edaff0ab5bf557c736e106fa4da3a5bcb3fb99\"",
+     "\"7c2a158aa92e402838baced2427d01b68b822fa344a6895ba88b419254ac26e9\"",
+     "\"e2ba1b0b251cc2f6dc4159748002909581d8b2b569b6b56482c1ab3b7fdc0229\"",
+     "\"b50d834ea680f604b82feefe66c65b4039dbefe3595469afb28f6c03b64248ec\""
+    ]
+   },
+   "source_bytes": 1602723600,
+   "source_sha256": "2b8b7aa0851771ae8d2981ed173de63f7dd94f0b50124d3a7bf2881b9cd3eb2e"
+  },
+  "xl_ibm32": {
+   "N": 3,
+   "chunk_files": 831,
+   "chunk_files_differing": [],
+   "ingest_s": [
+    244.8,
+    232.5,
+    234.0
+   ],
+   "metadata_keys_differing": {
+    "zarr.json#/attributes/createdOn": [
+     "\"2026-11-05 02:46:46.838769+00:00\"",
+     "\"2026-11-05 02:50:52.606167+00:00\"",
+     "\"2026-11-05 02:54:47.457512+00:00\""
+    ],
+    "zarr.json#/attributes/sdipStoreDigest/root": [
+     "\"035d70eedec70913b362428c09aaf6817c96f48d688a11433b2fda3957882d0a\"",
+     "\"1a6cbc417bfb9906ee9a19e78fe93913ea123c11ce10597eb19040eadf4f8e4a\"",
+     "\"994b5c073703dffe290f2b3003d3353b405c0e4d65b5ec32206cc0c5a962bca0\""
+    ],
+    "zarr.json#/attributes/sdipStoreDigest/sha256": [
+     "\"f42c30468407529d4b4d973d7c51ae2ee9a070e9ed50a753171f007e26c778a8\"",
+     "\"8d271efb508f61d02ae5e6283f937b11c23f53174ffa56cde7d759a12f3c7a64\"",
+     "\"efb713a2708e279a38f45c6b63a336b9212731a212d2650eec5403a871dc11e6\""
+    ]
+   },
+   "source_bytes": 4808163600,
+   "source_sha256": "7ac9dfb25d4b1f44976931df37568e86e3f950d8687d791c3c3c369a89a30817"
+  }
+ },
+ "debt": "D75",
+ "decision_rule": "rule 2 holds: only createdOn and a key under amplitude's statsV1 vary",
+ "derived_varying_keys_note": "every other differing key is under the root marker's sdipStoreDigest (root, sha256, content/sha256, nodes/amplitude): the digests of the two primary keys, and the marker's own attributes, which no digest covers",
+ "driver": {
+  "p31_harness.py": "\"\"\"P30 + P31 harness: P13's method at survey scale; xl ingest 1 measured under /usr/bin/time -l (P30).\n\nUsage: python p31_harness.py RUN_ROOT REPO_ROOT > receipt.json\nSynthetic data only. RUN_ROOT must not exist; the caller harvests and deletes it.\n\"\"\"\nfrom __future__ import annotations\nimport hashlib, json, re, shutil, subprocess, sys, time\nfrom pathlib import Path\nfrom typing import Any\n\nRUN_ROOT = Path(sys.argv[1]).resolve()\nREPO = Path(sys.argv[2]).resolve()\nSDIP = str(REPO / \".venv\" / \"bin\" / \"sdip\")\nsys.path.insert(0, str(REPO))\nPAUSE_S = 1.5\nWANT = {\"large_ibm32\": \"2b8b7aa0851771ae8d2981ed173de63f7dd94f0b50124d3a7bf2881b9cd3eb2e\",\n        \"xl_ibm32\": \"7ac9dfb25d4b1f44976931df37568e86e3f950d8687d791c3c3c369a89a30817\"}\nCASES = [(\"xl_ibm32\", 3), (\"large_ibm32\", 5), (\"large_float32\", 5)]\n\ndef sha(path: Path) -> str:\n    h = hashlib.sha256()\n    with path.open(\"rb\") as f:\n        for b in iter(lambda: f.read(1 << 24), b\"\"): h.update(b)\n    return h.hexdigest()\n\ndef make(case: str, path: Path) -> None:\n    from tests.fixtures.generators.poststack3d import make_poststack3d\n    if case == \"xl_ibm32\":\n        with path.open(\"wb\") as f:\n            for k in range(6):\n                piece = make_poststack3d(RUN_ROOT / f\"piece{k}.sgy\", n_inline=300, n_crossline=630,\n                                         n_samples=1000, inline_start=100 + 300 * k).path\n                with piece.open(\"rb\") as p:\n                    head = p.read(3600)\n                    if k == 0: f.write(head)\n                    shutil.copyfileobj(p, f, 1 << 24)\n                piece.unlink()\n    else:\n        fmt = \"float32\" if case.endswith(\"float32\") else \"ibm32\"\n        make_poststack3d(path, n_inline=600, n_crossline=630, n_samples=1000, sample_format=fmt)\n\ndef flatten(value: Any, prefix: str = \"\") -> dict[str, Any]:\n    if isinstance(value, dict):\n        out: dict[str, Any] = {}\n        for k, v in value.items(): out.update(flatten(v, f\"{prefix}/{k}\"))\n        return out\n    if isinstance(value, str) and value.startswith(\"{\"):\n        try:\n            return flatten(json.loads(value), prefix)  # statsV1 is a JSON string; flatten it too\n        except ValueError:\n            pass\n    return {prefix: json.dumps(value, sort_keys=True)}\n\ndef survey(store: Path) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:\n    chunks, metadata = {}, {}\n    for path in sorted(store.rglob(\"*\")):\n        if not path.is_file(): continue\n        rel = path.relative_to(store).as_posix()\n        if path.name == \"zarr.json\": metadata[rel] = flatten(json.loads(path.read_bytes()))\n        else: chunks[rel] = sha(path)\n    return chunks, metadata\n\ndef main() -> None:\n    RUN_ROOT.mkdir(parents=True, exist_ok=False)\n    commit = subprocess.run([\"git\", \"-C\", str(REPO), \"rev-parse\", \"HEAD\"], capture_output=True, text=True).stdout.strip()\n    dirty = subprocess.run([\"git\", \"-C\", str(REPO), \"status\", \"--porcelain\"], capture_output=True, text=True).stdout\n    report: dict[str, Any] = {\"probe\": \"P31\", \"commit\": commit, \"tree_clean\": not dirty, \"cases\": {}, \"p30\": None}\n    for case, n in CASES:\n        source = RUN_ROOT / f\"{case}.sgy\"\n        make(case, source)\n        digest = sha(source)\n        if case in WANT and digest != WANT[case]:\n            report[\"cases\"][case] = {\"error\": f\"fixture sha256 {digest} != registered\"}; break\n        runs, seconds = [], []\n        for i in range(n):\n            store = RUN_ROOT / f\"{case}-{i}.mdio\"\n            argv = [SDIP, \"ingest\", str(source), str(store)]\n            if case == \"xl_ibm32\" and i == 0: argv = [\"/usr/bin/time\", \"-l\", *argv]\n            t = time.monotonic()\n            proc = subprocess.run(argv, capture_output=True, text=True, check=False, cwd=REPO)\n            seconds.append(round(time.monotonic() - t, 1))\n            if case == \"xl_ibm32\" and i == 0:\n                m = re.search(r\"(\\d+)\\s+maximum resident set size\", proc.stderr)\n                report[\"p30\"] = {\"exit\": proc.returncode, \"source_bytes\": source.stat().st_size,\n                                 \"peak_rss_bytes\": int(m.group(1)) if m else None, \"real_s\": seconds[-1]}\n            if proc.returncode != 0:\n                runs.append({\"error\": proc.stderr[-600:]}); continue\n            runs.append(survey(store)); shutil.rmtree(store); time.sleep(PAUSE_S)\n        good = [r for r in runs if isinstance(r, tuple)]\n        entry: dict[str, Any] = {\"N\": n, \"source_bytes\": source.stat().st_size, \"source_sha256\": digest, \"ingest_s\": seconds}\n        if len(good) != n:\n            entry[\"error\"] = [r for r in runs if isinstance(r, dict)]\n        else:\n            chunk_diff = sorted(rel for rel in set().union(*(set(c) for c, _ in good)) if len({c.get(rel) for c, _ in good}) > 1)\n            varying: dict[str, list[str]] = {}\n            for rel in set().union(*(set(m) for _, m in good)):\n                for key in set().union(*(set(m.get(rel, {})) for _, m in good)):\n                    vals = [m.get(rel, {}).get(key) for _, m in good]\n                    if len(set(vals)) > 1: varying[f\"{rel}#{key}\"] = vals\n            entry.update({\"chunk_files\": len(good[0][0]), \"chunk_files_differing\": chunk_diff,\n                          \"metadata_keys_differing\": dict(sorted(varying.items()))})\n        report[\"cases\"][case] = entry\n        source.unlink()\n        if entry.get(\"chunk_files_differing\"): break  # the falsifier: stop\n    print(json.dumps(report, indent=1))\n\nif __name__ == \"__main__\":\n    main()\n"
+ },
+ "falsifier_fired": false,
+ "host": "macOS arm64, 36 GiB RAM, CPython 3.12.13",
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "primary_varying_keys": [
+  "zarr.json#/attributes/createdOn",
+  "amplitude/zarr.json#/attributes/statsV1/sumSquares"
+ ],
+ "probe": "P31",
+ "registration_commit": "e275698",
+ "run_commit": "981bde5",
+ "run_date": "2026-11-05",
+ "tree_clean": true
+}

@@ -1,0 +1,51 @@
+{
+ "criteria": {
+  "1_ingest_succeeds": "holds (exit 0)",
+  "2_peak_at_most_1500_mb": "FAILED: 1,600.5 MB",
+  "3_default": "not adopted (criterion 2 failed); 7.2 GiB interim stays"
+ },
+ "debt": "D74",
+ "driver": {
+  "p31_harness.py": "\"\"\"P30 + P31 harness: P13's method at survey scale; xl ingest 1 measured under /usr/bin/time -l (P30).\n\nUsage: python p31_harness.py RUN_ROOT REPO_ROOT > receipt.json\nSynthetic data only. RUN_ROOT must not exist; the caller harvests and deletes it.\n\"\"\"\nfrom __future__ import annotations\nimport hashlib, json, re, shutil, subprocess, sys, time\nfrom pathlib import Path\nfrom typing import Any\n\nRUN_ROOT = Path(sys.argv[1]).resolve()\nREPO = Path(sys.argv[2]).resolve()\nSDIP = str(REPO / \".venv\" / \"bin\" / \"sdip\")\nsys.path.insert(0, str(REPO))\nPAUSE_S = 1.5\nWANT = {\"large_ibm32\": \"2b8b7aa0851771ae8d2981ed173de63f7dd94f0b50124d3a7bf2881b9cd3eb2e\",\n        \"xl_ibm32\": \"7ac9dfb25d4b1f44976931df37568e86e3f950d8687d791c3c3c369a89a30817\"}\nCASES = [(\"xl_ibm32\", 3), (\"large_ibm32\", 5), (\"large_float32\", 5)]\n\ndef sha(path: Path) -> str:\n    h = hashlib.sha256()\n    with path.open(\"rb\") as f:\n        for b in iter(lambda: f.read(1 << 24), b\"\"): h.update(b)\n    return h.hexdigest()\n\ndef make(case: str, path: Path) -> None:\n    from tests.fixtures.generators.poststack3d import make_poststack3d\n    if case == \"xl_ibm32\":\n        with path.open(\"wb\") as f:\n            for k in range(6):\n                piece = make_poststack3d(RUN_ROOT / f\"piece{k}.sgy\", n_inline=300, n_crossline=630,\n                                         n_samples=1000, inline_start=100 + 300 * k).path\n                with piece.open(\"rb\") as p:\n                    head = p.read(3600)\n                    if k == 0: f.write(head)\n                    shutil.copyfileobj(p, f, 1 << 24)\n                piece.unlink()\n    else:\n        fmt = \"float32\" if case.endswith(\"float32\") else \"ibm32\"\n        make_poststack3d(path, n_inline=600, n_crossline=630, n_samples=1000, sample_format=fmt)\n\ndef flatten(value: Any, prefix: str = \"\") -> dict[str, Any]:\n    if isinstance(value, dict):\n        out: dict[str, Any] = {}\n        for k, v in value.items(): out.update(flatten(v, f\"{prefix}/{k}\"))\n        return out\n    if isinstance(value, str) and value.startswith(\"{\"):\n        try:\n            return flatten(json.loads(value), prefix)  # statsV1 is a JSON string; flatten it too\n        except ValueError:\n            pass\n    return {prefix: json.dumps(value, sort_keys=True)}\n\ndef survey(store: Path) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:\n    chunks, metadata = {}, {}\n    for path in sorted(store.rglob(\"*\")):\n        if not path.is_file(): continue\n        rel = path.relative_to(store).as_posix()\n        if path.name == \"zarr.json\": metadata[rel] = flatten(json.loads(path.read_bytes()))\n        else: chunks[rel] = sha(path)\n    return chunks, metadata\n\ndef main() -> None:\n    RUN_ROOT.mkdir(parents=True, exist_ok=False)\n    commit = subprocess.run([\"git\", \"-C\", str(REPO), \"rev-parse\", \"HEAD\"], capture_output=True, text=True).stdout.strip()\n    dirty = subprocess.run([\"git\", \"-C\", str(REPO), \"status\", \"--porcelain\"], capture_output=True, text=True).stdout\n    report: dict[str, Any] = {\"probe\": \"P31\", \"commit\": commit, \"tree_clean\": not dirty, \"cases\": {}, \"p30\": None}\n    for case, n in CASES:\n        source = RUN_ROOT / f\"{case}.sgy\"\n        make(case, source)\n        digest = sha(source)\n        if case in WANT and digest != WANT[case]:\n            report[\"cases\"][case] = {\"error\": f\"fixture sha256 {digest} != registered\"}; break\n        runs, seconds = [], []\n        for i in range(n):\n            store = RUN_ROOT / f\"{case}-{i}.mdio\"\n            argv = [SDIP, \"ingest\", str(source), str(store)]\n            if case == \"xl_ibm32\" and i == 0: argv = [\"/usr/bin/time\", \"-l\", *argv]\n            t = time.monotonic()\n            proc = subprocess.run(argv, capture_output=True, text=True, check=False, cwd=REPO)\n            seconds.append(round(time.monotonic() - t, 1))\n            if case == \"xl_ibm32\" and i == 0:\n                m = re.search(r\"(\\d+)\\s+maximum resident set size\", proc.stderr)\n                report[\"p30\"] = {\"exit\": proc.returncode, \"source_bytes\": source.stat().st_size,\n                                 \"peak_rss_bytes\": int(m.group(1)) if m else None, \"real_s\": seconds[-1]}\n            if proc.returncode != 0:\n                runs.append({\"error\": proc.stderr[-600:]}); continue\n            runs.append(survey(store)); shutil.rmtree(store); time.sleep(PAUSE_S)\n        good = [r for r in runs if isinstance(r, tuple)]\n        entry: dict[str, Any] = {\"N\": n, \"source_bytes\": source.stat().st_size, \"source_sha256\": digest, \"ingest_s\": seconds}\n        if len(good) != n:\n            entry[\"error\"] = [r for r in runs if isinstance(r, dict)]\n        else:\n            chunk_diff = sorted(rel for rel in set().union(*(set(c) for c, _ in good)) if len({c.get(rel) for c, _ in good}) > 1)\n            varying: dict[str, list[str]] = {}\n            for rel in set().union(*(set(m) for _, m in good)):\n                for key in set().union(*(set(m.get(rel, {})) for _, m in good)):\n                    vals = [m.get(rel, {}).get(key) for _, m in good]\n                    if len(set(vals)) > 1: varying[f\"{rel}#{key}\"] = vals\n            entry.update({\"chunk_files\": len(good[0][0]), \"chunk_files_differing\": chunk_diff,\n                          \"metadata_keys_differing\": dict(sorted(varying.items()))})\n        report[\"cases\"][case] = entry\n        source.unlink()\n        if entry.get(\"chunk_files_differing\"): break  # the falsifier: stop\n    print(json.dumps(report, indent=1))\n\nif __name__ == \"__main__\":\n    main()\n"
+ },
+ "fit": {
+  "capped_default_gib": 40.1,
+  "intercept_mb": 807.9,
+  "r2": 0.825,
+  "reaches_8gib_at_gib": 46.89,
+  "slope_mb_per_mb": 0.1546
+ },
+ "fixture": {
+  "bytes": 4808163600,
+  "name": "xl",
+  "sha256": "7ac9dfb25d4b1f44976931df37568e86e3f950d8687d791c3c3c369a89a30817"
+ },
+ "host": "macOS arm64, 36 GiB RAM, CPython 3.12.13",
+ "ingest": {
+  "exit": 0,
+  "peak_rss_bytes": 1600536576,
+  "real_s": 244.8,
+  "source_bytes": 4808163600
+ },
+ "p28_parsed_header_prediction_mb": 1637.5,
+ "pins": {
+  "multidimio": "1.2.1",
+  "segy": "0.6.0"
+ },
+ "points_from_p28_stage_b": [
+  [
+   400683600,
+   1001734144
+  ],
+  [
+   1602723600,
+   874266624
+  ]
+ ],
+ "probe": "P30",
+ "registration_commit": "e275698",
+ "run_commit": "981bde5",
+ "run_date": "2026-11-05",
+ "slope_1p6_to_4p8_mb_per_mb": 0.2266,
+ "tree_clean": true
+}

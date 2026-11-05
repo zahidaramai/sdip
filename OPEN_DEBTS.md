@@ -3346,3 +3346,28 @@ measured: 223 + 1,177 + 3,632.
 
 **Still open on D8:** coverage-guided fuzzing; five-way and larger combinations; x86-64 and
 Windows. **D8 stays OPEN.**
+
+---
+
+## D74 — note 2026-11-05 — the refit was not adopted (P30)
+
+- **Concerns:** D74 NARROWED 2026-11-05 (P28) above · **Status:** `OPEN` · **Decision:**
+  `DECISIONS.md` D-0134
+
+On 4.81 GB, `sdip ingest` peaks at 1,600.5 MB (5,528 MB before P28). That is above P30's
+registered bound of 1,500 MB, so the 3-point fit is not adopted, and the 7.2 GiB interim
+envelope stays. The growth that remains is 0.227 MB per MB, which matches the parsed source
+headers P28 measured (0.24). The bound left that growth out.
+
+---
+
+## D75 — NARROWED 2026-11-05 — what varies is measured at scale (P31)
+
+- **Narrows:** D75 above (**SP10**) · **Decision:** `DECISIONS.md` D-0134 · **Probe:** P31, rule 2
+- **Status:** `OPEN` until `sdip-content-digest/2` is built
+
+Over 13 fresh ingests (4.81 GB ibm32 ×3, 1.60 GB ibm32 ×5, 1.60 GB float32 ×5):
+- no chunk file differed;
+- only MDIO's root `createdOn` and `amplitude`'s `statsV1.sumSquares` varied.
+
+`/2` therefore excludes exactly those two keys, beside `/1`, per D-0132.
