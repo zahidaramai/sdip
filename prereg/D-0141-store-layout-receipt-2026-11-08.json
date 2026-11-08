@@ -1,0 +1,2668 @@
+{
+ "receipt": "D-0141 store-layout measurement (not a pre-registered probe; descriptive, no gate)",
+ "date": "2026-11-08",
+ "run_root": "/private/tmp/claude-501/-Users-zahidaramai-Local-Sites-seis-mdio-zarr/217d895b-5cfa-43c1-bf9a-e53f12081dbc/scratchpad/sdip-ver-run (deleted after harvest)",
+ "measured_at_main": "15519c5",
+ "environment": "seis-mdio-zarr .venv, multidimio 1.2.1, segy 0.6.0, uv.lock deps unchanged since 444f8ec",
+ "method": "detached worktrees per commit; PYTHONPATH=<worktree>/src python -m sdip.cli ingest|verify --json; layout via tests/integration/test_store_layout_contract.py:store_layout",
+ "sources": {
+  "ibm32": "make_poststack3d() sha256 be4ce4375799b8ebc670526229581e73d995f03a8a3bb308141f41fc91bdd762",
+  "float32": "make_poststack3d(sample_format='float32') sha256 55cb3e444bcdb9678ce0e4799e6eadc8678b467177470006bce3a3c0513cd451",
+  "float32_delay": "make_poststack3d(sample_format='float32', delay_recording_time=100) sha256 f5820a1c218180481a23cddecccab89da5e9167d96d5af6a65eb86ab8735060e"
+ },
+ "verify_naming": "verify-<reader>-on-<writer>-<shape>; cross-f32d = reader on the other version's delay store",
+ "versions": {
+  "v160": {
+   "commit": "444f8ec",
+   "fingerprint": "ef0dc586d25110257b102c316c4f6a43f648459305b272e541efbe1b8c49d01e",
+   "shapes": {
+    "ibm32": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "amplitude_raw_ibm32",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawSampleContainer",
+        "sdipRawSampleFillWord",
+        "sdipRawSampleLiveMask",
+        "sdipRawSampleProbe",
+        "sdipRawSampleRationale",
+        "sdipRawSampleSourceFormat",
+        "sdipRawSampleUndecoded",
+        "sdipRawSampleWordLayout"
+       ],
+       "data_type": "uint32",
+       "ndim": 3
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    },
+    "float32": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    },
+    "float32_delay": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipSampleAxisOrigin",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    }
+   },
+   "stores": {
+    "ibm32": {
+     "store_digest": "40e5e7d5ea09aa93415be1d64044535ec7322470ddfc769ffdeac0c663e2d15c",
+     "content_digest_v1": "05841e60df0c57df83f447180cf5cd1de78394d9b7e425885ec018cb2b672f7f",
+     "content_digest_v2": null,
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "amplitude_raw_ibm32": {
+       "dtype": "uint32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "a48dc1f59f1798ee5ad671a3e50bdf21c7bc40f1691789ba442a206d69cc797b"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "b6f1c27afab64332b6c5a52c2f3226826251ba6319d0dd9afe3638a61dc9e78f"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "951367c18b5bfe2a35fd1c3499a60e12cce7f827b5bc319257195ebbce211538"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "48cd781b261dd9e0827070f4c1d16b73233cad211bf6eb2047a5a115d329a73b"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    },
+    "float32": {
+     "store_digest": "1493efb028bbcb754d12181f8a094adc15552020ee7af12dcee19401097dca4c",
+     "content_digest_v1": "e42d70b8f6d71ca6719406239d2041c64f12eb9fae491a71c538a56b3f4b09a1",
+     "content_digest_v2": null,
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "b6f1c27afab64332b6c5a52c2f3226826251ba6319d0dd9afe3638a61dc9e78f"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "951367c18b5bfe2a35fd1c3499a60e12cce7f827b5bc319257195ebbce211538"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "48cd781b261dd9e0827070f4c1d16b73233cad211bf6eb2047a5a115d329a73b"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    },
+    "float32_delay": {
+     "store_digest": "ebf8dc58eae97213d3db1e7cbe424249b378bdb9a6b91d7c4ce40b8e102c90e1",
+     "content_digest_v1": "b1ba879d78d9acb3d57c9512b942f65af38b4722e07f7390fea3ce03d23d82f2",
+     "content_digest_v2": null,
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "d58d8be910ebe49b69259c40f019f712f4970eb1cd2e93d44cd35953280e5910"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "2ae986c3d0e19c19aa99aa4d3ed9e3f1bfb29ccb4a3005553674bc08b976760a"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "0428b3766ffe7852be255085874a43b2634da3ee76f7c5d1811d48ece1cfffc0"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    }
+   }
+  },
+  "pre": {
+   "commit": "26da323",
+   "fingerprint": "420191078e282a89fcca3e3a88384d468964e539beb6669568cdd437ccee1703",
+   "shapes": {
+    "ibm32": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "amplitude_raw_ibm32",
+       "kind": "group",
+       "sdip_attrs": [
+        "sdipRawSampleContainer",
+        "sdipRawSampleLayout",
+        "sdipRawSampleLiveMask",
+        "sdipRawSampleProbe",
+        "sdipRawSampleRationale",
+        "sdipRawSampleReconstruction",
+        "sdipRawSampleSourceFormat",
+        "sdipRawSampleUndecoded",
+        "sdipRawSampleWordLayout"
+       ]
+      },
+      {
+       "path": "amplitude_raw_ibm32/index",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "uint64",
+       "ndim": 1
+      },
+      {
+       "path": "amplitude_raw_ibm32/words",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "uint32",
+       "ndim": 1
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    },
+    "float32": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    },
+    "float32_delay": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipSampleAxisOrigin",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    }
+   },
+   "stores": {
+    "ibm32": {
+     "store_digest": "5c33dba651d78eb0c2329f6120ade3bcf17fa6ae6880edcd6448eb76ac995d1f",
+     "content_digest_v1": "49f4cd0b01c82f9b688d21e25f82d01e4b2f444b0a73188652827d8caa021893",
+     "content_digest_v2": null,
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "amplitude_raw_ibm32/index": {
+       "dtype": "uint64",
+       "shape": [
+        0
+       ],
+       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "amplitude_raw_ibm32/words": {
+       "dtype": "uint32",
+       "shape": [
+        0
+       ],
+       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "b6f1c27afab64332b6c5a52c2f3226826251ba6319d0dd9afe3638a61dc9e78f"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "951367c18b5bfe2a35fd1c3499a60e12cce7f827b5bc319257195ebbce211538"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "48cd781b261dd9e0827070f4c1d16b73233cad211bf6eb2047a5a115d329a73b"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    },
+    "float32": {
+     "store_digest": "a7a31b8f774ac9525c977dbb3f18bd9dd9dbb88318bd49fce3db81932bbb18b2",
+     "content_digest_v1": "e42d70b8f6d71ca6719406239d2041c64f12eb9fae491a71c538a56b3f4b09a1",
+     "content_digest_v2": null,
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "b6f1c27afab64332b6c5a52c2f3226826251ba6319d0dd9afe3638a61dc9e78f"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "951367c18b5bfe2a35fd1c3499a60e12cce7f827b5bc319257195ebbce211538"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "48cd781b261dd9e0827070f4c1d16b73233cad211bf6eb2047a5a115d329a73b"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    },
+    "float32_delay": {
+     "store_digest": "d7bf653cc56081965615b4ecdcbd6bb7310e66d9b42231f4dcff5aa785469837",
+     "content_digest_v1": "b1ba879d78d9acb3d57c9512b942f65af38b4722e07f7390fea3ce03d23d82f2",
+     "content_digest_v2": null,
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "d58d8be910ebe49b69259c40f019f712f4970eb1cd2e93d44cd35953280e5910"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "2ae986c3d0e19c19aa99aa4d3ed9e3f1bfb29ccb4a3005553674bc08b976760a"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "0428b3766ffe7852be255085874a43b2634da3ee76f7c5d1811d48ece1cfffc0"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    }
+   }
+  },
+  "cbb": {
+   "commit": "cbb4f2d",
+   "fingerprint": "e0a172db50008c8cfacadfe109dccee16d2e4fd599372420d75a8cd6143002d1",
+   "shapes": {
+    "ibm32": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "amplitude_raw_ibm32",
+       "kind": "group",
+       "sdip_attrs": [
+        "sdipRawSampleContainer",
+        "sdipRawSampleLayout",
+        "sdipRawSampleLiveMask",
+        "sdipRawSampleProbe",
+        "sdipRawSampleRationale",
+        "sdipRawSampleReconstruction",
+        "sdipRawSampleSourceFormat",
+        "sdipRawSampleUndecoded",
+        "sdipRawSampleWordLayout"
+       ]
+      },
+      {
+       "path": "amplitude_raw_ibm32/index",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "uint64",
+       "ndim": 1
+      },
+      {
+       "path": "amplitude_raw_ibm32/words",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "uint32",
+       "ndim": 1
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "source_trace_ordinal",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipSourceTraceOrder",
+        "sdipSourceTraceOrdinalFill"
+       ],
+       "data_type": "int64",
+       "ndim": 2
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    },
+    "float32": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "source_trace_ordinal",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipSourceTraceOrder",
+        "sdipSourceTraceOrdinalFill"
+       ],
+       "data_type": "int64",
+       "ndim": 2
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    },
+    "float32_delay": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "source_trace_ordinal",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipSourceTraceOrder",
+        "sdipSourceTraceOrdinalFill"
+       ],
+       "data_type": "int64",
+       "ndim": 2
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipSampleAxisOrigin",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    }
+   },
+   "stores": {
+    "ibm32": {
+     "store_digest": "52912c78b2de87b7f47b79105009c549c9f78565f3e5e3c72136f15cfdb06ec3",
+     "content_digest_v1": "ca1b95ba3ac3f1de93e2bd8025e307c967fa685754dbeaa68055d06df28ff1fb",
+     "content_digest_v2": null,
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "amplitude_raw_ibm32/index": {
+       "dtype": "uint64",
+       "shape": [
+        0
+       ],
+       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "amplitude_raw_ibm32/words": {
+       "dtype": "uint32",
+       "shape": [
+        0
+       ],
+       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "b6f1c27afab64332b6c5a52c2f3226826251ba6319d0dd9afe3638a61dc9e78f"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "951367c18b5bfe2a35fd1c3499a60e12cce7f827b5bc319257195ebbce211538"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "source_trace_ordinal": {
+       "dtype": "int64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "394a42f05d4ef71e6c3270cc4fb38075f42683eb24255ab033cbf89ecccf5143"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "48cd781b261dd9e0827070f4c1d16b73233cad211bf6eb2047a5a115d329a73b"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    },
+    "float32": {
+     "store_digest": "b0b3891da38a76a92164ae4ed4a2fe68613878f0631d89cbbf1d49a0022ccef5",
+     "content_digest_v1": "20e03d99828aca4efea32151cd21177987be32b7ba773d823f8ddbc918458943",
+     "content_digest_v2": null,
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "b6f1c27afab64332b6c5a52c2f3226826251ba6319d0dd9afe3638a61dc9e78f"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "951367c18b5bfe2a35fd1c3499a60e12cce7f827b5bc319257195ebbce211538"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "source_trace_ordinal": {
+       "dtype": "int64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "394a42f05d4ef71e6c3270cc4fb38075f42683eb24255ab033cbf89ecccf5143"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "48cd781b261dd9e0827070f4c1d16b73233cad211bf6eb2047a5a115d329a73b"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    },
+    "float32_delay": {
+     "store_digest": "f086bff03f2f2116e7d0a0a0be60d5286c736b9c8ab9c64a21be1bb5cac2d946",
+     "content_digest_v1": "d6e6cc360b2edd19d8685a6a7eeb5548b348431b32c7308995acb3e86e9c153c",
+     "content_digest_v2": null,
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "d58d8be910ebe49b69259c40f019f712f4970eb1cd2e93d44cd35953280e5910"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "2ae986c3d0e19c19aa99aa4d3ed9e3f1bfb29ccb4a3005553674bc08b976760a"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "source_trace_ordinal": {
+       "dtype": "int64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "394a42f05d4ef71e6c3270cc4fb38075f42683eb24255ab033cbf89ecccf5143"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "0428b3766ffe7852be255085874a43b2634da3ee76f7c5d1811d48ece1cfffc0"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    }
+   }
+  },
+  "head": {
+   "commit": "15519c5",
+   "fingerprint": "9405230edc62cd392fca7db766979d2db7fe1f3d9133fdc8af0ed9e539b8f46b",
+   "shapes": {
+    "ibm32": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "amplitude_raw_ibm32",
+       "kind": "group",
+       "sdip_attrs": [
+        "sdipRawSampleContainer",
+        "sdipRawSampleLayout",
+        "sdipRawSampleLiveMask",
+        "sdipRawSampleProbe",
+        "sdipRawSampleRationale",
+        "sdipRawSampleReconstruction",
+        "sdipRawSampleSourceFormat",
+        "sdipRawSampleUndecoded",
+        "sdipRawSampleWordLayout"
+       ]
+      },
+      {
+       "path": "amplitude_raw_ibm32/index",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "uint64",
+       "ndim": 1
+      },
+      {
+       "path": "amplitude_raw_ibm32/words",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "uint32",
+       "ndim": 1
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "source_trace_ordinal",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipSourceTraceOrder",
+        "sdipSourceTraceOrdinalFill"
+       ],
+       "data_type": "int64",
+       "ndim": 2
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "contentV2",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    },
+    "float32": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "source_trace_ordinal",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipSourceTraceOrder",
+        "sdipSourceTraceOrdinalFill"
+       ],
+       "data_type": "int64",
+       "ndim": 2
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "contentV2",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    },
+    "float32_delay": {
+     "nodes": [
+      {
+       "path": "amplitude",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float32",
+       "ndim": 3
+      },
+      {
+       "path": "cdp_x",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "cdp_y",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "float64",
+       "ndim": 2
+      },
+      {
+       "path": "crossline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "headers",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "struct",
+       "ndim": 2
+      },
+      {
+       "path": "headers_raw_uint8",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipHeaderPlaneAuthoritative",
+        "sdipHeaderPlaneByteLayout",
+        "sdipHeaderPlaneContainer",
+        "sdipHeaderPlaneFillByte",
+        "sdipHeaderPlaneLimitation",
+        "sdipHeaderPlaneLiveMask",
+        "sdipHeaderPlaneProbe",
+        "sdipHeaderPlaneRationale",
+        "sdipHeaderPlaneUndecoded"
+       ],
+       "data_type": "uint8",
+       "ndim": 3
+      },
+      {
+       "path": "inline",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "segy_file_header",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipRawBinaryHeader",
+        "sdipRawBinaryHeaderSha256",
+        "sdipRawTextHeader",
+        "sdipRawTextHeaderSha256"
+       ],
+       "data_type": "fixed_length_utf32",
+       "ndim": 0
+      },
+      {
+       "path": "source_trace_ordinal",
+       "kind": "array",
+       "sdip_attrs": [
+        "sdipSourceTraceOrder",
+        "sdipSourceTraceOrdinalFill"
+       ],
+       "data_type": "int64",
+       "ndim": 2
+      },
+      {
+       "path": "time",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int32",
+       "ndim": 1
+      },
+      {
+       "path": "trace_mask",
+       "kind": "array",
+       "sdip_attrs": [],
+       "data_type": "int8",
+       "ndim": 2
+      }
+     ],
+     "root_sdip_attrs": [
+      "sdipDeclaration",
+      "sdipMitigations",
+      "sdipSampleAxisOrigin",
+      "sdipStoreDigest",
+      "sdipUpstreamPins",
+      "sdipVersion",
+      "sdipWriter"
+     ],
+     "store_digest_keys": [
+      "content",
+      "contentV2",
+      "nodes",
+      "root",
+      "scheme",
+      "sha256"
+     ]
+    }
+   },
+   "stores": {
+    "ibm32": {
+     "store_digest": "f8d617b3f97e8a3b69cb8abc1f5573a001c7490b33e676199cac425a832e3fca",
+     "content_digest_v1": "ca1b95ba3ac3f1de93e2bd8025e307c967fa685754dbeaa68055d06df28ff1fb",
+     "content_digest_v2": "8fa1d14be2adc50ef74de2705bcac3e9a21a4ccb4c86023aaba3c795e194d95e",
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "amplitude_raw_ibm32/index": {
+       "dtype": "uint64",
+       "shape": [
+        0
+       ],
+       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "amplitude_raw_ibm32/words": {
+       "dtype": "uint32",
+       "shape": [
+        0
+       ],
+       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "b6f1c27afab64332b6c5a52c2f3226826251ba6319d0dd9afe3638a61dc9e78f"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "951367c18b5bfe2a35fd1c3499a60e12cce7f827b5bc319257195ebbce211538"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "source_trace_ordinal": {
+       "dtype": "int64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "394a42f05d4ef71e6c3270cc4fb38075f42683eb24255ab033cbf89ecccf5143"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "48cd781b261dd9e0827070f4c1d16b73233cad211bf6eb2047a5a115d329a73b"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    },
+    "float32": {
+     "store_digest": "bf5203d139758da981ab9828f441fcb973fd88a5e2c69667084e21e1b02668a4",
+     "content_digest_v1": "20e03d99828aca4efea32151cd21177987be32b7ba773d823f8ddbc918458943",
+     "content_digest_v2": "9ed76400d6e2d1556a0f707bd542e325c4c00840dfe5245aafe88526e63ab1c5",
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "b6f1c27afab64332b6c5a52c2f3226826251ba6319d0dd9afe3638a61dc9e78f"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "951367c18b5bfe2a35fd1c3499a60e12cce7f827b5bc319257195ebbce211538"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "source_trace_ordinal": {
+       "dtype": "int64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "394a42f05d4ef71e6c3270cc4fb38075f42683eb24255ab033cbf89ecccf5143"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "48cd781b261dd9e0827070f4c1d16b73233cad211bf6eb2047a5a115d329a73b"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    },
+    "float32_delay": {
+     "store_digest": "fd471d3f6cd4beeaa3f98cb530833c32698b6a6cb82bd8560f3c8351a672a424",
+     "content_digest_v1": "d6e6cc360b2edd19d8685a6a7eeb5548b348431b32c7308995acb3e86e9c153c",
+     "content_digest_v2": "aac1bef7c3fd6e60ae56bfbe77aefa01ee900336e67438faebc28320a6a2de04",
+     "arrays": {
+      "amplitude": {
+       "dtype": "float32",
+       "shape": [
+        5,
+        6,
+        32
+       ],
+       "sha256": "ab9db92fd4ef45b4763693ca74266857678b6f5faf4f62d3567ebb0c05b86021"
+      },
+      "cdp_x": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1af347fc4f5445395b6d41e7ae8c511db8bebce54f12493d1df94f966348fc65"
+      },
+      "cdp_y": {
+       "dtype": "float64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "1e7ed9212542f56cd231c360223a7511fd541d43114b775a2845e451b606fb0c"
+      },
+      "crossline": {
+       "dtype": "int32",
+       "shape": [
+        6
+       ],
+       "sha256": "ca562b65c456771dc144ae089990bcbcaf5b4400b68a84f2e71090a1540a10a0"
+      },
+      "headers": {
+       "dtype": "struct[97]",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "d58d8be910ebe49b69259c40f019f712f4970eb1cd2e93d44cd35953280e5910"
+      },
+      "headers_raw_uint8": {
+       "dtype": "uint8",
+       "shape": [
+        5,
+        6,
+        240
+       ],
+       "sha256": "2ae986c3d0e19c19aa99aa4d3ed9e3f1bfb29ccb4a3005553674bc08b976760a"
+      },
+      "inline": {
+       "dtype": "int32",
+       "shape": [
+        5
+       ],
+       "sha256": "da68805c9e9cca18239eccbbe877f3379f280da7a9125e3d54d683b87ff1ee42"
+      },
+      "segy_file_header": {
+       "dtype": "<U1",
+       "shape": [],
+       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+      },
+      "source_trace_ordinal": {
+       "dtype": "int64",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "394a42f05d4ef71e6c3270cc4fb38075f42683eb24255ab033cbf89ecccf5143"
+      },
+      "time": {
+       "dtype": "int32",
+       "shape": [
+        32
+       ],
+       "sha256": "0428b3766ffe7852be255085874a43b2634da3ee76f7c5d1811d48ece1cfffc0"
+      },
+      "trace_mask": {
+       "dtype": "int8",
+       "shape": [
+        5,
+        6
+       ],
+       "sha256": "5cc7f71eb464de4bb7ad9c0356a7fe564e4e9ea0df09364c54f495d0dc2c12e6"
+      }
+     },
+     "sdipVersion_attr": "1.6.0"
+    }
+   }
+  }
+ },
+ "verify": {
+  "cbb-on-pre-f32": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": null
+  },
+  "cbb-on-pre-ibm": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": null
+  },
+  "head-cross-f32d": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": "ABSENT"
+  },
+  "head-on-head-f32": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": "MATCH"
+  },
+  "head-on-head-ibm": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": "MATCH"
+  },
+  "head-on-v160-f32": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": "ABSENT"
+  },
+  "head-on-v160-ibm": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": "ABSENT"
+  },
+  "pre-on-cbb-f32": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": null
+  },
+  "pre-on-cbb-ibm": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": null
+  },
+  "v160-cross-f32d": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": null
+  },
+  "v160-on-cbb-ibm": {
+   "verdict": null,
+   "exit": 3,
+   "stderr": "sdip: internal error: TypeError: sequence item 1: expected str instance, slice found. This is a defect in SDIP, not a verdict about your data. Re-run with --debug for the traceback and report it."
+  },
+  "v160-on-head-f32": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": null
+  },
+  "v160-on-head-ibm": {
+   "verdict": null,
+   "exit": 3,
+   "stderr": "sdip: internal error: TypeError: sequence item 1: expected str instance, slice found. This is a defect in SDIP, not a verdict about your data. Re-run with --debug for the traceback and report it."
+  },
+  "v160-on-pre-ibm": {
+   "verdict": null,
+   "exit": 3,
+   "stderr": "sdip: internal error: TypeError: sequence item 1: expected str instance, slice found. This is a defect in SDIP, not a verdict about your data. Re-run with --debug for the traceback and report it."
+  },
+  "v160-on-v160-f32": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": null
+  },
+  "v160-on-v160-ibm": {
+   "verdict": "PASS",
+   "store_digest": "MATCH",
+   "content_digest": "MATCH",
+   "content_digest_v2": null
+  }
+ }
+}

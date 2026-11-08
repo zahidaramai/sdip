@@ -15,6 +15,87 @@ be backward-compatible, and a release that voids every existing certificate is n
 Shipping 1.0 with the old wording would have published a versioning policy that
 contradicts the pin policy.
 
+## [1.7.0] — 2026-11-08
+
+**The store layout changed, and from now on a version says so.** `DECISIONS.md` D-0141.
+
+Everything below shipped on `main` between 2026-10-16 and 2026-11-05 while the version still
+read 1.6.0. A store written from `main` in that window records `sdipVersion: "1.6.0"` but holds
+the 1.7.0 layout (see [`STORE_CONTRACT.md`](STORE_CONTRACT.md) for how to tell them apart).
+
+### Store layout (readers: re-pin)
+
+- **New array `source_trace_ordinal`** (`int64`, grid-shaped, every store; D72). For each live
+  cell it holds the 0-based position of that cell's trace in the source file. Padding is 0, so
+  read it through `trace_mask`. `verify` checks it against the source (Plane 5), and `export`
+  writes traces back in this order.
+- **The raw IBM sample view is sparse** (`sparse/1`, D-0110). For `ibm32` sources,
+  `amplitude_raw_ibm32` is now a group of `index` (`uint64`) and `words` (`uint32`) holding
+  only the words that do not re-encode from `amplitude`. It used to be a dense `uint32` array
+  the shape of `amplitude`. The layout is named in the group attribute `sdipRawSampleLayout`.
+  Stores written with the dense view still verify.
+- **New marker key `sdipStoreDigest.contentV2`** (`sdip-content-digest/2`, D-0135). It is the
+  content digest without `amplitude`'s `statsV1.sumSquares`, and **it is the value a re-ingest
+  reproduces**. `/1` (`content`) still identifies a bound store, and no existing binding
+  changes.
+- **The content digest of a fresh ingest changes with the layout.** Measured on the A.1
+  article: 1.6.0 and 1.7.0 record different `content` values for one source, because the arrays
+  it covers differ. A digest pinned for a source must be re-recorded under 1.7.0. A digest
+  pinned for an existing store still verifies.
+- **The layout is now a tested contract.** `src/sdip/schema/sdip-store-layout.json` (shipped in
+  the wheel) declares every node of three guarded store shapes, and a test fails if `ingest`
+  writes anything else without a new version, a CHANGELOG entry and an updated
+  `STORE_CONTRACT.md`.
+
+### Added
+
+- `verify --json` reports `content_digest_v2`. The certificate gains an additive
+  `content_digest_v2` block, and release readiness blocks on a `/2` other than `MATCH` where
+  one is recorded.
+- **`sdip receipt`** (D-0107): a read-only header receipt (`sdip-header-receipt/1`). It shows a
+  source's header bytes, fields and cards verbatim. With a store, it also recomputes both
+  digests and checks whether the store's raw headers are the source's. Since D-0111 it names
+  SDIP's own commit, and the binary units field when it states one.
+- **`--chunks I,X,S`** on every store command (D-0112): a declared chunk shape, part of the
+  survey declaration. The certificate gains `chunk_manifest`. A declaration without it digests
+  exactly as before.
+- **`sdip doctor --consumer`** (D37): for a bare container or installed package, it reports
+  `working-tree` and `git-hooks` as not run. `certify` still refuses a dirty or absent tree.
+- **`sdip export` restores the source more exactly.** It writes back the store's raw binary
+  header, so non-zero unassigned bytes survive (D71). It also writes trace records back in
+  source order (D72). Schema v0 gains `roundtrip.restored`.
+- Certificates carry `source_path_repo_relative` and `output_path_repo_relative` beside the
+  absolute paths (D46). Both are additive and optional.
+
+### Changed
+
+- **Source size envelope.** `ingest`, `certify` and `verify` refuse a source above
+  `--envelope-gib`, default **40.1 GiB**, before reading it (`verify` was 1.0 in 1.6.0).
+  `0` disables the check. Ingest peak memory is bounded by
+  `1.10 × (966.83 MB + 0.0871 MB/MB × size)`. That bound held at an unseen 14.4 GB source
+  (2,065 MB).
+- `verify` and `ingest` read block by block: `verify` peaks at 1.18 GB on a 1.60 GB source,
+  and `ingest` at 874-1,023 MB. Store bytes are unchanged.
+- G3 is `ROUNDTRIP-SCOPED` for an undefined revision word (0x0300, 0x7FFF, 0xFFFF measured) and for a rev 2/2.1
+  word read as rev 1 when the store lacks the major/minor pair (D61, D68).
+- G7's cell-0 controls target the first live cell, so a grid whose cell (0, 0) is padding no
+  longer makes them vacuous (D73).
+- Every refusal is one `sdip: <ErrorName>: <reason>` line on standard error, including MDIO
+  messages that carry their own line breaks.
+
+### Fixed
+
+- A binary header with bytes 3505-3506 = -1 leaked an untyped upstream `ValidationError`. It is
+  now refused before any parser opens the file (P16).
+
+### Known
+
+- **SDIP 1.6.0 cannot verify an `ibm32` store written by 1.7.0.** It exits 3 (internal error,
+  no verdict) because `amplitude_raw_ibm32` is now a group. IEEE stores verify. Verify with the
+  release that wrote the store, or a later one. Every 1.6.0 store verifies under 1.7.0.
+- **Python:** the raw-sample, header-plane and digest helpers gained arguments for the items
+  above. The CLI and the store contract are the supported interfaces.
+
 ## [1.6.0] — 2026-10-16
 
 **A content digest: two ingests of one source record the same value.** `DECISIONS.md` D-0101.

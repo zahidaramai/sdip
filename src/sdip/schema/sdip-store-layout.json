@@ -1,0 +1,729 @@
+{
+  "schema": "sdip.store-layout/1",
+  "description": "Every node sdip ingest writes, per guarded store shape: path, kind, Zarr data_type, ndim and sdip* attribute keys; the root sdip* attribute keys; the sdipStoreDigest keys. Values are not part of a layout. Semantics: STORE_CONTRACT.md. Held by tests/integration/test_store_layout_contract.py (DECISIONS.md D-0141).",
+  "layout_version": "1.7.0",
+  "fingerprint_rule": "sha256 of json.dumps(shapes, sort_keys=True, separators=(',', ':'))",
+  "shapes": {
+    "ibm32": {
+      "nodes": [
+        {
+          "path": "amplitude",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "float32",
+          "ndim": 3
+        },
+        {
+          "path": "amplitude_raw_ibm32",
+          "kind": "group",
+          "sdip_attrs": [
+            "sdipRawSampleContainer",
+            "sdipRawSampleLayout",
+            "sdipRawSampleLiveMask",
+            "sdipRawSampleProbe",
+            "sdipRawSampleRationale",
+            "sdipRawSampleReconstruction",
+            "sdipRawSampleSourceFormat",
+            "sdipRawSampleUndecoded",
+            "sdipRawSampleWordLayout"
+          ]
+        },
+        {
+          "path": "amplitude_raw_ibm32/index",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "uint64",
+          "ndim": 1
+        },
+        {
+          "path": "amplitude_raw_ibm32/words",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "uint32",
+          "ndim": 1
+        },
+        {
+          "path": "cdp_x",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "float64",
+          "ndim": 2
+        },
+        {
+          "path": "cdp_y",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "float64",
+          "ndim": 2
+        },
+        {
+          "path": "crossline",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int32",
+          "ndim": 1
+        },
+        {
+          "path": "headers",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "struct",
+          "ndim": 2
+        },
+        {
+          "path": "headers_raw_uint8",
+          "kind": "array",
+          "sdip_attrs": [
+            "sdipHeaderPlaneAuthoritative",
+            "sdipHeaderPlaneByteLayout",
+            "sdipHeaderPlaneContainer",
+            "sdipHeaderPlaneFillByte",
+            "sdipHeaderPlaneLimitation",
+            "sdipHeaderPlaneLiveMask",
+            "sdipHeaderPlaneProbe",
+            "sdipHeaderPlaneRationale",
+            "sdipHeaderPlaneUndecoded"
+          ],
+          "data_type": "uint8",
+          "ndim": 3
+        },
+        {
+          "path": "inline",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int32",
+          "ndim": 1
+        },
+        {
+          "path": "segy_file_header",
+          "kind": "array",
+          "sdip_attrs": [
+            "sdipRawBinaryHeader",
+            "sdipRawBinaryHeaderSha256",
+            "sdipRawTextHeader",
+            "sdipRawTextHeaderSha256"
+          ],
+          "data_type": "fixed_length_utf32",
+          "ndim": 0
+        },
+        {
+          "path": "source_trace_ordinal",
+          "kind": "array",
+          "sdip_attrs": [
+            "sdipSourceTraceOrder",
+            "sdipSourceTraceOrdinalFill"
+          ],
+          "data_type": "int64",
+          "ndim": 2
+        },
+        {
+          "path": "time",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int32",
+          "ndim": 1
+        },
+        {
+          "path": "trace_mask",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int8",
+          "ndim": 2
+        }
+      ],
+      "root_sdip_attrs": [
+        "sdipDeclaration",
+        "sdipMitigations",
+        "sdipStoreDigest",
+        "sdipUpstreamPins",
+        "sdipVersion",
+        "sdipWriter"
+      ],
+      "store_digest_keys": [
+        "content",
+        "contentV2",
+        "nodes",
+        "root",
+        "scheme",
+        "sha256"
+      ]
+    },
+    "float32": {
+      "nodes": [
+        {
+          "path": "amplitude",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "float32",
+          "ndim": 3
+        },
+        {
+          "path": "cdp_x",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "float64",
+          "ndim": 2
+        },
+        {
+          "path": "cdp_y",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "float64",
+          "ndim": 2
+        },
+        {
+          "path": "crossline",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int32",
+          "ndim": 1
+        },
+        {
+          "path": "headers",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "struct",
+          "ndim": 2
+        },
+        {
+          "path": "headers_raw_uint8",
+          "kind": "array",
+          "sdip_attrs": [
+            "sdipHeaderPlaneAuthoritative",
+            "sdipHeaderPlaneByteLayout",
+            "sdipHeaderPlaneContainer",
+            "sdipHeaderPlaneFillByte",
+            "sdipHeaderPlaneLimitation",
+            "sdipHeaderPlaneLiveMask",
+            "sdipHeaderPlaneProbe",
+            "sdipHeaderPlaneRationale",
+            "sdipHeaderPlaneUndecoded"
+          ],
+          "data_type": "uint8",
+          "ndim": 3
+        },
+        {
+          "path": "inline",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int32",
+          "ndim": 1
+        },
+        {
+          "path": "segy_file_header",
+          "kind": "array",
+          "sdip_attrs": [
+            "sdipRawBinaryHeader",
+            "sdipRawBinaryHeaderSha256",
+            "sdipRawTextHeader",
+            "sdipRawTextHeaderSha256"
+          ],
+          "data_type": "fixed_length_utf32",
+          "ndim": 0
+        },
+        {
+          "path": "source_trace_ordinal",
+          "kind": "array",
+          "sdip_attrs": [
+            "sdipSourceTraceOrder",
+            "sdipSourceTraceOrdinalFill"
+          ],
+          "data_type": "int64",
+          "ndim": 2
+        },
+        {
+          "path": "time",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int32",
+          "ndim": 1
+        },
+        {
+          "path": "trace_mask",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int8",
+          "ndim": 2
+        }
+      ],
+      "root_sdip_attrs": [
+        "sdipDeclaration",
+        "sdipMitigations",
+        "sdipStoreDigest",
+        "sdipUpstreamPins",
+        "sdipVersion",
+        "sdipWriter"
+      ],
+      "store_digest_keys": [
+        "content",
+        "contentV2",
+        "nodes",
+        "root",
+        "scheme",
+        "sha256"
+      ]
+    },
+    "float32_delay": {
+      "nodes": [
+        {
+          "path": "amplitude",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "float32",
+          "ndim": 3
+        },
+        {
+          "path": "cdp_x",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "float64",
+          "ndim": 2
+        },
+        {
+          "path": "cdp_y",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "float64",
+          "ndim": 2
+        },
+        {
+          "path": "crossline",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int32",
+          "ndim": 1
+        },
+        {
+          "path": "headers",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "struct",
+          "ndim": 2
+        },
+        {
+          "path": "headers_raw_uint8",
+          "kind": "array",
+          "sdip_attrs": [
+            "sdipHeaderPlaneAuthoritative",
+            "sdipHeaderPlaneByteLayout",
+            "sdipHeaderPlaneContainer",
+            "sdipHeaderPlaneFillByte",
+            "sdipHeaderPlaneLimitation",
+            "sdipHeaderPlaneLiveMask",
+            "sdipHeaderPlaneProbe",
+            "sdipHeaderPlaneRationale",
+            "sdipHeaderPlaneUndecoded"
+          ],
+          "data_type": "uint8",
+          "ndim": 3
+        },
+        {
+          "path": "inline",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int32",
+          "ndim": 1
+        },
+        {
+          "path": "segy_file_header",
+          "kind": "array",
+          "sdip_attrs": [
+            "sdipRawBinaryHeader",
+            "sdipRawBinaryHeaderSha256",
+            "sdipRawTextHeader",
+            "sdipRawTextHeaderSha256"
+          ],
+          "data_type": "fixed_length_utf32",
+          "ndim": 0
+        },
+        {
+          "path": "source_trace_ordinal",
+          "kind": "array",
+          "sdip_attrs": [
+            "sdipSourceTraceOrder",
+            "sdipSourceTraceOrdinalFill"
+          ],
+          "data_type": "int64",
+          "ndim": 2
+        },
+        {
+          "path": "time",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int32",
+          "ndim": 1
+        },
+        {
+          "path": "trace_mask",
+          "kind": "array",
+          "sdip_attrs": [],
+          "data_type": "int8",
+          "ndim": 2
+        }
+      ],
+      "root_sdip_attrs": [
+        "sdipDeclaration",
+        "sdipMitigations",
+        "sdipSampleAxisOrigin",
+        "sdipStoreDigest",
+        "sdipUpstreamPins",
+        "sdipVersion",
+        "sdipWriter"
+      ],
+      "store_digest_keys": [
+        "content",
+        "contentV2",
+        "nodes",
+        "root",
+        "scheme",
+        "sha256"
+      ]
+    }
+  },
+  "history": {
+    "1.6.0": {
+      "fingerprint": "ef0dc586d25110257b102c316c4f6a43f648459305b272e541efbe1b8c49d01e",
+      "commit": "444f8ec",
+      "shapes": {
+        "ibm32": {
+          "nodes": [
+            {
+              "path": "amplitude",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "float32",
+              "ndim": 3
+            },
+            {
+              "path": "amplitude_raw_ibm32",
+              "kind": "array",
+              "sdip_attrs": [
+                "sdipRawSampleContainer",
+                "sdipRawSampleFillWord",
+                "sdipRawSampleLiveMask",
+                "sdipRawSampleProbe",
+                "sdipRawSampleRationale",
+                "sdipRawSampleSourceFormat",
+                "sdipRawSampleUndecoded",
+                "sdipRawSampleWordLayout"
+              ],
+              "data_type": "uint32",
+              "ndim": 3
+            },
+            {
+              "path": "cdp_x",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "float64",
+              "ndim": 2
+            },
+            {
+              "path": "cdp_y",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "float64",
+              "ndim": 2
+            },
+            {
+              "path": "crossline",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int32",
+              "ndim": 1
+            },
+            {
+              "path": "headers",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "struct",
+              "ndim": 2
+            },
+            {
+              "path": "headers_raw_uint8",
+              "kind": "array",
+              "sdip_attrs": [
+                "sdipHeaderPlaneAuthoritative",
+                "sdipHeaderPlaneByteLayout",
+                "sdipHeaderPlaneContainer",
+                "sdipHeaderPlaneFillByte",
+                "sdipHeaderPlaneLimitation",
+                "sdipHeaderPlaneLiveMask",
+                "sdipHeaderPlaneProbe",
+                "sdipHeaderPlaneRationale",
+                "sdipHeaderPlaneUndecoded"
+              ],
+              "data_type": "uint8",
+              "ndim": 3
+            },
+            {
+              "path": "inline",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int32",
+              "ndim": 1
+            },
+            {
+              "path": "segy_file_header",
+              "kind": "array",
+              "sdip_attrs": [
+                "sdipRawBinaryHeader",
+                "sdipRawBinaryHeaderSha256",
+                "sdipRawTextHeader",
+                "sdipRawTextHeaderSha256"
+              ],
+              "data_type": "fixed_length_utf32",
+              "ndim": 0
+            },
+            {
+              "path": "time",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int32",
+              "ndim": 1
+            },
+            {
+              "path": "trace_mask",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int8",
+              "ndim": 2
+            }
+          ],
+          "root_sdip_attrs": [
+            "sdipDeclaration",
+            "sdipMitigations",
+            "sdipStoreDigest",
+            "sdipUpstreamPins",
+            "sdipVersion",
+            "sdipWriter"
+          ],
+          "store_digest_keys": [
+            "content",
+            "nodes",
+            "root",
+            "scheme",
+            "sha256"
+          ]
+        },
+        "float32": {
+          "nodes": [
+            {
+              "path": "amplitude",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "float32",
+              "ndim": 3
+            },
+            {
+              "path": "cdp_x",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "float64",
+              "ndim": 2
+            },
+            {
+              "path": "cdp_y",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "float64",
+              "ndim": 2
+            },
+            {
+              "path": "crossline",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int32",
+              "ndim": 1
+            },
+            {
+              "path": "headers",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "struct",
+              "ndim": 2
+            },
+            {
+              "path": "headers_raw_uint8",
+              "kind": "array",
+              "sdip_attrs": [
+                "sdipHeaderPlaneAuthoritative",
+                "sdipHeaderPlaneByteLayout",
+                "sdipHeaderPlaneContainer",
+                "sdipHeaderPlaneFillByte",
+                "sdipHeaderPlaneLimitation",
+                "sdipHeaderPlaneLiveMask",
+                "sdipHeaderPlaneProbe",
+                "sdipHeaderPlaneRationale",
+                "sdipHeaderPlaneUndecoded"
+              ],
+              "data_type": "uint8",
+              "ndim": 3
+            },
+            {
+              "path": "inline",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int32",
+              "ndim": 1
+            },
+            {
+              "path": "segy_file_header",
+              "kind": "array",
+              "sdip_attrs": [
+                "sdipRawBinaryHeader",
+                "sdipRawBinaryHeaderSha256",
+                "sdipRawTextHeader",
+                "sdipRawTextHeaderSha256"
+              ],
+              "data_type": "fixed_length_utf32",
+              "ndim": 0
+            },
+            {
+              "path": "time",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int32",
+              "ndim": 1
+            },
+            {
+              "path": "trace_mask",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int8",
+              "ndim": 2
+            }
+          ],
+          "root_sdip_attrs": [
+            "sdipDeclaration",
+            "sdipMitigations",
+            "sdipStoreDigest",
+            "sdipUpstreamPins",
+            "sdipVersion",
+            "sdipWriter"
+          ],
+          "store_digest_keys": [
+            "content",
+            "nodes",
+            "root",
+            "scheme",
+            "sha256"
+          ]
+        },
+        "float32_delay": {
+          "nodes": [
+            {
+              "path": "amplitude",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "float32",
+              "ndim": 3
+            },
+            {
+              "path": "cdp_x",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "float64",
+              "ndim": 2
+            },
+            {
+              "path": "cdp_y",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "float64",
+              "ndim": 2
+            },
+            {
+              "path": "crossline",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int32",
+              "ndim": 1
+            },
+            {
+              "path": "headers",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "struct",
+              "ndim": 2
+            },
+            {
+              "path": "headers_raw_uint8",
+              "kind": "array",
+              "sdip_attrs": [
+                "sdipHeaderPlaneAuthoritative",
+                "sdipHeaderPlaneByteLayout",
+                "sdipHeaderPlaneContainer",
+                "sdipHeaderPlaneFillByte",
+                "sdipHeaderPlaneLimitation",
+                "sdipHeaderPlaneLiveMask",
+                "sdipHeaderPlaneProbe",
+                "sdipHeaderPlaneRationale",
+                "sdipHeaderPlaneUndecoded"
+              ],
+              "data_type": "uint8",
+              "ndim": 3
+            },
+            {
+              "path": "inline",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int32",
+              "ndim": 1
+            },
+            {
+              "path": "segy_file_header",
+              "kind": "array",
+              "sdip_attrs": [
+                "sdipRawBinaryHeader",
+                "sdipRawBinaryHeaderSha256",
+                "sdipRawTextHeader",
+                "sdipRawTextHeaderSha256"
+              ],
+              "data_type": "fixed_length_utf32",
+              "ndim": 0
+            },
+            {
+              "path": "time",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int32",
+              "ndim": 1
+            },
+            {
+              "path": "trace_mask",
+              "kind": "array",
+              "sdip_attrs": [],
+              "data_type": "int8",
+              "ndim": 2
+            }
+          ],
+          "root_sdip_attrs": [
+            "sdipDeclaration",
+            "sdipMitigations",
+            "sdipSampleAxisOrigin",
+            "sdipStoreDigest",
+            "sdipUpstreamPins",
+            "sdipVersion",
+            "sdipWriter"
+          ],
+          "store_digest_keys": [
+            "content",
+            "nodes",
+            "root",
+            "scheme",
+            "sha256"
+          ]
+        }
+      },
+      "note": "Measured from stores written by the v1.6.0 tag on 2026-11-08, same pinned environment."
+    },
+    "1.7.0": {
+      "fingerprint": "9405230edc62cd392fca7db766979d2db7fe1f3d9133fdc8af0ed9e539b8f46b",
+      "changes": [
+        "amplitude_raw_ibm32: a dense uint32 array became a group of index (uint64) and words (uint32), layout sparse/1 (ab3a676, D-0110); sdipRawSampleFillWord removed, sdipRawSampleLayout and sdipRawSampleReconstruction added",
+        "source_trace_ordinal: new int64 array, grid-shaped, every store (cbb4f2d, D72)",
+        "sdipStoreDigest.contentV2: new key, scheme sdip-content-digest/2 (7a2434f, D-0135)"
+      ]
+    }
+  }
+}

@@ -134,12 +134,12 @@ it, so you are running the same `multidimio` and `segy` a certificate would be i
 under:
 
 ```bash
-docker run --rm -v "$PWD:/work" ghcr.io/zahidaramai/sdip:1.6.0 \
+docker run --rm -v "$PWD:/work" ghcr.io/zahidaramai/sdip:1.7.0 \
     verify /work/survey.sgy /work/survey.mdio
 ```
 
 Published to [GitHub Container Registry](https://github.com/zahidaramai/sdip/pkgs/container/sdip)
-as `1.6.0`, `1.6` and `latest`. **Pin the exact version**, or a digest, for anything whose
+as `1.7.0`, `1.7` and `latest`. **Pin the exact version**, or a digest, for anything whose
 output you intend to keep: a certificate records the decoder it was issued under, so a
 store certified by one image and re-verified by a floating tag is no longer a comparison
 between equals. `latest` is for trying it out.
@@ -157,7 +157,7 @@ uv run sdip doctor          # environment sanity; runs first, always
 [release](https://github.com/zahidaramai/sdip/releases):
 
 ```bash
-pip install git+https://github.com/zahidaramai/sdip@v1.6.0
+pip install git+https://github.com/zahidaramai/sdip@v1.7.0
 ```
 
 > **Not on PyPI, npm or NuGet, and that is a decision rather than an omission.** PyPI is a
@@ -334,11 +334,14 @@ coverage less MDIO's creation timestamp, so two ingests of one source give the s
 record it to show a re-ingest reproduced a store. **One limit is measured** (D75): on a 1.60 GB
 source, MDIO's `amplitude` `statsV1.sumSquares` differs between ingests by a few float64 ulps, so
 two ingests can record different content digests while every array's data is identical. Stores
-written since D-0135 therefore also record **`sdip-content-digest/2`**
+written since D-0135 (release 1.7.0) therefore also record **`sdip-content-digest/2`**
 (`sdipStoreDigest.contentV2`): the content digest less that one member, the only other key probe
 P31 measured varying across 13 ingests. **`/2` is the value a re-ingest reproduces; `/1`
 identifies a bound store.** `verify` checks all three, and a store written before `/2` reports it
 `ABSENT` without failing.
+Content digests are reproducible within one store layout, not across layouts: a source ingested
+by 1.6.0 and by 1.7.0 records different values. Every array and key a store holds, and how the
+layout is versioned, is in [`STORE_CONTRACT.md`](STORE_CONTRACT.md).
 
 **In the container, `certify` needs a git working tree** — it refuses to issue from one
 that is dirty or absent, so mount a repository if you want a certificate. `ingest`,

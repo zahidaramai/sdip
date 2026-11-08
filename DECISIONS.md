@@ -6438,3 +6438,93 @@ committed with the registration (D-0139).
 **D8 stays OPEN.** The next useful step is a structure-aware mutator: one that keeps a file
 parseable while varying the geometry, sample format and per-trace fields together, with the D8
 child's own coverage measured. It needs its own registration.
+
+## D-0141 — 2026-11-08 — Release 1.7.0: the store layout changed under 1.6.0; the layout is now a versioned, tested contract
+
+**Finding (GeoSuite F-SDIP-VER, 2026-11-07).** `cbb4f2d` (D72) added the store array
+`source_trace_ordinal`, and `7a2434f` (D-0135) added the marker key `sdipStoreDigest.contentV2`.
+`pyproject.toml` stayed at 1.6.0 through both. GeoAIBrain's tests went red against its `444f8ec`
+(1.6.0) baseline, and it had to re-record them (its TD-702). The finding names `cbb4f2d` for
+both changes. `contentV2` came later, in `7a2434f`. A third change, found while measuring, also
+went in under 1.6.0: `ab3a676` (D-0110) turned `amplitude_raw_ibm32` from a dense array into a
+group.
+
+**Measured** (2026-11-08, N = 1 per cell, deterministic fixtures). The A.1 article (5 × 6 × 32)
+was written in three shapes:
+- `ibm32`, source `be4ce437…`;
+- `float32`, source `55cb3e44…`;
+- `float32` with a 100 ms recording delay, source `f5820a1c…`.
+
+Each was ingested through `python -m sdip.cli` by four detached worktrees in one pinned
+environment (`uv.lock` dependencies unchanged since 1.6.0): `v1.6.0` (`444f8ec`), `26da323`
+(the commit before `cbb4f2d`), `cbb4f2d` and `15519c5`. The layout was read with the extractor
+in `tests/integration/test_store_layout_contract.py`. Fingerprints:
+- 1.6.0: `ef0dc586…c49d01e`
+- `26da323`: `42019107…ccee1703`
+- `cbb4f2d`: `e0a172db…143002d1`
+- `15519c5`: `9405230e…9b8f46b`
+
+Content digest `/1` (first 16 hex) by shape (`ibm32` / `float32` / delay):
+- 1.6.0: `05841e60df0c57df` / `e42d70b8f6d71ca6` / `b1ba879d78d9acb3`
+- `26da323`: `49f4cd0b01c82f9b` / unchanged / unchanged (the sparse view changes `ibm32` only)
+- `cbb4f2d`: `ca1b95ba3ac3f1de` / `20e03d99828aca4e` / `d6e6cc360b2edd19` (every shape changes)
+- `15519c5`: as `cbb4f2d` (`contentV2` is nested and leaves `/1` alone, per the D67 rule). `/2`:
+  `8fa1d14be2adc50e` / `9ed76400d6e2d155` / `aac1bef7c3fd6e60`.
+
+`source_trace_ordinal` was identical in every store that has it (`394a42f0…`). Every store
+recorded `sdipVersion: "1.6.0"`.
+
+Cross-verification through the executable, `verify --json`:
+- `15519c5` on 1.6.0 stores: PASS on all three shapes, `/2` ABSENT.
+- 1.6.0 on `15519c5` stores: `float32` PASS and delay PASS. **`ibm32` exits 3**
+  (`TypeError` in zarr's group path join): 1.6.0 indexes `amplitude_raw_ibm32` as an array.
+  The same exit 3 occurs on the `26da323` store, so `ab3a676` is the cause, not `cbb4f2d`.
+- `26da323` on `cbb4f2d` stores, and the reverse: PASS on `ibm32` and `float32`.
+
+**So "1.6 readers are unaffected" cannot be claimed.**
+- A digest pinned for a source changes: `cbb4f2d` changed `/1` on every shape.
+- 1.6.0 gives no verdict on a new `ibm32` store.
+- A stock-zarr reader of the dense raw view breaks.
+
+`cbb4f2d` alone is compatible in both directions at the verify level.
+
+**Decision: release 1.7.0 (MINOR).** This applies spec 12.4's semantic versioning, as releases
+have done before:
+- every store any earlier release wrote is read and verified by 1.7.0;
+- no certificate is invalidated;
+- the pins are unchanged.
+
+1.4.0 set the precedent for the forward limitation. It shipped as a minor even though 1.3.0
+reports a false MISMATCH on its stores (D67), and the limit was stated under *Known*. 1.7.0's
+limit is milder: an exit 3 gives no verdict, never a false one. **Considered and not chosen:**
+2.0.0, on the reading that the raw view's change of form breaks a stock-zarr reader. Under this
+policy MAJOR is for invalidated certificates (D-0108) and for losing the ability to verify old
+stores, and neither happened. The owner may overrule. If so, a 2.0.0 is cut instead, and nothing in
+the layout or the guard changes.
+
+**Built (same commit):**
+- version 1.7.0 in `pyproject.toml`, `uv.lock`, `CITATION.cff`, `README.md`, `SECURITY.md` and
+  `certificates/README.md`, with the CHANGELOG entry;
+- `STORE_CONTRACT.md` (public): every node and marker key with its semantics, the measured
+  compatibility table, and how to tell a pre-release store from a 1.6.0 one when both record
+  `sdipVersion: "1.6.0"`;
+- `src/sdip/schema/sdip-store-layout.json` (shipped in the wheel): the three guarded shapes,
+  and the layout history with 1.6.0 node by node;
+- `tests/integration/test_store_layout_contract.py`. A real ingest must equal the manifest. A
+  layout change needs a new history entry under a later version, released in `pyproject.toml`
+  and the CHANGELOG, with fingerprints appended (never edited) and `STORE_CONTRACT.md` naming
+  every node. Both halves: the current store and records pass, and nine corruptions each fail
+  (an added, removed or retyped array; a layout changed under an unchanged version; an
+  unreleased version; an edited released fingerprint; a version with no layout change; a
+  contract document missing a node or a digest key);
+- `.qc/` ignored (owner QC figures stay local).
+
+**For readers (GeoAIBrain, ExS, GeoCRS, GeoGIS, SFM):**
+- pin SDIP 1.7.0 (tag `v1.7.0`), or the commit that carries it;
+- re-record any content digest of a store re-ingested from a source;
+- a binding to an existing store by `/1` stays valid;
+- pin new re-ingest claims to `contentV2`.
+
+The run root (four worktrees, twelve stores) was harvested into this entry, the manifest and
+`prereg/D-0141-store-layout-receipt-2026-11-08.json` (every array's sha256, every verify
+outcome; a measurement receipt, not a pre-registered probe), then deleted.
