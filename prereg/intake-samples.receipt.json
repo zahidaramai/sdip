@@ -9,7 +9,7 @@
    "licence": "Apache-2.0",
    "used_for": "ZGY test files (test_data/small-*.zgy) and the OpenZGY oracle (P37)",
    "fetchedAt": "2026-11-16T13:54:00Z",
-   "deletedAt": null
+   "deletedAt": "2026-11-16T14:25:00Z"
   },
   {
    "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/block.epc",
@@ -18,7 +18,7 @@
    "licence": "MIT",
    "used_for": "RESQML intake reader (D-0145)",
    "fetchedAt": "2026-11-16T14:09:00Z",
-   "deletedAt": null
+   "deletedAt": "2026-11-16T14:25:00Z"
   },
   {
    "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/block.h5",
@@ -27,7 +27,7 @@
    "licence": "MIT",
    "used_for": "RESQML intake reader (D-0145)",
    "fetchedAt": "2026-11-16T14:09:00Z",
-   "deletedAt": null
+   "deletedAt": "2026-11-16T14:25:00Z"
   },
   {
    "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/s_bend.epc",
@@ -36,7 +36,7 @@
    "licence": "MIT",
    "used_for": "RESQML intake reader (D-0145)",
    "fetchedAt": "2026-11-16T14:09:00Z",
-   "deletedAt": null
+   "deletedAt": "2026-11-16T14:25:00Z"
   },
   {
    "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/s_bend.h5",
@@ -45,7 +45,7 @@
    "licence": "MIT",
    "used_for": "RESQML intake reader (D-0145)",
    "fetchedAt": "2026-11-16T14:09:00Z",
-   "deletedAt": null
+   "deletedAt": "2026-11-16T14:25:00Z"
   },
   {
    "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/tic_tac_toe.epc",
@@ -54,7 +54,7 @@
    "licence": "MIT",
    "used_for": "RESQML intake reader (D-0145)",
    "fetchedAt": "2026-11-16T14:09:00Z",
-   "deletedAt": null
+   "deletedAt": "2026-11-16T14:25:00Z"
   },
   {
    "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/tic_tac_toe.h5",
@@ -63,7 +63,7 @@
    "licence": "MIT",
    "used_for": "RESQML intake reader (D-0145)",
    "fetchedAt": "2026-11-16T14:09:00Z",
-   "deletedAt": null
+   "deletedAt": "2026-11-16T14:25:00Z"
   },
   {
    "url": "https://files.pythonhosted.org/packages/source/s/segd/segd-0.1.1.tar.gz",
@@ -72,7 +72,7 @@
    "licence": "Apache-2.0",
    "used_for": "read as a candidate SEG-D oracle; rejected (D-0144)",
    "fetchedAt": "2026-11-16T14:03:00Z",
-   "deletedAt": null
+   "deletedAt": "2026-11-16T14:25:00Z"
   },
   {
    "url": "https://pypi.org/project/pysegd/4.0.1/ (wheel)",
@@ -90,7 +90,7 @@
    "licence": "CC-BY-4.0 (DOE GDR submission 1567, DOI 10.15121/2369595)",
    "used_for": "SEG-D intake reader on real field records (D-0146)",
    "fetchedAt": "2026-11-16T14:21:00Z",
-   "deletedAt": null
+   "deletedAt": "2026-11-16T14:25:00Z"
   },
   {
    "url": "https://gdr-data-lake.s3.amazonaws.com/wholescale/subter_seismic/crescent_valley/100.sgd",
@@ -99,7 +99,25 @@
    "licence": "CC-BY-4.0 (DOE GDR submission 1567, DOI 10.15121/2369595)",
    "used_for": "SEG-D intake reader on real field records (D-0146)",
    "fetchedAt": "2026-11-16T14:21:00Z",
-   "deletedAt": null
+   "deletedAt": "2026-11-16T14:25:00Z"
+  }
+ ],
+ "generated": [
+  {
+   "what": "F3 ZGY sub-cubes (3), OpenZGY writer, prereg/P37_make_zgy.py",
+   "bytes": 597687320,
+   "deletedAt": "2026-11-16T14:25:00Z"
+  },
+  {
+   "what": "F3 VDS sub-volumes (3), OpenVDS SEGYImport, prereg/P38_make_vds.py",
+   "bytes": 424257854,
+   "deletedAt": "2026-11-16T14:25:00Z"
+  }
+ ],
+ "kept": [
+  {
+   "what": "docker image sdip-intake-vds:3.4.9 (the VDS reader's runtime, rebuilt from ci/intake-vds)",
+   "size": "450MB"
   }
  ]
 }
