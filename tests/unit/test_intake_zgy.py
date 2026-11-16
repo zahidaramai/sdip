@@ -235,6 +235,18 @@ def test_fourth_corner_off_the_parallelogram_is_reported(tmp_path):
     assert rep["verdict"] == "NEEDS_INPUT"
 
 
+def test_a_centimetre_off_at_utm_magnitudes_is_reported(tmp_path):
+    corners = (
+        (605835.5, 6073556.5),
+        (605696.6, 6078529.36),
+        (613307.59, 6073765.33),
+        (613168.69, 6078738.18),
+    )
+    assert "SDIP_ZGY_CORNER_NOT_PARALLELOGRAM" in codes(
+        qc(write_zgy(tmp_path / "c.zgy", corners=corners))
+    )
+
+
 def test_a_parallelogram_is_not_reported(tmp_path):
     rep = qc(write_zgy(tmp_path / "c.zgy", corners=((0, 0), (1000, 100), (-50, 500), (950, 600))))
     assert "SDIP_ZGY_CORNER_NOT_PARALLELOGRAM" not in codes(rep)

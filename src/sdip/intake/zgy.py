@@ -320,7 +320,8 @@ def qc_zgy(
         dx, dy = c3[0] - (c1[0] + c2[0] - c0[0]), c3[1] - (c1[1] + c2[1] - c0[1])
         off = math.hypot(dx, dy)
         detail["corner_off_parallelogram"] = off
-        if off > 1e-6 * max(span, 1.0):
+        scale = max(abs(v) for xy in corners for v in xy)
+        if off > 1e-9 * max(scale, 1.0):  # float64 holds ~1e-16 relative; 1e-9 is noise-free
             findings.append(
                 rpt.finding(
                     "SDIP_ZGY_CORNER_NOT_PARALLELOGRAM",
