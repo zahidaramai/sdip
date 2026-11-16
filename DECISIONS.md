@@ -6573,3 +6573,25 @@ fixed in the driver.
 
 **Not done here:** ZGY, OpenVDS, SEG-D and RESQML readers (next, same contract); extension-less
 detection is by content, and GeoGIS's classifier decides which reader runs.
+
+## D-0143 — 2026-11-16 — `sdip intake` reads ZGY headers; P37 gate not met on Z2 (stored vs derived corner), two reader defects found and fixed
+
+**Built.** `sdip.intake.zgy`: SDIP's own stdlib reader of the ZGY layout OpenZGY documents
+(Apache-2.0; no code copied): file header, info header, string list, brick lookup table; never a
+brick. Dispatch is by content (`VBS`/`VCS` magic), so an extension-less ZGY is read as ZGY. It
+reports size, brick size, data type, annotation, the four stored corners, the stated unit
+dimensions (ZGY records time or depth, so no domain question when it does), the projection
+string as a CRS candidate, missing, constant, ZFP-compressed (lossy) and past-end bricks, and
+that SDIP has no ZGY route (export to SEG-Y, then ingest). OpenZGY's pure-Python reader (from the
+`pyzgy` 0.1.1 sdist) is the test oracle only; SDIP gains no dependency.
+
+**Measured (P37, registered `36f1906` before the runs).** Five public `pyzgy` test files, an F3
+sub-cube written by OpenZGY's writer, and two corrupted copies. Run 1 failed Z2 and Z5. Z5 was a
+reader defect: only full-resolution bricks were checked, and OpenZGY writes lower levels after
+them. Fixed and re-measured (run 2), with a synthetic writer that now lays levels out the same
+way. Z2: OpenZGY derives the fourth corner, SDIP reports it stored; F3's is 0.01 m off the
+parallelogram. The reader now reports that offset; its first threshold missed 0.01 m at F3's
+span (run 2), fixed in run 3. **Z2 stays not met as registered**; Z1 and Z3–Z7 are met.
+
+**Also found by the negative tests before P37:** the full-resolution slice of the lookup table
+was wrong (levels are stored coarsest first); the five one-brick public files could not show it.

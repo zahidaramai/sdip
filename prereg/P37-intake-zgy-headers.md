@@ -75,3 +75,23 @@ read and the field-by-field comparison with the oracle.
   reader did not check. The reader now checks every brick entry of every level.
 
 Both fixes are re-measured on the same files as run 2 below; this run's gate stays not met.
+
+## Results, runs 2 and 3 (2026-11-16)
+
+Run 2 at `077d717` (receipt `P37-receipt-2026-11-16-run2.json`): Z5 met (the cut copy is
+QUARANTINE on TRUNCATED); Z2 still not met, and the 0.01 m corner offset went unreported because
+the new check's threshold was relative to the grid span (12.5 mm at F3's span). Run 3 at `5517656`
+(receipt `P37-receipt-2026-11-16-run3.json`), threshold relative to the coordinate magnitude:
+
+| # | Run 3 |
+|---|---|
+| Z1 | met |
+| Z2 | **not met, as registered**: 47/48 equal; the fourth corner is stored by SDIP and derived by OpenZGY. The F3 report now says so (`SDIP_ZGY_CORNER_NOT_PARALLELOGRAM`) |
+| Z3 | met |
+| Z4 | met |
+| Z5 | met |
+| Z6 | met |
+| Z7 | met |
+
+**Gate: not met (Z2).** The expectation compared a derived value with a stored one; it is not
+edited. Every other field agrees with OpenZGY on all six intact files.
