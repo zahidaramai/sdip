@@ -6656,3 +6656,25 @@ appended is `QUARANTINE`/`SIZE_INCONSISTENT`. At most 49,288 header bytes were r
 
 **Still unmeasured on real data:** revision 3, multiplexed formats, any encoding other than
 8058, records with auxiliary channels, and recorders other than this survey's.
+
+## D-0147 — 2026-11-16 — `sdip intake` reads OpenVDS layouts in a Linux container; P38 not met (V2 wrong expectation, V4 truncation undetectable from the layout)
+
+**Built.** `sdip.intake.vds` plus `ci/intake-vds/` (Dockerfile, probe): OpenVDS 3.4.9's wheel is
+Linux/Windows x86-64 only (GeoSuite D-514 Q-A), so its public API runs in a `linux/amd64`
+container with networking off, a read-only root and the file bind-mounted read-only. The host
+recognises VDS by content (`HueDataStore`), and maps dimensions, axes, the vertical domain from
+the sample-axis unit, channels, the survey unit, the CRS WKT (a candidate, never taken) and the
+compression method (wavelet is lossy). With no Docker or no image the report is `QUARANTINE`
+(`SDIP_VDS_READER_UNAVAILABLE`): not checked is not passed. OpenVDS's own reads inside the
+container are not counted in `headerBytesRead`; every report says so.
+
+**Measured (P38, registered `5639d65` before the run).** Three F3 sub-volumes written by
+OpenVDS's own `SEGYImport`. V1, V3 and V5 met. **V2 not met as registered:** I expected 0-1844 ms;
+F3's trace headers state a 4 ms delay recording time and the file holds 4-1848 ms. **V4 not met:**
+a copy cut by 1,000 bytes opens and reads its layout normally; the public API offered no way to
+show the cut without reading bricks. Every VDS report therefore carries
+`SDIP_VDS_INTEGRITY_UNCHECKED`.
+
+**Follow-up (open):** the SEG-Y intake reader should report the delay recording time (trace bytes
+109-110) and flag one that varies across traces; P38 showed it is the first thing that differs
+between tools.

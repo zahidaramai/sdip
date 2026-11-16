@@ -1,0 +1,118 @@
+{
+ "probe": "P38",
+ "sdip_commit": "b0a95f8f0839e52359108ddbea78a29227289ee3",
+ "gates": {
+  "V1": true,
+  "V2": false,
+  "V3": true,
+  "V4": false,
+  "V5": true
+ },
+ "files": [
+  {
+   "label": "f3_sub.vds",
+   "bytes": 141419418,
+   "sha256": "f526f3f2d8e429f40e993c8868cb21e99948a8947db24130a3a745b25632e560",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_VDS_INTEGRITY_UNCHECKED"
+   ],
+   "schema_valid": true,
+   "dims": 3,
+   "axes": {
+    "Sample": [
+     462,
+     4.0,
+     1848.0,
+     "ms"
+    ],
+    "Crossline": [
+     300,
+     300.0,
+     599.0,
+     "unitless"
+    ],
+    "Inline": [
+     200,
+     100.0,
+     299.0,
+     "unitless"
+    ]
+   },
+   "first_crs_source": null
+  },
+  {
+   "label": "f3_sub_crs.vds",
+   "bytes": 141420018,
+   "sha256": "87737689c9bbc1218b7d563d0b11784da1cad27777cd447e0aeb9b154b2abbce",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_VDS_INTEGRITY_UNCHECKED"
+   ],
+   "schema_valid": true,
+   "dims": 3,
+   "axes": {
+    "Sample": [
+     462,
+     4.0,
+     1848.0,
+     "ms"
+    ],
+    "Crossline": [
+     300,
+     300.0,
+     599.0,
+     "unitless"
+    ],
+    "Inline": [
+     200,
+     100.0,
+     299.0,
+     "unitless"
+    ]
+   },
+   "first_crs_source": "VDS SurveyCoordinateSystem CRSWkt"
+  },
+  {
+   "label": "f3_sub_cut.vds",
+   "bytes": 141418418,
+   "sha256": "1bdb88ad932bd830d9f76abdc9b573512ec50cb47018f27cfdef7b0637d1abb8",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_VDS_INTEGRITY_UNCHECKED"
+   ],
+   "schema_valid": true,
+   "dims": 3,
+   "axes": {
+    "Sample": [
+     462,
+     4.0,
+     1848.0,
+     "ms"
+    ],
+    "Crossline": [
+     300,
+     300.0,
+     599.0,
+     "unitless"
+    ],
+    "Inline": [
+     200,
+     100.0,
+     299.0,
+     "unitless"
+    ]
+   },
+   "first_crs_source": null
+  }
+ ]
+}
