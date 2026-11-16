@@ -108,3 +108,4 @@ doctor-report.json
 
 # Owner QC figures (GeoSuite orders): local only, never committed.
 .qc/
+.samples/

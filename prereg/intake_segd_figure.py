@@ -1,8 +1,9 @@
 """Figure for the SEG-D intake reader: synthetic rev 2.1 records, correct and corrupted.
 
-    PYTHONPATH=src:. python prereg/intake_segd_figure.py OUT_DIR COMMIT
+    PYTHONPATH=src:. python prereg/intake_segd_figure.py OUT_DIR COMMIT [REAL_DIR]
 
-Synthetic only: no public SEG-D record was found to measure on (D-0144).
+REAL_DIR (optional) holds public Crescent Valley SEG-D files 1.sgd and 100.sgd (D-0146): they are
+added with a cut and a padded copy of 1.sgd made in a temporary folder.
 """
 
 import sys
@@ -14,7 +15,7 @@ from sdip.intake.card import draw_card
 from tests.unit.test_intake_segd import b, write_segd
 
 
-def main(out: Path, commit: str) -> None:
+def main(out: Path, commit: str, real: Path | None = None) -> None:
     """One row per case: verdict and codes; one QC card for the correct record."""
     import matplotlib
 
@@ -41,6 +42,17 @@ def main(out: Path, commit: str) -> None:
         ("one channel more declared than written", over),
         ("classed cluster-derived", write_segd(tmp / "h.segd")),
     ]
+    if real is not None:
+        data = (real / "1.sgd").read_bytes()
+        (tmp / "cut.sgd").write_bytes(data[:-1000])
+        (tmp / "pad.sgd").write_bytes(data + b"\xee" * 64)
+        cases = [
+            ("REAL Crescent Valley 1.sgd (CC-BY 4.0)", real / "1.sgd"),
+            ("REAL Crescent Valley 100.sgd (one trace fewer)", real / "100.sgd"),
+            ("REAL 1.sgd, last 1,000 bytes cut", tmp / "cut.sgd"),
+            ("REAL 1.sgd, 64 bytes appended", tmp / "pad.sgd"),
+            *cases,
+        ]
     colours = {
         "PASS": "#1a7f37",
         "NEEDS_INPUT": "#d4a72c",
@@ -50,13 +62,18 @@ def main(out: Path, commit: str) -> None:
     fig, ax = plt.subplots(figsize=(14, 0.5 * len(cases) + 1.6), dpi=110)
     n = len(cases)
     for i, (label, path) in enumerate(cases):
-        cls = "cluster-derived" if "cluster" in label else "synthetic"
+        cls = (
+            "cluster-derived"
+            if "cluster" in label
+            else ("public" if label.startswith("REAL") else "synthetic")
+        )
         oc = qc_file(
             path, upload_id="u-20261116-000000000038", member=path.name, cls=cls, commit=commit
         )
         rep = oc.report
         if i == 0:
-            draw_card(oc, out / "segd_card_synthetic.png", commit=commit)
+            name = "segd_card_real.png" if real is not None else "segd_card_synthetic.png"
+            draw_card(oc, out / name, commit=commit)
         y = n - 1 - i
         ax.text(-0.1, y + 0.4, label, ha="right", va="center", fontsize=8)
         ax.add_patch(plt.Rectangle((0, y), 1.3, 0.8, color=colours[rep["verdict"]]))
@@ -86,4 +103,4 @@ def main(out: Path, commit: str) -> None:
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]), sys.argv[2])
+    main(Path(sys.argv[1]), sys.argv[2], Path(sys.argv[3]) if len(sys.argv) > 3 else None)
