@@ -266,10 +266,11 @@ def qc_segd(
         findings.append(
             rpt.finding(
                 "SDIP_SEGD_REV3_PARTIAL",
-                "info",
+                "quarantine",
                 "SEG-D revision 3: the general headers were read; its 96-byte channel set "
                 "descriptors and trace "
-                "headers are not parsed by this reader, so channels and size were not checked",
+                "headers are not parsed by this reader, so channels and size were not "
+                "checked: kept, not passed",
             )
         )
         return _route(done, findings)
@@ -277,7 +278,7 @@ def qc_segd(
         findings.append(
             rpt.finding(
                 "SDIP_SEGD_MULTIPLEXED",
-                "info",
+                "quarantine",
                 f"multiplexed format {gh1['format']:04d}: channels and size were not walked",
             )
         )

@@ -144,6 +144,7 @@ def test_revision_3_is_partial(tmp_path, validator):
     rep = qc(write_segd(tmp_path / "r3.segd", revision=(3, 1)))
     validator.validate(rep)
     assert "SDIP_SEGD_REV3_PARTIAL" in codes(rep)
+    assert rep["verdict"] == "QUARANTINE"  # not checked is not passed
 
 
 def test_cut_record_is_truncated(tmp_path, validator):

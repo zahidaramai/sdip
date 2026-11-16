@@ -6595,3 +6595,25 @@ span (run 2), fixed in run 3. **Z2 stays not met as registered**; Z1 and Z3–Z7
 
 **Also found by the negative tests before P37:** the full-resolution slice of the lookup table
 was wrong (levels are stored coarsest first); the five one-brick public files could not show it.
+
+## D-0144 — 2026-11-16 — `sdip intake` reads SEG-D field-record headers; measured on synthetic records only
+
+**Built.** `sdip.intake.segd`: content detection by a coherent BCD general header 1 (date and
+time in range, a known format code); general headers, channel set descriptors and a bounded
+walk over the demultiplexed trace headers (rev 0 to 2), reconciling the file size with the
+declared channels (`TRUNCATED`, `SIZE_INCONSISTENT`, a trace naming an undeclared channel set),
+noting a following record. Reports channels by type, format and revision. SEG-D carries no
+coordinates and SDIP has no SEG-D route; both are stated in every report. **Revision 3** (96-byte
+channel set descriptors) and **multiplexed** formats are read for their general headers and
+come back `QUARANTINE` (`SDIP_SEGD_REV3_PARTIAL`, `SDIP_SEGD_MULTIPLEXED`): not checked is not
+passed.
+
+**Source of the layout.** The SEG-D rev 1/2 standard as Seismic Unix's `segd.h` (Colorado School
+of Mines) records it; no code copied. The standard's own PDFs could not be read (SEG's site
+refuses automated fetches, and that was not worked around). `pysegd` (LGPL-3.0) was downloaded
+and deleted unread. The `segd` 0.1.1 package (Apache-2.0) was read: it supports format 8058 only
+and finds traces by searching for a byte pattern, so it is not an oracle.
+
+**Measured.** 16 tests on synthetic rev 2.1 records (both halves), and no P36 SEG-Y or P37 ZGY
+file is detected as SEG-D. **No public SEG-D record was found; the reader is unmeasured on real
+field data.** That is the first thing to close when one is supplied.
