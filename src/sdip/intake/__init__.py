@@ -38,8 +38,15 @@ def qc_file(
 ) -> Any:
     """Detect the seismic format by content and run its reader. Returns an ``Outcome``."""
     from sdip.intake.segy import qc_segy
+    from sdip.intake.zgy import is_zgy, qc_zgy
 
     digest = sha256 or file_sha256(path)
+    with Path(path).open("rb") as handle:
+        head = handle.read(8)
+    if is_zgy(head):
+        return qc_zgy(
+            path, upload_id=upload_id, member=member, sha256=digest, cls=cls, commit=commit
+        )
     return qc_segy(
         path,
         upload_id=upload_id,

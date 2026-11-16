@@ -44,6 +44,16 @@ def _summary(outcome: Any) -> list[str]:
     rep, det = outcome.report, outcome.detail
     st = rep["structural"]
     lines = [f"format   {st['format']}   revision {st.get('version')}"]
+    if det.get("kind") == "zgy" and "info" in det:
+        info = det["info"]
+        lines += [
+            f"size {info['size']}   bricks {info['bricksize']}   data type {det.get('datatype')}",
+            f"origin {tuple(round(v, 3) for v in info['orig'])}   "
+            f"step {tuple(round(v, 3) for v in info['inc'])}",
+            f"units {det.get('units')}",
+            f"projection: {det.get('strings', {}).get('projection') or 'none'}"[:110],
+            f"bricks at full resolution: {det.get('bricks', 'not read')}",
+        ]
     b = det.get("binary")
     if b:
         lines += [
@@ -146,9 +156,21 @@ def draw_card(outcome: Any, png: str | Path, commit: str | None = None) -> dict[
         ax3.set_xlabel(f"{xs} - min ({unit}, scalar applied)")
         ax3.set_ylabel(f"{ys} - min ({unit}, scalar applied)")
         ax3.set_title("footprint of sampled traces (true aspect, origin at minimum)", fontsize=9)
+    elif det.get("corners") and any(x or y for x, y in det["corners"]):
+        c = det["corners"]
+        x0, y0 = min(p[0] for p in c), min(p[1] for p in c)
+        ring = [c[0], c[1], c[3], c[2], c[0]]  # ZGY order: (i0,j0), (iN,j0), (i0,jM), (iN,jM)
+        ax3.plot([p[0] - x0 for p in ring], [p[1] - y0 for p in ring], "-o", ms=3, color="#24292f")
+        ax3.annotate("first inline, first crossline", (c[0][0] - x0, c[0][1] - y0), fontsize=7)
+        ax3.set_aspect("equal", adjustable="datalim")
+        ax3.set_xlabel("x - min (file's horizontal unit)")
+        ax3.set_ylabel("y - min (file's horizontal unit)")
+        ax3.set_title(
+            "footprint: the four corner points (true aspect, origin at minimum)", fontsize=9
+        )
     else:
         ax3.axis("off")
-        ax3.text(0.5, 0.5, "no trace coordinates", ha="center")
+        ax3.text(0.5, 0.5, "no coordinates", ha="center")
 
     png = Path(png)
     png.parent.mkdir(parents=True, exist_ok=True)
