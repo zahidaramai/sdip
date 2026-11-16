@@ -66,6 +66,12 @@ def _summary(outcome: Any) -> list[str]:
             f"samples per trace (walked) {det.get('samples_per_trace')}   "
             f"first trace at byte {det.get('data_start')}",
         ]
+    if det.get("kind") == "resqml":
+        lines += [
+            f"objects by type: {det.get('types')}"[:300],
+            f"local CRS: {det.get('crs')}"[:200],
+            f"HDF5 companions: {det.get('hdf5')}"[:200],
+        ]
     b = det.get("binary")
     if b:
         lines += [
@@ -77,7 +83,7 @@ def _summary(outcome: Any) -> list[str]:
     c = st.get("counts", {})
     if "traces" in c:
         lines.append(f"traces {c['traces']:,}   sampled headers {c.get('sampled_headers', 0):,}")
-    if "grid_cells" in c:
+    if "grid_cells" in c and "inlines" in c:
         lines.append(
             f"grid {c['inlines']} x {c['crosslines']} = {c['grid_cells']:,} cells   "
             f"fill {det.get('fill', 0):.3f}"
