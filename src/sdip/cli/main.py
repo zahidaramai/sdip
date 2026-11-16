@@ -1023,6 +1023,85 @@ def _raised_by(exc: BaseException) -> tuple[str | None, str]:
     return None, "unknown location"
 
 
+@cli.command("intake")
+@click.argument("source", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "--upload-id", required=True, help="u-<yyyymmdd>-<sha256[0:12]>, from the custody record."
+)
+@click.option(
+    "--member", default=None, help="Path relative to the upload folder (default: the file name)."
+)
+@click.option(
+    "--class",
+    "cls",
+    type=click.Choice(
+        ["public", "synthetic", "internal", "confidential", "restricted", "cluster-derived"]
+    ),
+    default="confidential",
+    show_default=True,
+    help="The class from the custody record; a reader never decides it.",
+)
+@click.option(
+    "--sha256", default=None, help="The file's sha256 from the custody record (else computed)."
+)
+@click.option(
+    "--cluster-marker",
+    "markers",
+    multiple=True,
+    help="A word that marks raw cluster seismic in a textual header (repeatable).",
+)
+@click.option(
+    "--out",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Write the report here instead of standard output.",
+)
+@click.option(
+    "--card",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Draw the QC card PNG here (needs the 'intake' extra: matplotlib).",
+)
+def intake_cmd(
+    source: Path,
+    upload_id: str,
+    member: str | None,
+    cls: str,
+    sha256: str | None,
+    markers: tuple[str, ...],
+    out: Path | None,
+    card: Path | None,
+) -> None:
+    """Header-only intake QC of a seismic file into a geosuite.intake.v1 reader_report.
+
+    Reads the file and trace headers only (never a sample), never writes beside the
+    source and never deletes. Exit 0 whenever a report is written; the verdict is in it.
+    """
+    import json
+
+    from sdip.intake import qc_file
+
+    outcome = qc_file(
+        source,
+        upload_id=upload_id,
+        member=member or source.name,
+        sha256=sha256,
+        cls=cls,
+        cluster_markers=markers,
+    )
+    report = outcome.report
+    if card is not None and report["verdict"] != "REFUSED":
+        from sdip.intake.card import draw_card
+
+        report["qcCard"] = draw_card(outcome, card)
+    text = json.dumps(report, indent=2, sort_keys=False)
+    if out is None:
+        click.echo(text)
+    else:
+        out.write_text(text + "\n")
+    sys.exit(EXIT_OK)
+
+
 def _refusal(line: str) -> None:
     """Write one refusal to stderr as ONE line (README: `sdip: <ErrorName>: <reason>`).
 

@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geogis.local/contracts/geosuite.intake.v1.schema.json",
+  "title": "geosuite.intake.v1: the one intake contract every reader reports into (GeoSuite D-511/D-513/D-514, GG-D-0061)",
+  "description": "Three document kinds share this contract. 'reader_report': one reader's format QC of one file of an upload (RPX, SDIP, GeoCRS, GeoGIS, ExS, DSH all emit this). 'custody': the machine-local intake.json of one upload (never tracked, never pushed). 'refusal': the hash-and-size-only receipt kept when an upload is REFUSED and deleted (D-513 #9). Human text: docs/contracts/INTAKE_CONTRACT_v1.md.",
+  "type": "object",
+  "required": ["schema", "kind"],
+  "properties": {
+    "schema": {"const": "geosuite.intake.v1"},
+    "kind": {"enum": ["reader_report", "custody", "refusal"]}
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/readerReport"},
+    {"$ref": "#/$defs/custody"},
+    {"$ref": "#/$defs/refusal"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "uploadId": {"type": "string", "pattern": "^u-[0-9]{8}-[0-9a-f]{12}$",
+                 "description": "u-<yyyymmdd>-<sha256[0:12]>; opaque, never a client path"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "class": {"enum": ["public", "synthetic", "internal", "confidential", "restricted", "cluster-derived"],
+              "description": "Default for an upload of unknown origin: confidential (D-511). public needs a named public set AND the sha256 on the public-hash list, or the owner's word (D-513 #2)."},
+    "classDecidedBy": {"enum": ["default", "user", "owner", "hash-list", "detector"]},
+    "verdict": {"enum": ["PASS", "PASS_WITH_ASSUMPTIONS", "NEEDS_INPUT", "QUARANTINE", "REFUSED"],
+                "description": "Order of severity, lowest first. A combined verdict is the most severe of its parts."},
+    "questionCode": {"enum": ["ORIGIN_UNKNOWN", "CRS_UNRESOLVED", "UNITS_AMBIGUOUS", "DOMAIN_UNKNOWN", "DATUM_UNKNOWN",
+                              "WELL_MAPPING", "NULL_SUSPECT"],
+                     "description": "DESIGN section 6. Each NEEDS_INPUT carries at least one question with one of these codes."},
+    "findingCode": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$",
+                    "description": "A question code, a code from the shared table in INTAKE_CONTRACT_v1.md section 4, or a reader's own code prefixed with its repository (RPX_, SDIP_, GEOCRS_, GEOGIS_, EXS_, DSH_)."},
+    "severity": {"enum": ["info", "assumption", "needs_input", "quarantine", "refuse"],
+                 "description": "info and assumption never lower a verdict; needs_input → NEEDS_INPUT; quarantine → QUARANTINE; refuse → REFUSED."},
+    "releaseLevel": {"enum": ["full", "structural", "opaque", "nothing"]},
+    "finding": {
+      "type": "object",
+      "required": ["code", "severity", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {"$ref": "#/$defs/findingCode"},
+        "severity": {"$ref": "#/$defs/severity"},
+        "message": {"type": "string", "maxLength": 500,
+                    "description": "For the USER only. Never released to a model for a class above synthetic."},
+        "field": {"type": "string", "maxLength": 120}
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": ["code", "prompt", "choices", "allowOther"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {"$ref": "#/$defs/questionCode"},
+        "subject": {"type": "string", "maxLength": 120, "description": "e.g. the curve or member the question is about; user-side only"},
+        "prompt": {"type": "string", "maxLength": 300},
+        "choices": {"type": "array", "items": {
+          "type": "object", "required": ["id", "label"], "additionalProperties": false,
+          "properties": {"id": {"type": "string", "maxLength": 64}, "label": {"type": "string", "maxLength": 200},
+                         "source": {"type": "string", "maxLength": 200, "description": "where the candidate was found (.prj, text header, EPSG area match); GeoCRS: never inferred"}}}},
+        "allowOther": {"type": "boolean"}
+      }
+    },
+    "assumption": {
+      "type": "object",
+      "required": ["code", "value", "confirmedBy"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {"$ref": "#/$defs/findingCode"},
+        "value": {"type": ["string", "number", "boolean"]},
+        "confirmedBy": {"enum": ["user", "owner", "default-confirmed"]},
+        "at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "structural": {
+      "type": "object",
+      "description": "The ONLY part of a report a model may see for a confidential upload (D-513 #4, release level 'structural'): format, version, counts, presence of CRS/units/nulls, domain, verdict codes. No values, names, coordinates or file names.",
+      "additionalProperties": false,
+      "required": ["format"],
+      "properties": {
+        "format": {"type": "string", "pattern": "^[a-z0-9_+.-]{1,40}$"},
+        "version": {"type": ["string", "null"], "maxLength": 20},
+        "counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0},
+                   "propertyNames": {"pattern": "^[a-z_]{1,32}$"}},
+        "hasCrs": {"type": ["boolean", "null"]},
+        "hasUnits": {"type": ["boolean", "null"]},
+        "hasNulls": {"type": ["boolean", "null"]},
+        "domain": {"enum": ["depth", "time", "none", "unknown", null]},
+        "codes": {"type": "array", "items": {"$ref": "#/$defs/findingCode"}}
+      }
+    },
+    "readerReport": {
+      "type": "object",
+      "required": ["schema", "kind", "uploadId", "file", "class", "detect", "reader", "verdict", "findings", "questions",
+                   "assumptions", "structural", "headerBytesRead", "at"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {"const": "geosuite.intake.v1"},
+        "kind": {"const": "reader_report"},
+        "uploadId": {"$ref": "#/$defs/uploadId"},
+        "file": {"type": "object", "required": ["member", "sha256", "bytes"], "additionalProperties": false,
+                 "properties": {"member": {"type": "string", "maxLength": 512, "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$",
+                                           "description": "path relative to the upload folder; never absolute, never '..'"},
+                                "sha256": {"$ref": "#/$defs/sha256"},
+                                "bytes": {"type": "integer", "minimum": 0}}},
+        "class": {"$ref": "#/$defs/class"},
+        "detect": {"type": "object", "required": ["format", "by"], "additionalProperties": false,
+                   "properties": {"format": {"type": "string", "pattern": "^[a-z0-9_+.-]{1,40}$"},
+                                  "version": {"type": ["string", "null"], "maxLength": 20},
+                                  "by": {"type": "string", "pattern": "^[a-z0-9_.-]+@[0-9a-f]{7,40}$", "description": "<tool>@<commit>, e.g. geogis.classify@1a2b3c4"},
+                                  "evidence": {"type": "string", "maxLength": 300},
+                                  "contradiction": {"type": "string", "maxLength": 200}}},
+        "reader": {"type": "object", "required": ["repo", "tool", "commit"], "additionalProperties": false,
+                   "properties": {"repo": {"enum": ["GeoGIS", "RPX", "SDIP", "GeoCRS", "ExS", "DSH", "GeoAIBrain"]},
+                                  "tool": {"type": "string", "maxLength": 80},
+                                  "commit": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+                                  "library": {"type": "object", "required": ["name", "version", "licence"], "additionalProperties": false,
+                                              "properties": {"name": {"type": "string"}, "version": {"type": "string"}, "licence": {"type": "string"}}}}},
+        "verdict": {"$ref": "#/$defs/verdict"},
+        "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+        "questions": {"type": "array", "items": {"$ref": "#/$defs/question"}},
+        "assumptions": {"type": "array", "items": {"$ref": "#/$defs/assumption"}},
+        "structural": {"$ref": "#/$defs/structural"},
+        "qcCard": {"type": "object", "required": ["member", "sha256"], "additionalProperties": false,
+                   "properties": {"member": {"type": "string", "maxLength": 512}, "sha256": {"$ref": "#/$defs/sha256"},
+                                  "release": {"$ref": "#/$defs/releaseLevel"}}},
+        "headerBytesRead": {"type": "integer", "minimum": 0, "description": "bytes the detector/reader read for this report; a reader stays inside its declared budget"},
+        "headerBudget": {"type": "integer", "minimum": 0},
+        "at": {"$ref": "#/$defs/timestamp"}
+      },
+      "allOf": [
+        {"if": {"properties": {"verdict": {"const": "NEEDS_INPUT"}}},
+         "then": {"properties": {"questions": {"minItems": 1}}}},
+        {"if": {"properties": {"verdict": {"const": "PASS_WITH_ASSUMPTIONS"}}},
+         "then": {"properties": {"assumptions": {"minItems": 1}}}},
+        {"if": {"properties": {"verdict": {"const": "REFUSED"}}},
+         "then": {"properties": {"findings": {"contains": {"properties": {"severity": {"const": "refuse"}}}}}}},
+        {"if": {"properties": {"verdict": {"const": "QUARANTINE"}}},
+         "then": {"properties": {"findings": {"contains": {"properties": {"severity": {"const": "quarantine"}}}}}}},
+        {"if": {"properties": {"verdict": {"const": "PASS"}}},
+         "then": {"properties": {"questions": {"maxItems": 0},
+                                 "findings": {"items": {"properties": {"severity": {"enum": ["info"]}}}}}}}
+      ]
+    },
+    "custody": {
+      "type": "object",
+      "description": "intake.json, machine-local, git-ignored, never pushed (DESIGN section 4).",
+      "required": ["schema", "kind", "uploadId", "sha256", "bytes", "receivedAt", "project", "origin", "class", "classDecidedBy", "retention"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {"const": "geosuite.intake.v1"},
+        "kind": {"const": "custody"},
+        "uploadId": {"$ref": "#/$defs/uploadId"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 0},
+        "displayName": {"type": "string", "maxLength": 255},
+        "receivedAt": {"$ref": "#/$defs/timestamp"},
+        "client": {"enum": ["web", "desktop", "cli", "sdk", "drop"]},
+        "session": {"type": "string", "maxLength": 128},
+        "project": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"},
+        "origin": {"type": "object", "required": ["declared"], "additionalProperties": false,
+                   "properties": {"declared": {"type": "string", "pattern": "^(unknown|own|partner|cluster-derived|public:[A-Za-z0-9_. -]{1,80})$"},
+                                  "declaredBy": {"enum": ["user", "owner", "default"]},
+                                  "at": {"$ref": "#/$defs/timestamp"}}},
+        "class": {"$ref": "#/$defs/class"},
+        "classDecidedBy": {"$ref": "#/$defs/classDecidedBy"},
+        "retention": {"type": "object", "required": ["until", "rule"], "additionalProperties": false,
+                      "properties": {"until": {"type": "string", "format": "date"}, "rule": {"enum": ["staging-30d", "registered"]}}},
+        "detect": {"type": "object", "required": ["format", "by"],
+                   "properties": {"format": {"type": "string"}, "version": {"type": ["string", "null"]}, "by": {"type": "string"}}},
+        "qc": {"type": "object", "required": ["verdict", "codes"], "additionalProperties": false,
+               "properties": {"verdict": {"$ref": "#/$defs/verdict"},
+                              "codes": {"type": "array", "items": {"$ref": "#/$defs/findingCode"}},
+                              "reports": {"type": "array", "items": {"type": "string", "maxLength": 512}},
+                              "receipt": {"type": "string", "maxLength": 512}}},
+        "registration": {"type": "object", "properties": {"asset": {"type": "string"}, "handling": {"enum": ["local_only", "release_allowed"]}}},
+        "releases": {"type": "array", "items": {"type": "object", "required": ["to", "level", "at"], "additionalProperties": false,
+                     "properties": {"to": {"type": "string", "maxLength": 64}, "level": {"$ref": "#/$defs/releaseLevel"}, "at": {"$ref": "#/$defs/timestamp"}}}}
+      }
+    },
+    "refusal": {
+      "type": "object",
+      "description": "Kept after a REFUSED upload is deleted from every store: hash, size, time and code ONLY (D-513 #9). No name, no path, no content.",
+      "required": ["schema", "kind", "sha256", "bytes", "code", "refusedAt", "deletedAt"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {"const": "geosuite.intake.v1"},
+        "kind": {"const": "refusal"},
+        "uploadId": {"$ref": "#/$defs/uploadId"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 0},
+        "code": {"$ref": "#/$defs/findingCode"},
+        "refusedAt": {"$ref": "#/$defs/timestamp"},
+        "deletedAt": {"$ref": "#/$defs/timestamp"},
+        "by": {"type": "string", "pattern": "^[a-z0-9_.-]+@[0-9a-f]{7,40}$"}
+      }
+    }
+  }
+}

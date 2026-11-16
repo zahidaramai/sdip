@@ -56,6 +56,8 @@ dependencies = [
 [project.optional-dependencies]
 # Cloud object-store backends. Untested at v1.0 - open debt D7, probe P8.
 cloud = ["multidimio[cloud]==1.2.1"]
+# QC cards of `sdip intake` (PNG for the user). Not needed for the report itself.
+intake = ["matplotlib==3.10.3"]
 
 [project.urls]
 Homepage = "https://github.com/zahidaramai/sdip"
