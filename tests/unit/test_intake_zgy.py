@@ -100,7 +100,11 @@ def write_zgy(
     lut_at = len(header)
     first = lut_at + 8 * bricks[-1]
     brick_bytes = 64 * 64 * 64 * width
-    entries = [first + i * brick_bytes for i in range(bricks[-1])]
+    # Full resolution first on disk, lower levels after it, as OpenZGY writes them.
+    order = list(range(bricks[0], bricks[-1])) + list(range(bricks[0]))
+    entries = [0] * bricks[-1]
+    for pos, i in enumerate(order):
+        entries[i] = first + pos * brick_bytes
     if hole:
         entries[bricks[0]] = 0
     body = header + struct.pack(f"<{len(entries)}Q", *entries) + bytes(brick_bytes * len(entries))
@@ -214,3 +218,23 @@ def test_cluster_derived_zgy_is_refused(tmp_path, validator):
     rep = qc(write_zgy(tmp_path / "c.zgy"), cls="cluster-derived")
     validator.validate(rep)
     assert rep["verdict"] == "REFUSED"
+
+
+def test_a_cut_tail_in_a_lower_level_is_truncation(tmp_path):
+    # Lower-resolution bricks written last, as OpenZGY does: cutting the tail hits level 1.
+    path = write_zgy(tmp_path / "c.zgy", size=(130, 70, 30))
+    data = bytearray(path.read_bytes())
+    path.write_bytes(bytes(data[: len(data) - 10]))
+    rep = qc(path)
+    assert "TRUNCATED" in codes(rep)
+
+
+def test_fourth_corner_off_the_parallelogram_is_reported(tmp_path):
+    rep = qc(write_zgy(tmp_path / "c.zgy", corners=((0, 0), (1000, 0), (0, 500), (1000, 500.01))))
+    assert "SDIP_ZGY_CORNER_NOT_PARALLELOGRAM" in codes(rep)
+    assert rep["verdict"] == "NEEDS_INPUT"
+
+
+def test_a_parallelogram_is_not_reported(tmp_path):
+    rep = qc(write_zgy(tmp_path / "c.zgy", corners=((0, 0), (1000, 100), (-50, 500), (950, 600))))
+    assert "SDIP_ZGY_CORNER_NOT_PARALLELOGRAM" not in codes(rep)

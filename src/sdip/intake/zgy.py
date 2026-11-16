@@ -313,6 +313,22 @@ def qc_zgy(
                 "all four corner points coincide: the cube cannot be placed on a map",
             )
         )
+    if finite and span:
+        # OpenZGY treats four corners as three and derives the fourth; a stored fourth corner off
+        # the parallelogram is placed differently by such readers (P37 run 1, Z2).
+        c0, c1, c2, c3 = corners
+        dx, dy = c3[0] - (c1[0] + c2[0] - c0[0]), c3[1] - (c1[1] + c2[1] - c0[1])
+        off = math.hypot(dx, dy)
+        detail["corner_off_parallelogram"] = off
+        if off > 1e-6 * max(span, 1.0):
+            findings.append(
+                rpt.finding(
+                    "SDIP_ZGY_CORNER_NOT_PARALLELOGRAM",
+                    "info",
+                    f"the stored fourth corner lies {off:.3g} file units off the parallelogram "
+                    "of the other three; readers that derive it (OpenZGY) place it there instead",
+                )
+            )
     if info["gdef"] not in (0, 2, 3):
         findings.append(
             rpt.finding(
@@ -421,21 +437,22 @@ def qc_zgy(
     )  # coarsest level first
     full = list(lut[bricks[0] : bricks[-1]])  # plain little-endian from version 2 on
     brick_bytes = bricksize[0] * bricksize[1] * bricksize[2] * width
-    missing = constant = compressed = past_eof = 0
-    for v in full:
+
+    def beyond(v: int) -> bool:
+        """An entry whose brick starts or ends past the end of the file."""
         code = v >> CODE_SHIFT
-        if v == 0:
-            missing += 1
-        elif code == CONSTANT:
-            constant += 1
-        elif code == COMPRESSED:
-            compressed += 1
-            if (v & ((1 << CODE_SHIFT) - 1)) >= size:
-                past_eof += 1
-        elif code:
-            past_eof += 1
-        elif v + brick_bytes > size:
-            past_eof += 1
+        if v == 0 or code == CONSTANT:
+            return False
+        if code == COMPRESSED:
+            return (v & ((1 << CODE_SHIFT) - 1)) >= size
+        return bool(code) or v + brick_bytes > size
+
+    # Every level: OpenZGY writes the lower-resolution bricks after full resolution, so a
+    # cut tail lands in a level the full-resolution check never sees (P37 run 1, Z5).
+    past_eof = sum(beyond(v) for v in lut)
+    missing = sum(v == 0 for v in full)
+    constant = sum(v >> CODE_SHIFT == CONSTANT for v in full)
+    compressed = sum(v >> CODE_SHIFT == COMPRESSED for v in full)
     counts.update(
         bricks=len(full),
         missing_bricks=missing,
@@ -454,7 +471,7 @@ def qc_zgy(
             rpt.finding(
                 "TRUNCATED",
                 "quarantine",
-                f"{past_eof} of {len(full)} full-resolution bricks start or end past the end "
+                f"{past_eof} of {len(lut)} bricks (all levels) start or end past the end "
                 "of the file",
             )
         )
