@@ -81,6 +81,7 @@ def build(
         "cdp_y": (184, "i"),
         "inline": (188, "i"),
         "crossline": (192, "i"),
+        "delay": (108, "h"),
     }
     for t in traces:
         header = bytearray(240)
@@ -401,3 +402,19 @@ def test_the_ingest_preflight_refusal_is_reported(tmp_path, validator):
     validator.validate(rep)
     assert "ENGINE_REFUSED" in codes(rep)
     assert "SDIP_MDIO_ROUTE" not in codes(rep)
+
+
+def test_first_sample_time_is_reported(tmp_path):
+    rep = qc(build(tmp_path / "f.sgy", [t | {"delay": 4} for t in grid3d()]))
+    start = next(f for f in rep["findings"] if f["code"] == "SDIP_SAMPLE_START")
+    assert start["message"].startswith("first sample at 4 ms")
+    assert "last at 200 ms" in start["message"]  # 4 + 49 x 4 ms
+    assert rep["verdict"] == "NEEDS_INPUT"
+
+
+def test_a_start_time_that_varies_is_quarantined(tmp_path):
+    traces = grid3d()
+    traces[5] = traces[5] | {"delay": 8}
+    rep = qc(build(tmp_path / "f.sgy", traces))
+    assert "SDIP_SAMPLE_START_VARIES" in codes(rep)
+    assert rep["verdict"] == "QUARANTINE"

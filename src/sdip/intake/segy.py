@@ -99,6 +99,7 @@ TRACE_FIELDS: Final[dict[str, tuple[int, str]]] = {
     "cdp_y": (184, "i"),
     "inline": (188, "i"),
     "crossline": (192, "i"),
+    "delay": (108, "h"),
 }
 
 CRS_PATTERNS: Final[tuple[tuple[str, str], ...]] = (
@@ -618,6 +619,32 @@ def qc_segy(
                 "info",
                 f"{bad_dt} of {len(hs)} sampled traces declare a sample interval other than the "
                 f"binary header's {binary.interval} us; the binary header governs",
+            )
+        )
+    # Time of the first sample: the delay recording time, trace bytes 109-110, in ms (D-0147).
+    # Tools that convert or import the file take the vertical axis from it (P38: F3 starts at
+    # 4 ms, not 0); a start that varies between traces means no common vertical axis.
+    delays = Counter(h["delay"] for h in hs)
+    detail["delay_ms"] = dict(delays)
+    first = hs[0]["delay"]
+    last = first + (binary.samples - 1) * binary.interval / 1000.0
+    detail["first_sample_ms"] = first
+    if len(delays) == 1:
+        findings.append(
+            rpt.finding(
+                "SDIP_SAMPLE_START",
+                "info",
+                f"first sample at {first} ms (delay recording time, trace bytes 109-110), last at "
+                f"{last:g} ms; read in the file's vertical unit if the data are in depth",
+            )
+        )
+    else:
+        findings.append(
+            rpt.finding(
+                "SDIP_SAMPLE_START_VARIES",
+                "quarantine",
+                f"the delay recording time (trace bytes 109-110) varies across sampled traces: "
+                f"{dict(sorted(delays.items())[:8])}; the traces share no common vertical axis",
             )
         )
     dead = sum(h["trace_id"] == 2 for h in hs)

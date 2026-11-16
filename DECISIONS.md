@@ -6678,3 +6678,19 @@ show the cut without reading bricks. Every VDS report therefore carries
 **Follow-up (open):** the SEG-Y intake reader should report the delay recording time (trace bytes
 109-110) and flag one that varies across traces; P38 showed it is the first thing that differs
 between tools.
+
+## D-0148 — 2026-11-16 — D-0147 follow-up closed: the SEG-Y intake reader reports the first-sample time
+
+The SEG-Y intake reader now reads the delay recording time (trace bytes 109-110, ms) from every
+sampled trace header and reports the first and last sample times (`SDIP_SAMPLE_START`,
+information). A start that varies between traces is `QUARANTINE`
+(`SDIP_SAMPLE_START_VARIES`): the traces share no common vertical axis. Two focused tests, both
+halves (92 intake tests in all).
+
+**Measured on the public set of P36 (48 files), on this commit:** F3 starts at 4 ms and ends at
+1848 ms, which is exactly the sample axis OpenVDS's `SEGYImport` wrote in P38. Volve: 6 of the 9
+3D cubes and sub-cubes and the arbitrary line start at 4 ms, 3 cubes at 0 ms; all 33 ST0299
+lines, Viking Graben and the three Marmousi2 models start at 0 ms. No file's start varies across
+its sampled traces. Against P36 the only verdict change is Viking Graben (QUARANTINE to
+NEEDS_INPUT), which is D-0142's units change, not this one. For a depth volume the reported
+times are in the file's vertical unit; the message says so.

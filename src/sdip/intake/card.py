@@ -83,6 +83,10 @@ def _summary(outcome: Any) -> list[str]:
     c = st.get("counts", {})
     if "traces" in c:
         lines.append(f"traces {c['traces']:,}   sampled headers {c.get('sampled_headers', 0):,}")
+    if "first_sample_ms" in det:
+        lines.append(
+            f"first sample {det['first_sample_ms']} ms (delay recording time {det.get('delay_ms')})"
+        )
     if "grid_cells" in c and "inlines" in c:
         lines.append(
             f"grid {c['inlines']} x {c['crosslines']} = {c['grid_cells']:,} cells   "
