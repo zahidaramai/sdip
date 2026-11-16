@@ -6617,3 +6617,23 @@ and finds traces by searching for a byte pattern, so it is not an oracle.
 **Measured.** 16 tests on synthetic rev 2.1 records (both halves), and no P36 SEG-Y or P37 ZGY
 file is detected as SEG-D. **No public SEG-D record was found; the reader is unmeasured on real
 field data.** That is the first thing to close when one is supplied.
+
+## D-0145 — 2026-11-16 — `sdip intake` reads RESQML packages (`.epc`)
+
+**Built.** `sdip.intake.resqml`, standard library only: the zip's central directory and the XML
+parts (4 MiB per part, 16 MiB in all), never an HDF5 array. Refused before any XML is parsed: a
+member path leaving the package, a symbolic link member, a decompression bomb (1 GiB or ratio
+200), any DTD or entity. Reported: version, objects by type, IJK grid cell counts, the local CRS
+objects (a stated EPSG code is reported as stated; an unknown or local-authority projected CRS is
+asked, never inferred; units and time or depth from the CRS objects), the HDF5 companions the
+package names (missing beside it, or not starting with the HDF5 signature: `QUARANTINE`), and
+references to objects the package does not hold. Dispatch is by content (a zip whose content
+types declare RESQML), so an extension-less package is read as RESQML. SDIP stores seismic
+traces only, so the report states that grids and surfaces go to the engines that read RESQML.
+`resqpy` was not adopted for this: it opens the whole model, and SDIP takes no new dependency.
+
+**Measured.** 16 tests on synthetic packages (both halves; 81 intake tests in all). resqpy's
+three public example packages (MIT; receipt `prereg/intake-samples.receipt.json`) read with IJK
+grids of 3000, 8400 and 9 cells; the same package without its `.h5` beside it is `QUARANTINE`.
+The schema's count-name rule (letters and `_` only) caught two invalid count names before
+commit.

@@ -10,6 +10,78 @@
    "used_for": "ZGY test files (test_data/small-*.zgy) and the OpenZGY oracle (P37)",
    "fetchedAt": "2026-11-16T13:54:00Z",
    "deletedAt": null
+  },
+  {
+   "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/block.epc",
+   "sha256": "9931a7e8b3b192282ef76c8c7899a73bf5cf45a08f20e43002bc6d2e5d2d9406",
+   "bytes": 115027,
+   "licence": "MIT",
+   "used_for": "RESQML intake reader (D-0145)",
+   "fetchedAt": "2026-11-16T14:09:00Z",
+   "deletedAt": null
+  },
+  {
+   "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/block.h5",
+   "sha256": "b2b0d3d48334d4a62df92f7db8a1ec708fa70484f2eff4a62bbe261939f51d54",
+   "bytes": 271140,
+   "licence": "MIT",
+   "used_for": "RESQML intake reader (D-0145)",
+   "fetchedAt": "2026-11-16T14:09:00Z",
+   "deletedAt": null
+  },
+  {
+   "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/s_bend.epc",
+   "sha256": "ea3cbe4ad1ece3bb47c4eda0643876393c9683984f6c237c55ababf5d7aa6891",
+   "bytes": 161618,
+   "licence": "MIT",
+   "used_for": "RESQML intake reader (D-0145)",
+   "fetchedAt": "2026-11-16T14:09:00Z",
+   "deletedAt": null
+  },
+  {
+   "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/s_bend.h5",
+   "sha256": "da66daa7404a285d2592dc969b1ec3ce5c0c922ff78d9a260e087fdc548a0fca",
+   "bytes": 460195,
+   "licence": "MIT",
+   "used_for": "RESQML intake reader (D-0145)",
+   "fetchedAt": "2026-11-16T14:09:00Z",
+   "deletedAt": null
+  },
+  {
+   "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/tic_tac_toe.epc",
+   "sha256": "a02512e21cb9911dc6f6d5a9586eb5004c7b11a4eb3cf7130185543a53c3348c",
+   "bytes": 24446,
+   "licence": "MIT",
+   "used_for": "RESQML intake reader (D-0145)",
+   "fetchedAt": "2026-11-16T14:09:00Z",
+   "deletedAt": null
+  },
+  {
+   "url": "https://raw.githubusercontent.com/bp/resqpy/master/example_data/tic_tac_toe.h5",
+   "sha256": "f192fa353127a0cad0e711b08515896b8fb3a47d973734b89978c62af7ea49db",
+   "bytes": 5552,
+   "licence": "MIT",
+   "used_for": "RESQML intake reader (D-0145)",
+   "fetchedAt": "2026-11-16T14:09:00Z",
+   "deletedAt": null
+  },
+  {
+   "url": "https://files.pythonhosted.org/packages/source/s/segd/segd-0.1.1.tar.gz",
+   "sha256": "317b8a3f71c7c1e36cf9a205f93b497e248d6c0ed862f165c0ba5f43e84c6a86",
+   "bytes": 50728,
+   "licence": "Apache-2.0",
+   "used_for": "read as a candidate SEG-D oracle; rejected (D-0144)",
+   "fetchedAt": "2026-11-16T14:03:00Z",
+   "deletedAt": null
+  },
+  {
+   "url": "https://pypi.org/project/pysegd/4.0.1/ (wheel)",
+   "sha256": null,
+   "bytes": 30864,
+   "licence": "LGPL-3.0",
+   "used_for": "none: deleted unread on seeing its licence (D-0144)",
+   "fetchedAt": "2026-11-16T14:03:00Z",
+   "deletedAt": "2026-11-16T14:04:00Z"
   }
  ]
 }
