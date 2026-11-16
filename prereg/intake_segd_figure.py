@@ -94,9 +94,13 @@ def main(out: Path, commit: str, real: Path | None = None) -> None:
     ax.set_xlim(-4, 9)
     ax.set_ylim(-0.3, n + 0.3)
     ax.axis("off")
+    scope = (
+        "2 real public Crescent Valley records + synthetic"
+        if real is not None
+        else "synthetic records only"
+    )
     ax.set_title(
-        f"SDIP SEG-D intake reader on synthetic rev 2.1 records (real field SEG-D unmeasured)  |  "
-        f"sdip@{commit[:12]}",
+        f"SDIP SEG-D intake reader: {scope}  |  sdip@{commit[:12]}",
         fontsize=10,
     )
     fig.savefig(out / "segd_cases.png", bbox_inches="tight")

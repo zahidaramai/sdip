@@ -6637,3 +6637,22 @@ three public example packages (MIT; receipt `prereg/intake-samples.receipt.json`
 grids of 3000, 8400 and 9 cells; the same package without its `.h5` beside it is `QUARANTINE`.
 The schema's count-name rule (letters and `_` only) caught two invalid count names before
 commit.
+
+## D-0146 — 2026-11-16 — SEG-D reader measured on two real public field records; D-0144's "unmeasured" closed for rev 2.0 demultiplexed 8058
+
+GeoSuite allowed one time-boxed search for public SEG-D. Found in 7 minutes: the DOE Geothermal
+Data Repository's "Seismic Survey 2016 Data at Crescent Valley, Nevada" (submission 1567, DOI
+10.15121/2369595, CC-BY 4.0), native `.sgd` node records on a public bucket that does not refuse
+anonymous reads. Two files fetched (227 MB; source and sha256 in
+`prereg/intake-samples.receipt.json`; deleted at the lane's end).
+
+**Measured on them, unchanged reader:** both read as SEG-D rev 2.0, format 8058 (32-bit IEEE,
+demultiplexed), three general header blocks, one channel set, three extended header blocks,
+base scan 2 ms. `1.sgd`: 946 seismic channels; `100.sgd`: 945. The trace-header walk ends exactly
+at the end of each file (`PASS`), and the 120,116-byte difference between the files is exactly
+one trace: a 20-byte header, three 32-byte extensions and 30,000 four-byte samples (60 s at
+2 ms). A copy of `1.sgd` cut by 1,000 bytes is `QUARANTINE`/`TRUNCATED`; a copy with 64 bytes
+appended is `QUARANTINE`/`SIZE_INCONSISTENT`. At most 49,288 header bytes were read of 113 MB.
+
+**Still unmeasured on real data:** revision 3, multiplexed formats, any encoding other than
+8058, records with auxiliary channels, and recorders other than this survey's.

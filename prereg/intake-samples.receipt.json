@@ -82,6 +82,24 @@
    "used_for": "none: deleted unread on seeing its licence (D-0144)",
    "fetchedAt": "2026-11-16T14:03:00Z",
    "deletedAt": "2026-11-16T14:04:00Z"
+  },
+  {
+   "url": "https://gdr-data-lake.s3.amazonaws.com/wholescale/subter_seismic/crescent_valley/1.sgd",
+   "sha256": "ebfe8265f7dbaa421c580557dbd21259e7ea94d428dc5c75d1477c82d6450a40",
+   "bytes": 113629960,
+   "licence": "CC-BY-4.0 (DOE GDR submission 1567, DOI 10.15121/2369595)",
+   "used_for": "SEG-D intake reader on real field records (D-0146)",
+   "fetchedAt": "2026-11-16T14:21:00Z",
+   "deletedAt": null
+  },
+  {
+   "url": "https://gdr-data-lake.s3.amazonaws.com/wholescale/subter_seismic/crescent_valley/100.sgd",
+   "sha256": "11aa6ed1e76bfef516ecd9f7c0cf6a96799fa3653fdbf12a0fba6f3bfb344948",
+   "bytes": 113509844,
+   "licence": "CC-BY-4.0 (DOE GDR submission 1567, DOI 10.15121/2369595)",
+   "used_for": "SEG-D intake reader on real field records (D-0146)",
+   "fetchedAt": "2026-11-16T14:21:00Z",
+   "deletedAt": null
   }
  ]
 }
