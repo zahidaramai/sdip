@@ -1,0 +1,15 @@
+{
+ "schema": "sdip.intake.samples/1",
+ "note": "Public samples fetched for the intake readers (GeoSuite intake programme P3); deleted after validation, refetchable by url and sha256.",
+ "samples": [
+  {
+   "url": "https://files.pythonhosted.org/packages/source/p/pyzgy/pyzgy-0.1.1.tar.gz",
+   "sha256": "62369817274dd632b0611b156f872c39b3fbbcf1930f90171a028fbc764afabb",
+   "bytes": 247716,
+   "licence": "Apache-2.0",
+   "used_for": "ZGY test files (test_data/small-*.zgy) and the OpenZGY oracle (P37)",
+   "fetchedAt": "2026-11-16T13:54:00Z",
+   "deletedAt": null
+  }
+ ]
+}
