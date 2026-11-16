@@ -50,3 +50,28 @@ unseen.
 read and the field-by-field comparison with the oracle.
 
 ---
+
+## Results, run 1 (2026-11-16, `sdip` 921cd639, receipt `P37-receipt-2026-11-16-run1.json`)
+
+| # | Result |
+|---|---|
+| Z1 | met: 8/8 schema-valid, no exception |
+| Z2 | **not met**: 47 of 48 field comparisons equal; the F3 sub-cube's fourth corner differs by 0.01 m in y |
+| Z3 | met |
+| Z4 | met: domain time, units stated, the projection text is the first CRS candidate, no domain question |
+| Z5 | **not met**: the copy with its last 1,000 bytes cut came back NEEDS_INPUT, not QUARANTINE |
+| Z6 | met: one missing brick |
+| Z7 | met: at most 1,932 header bytes read, on the 199 MB files |
+
+**Gate: not met.** Causes, measured:
+
+- **Z2.** OpenZGY derives the fourth corner from the other three (it treats four points as
+  three) and reports a parallelogram; SDIP reports the fourth corner as stored. The F3 grid's
+  fourth corner lies 0.01 m off the parallelogram. Neither reader is wrong; the expectation
+  compared a derived value with a stored one. The deviation is itself a QC fact, so the reader
+  now reports it (`SDIP_ZGY_CORNER_NOT_PARALLELOGRAM`, information, with the distance).
+- **Z5.** A defect in the reader: it checked only full-resolution bricks for truncation, and
+  OpenZGY writes the lower-resolution bricks after them, so a cut tail lands in a level the
+  reader did not check. The reader now checks every brick entry of every level.
+
+Both fixes are re-measured on the same files as run 2 below; this run's gate stays not met.

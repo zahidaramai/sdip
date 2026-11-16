@@ -1,0 +1,192 @@
+{
+ "probe": "P37",
+ "sdip_commit": "921cd6396ecf2b91185210ac3f43f514a20de8e8",
+ "gates": {
+  "Z1": true,
+  "Z2": false,
+  "Z3": true,
+  "Z4": true,
+  "Z5": false,
+  "Z6": true,
+  "Z7": true
+ },
+ "files": [
+  {
+   "label": "small-16bit.zgy",
+   "bytes": 1048576,
+   "sha256": "c46566d2fe9ff426b15c245fba23bd4f16c7237ee46e8f2cfebb4e61952ba2de",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "UNITS_AMBIGUOUS"
+   ],
+   "header_bytes_read": 392,
+   "schema_valid": true,
+   "fields": {
+    "size": true,
+    "annotstart": true,
+    "annotinc": true,
+    "zstart": true,
+    "zinc": true,
+    "corners": true,
+    "datatype": true,
+    "projection": true
+   }
+  },
+  {
+   "label": "small-32bit_rotated.zgy",
+   "bytes": 2097152,
+   "sha256": "8fbb714d2e50bb948f8dced0ea3961fefc2d09c139bb66ffe90babceedf7f229",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "UNITS_AMBIGUOUS"
+   ],
+   "header_bytes_read": 358,
+   "schema_valid": true,
+   "fields": {
+    "size": true,
+    "annotstart": true,
+    "annotinc": true,
+    "zstart": true,
+    "zinc": true,
+    "corners": true,
+    "datatype": true,
+    "projection": true
+   }
+  },
+  {
+   "label": "small-32bit_translated.zgy",
+   "bytes": 2097152,
+   "sha256": "d5ae7f41acfdbccfd4297f81b608917d48dc5975443dba22f79102dbe24ce867",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "UNITS_AMBIGUOUS"
+   ],
+   "header_bytes_read": 358,
+   "schema_valid": true,
+   "fields": {
+    "size": true,
+    "annotstart": true,
+    "annotinc": true,
+    "zstart": true,
+    "zinc": true,
+    "corners": true,
+    "datatype": true,
+    "projection": true
+   }
+  },
+  {
+   "label": "small-32bit.zgy",
+   "bytes": 2097152,
+   "sha256": "fdde06a818d1ae5c077f8d361cdb175cc4279be93ec1b39f892d265fc47d471e",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "UNITS_AMBIGUOUS"
+   ],
+   "header_bytes_read": 392,
+   "schema_valid": true,
+   "fields": {
+    "size": true,
+    "annotstart": true,
+    "annotinc": true,
+    "zstart": true,
+    "zinc": true,
+    "corners": true,
+    "datatype": true,
+    "projection": true
+   }
+  },
+  {
+   "label": "small-8bit.zgy",
+   "bytes": 524288,
+   "sha256": "3c64ca4e3228d241257fec570d294be765e4c185068ad0b705a5c3cc03bd4e18",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "UNITS_AMBIGUOUS"
+   ],
+   "header_bytes_read": 392,
+   "schema_valid": true,
+   "fields": {
+    "size": true,
+    "annotstart": true,
+    "annotinc": true,
+    "zstart": true,
+    "zinc": true,
+    "corners": true,
+    "datatype": true,
+    "projection": true
+   }
+  },
+  {
+   "label": "f3_sub.zgy",
+   "bytes": 199229440,
+   "sha256": "70f3b915a1b1cb0161e6f3f5c942ad1f2a9607ec53e77eec0048d9f3ee993f3b",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 1932,
+   "schema_valid": true,
+   "fields": {
+    "size": true,
+    "annotstart": true,
+    "annotinc": true,
+    "zstart": true,
+    "zinc": true,
+    "corners": false,
+    "datatype": true,
+    "projection": true
+   }
+  },
+  {
+   "label": "f3_sub_cut.zgy",
+   "bytes": 199228440,
+   "sha256": "6518afff39bf88322ad6e2717a0e149e69e7f0b15bcd8fcd48b5d9710a002dc5",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 1932,
+   "schema_valid": true,
+   "fields": null
+  },
+  {
+   "label": "f3_sub_hole.zgy",
+   "bytes": 199229440,
+   "sha256": "dda381f27234de8d758a875de3b76794c0efa8a397e3716e1948da60e6fecb67",
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_ZGY_MISSING_BRICKS"
+   ],
+   "header_bytes_read": 1932,
+   "schema_valid": true,
+   "fields": null
+  }
+ ]
+}
