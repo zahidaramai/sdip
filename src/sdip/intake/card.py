@@ -54,6 +54,18 @@ def _summary(outcome: Any) -> list[str]:
             f"projection: {det.get('strings', {}).get('projection') or 'none'}"[:110],
             f"bricks at full resolution: {det.get('bricks', 'not read')}",
         ]
+    if det.get("kind") == "segd" and "gh1" in det:
+        g = det["gh1"]
+        lines += [
+            f"format {det.get('format')}",
+            "recorded year {:02d} day {} {:02d}:{:02d}:{:02d}".format(
+                g["year"], g["day"], *g["time"]
+            ),
+            f"base scan {det.get('interval_ms', '?')} ms   "
+            f"channels by type {det.get('channels_by_type')}",
+            f"samples per trace (walked) {det.get('samples_per_trace')}   "
+            f"first trace at byte {det.get('data_start')}",
+        ]
     b = det.get("binary")
     if b:
         lines += [
@@ -73,9 +85,10 @@ def _summary(outcome: Any) -> list[str]:
     if det.get("scalars") is not None:
         lines.append(f"coordinate scalars {det['scalars']}   units {det.get('coord_units')}")
     cands = det.get("crs_candidates") or []
-    lines.append("CRS in text header: " + (", ".join(c for c, _ in cands) if cands else "none"))
-    t, d = det.get("domain_words", (False, False))
-    lines.append(f"text header mentions time: {t}   depth: {d}")
+    if det.get("kind") is None:
+        lines.append("CRS in text header: " + (", ".join(c for c, _ in cands) if cands else "none"))
+        t, d = det.get("domain_words", (False, False))
+        lines.append(f"text header mentions time: {t}   depth: {d}")
     if det.get("template"):
         lines.append(f"MDIO template candidate: {det['template']}")
     lines.append("")

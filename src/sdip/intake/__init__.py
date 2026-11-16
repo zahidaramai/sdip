@@ -37,14 +37,19 @@ def qc_file(
     commit: str | None = None,
 ) -> Any:
     """Detect the seismic format by content and run its reader. Returns an ``Outcome``."""
+    from sdip.intake.segd import is_segd, qc_segd
     from sdip.intake.segy import qc_segy
     from sdip.intake.zgy import is_zgy, qc_zgy
 
     digest = sha256 or file_sha256(path)
     with Path(path).open("rb") as handle:
-        head = handle.read(8)
+        head = handle.read(32)
     if is_zgy(head):
         return qc_zgy(
+            path, upload_id=upload_id, member=member, sha256=digest, cls=cls, commit=commit
+        )
+    if is_segd(head):
+        return qc_segd(
             path, upload_id=upload_id, member=member, sha256=digest, cls=cls, commit=commit
         )
     return qc_segy(
