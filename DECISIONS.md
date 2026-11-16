@@ -6528,3 +6528,48 @@ the layout or the guard changes.
 The run root (four worktrees, twelve stores) was harvested into this entry, the manifest and
 `prereg/D-0141-store-layout-receipt-2026-11-08.json` (every array's sha256, every verify
 outcome; a measurement receipt, not a pre-registered probe), then deleted.
+
+## D-0142 — 2026-11-16 — `sdip intake`: header-only intake QC of seismic files; P36 met; units contradiction asked, not quarantined
+
+**Order.** GeoSuite, for the owner's file and image intake programme (GeoSuite D-511, D-513,
+D-514): SDIP's lane is the seismic readers, each reporting into the one intake contract
+`geosuite.intake.v1` published by GeoGIS (6edead4c). This is outside spec §13's phases: it reads
+headers and routes into `sdip ingest`, and converts, processes and certifies nothing. The
+equivalence engine, the spec mechanism and the gates are untouched.
+
+**Built (`d16acd7`).** `sdip intake SOURCE --upload-id --class [--sha256] [--cluster-marker]
+[--out] [--card]`, package `sdip.intake`:
+- one `reader_report` per file, from 3600 header bytes, the declared extended textual headers
+  and at most 2000 trace headers (the first 500 in a run, then evenly spaced); budget 1 MiB,
+  every byte counted in `headerBytesRead`; no sample is read;
+- geometry from the headers: 3D post-stack, 2D post-stack, 2D/3D pre-stack (shot or CDP
+  gathers), unknown. 3D needs a grid (each index repeating across the other), and pre-stack
+  needs repeated cells at varying offsets; FFID and channel alone are not evidence, because a
+  migrated Volve line keeps them from its nearest trace;
+- byte order, revision, format, interval, sample count, size consistency (`TRUNCATED`,
+  `SIZE_INCONSISTENT`), per-trace sample count, coordinate scalars and units, measurement
+  system, dead traces;
+- CRS and vertical domain are **asked** (`CRS_UNRESOLVED`, `DOMAIN_UNKNOWN`), with any EPSG, UTM
+  or datum words of the textual header offered as candidates with their card; never inferred;
+- the route: the MDIO template and the ingest preflight's verdict (`ENGINE_REFUSED` with its
+  message when the preflight refuses);
+- raw cluster seismic (a caller-supplied marker word, whole-word, in the textual header, or the
+  `cluster-derived` class) is `REFUSED` before any trace header is read. The reader deletes
+  nothing: the custodian does, keeping only the hash and size;
+- QC card PNG behind a new optional extra `intake` (matplotlib 3.10.3); the report needs nothing
+  new. The contract schema is vendored in `tests/contracts/`, pinned by sha256.
+
+**Measured.** `tests/unit/test_intake_segy.py`: 31 passed (synthetic files, both halves, every
+report schema-validated). P36 (registered `c0a82e4` before the run, six public files disclosed
+as seen during development): 73 files, 48 public and 25 local-only, gate met (E1–E8), receipt
+`prereg/P36-receipt-2026-11-16.json`. The local-only results stay in the git-ignored run root.
+
+**Changed after P36 (this entry).** A coordinate-units flag of decimal degrees on coordinates
+too large for degrees was `QUARANTINE`. P36 found it on Viking Graben and on files of the local
+set, from unrelated surveys: the flag is commonly wrong and the user knows the unit. It is now
+an `info` finding plus a `UNITS_AMBIGUOUS` question (`NEEDS_INPUT`). P36's E6 recorded the old
+behaviour and is not edited. The driver's spurious `SDIP_NO_EXTENSION` on generic labels was
+fixed in the driver.
+
+**Not done here:** ZGY, OpenVDS, SEG-D and RESQML readers (next, same contract); extension-less
+detection is by content, and GeoGIS's classifier decides which reader runs.

@@ -717,14 +717,28 @@ def qc_segy(
             for h in hs
         )
         if big:
+            # Asked, not quarantined (D-0142): P36 found the flag wrong on more than one
+            # unrelated survey, and the user knows which unit the coordinates are in.
             findings.append(
                 rpt.finding(
                     "SDIP_COORD_UNITS_CONTRADICT",
-                    "quarantine",
+                    "info",
                     f"{big} of {len(hs)} sampled traces declare decimal degrees "
-                    "(bytes 89-90 = 3) but carry "
-                    "coordinates outside +/-180 / +/-90 after the scalar: "
-                    "the units flag or the coordinates are wrong",
+                    "(bytes 89-90 = 3) but carry coordinates outside +/-180 / +/-90 after "
+                    "the scalar: the units flag or the coordinates are wrong",
+                )
+            )
+            questions.append(
+                rpt.question(
+                    "UNITS_AMBIGUOUS",
+                    "The trace headers say the coordinates are decimal degrees, but their "
+                    "values are too large for degrees. Which unit are they in?",
+                    [
+                        {"id": "m", "label": "metres (projected)"},
+                        {"id": "ft", "label": "feet (projected)"},
+                        {"id": "deg", "label": "degrees (the values are wrong)"},
+                    ],
+                    subject="coordinates",
                 )
             )
     if not has_coords:
@@ -765,7 +779,11 @@ def qc_segy(
     structural["hasUnits"] = binary.measurement in (1, 2)
     if binary.measurement in (1, 2):
         detail["measurement"] = "metres" if binary.measurement == 1 else "feet"
-    elif has_coords and set(units) <= {0, 1}:
+    elif (
+        has_coords
+        and set(units) <= {0, 1}
+        and not any(q["code"] == "UNITS_AMBIGUOUS" for q in questions)
+    ):
         questions.append(
             rpt.question(
                 "UNITS_AMBIGUOUS",

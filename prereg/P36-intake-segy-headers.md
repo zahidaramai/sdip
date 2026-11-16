@@ -56,3 +56,26 @@ format, codes and header bytes read; for the confidential set only the number of
 number meeting E1–E3 and E8.
 
 ---
+
+## Results (2026-11-16, `sdip` d16acd7e, receipt `P36-receipt-2026-11-16.json`)
+
+| # | Result |
+|---|---|
+| E1 | 73/73 reports, no exception (48 public, 25 confidential) |
+| E2 | 73/73 schema-valid |
+| E3 | 73/73 inside the budget; the most read for one file was 483,600 bytes (3600 + 2000 trace headers), on files up to 7.5 GB |
+| E4 | F3 and the 9 Volve 3D cubes and sub-cubes: all `segy-3d-poststack`, route `PostStack3D*` |
+| E5 | 33 Volve ST0299 lines and the arbitrary line: all `segy-2d-poststack` |
+| E6 | Viking Graben: `segy-2d-prestack`, shot gathers over 120 channels, QUARANTINE on `SDIP_COORD_UNITS_CONTRADICT` |
+| E7 | Marmousi2 (3): `segy-2d-poststack`, QUARANTINE on `ENGINE_REFUSED` (zero scalar, revision 0) |
+| E8 | 25/25 confidential `structural` blocks carry only the allowed keys |
+
+**Gate: met.** Two findings, not expectations:
+
+1. Files in the local-only set carry the same contradiction as Viking Graben (coordinate units
+   flag 3, decimal degrees, on projected coordinates); how many is kept in the local receipt
+   only. Seen on more than one unrelated survey, the flag is commonly wrong, and the user can
+   say which unit is right. The reader is changed after this run to ask `UNITS_AMBIGUOUS`
+   instead of quarantining (DECISIONS.md D-0142); this registration's E6 is not edited.
+2. Every confidential row shows `SDIP_NO_EXTENSION` because the driver passed the generic label as
+   the member name. A driver artefact, not a reader finding; the driver now keeps the suffix.

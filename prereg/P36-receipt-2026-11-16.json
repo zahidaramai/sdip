@@ -1,0 +1,926 @@
+{
+ "probe": "P36",
+ "sdip_commit": "d16acd7e3246dd4bd6aed315fdf7a19efda1229d",
+ "schema": "geosuite.intake.v1 (GeoGIS 6edead4c, sha256 f0a3e47a8212859fc9ca36c76ac54943465635eedcbf5dd99a690aee27d7089a)",
+ "public": [
+  {
+   "dataset": "F3 Netherlands (dGB/TNO)",
+   "file": "Dutch Government_F3_entire_8bit seismic.segy",
+   "bytes": 1292686488,
+   "sha256": "b36494f4e9bed7216228124f43ff8901168bff8bebd4e4c4dabb80a68d568dab",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-3d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-05002+MIG_FIN.segy",
+   "bytes": 12659760,
+   "sha256": "6d1ec283304eac6bd5d78f6a2e3fac9f73e84973fcd821942f54ce833c2af00a",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-05003+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "d92dfefd95388e5c64902a06a6dc9553fe122b4f828dcd302deb0c50015bb91c",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-05004+MIG_FIN.segy",
+   "bytes": 12659760,
+   "sha256": "cf0bba306400fe1eca119c2375c1eea2bc568579c5895f253ccbf1dd38ecd649",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-05005+MIG_FIN.segy",
+   "bytes": 12047760,
+   "sha256": "49f64b71e8b5444286330f960fb7b09dc261a1afa156704c60d710754430626b",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 239760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-05006+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "53a5aa4b0a667b2e9a7f96658674f9b335f746c618e3f1c9d9379331d41fdcef",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-05007+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "01c25bd5329b08fa5a2f73f9b5ba7cb607ba574a3246e06a96c5489ccf9762c3",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-05011+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "763b96369d29682edd2a582b8e8a9afa6ae942842ee28e5d8ef04fa696bd34cc",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-06001+MIG_FIN.segy",
+   "bytes": 17482320,
+   "sha256": "0725f6333f909ace6ccda33d58780e5f4a00fbb7f8569d07426429b0bf19ea1a",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 346320,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07001+MIG_FIN.segy",
+   "bytes": 19146960,
+   "sha256": "3b2c40f1fcd4c70641d1fdf48279f46dac3cc8b383ef654b99c789609fc93f40",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 378960,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07002+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "2f2ea88cb7d831a2a6201d1353545535f6396052dab3a8b0e2f0ecffa0f34dbf",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07003+MIG_FIN.segy",
+   "bytes": 12659760,
+   "sha256": "043d819cceadbad541736f11c515060e001e557fb27ecce3867be3de9333050c",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07004+MIG_FIN.segy",
+   "bytes": 12659760,
+   "sha256": "4c5380a3aef2f6f7591f78be0f81e3f56206231b119bf913c6bd926c32e41a98",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07005+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "6bdf0914582601508b707cd354b85f652b72d3df4b8cd1c0de194f24fe6b2667",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07006+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "55f94d88b2ab1acdf1247b931b8407466b4f70a055325fd3e2210851de354cf9",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07007+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "4d9421b081eb0b4a685d7a52b20610a6117685b58fa0d03d59e6a244c715e681",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07008+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "4846dec8e42f6816697fc6ca926b42b97ccfd18378aeb4e6661a0c1b070a4865",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07010+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "8be55708c182e11b560b42c0ab1298fc3aca957ab0becf586c4c077074c19cfd",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07011+MIG_FIN.segy",
+   "bytes": 12659760,
+   "sha256": "99d81c38f446f926867c6eaec20814818df21f47e77b9f7ad23a77782e11b6d7",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07013+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "86d5e4a26460206935d20103b6f89744e586427c6ecd2984400cdbebe46a1235",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07014+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "bc25063a93b19410b3507d9bcd9eb408aa620dcae73a808345737f528eb2c00f",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07015+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "cdc9faff711dba212b9b5e1b47a3c53af32133323c876ecfb62732c4eb6023c5",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07016+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "afae2ee1abb3598ab0bbd5e6ff42a898dd8f2f2e736a009e4a123241320748fb",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07017+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "9633400f4abd323f32af743df4907320ed91e1710a1e4f6187ece6aac0ed8cc8",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07018+MIG_FIN.segy",
+   "bytes": 12659760,
+   "sha256": "2035fa1a6d76dfd19c503332bec7b0634884861e175eb113af8c2aa43c962911",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07019+MIG_FIN.segy",
+   "bytes": 12659760,
+   "sha256": "6bb8e8b38852d052af2804e0283a88c409ee2e3443cba7bd778ca28a50910fb6",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-07020+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "499c3cb61272c42c14a9781689a8ac33a61fc89ce055f8d6b4468292136ae19a",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-15001+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "dcf14755460eaefd4ff3421b0936c2a9a7e6a049a2d59789df819aad8e86bb85",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-15008+MIG_FIN.segy",
+   "bytes": 12659760,
+   "sha256": "6411053fd674659b4979fbf227d486abe9642e83081dece9541de5aeede220cd",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-15009+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "46643f3176295f4d73465deed6a20789c8f4322dbf44381eedffce305f2da808",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-15010+MIG_FIN.segy",
+   "bytes": 12610800,
+   "sha256": "067e4f0242c913726046472f504a0fb0d6bad3bead9033d1190306963009d9a4",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 250800,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-17009+MIG_FIN.segy",
+   "bytes": 12635280,
+   "sha256": "18e139f208d211bd4561430facb1b81d6f3eb460a8d1af8f69a919103b63d31d",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251280,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-17012+MIG_FIN.segy",
+   "bytes": 12659760,
+   "sha256": "0936c9b9db8f59964df5f2ffb12884f9b0b8d7d8ce64b7d9b5911e501611a7fa",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 251760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) ST0299 2D",
+   "file": "ST0299-18001+MIG_FIN.segy",
+   "bytes": 15107760,
+   "sha256": "bfda7f8da9137bc4ab0ebf47db2c4c9281af2c3e8dcfe1bda386c44560b66e65",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 299760,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) 3D",
+   "file": "volve_mon_2010_ST10010ZC11_PZ.sgy",
+   "bytes": 198136080,
+   "sha256": "d78beae236e928411641f07f478abcda14b2bbee6d7db2f27fbf2daa5c601104",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-3d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE",
+    "UNITS_AMBIGUOUS"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) 3D",
+   "file": "volve_base_2002_ST0202R08_PS.sgy",
+   "bytes": 198136080,
+   "sha256": "a512d95d5b575adfea9a32a8f64550f2a25bfb120033a2480e4c3fa4ef80f0ee",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-3d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE",
+    "UNITS_AMBIGUOUS"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) 3D",
+   "file": "ST0202ZDC12.POST_STACK.segy",
+   "bytes": 1216353960,
+   "sha256": "43eaf9f15300f0976e412594ed091f1ba774a067a27ab5f220395b631f1d4476",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-3d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) 3D",
+   "file": "volve10-migvel-depth-sub3d.sgy",
+   "bytes": 1074384,
+   "sha256": "f2194eaef8ad675f2efe26845ed61e37451472cc23a770d0ec337778b61ae9a5",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-3d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 228240,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) 3D",
+   "file": "volve10r12-full-twt-sub3d.sgy",
+   "bytes": 44855680,
+   "sha256": "782a5c2ae952c47aedcc35d979ca8aef0259e6e77c0eaf0f19c4a4e222d8403b",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-3d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) 3D",
+   "file": "volve10r12-full-z-sub3d.sgy",
+   "bytes": 58409880,
+   "sha256": "3c6c47ae6cc009002ce930b81551da4dd0c83fee788a538bb7b129d87aab911c",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-3d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) 3D",
+   "file": "volve_base_2002_ST0202ZDC12.sgy",
+   "bytes": 58409880,
+   "sha256": "8bd0fc8ef159bc5ee74ee4420f066ac538b92ef9f23e540648442a18882d70f2",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-3d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE",
+    "UNITS_AMBIGUOUS"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) 3D",
+   "file": "volve_mon_2010_ST10010ZDC12.sgy",
+   "bytes": 58409880,
+   "sha256": "f249c2656a7549fbdcef04248c6bcdfe270df5bd4bb25d8684ce3e4cad2e24b3",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-3d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE",
+    "UNITS_AMBIGUOUS"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) 3D",
+   "file": "ST10010ZC11_PZ_PSDM_KIRCH_FULL_T.segy",
+   "bytes": 1050849760,
+   "sha256": "f902e2bdaa277caf93a32e5f35eae653eb8b923138db0efc1e91918ef6757b2e",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-3d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Volve (Equinor) arbitrary line",
+   "file": "volve10r12-full-twt-arb.sgy",
+   "bytes": 822600,
+   "sha256": "75a4bae98a6c82fe6a01e2e66aab747306836c34296a42bf2252b5e074e5af44",
+   "verdict": "NEEDS_INPUT",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_GEOMETRY",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 57600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Viking Graben (Mobil, SEG 1994)",
+   "file": "seismic.segy",
+   "bytes": 749552400,
+   "sha256": "64cbb49796b940717c57cddf5c7e0130b56df7061009a770565bdd0978cfccf3",
+   "verdict": "QUARANTINE",
+   "format": "segy-2d-prestack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "SDIP_COORD_UNITS_CONTRADICT",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT",
+    "SDIP_MDIO_ROUTE"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Marmousi2",
+   "file": "MODEL_DENSITY_1.25m.segy",
+   "bytes": 155653444,
+   "sha256": "5677ba1f2199d06440164da557966f2c25e2d1a572f3cfb8c37e2a40c16ba29e",
+   "verdict": "QUARANTINE",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "ENGINE_REFUSED",
+    "SDIP_COORD_SCALAR_ZERO",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Marmousi2",
+   "file": "MODEL_P-WAVE_VELOCITY_1.25m.segy",
+   "bytes": 155653444,
+   "sha256": "64a6bc60c5074e64a5ecf16e471077aaf47c3ad6c8be50aeb230800235dc82d3",
+   "verdict": "QUARANTINE",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "ENGINE_REFUSED",
+    "SDIP_COORD_SCALAR_ZERO",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  },
+  {
+   "dataset": "Marmousi2",
+   "file": "MODEL_S-WAVE_VELOCITY_1.25m.segy",
+   "bytes": 155653444,
+   "sha256": "a7846ec4fe0c441670dc602fd1acd5090ca29219618822244702272e1c533637",
+   "verdict": "QUARANTINE",
+   "format": "segy-2d-poststack",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "DOMAIN_UNKNOWN",
+    "ENGINE_REFUSED",
+    "SDIP_COORD_SCALAR_ZERO",
+    "SDIP_GEOMETRY",
+    "SDIP_IBM_FLOAT"
+   ],
+   "header_bytes_read": 483600,
+   "E1": true,
+   "E2": true,
+   "E3": true
+  }
+ ],
+ "confidential": {
+  "files": 25,
+  "meeting_E1_E2_E3_E8": 25
+ }
+}

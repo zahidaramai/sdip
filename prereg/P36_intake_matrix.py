@@ -56,7 +56,7 @@ def run(manifest: Path, out: Path, tracked: Path, commit: str) -> None:
             oc = qc_file(
                 path,
                 upload_id="u-20261116-000000000036",
-                member=e["label"],
+                member=e["label"] + Path(e["path"]).suffix,
                 cls=e["class"],
                 commit=commit,
             )

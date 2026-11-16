@@ -349,9 +349,12 @@ def test_illegal_coordinate_scalar_is_quarantined(tmp_path, validator):
     assert rep["verdict"] == "QUARANTINE"
 
 
-def test_degrees_flag_with_projected_coordinates_is_a_contradiction(tmp_path):
+def test_degrees_flag_with_projected_coordinates_is_asked_not_quarantined(tmp_path):
     traces = [t | {"coord_units": 3} for t in grid3d()]
-    assert "SDIP_COORD_UNITS_CONTRADICT" in codes(qc(build(tmp_path / "f.sgy", traces)))
+    rep = qc(build(tmp_path / "f.sgy", traces))
+    assert "SDIP_COORD_UNITS_CONTRADICT" in codes(rep)
+    assert [q["code"] for q in rep["questions"]].count("UNITS_AMBIGUOUS") == 1
+    assert rep["verdict"] == "NEEDS_INPUT"
 
 
 def test_degrees_flag_with_degree_coordinates_passes(tmp_path):
