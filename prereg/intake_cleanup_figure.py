@@ -1,10 +1,13 @@
-"""Bytes fetched and generated for the intake readers, and bytes given back (Storage Law, D-513 #11).
+"""Bytes fetched and generated for the intake readers, and bytes given back.
+
+Storage Law, D-513 #11.
 
 python prereg/intake_cleanup_figure.py SIZES.json FREE_BEFORE FREE_AFTER OUT.png COMMIT
 """
 
 import json
 import sys
+from pathlib import Path
 
 
 def main(sizes: str, before: str, after: str, png: str, commit: str) -> None:
@@ -14,8 +17,8 @@ def main(sizes: str, before: str, after: str, png: str, commit: str) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    rows = json.load(open(sizes))
-    free_b, free_a = int(open(before).read()), int(open(after).read())
+    rows = json.loads(Path(sizes).read_text())
+    free_b, free_a = int(Path(before).read_text()), int(Path(after).read_text())
     fig, ax = plt.subplots(figsize=(12, 4.6), dpi=110)
     labels = [r["item"] for r in rows]
     mb = [r["bytes"] / 1e6 for r in rows]
@@ -35,7 +38,8 @@ def main(sizes: str, before: str, after: str, png: str, commit: str) -> None:
     total = sum(r["bytes"] for r in rows) / 1e6
     fetched = sum(r["bytes"] for r in rows if r["item"].startswith("fetched")) / 1e6
     ax.set_title(
-        f"SDIP intake lane: {fetched:,.1f} MB fetched (of the 10 GB allowance), {total:,.1f} MB deleted in all; "
+        f"SDIP intake lane: {fetched:,.1f} MB fetched (of the 10 GB allowance), "
+        f"{total:,.1f} MB deleted in all; "
         f"free space {free_b / 1e9:,.2f} -> {free_a / 1e9:,.2f} GB measured  |  sdip@{commit[:12]}",
         fontsize=9,
     )

@@ -8,9 +8,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+from tests.unit.test_intake_resqml import crs_xml, write_epc
+
 from sdip.intake import qc_file
 from sdip.intake.card import draw_card
-from tests.unit.test_intake_resqml import crs_xml, write_epc
 
 
 def main(examples: Path, out: Path, commit: str) -> None:
@@ -93,7 +94,8 @@ def main(examples: Path, out: Path, commit: str) -> None:
     ax.set_ylim(-0.3, n + 0.3)
     ax.axis("off")
     ax.set_title(
-        f"SDIP RESQML intake reader: resqpy public examples and hostile packages  |  sdip@{commit[:12]}",
+        f"SDIP RESQML intake reader: resqpy public examples and hostile packages  |  "
+        f"sdip@{commit[:12]}",
         fontsize=10,
     )
     fig.savefig(out / "resqml_cases.png", bbox_inches="tight")

@@ -852,7 +852,7 @@ def qc_segy(
     template = _template(geo, "depth" if d_words and not t_words else "time")
     detail["template"] = template
     if template:
-        preflight = _preflight(path, size, binary)
+        preflight = _preflight(path, binary, template)
         if preflight:
             findings.append(
                 rpt.finding(
@@ -883,15 +883,33 @@ def _rev_choice(revision: str) -> str:
     return {"0": "0", "1": "1", "2": "2"}.get(major, "1")
 
 
-def _preflight(path: Path, size: int, binary: Binary) -> str | None:
-    """The ingest preflight's refusal, or None when it admits the file. 400 + 2 bytes."""
-    from sdip.errors import UntrustedInputError
-    from sdip.ingest.preflight import validate_segy_structure
+def _preflight(path: Path, binary: Binary, template: str) -> str | None:
+    """The ingest preflight's refusal, or None when it admits the file. 400 + 2 bytes.
 
-    try:
-        validate_segy_structure(
-            path, size, endianness=binary.order, revision=float(_rev_choice(binary.revision))
+    Asked through ``validate_source`` with a whole declaration (D62's guard: nothing outside
+    ``sdip.ingest`` reaches the defaulted keyword form): the revision and template intake
+    reads, and the byte order it found coherent, as an evidenced override when little-endian.
+    """
+    from sdip.errors import UntrustedInputError
+    from sdip.ingest import validate_source
+    from sdip.spec.declaration import SurveyDeclaration
+    from sdip.spec.overrides import SurveyOverride
+
+    override = (
+        SurveyOverride(
+            name="intake-byte-order",
+            version="1",
+            evidence="sdip intake: the binary header is coherent only read little-endian",
+            endianness="little",
         )
+        if binary.order == "little"
+        else None
+    )
+    declaration = SurveyDeclaration(
+        revision=int(_rev_choice(binary.revision)), template=template, override=override
+    )
+    try:
+        validate_source(path, declaration)
     except UntrustedInputError as exc:
         return str(exc)[:400]
     return None

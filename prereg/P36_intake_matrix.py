@@ -82,7 +82,7 @@ def run(manifest: Path, out: Path, tracked: Path, commit: str) -> None:
                 "sha256": rep["file"]["sha256"],
                 "file": path.name,
             }
-        except Exception as exc:  # noqa: BLE001 - E1 is exactly "no exception"
+        except Exception as exc:
             row |= {
                 "E1": False,
                 "E2": False,
@@ -92,7 +92,8 @@ def run(manifest: Path, out: Path, tracked: Path, commit: str) -> None:
             }
         rows.append(row)
         print(
-            f"{k:3d} {row['label'][:40]:40s} {row.get('verdict', 'ERROR'):22s} {row.get('format', '')}",
+            f"{k:3d} {row['label'][:40]:40s} {row.get('verdict', 'ERROR'):22s} "
+            f"{row.get('format', '')}",
             flush=True,
         )
     (out / "p36_local_receipt.json").write_text(json.dumps(rows, indent=1))
@@ -102,7 +103,8 @@ def run(manifest: Path, out: Path, tracked: Path, commit: str) -> None:
     receipt = {
         "probe": "P36",
         "sdip_commit": commit,
-        "schema": "geosuite.intake.v1 (GeoGIS 6edead4c, sha256 f0a3e47a8212859fc9ca36c76ac54943465635eedcbf5dd99a690aee27d7089a)",
+        "schema": "geosuite.intake.v1 (GeoGIS 6edead4c, sha256 "
+        "f0a3e47a8212859fc9ca36c76ac54943465635eedcbf5dd99a690aee27d7089a)",
         "public": [
             {
                 k: r.get(k)
@@ -205,8 +207,10 @@ def draw_matrix(rows: list[dict], png: Path, commit: str) -> None:
     npub = sum(r["class"] == "public" for r in rows)
     ok = sum(all(r.get(x) for x in ("E1", "E2", "E3", "E8")) for r in rows)
     ax.set_title(
-        f"P36 sdip intake (header-only QC) on {n} SEG-Y files ({npub} public, {n - npub} confidential): "
-        f"{ok}/{n} meet E1 report, E2 schema, E3 header budget, E8 structural-only  |  sdip@{commit[:12]}",
+        f"P36 sdip intake (header-only QC) on {n} SEG-Y files "
+        f"({npub} public, {n - npub} confidential): "
+        f"{ok}/{n} meet E1 report, E2 schema, E3 header budget, E8 structural-only  |  "
+        f"sdip@{commit[:12]}",
         fontsize=9.5,
     )
     fig.savefig(png, bbox_inches="tight")

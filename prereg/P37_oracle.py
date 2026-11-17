@@ -5,14 +5,15 @@ python -I prereg/P37_oracle.py PYZGY_SRC OUT.json FILE...
 
 import json
 import sys
+from pathlib import Path
 
 sys.path.insert(0, sys.argv[1])
-from openzgy.api import ZgyReader  # noqa: E402
+from openzgy.api import ZgyReader
 
 rows = {}
 for p in sys.argv[3:]:
     with ZgyReader(p) as r:
-        ih = r._meta._ih  # noqa: SLF001 - the projection string has no public reader property
+        ih = r._meta._ih
         rows[p.split("/")[-1]] = {
             "size": list(r.size),
             "annotstart": list(r.annotstart),
@@ -23,4 +24,5 @@ for p in sys.argv[3:]:
             "datatype": str(r.datatype).split(".")[-1],
             "projection": ih._hprjsys or "",
         }
-json.dump(rows, open(sys.argv[2], "w"), indent=1)
+with Path(sys.argv[2]).open("w") as out:
+    json.dump(rows, out, indent=1)

@@ -101,7 +101,8 @@ def draw(rows: list, gates: dict, png: Path, commit: str) -> None:
     ax.axis("off")
     met = " ".join(f"{k}{'+' if v else '-'}" for k, v in gates.items())
     ax.set_title(
-        f"P38 SDIP VDS path (OpenVDS 3.4.9 in a linux/amd64 container, network off) on F3 sub-volumes  |  "
+        f"P38 SDIP VDS path (OpenVDS 3.4.9 in a linux/amd64 container, network off) "
+        f"on F3 sub-volumes  |  "
         f"gates {met}  |  sdip@{commit[:12]}",
         fontsize=9.5,
     )

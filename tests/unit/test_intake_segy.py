@@ -396,9 +396,11 @@ def test_missing_measurement_system_asks_for_units(tmp_path):
     assert rep["structural"]["hasUnits"] is False
 
 
-def test_the_ingest_preflight_refusal_is_reported(tmp_path, validator):
+@pytest.mark.parametrize("order", [">", "<"])
+def test_the_ingest_preflight_refusal_is_reported(tmp_path, validator, order):
+    """Both byte orders: the little-endian declaration reaches the preflight whole (D62)."""
     traces = [t | {"scalar": 0} for t in grid3d()]
-    rep = qc(build(tmp_path / "f.sgy", traces))  # rev 1 and a zero scalar: MDIO refuses
+    rep = qc(build(tmp_path / "f.sgy", traces, order=order))  # rev 1, zero scalar: refused
     validator.validate(rep)
     assert "ENGINE_REFUSED" in codes(rep)
     assert "SDIP_MDIO_ROUTE" not in codes(rep)

@@ -72,7 +72,7 @@ def main(src: str, segy: str, out_dir: str) -> None:
         annotinc=(1, 1),
         corners=corners,
     ) as w:
-        w._meta._ih._hprjsys = PROJECTION  # noqa: SLF001 - no public writer argument for it
+        w._meta._ih._hprjsys = PROJECTION
         w.write((0, 0, 0), cube)
         w.finalize()
     with ZgyReader(str(path)) as r:

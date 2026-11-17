@@ -10,9 +10,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+from tests.unit.test_intake_segd import b, write_segd
+
 from sdip.intake import qc_file
 from sdip.intake.card import draw_card
-from tests.unit.test_intake_segd import b, write_segd
 
 
 def main(out: Path, commit: str, real: Path | None = None) -> None:
