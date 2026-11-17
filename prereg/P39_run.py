@@ -187,7 +187,7 @@ def run(vds: Path, out: Path, tracked: Path, commit: str, exe: str, image: str) 
 
 
 def draw(rows: list, gates: dict, size: int, png: Path, commit: str) -> None:
-    """Cut point (bytes kept, as a fraction of the file and in MB) against the verdict."""
+    """Cut point (bytes kept, log axis) against the verdict and the integrity code."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -200,64 +200,62 @@ def draw(rows: list, gates: dict, size: int, png: Path, commit: str) -> None:
         "REFUSED": "#6e2d91",
         None: "#57606a",
     }
+    order = (
+        "SDIP_VDS_TRUNCATED",
+        "SDIP_VDS_CONTAINER_INVALID",
+        "SDIP_VDS_INTEGRITY_UNCHECKED",
+        "SDIP_VDS_EXTENTS_INSIDE",
+    )
     png.parent.mkdir(parents=True, exist_ok=True)
-    fig, ax = plt.subplots(figsize=(12, 5.2), dpi=120)
+    fig, ax = plt.subplots(figsize=(13, 5.6), dpi=120)
     for i, r in enumerate(rows):
-        kept = r["bytes"]
         y = len(rows) - 1 - i
-        ax.barh(y, kept / 1e6, color=colours[r["verdict"]], height=0.6)
-        code = next(
-            (
-                c
-                for c in (
-                    "SDIP_VDS_TRUNCATED",
-                    "SDIP_VDS_CONTAINER_INVALID",
-                    "SDIP_VDS_INTEGRITY_UNCHECKED",
-                    "SDIP_VDS_EXTENTS_INSIDE",
-                )
-                if c in r["codes"]
-            ),
-            "-",
-        )
+        ax.scatter([r["bytes"]], [y], s=90, color=colours[r["verdict"]], zorder=3)
+        ax.hlines(y, 1, r["bytes"], color=colours[r["verdict"]], lw=2)
+        code = next((c for c in order if c in r["codes"]), "-")
         ax.text(
-            size / 1e6 * 1.01,
+            size * 4,
             y,
             f"{r['verdict']}  {code}  ({r['wall_s']} s)",
             va="center",
             fontsize=8,
             family="monospace",
         )
-        ax.text(
-            -1,
-            y,
-            f"{r['label']}  {kept:,} B",
-            ha="right",
-            va="center",
-            fontsize=8,
-            family="monospace",
-        )
-    ax.axvline(size / 1e6, color="#24292f", lw=0.8, ls="--")
-    ax.set_yticks([])
-    ax.set_xlim(0, size / 1e6 * 1.75)
-    ax.set_xlabel("bytes kept (MB); dashed line = intact file size")
-    ax.set_ylabel("file (cut point)", labelpad=170)
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels(
+        [f"{r['label']}  {r['bytes']:,} B" for r in reversed(rows)], family="monospace", fontsize=8
+    )
+    ax.axvline(size, color="#24292f", lw=0.8, ls="--")
+    ax.set_xscale("log")
+    ax.set_xlim(1, size * 2000)
+    ax.set_xlabel("bytes kept (log scale); dashed line = intact file size")
+    ax.set_ylabel("file (cut point)")
     met = " ".join(f"{k}{'+' if v else '-'}" for k, v in gates.items())
     ax.set_title(
         f"P39 VDS truncation through `sdip intake` on F3 sub-volume cuts | gates {met} | "
         f"sdip@{commit[:12]}",
         fontsize=9.5,
     )
-    handles = [plt.Rectangle((0, 0), 1, 1, color=colours[k]) for k in ("NEEDS_INPUT", "QUARANTINE")]
+    handles = [
+        plt.Line2D([], [], marker="o", ls="", color=colours[k])
+        for k in ("NEEDS_INPUT", "QUARANTINE")
+    ]
     ax.legend(
         handles,
         ["NEEDS_INPUT (intact: CRS question only)", "QUARANTINE (cut detected)"],
-        loc="lower right",
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.13),
+        ncol=2,
         fontsize=8,
     )
     fig.savefig(png, bbox_inches="tight")
 
 
 if __name__ == "__main__":
+    if sys.argv[1] == "--redraw":
+        rec = json.loads(Path(sys.argv[2]).read_text())
+        draw(rec["files"], rec["gates"], rec["source_bytes"], Path(sys.argv[3]), rec["sdip_commit"])
+        raise SystemExit(0)
     run(
         Path(sys.argv[1]),
         Path(sys.argv[2]),

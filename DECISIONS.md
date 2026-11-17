@@ -6694,3 +6694,31 @@ lines, Viking Graben and the three Marmousi2 models start at 0 ms. No file's sta
 its sampled traces. Against P36 the only verdict change is Viking Graben (QUARANTINE to
 NEEDS_INPUT), which is D-0142's units change, not this one. For a depth volume the reported
 times are in the file's vertical unit; the message says so.
+
+## D-0149 — 2026-11-17 — A cut-short VDS fails loudly at intake; P38 V4 stays missed; new gates P39 T1-T5 met
+
+**Owner (GeoSuite D-531 #11, 2026-11-17):** "Missed stays; fix V4". P37 Z2, P38 V2 and P38 V4
+stay recorded as **missed** (D-0143, D-0147) and are never re-scored.
+
+**Built.** The VDS probe (`ci/intake-vds/vds_probe.py`) runs OpenVDS's own `HueBDS check`
+(shipped in the same pinned image, Apache-2.0) before `openvds.open`: it reads the container's
+file table and index pages, no brick, and prints the allocation map. The host
+(`sdip.intake.vds.integrity_findings`) maps it against the size it measured itself:
+check exit non-zero → `SDIP_VDS_CONTAINER_INVALID`; a mapped extent ending past the file →
+`SDIP_VDS_TRUNCATED` with the missing byte count; no check reported (stale image, timeout,
+unparseable map) → `SDIP_VDS_INTEGRITY_UNCHECKED`, raised from information to **QUARANTINE**;
+otherwise `SDIP_VDS_EXTENTS_INSIDE` (information). Why the map and not the data: P38 and the
+exploratory runs showed `openvds.open` accepts a cut file, page reads are lazy, and a cut at
+20 kB opens and returns **all-zero amplitudes** (an SP12 fabrication had it been passed).
+
+**New gates beside the missed ones (P39, registered at `a544b59` before the run).** T1 schema
+and exit; T2 intact controls pass the check; T3 eight cuts (store header, layout, file table,
+index page, half, largest data run, P38's 1,000-byte cut, last byte) QUARANTINE with a
+truncation code; T4 the P38 cut states "1,000 missing"; T5 ≤ 20 s per call. **All met** through
+the `sdip` executable (0.68-1.12 s per call). Focused tests: 30 in `test_intake_vds.py`, both
+halves, including a synthetic SEGYImport cube cut at six points beside its intact control.
+
+**Not covered:** damage that keeps every extent inside the file (a flipped byte inside a
+brick); a VDS from a producer other than `SEGYImport` 3.4.9. The rule
+`vds-truncation-invisible-to-layout` still holds for `openvds.open`; SDIP's reader now detects
+the cut before it.

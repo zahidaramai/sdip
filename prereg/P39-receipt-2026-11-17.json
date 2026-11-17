@@ -1,0 +1,181 @@
+{
+ "probe": "P39",
+ "sdip_commit": "a544b591022ab815666e001ac84e11407cb21722",
+ "image": "sdip-intake-vds:3.4.9",
+ "source_bytes": 141419418,
+ "gates": {
+  "T1": true,
+  "T2": true,
+  "T3": true,
+  "T4": true,
+  "T5": true
+ },
+ "files": [
+  {
+   "label": "intact",
+   "bytes": 141419418,
+   "keptBytes": null,
+   "sha256": "f59322e2793a3b82d552f1f5dafaba1662b4eed769476527096275cc3162ea58",
+   "exit": 0,
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_VDS_EXTENTS_INSIDE"
+   ],
+   "schema_valid": true,
+   "integrity": "every region in the file's allocation map (42) ends inside the file (furthest at byte 141,419,418 of 141,419,418); a damaged byte inside a brick is not checked",
+   "wall_s": 1.12
+  },
+  {
+   "label": "intact-crs",
+   "bytes": 141420018,
+   "keptBytes": null,
+   "sha256": "b40775f446f71b11ad92e20f8cf6b2b74bc64c306d6227f0293a269130857605",
+   "exit": 0,
+   "verdict": "NEEDS_INPUT",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_VDS_EXTENTS_INSIDE"
+   ],
+   "schema_valid": true,
+   "integrity": "every region in the file's allocation map (42) ends inside the file (furthest at byte 141,420,018 of 141,420,018); a damaged byte inside a brick is not checked",
+   "wall_s": 0.76
+  },
+  {
+   "label": "store-header",
+   "bytes": 16,
+   "keptBytes": 16,
+   "sha256": "139e42d6ef8f89afda2b62bda5eaa75a2d021c03225828a80d3ecb3b10de1203",
+   "exit": 0,
+   "verdict": "QUARANTINE",
+   "codes": [
+    "HEADER_INVALID",
+    "SDIP_VDS_CONTAINER_INVALID"
+   ],
+   "schema_valid": true,
+   "integrity": "OpenVDS's own container check rejects the file (ERROR: failed to open datastore '/in/file.vds': File is not a HueDataStore); it is cut short or damaged: kept, not passed",
+   "wall_s": 0.71
+  },
+  {
+   "label": "layout",
+   "bytes": 5041,
+   "keptBytes": 5041,
+   "sha256": "70550923bc9ba112f2329e070d7da82c764e99d4749d90cbf4f55a7dbb2e78f6",
+   "exit": 0,
+   "verdict": "QUARANTINE",
+   "codes": [
+    "HEADER_INVALID",
+    "SDIP_VDS_CONTAINER_INVALID"
+   ],
+   "schema_valid": true,
+   "integrity": "OpenVDS's own container check rejects the file (ERROR: failed to open datastore '/in/file.vds': Couldn't read file table); it is cut short or damaged: kept, not passed",
+   "wall_s": 0.7
+  },
+  {
+   "label": "file-table",
+   "bytes": 14558,
+   "keptBytes": 14558,
+   "sha256": "69b333574568968d90efa11ae2d0cd056df95ed0742c685fd8b717b1e006d6fa",
+   "exit": 0,
+   "verdict": "QUARANTINE",
+   "codes": [
+    "HEADER_INVALID",
+    "SDIP_VDS_CONTAINER_INVALID"
+   ],
+   "schema_valid": true,
+   "integrity": "OpenVDS's own container check rejects the file (ERROR: failed to open datastore '/in/file.vds': Couldn't read file table); it is cut short or damaged: kept, not passed",
+   "wall_s": 0.68
+  },
+  {
+   "label": "index-page",
+   "bytes": 138139866,
+   "keptBytes": 138139866,
+   "sha256": "1305737495778128a0247084e5d5da484fc806e963a7784be6ec0d5206b020b4",
+   "exit": 0,
+   "verdict": "QUARANTINE",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_VDS_CONTAINER_INVALID"
+   ],
+   "schema_valid": true,
+   "integrity": "OpenVDS's own container check rejects the file (Invalid Hue bulk data store file: Couldn't read index page); it is cut short or damaged: kept, not passed",
+   "wall_s": 0.77
+  },
+  {
+   "label": "half",
+   "bytes": 70709709,
+   "keptBytes": 70709709,
+   "sha256": "bc5a63734ca14686bc921304ec484c205ec6b4ff0ded613a055883a8ae1713f5",
+   "exit": 0,
+   "verdict": "QUARANTINE",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_VDS_CONTAINER_INVALID"
+   ],
+   "schema_valid": true,
+   "integrity": "OpenVDS's own container check rejects the file (Invalid Hue bulk data store file: Couldn't read index page); it is cut short or damaged: kept, not passed",
+   "wall_s": 0.74
+  },
+  {
+   "label": "data",
+   "bytes": 102521742,
+   "keptBytes": 102521742,
+   "sha256": "280c96e4722d6ae03242d26b8f25ab17edf358672cc4f578983f75fc7b7b0a43",
+   "exit": 0,
+   "verdict": "QUARANTINE",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_VDS_CONTAINER_INVALID"
+   ],
+   "schema_valid": true,
+   "integrity": "OpenVDS's own container check rejects the file (Invalid Hue bulk data store file: Couldn't read index page); it is cut short or damaged: kept, not passed",
+   "wall_s": 0.75
+  },
+  {
+   "label": "p38-cut",
+   "bytes": 141418418,
+   "keptBytes": 141418418,
+   "sha256": "75bf6f7c73a7276328af35e2da1cce1b14f9ce752530a58377aaf07efe191d33",
+   "exit": 0,
+   "verdict": "QUARANTINE",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_VDS_TRUNCATED"
+   ],
+   "schema_valid": true,
+   "integrity": "the file is cut short: its own allocation map runs to byte 141,419,418 but the file holds 141,418,418 bytes (1,000 missing): kept, not passed",
+   "wall_s": 0.76
+  },
+  {
+   "label": "last-byte",
+   "bytes": 141419417,
+   "keptBytes": 141419417,
+   "sha256": "4b933e008a69ebaa473e74ab5c02b55e9d7341857e774a8279df039900c66519",
+   "exit": 0,
+   "verdict": "QUARANTINE",
+   "codes": [
+    "CRS_UNRESOLVED",
+    "SDIP_GEOMETRY",
+    "SDIP_NO_MDIO_ROUTE",
+    "SDIP_VDS_TRUNCATED"
+   ],
+   "schema_valid": true,
+   "integrity": "the file is cut short: its own allocation map runs to byte 141,419,418 but the file holds 141,419,417 bytes (1 missing): kept, not passed",
+   "wall_s": 0.76
+  }
+ ],
+ "generatedFilesDeletedAt": "2026-11-17T00:23:37Z",
+ "generator": "prereg/P38_make_vds.py on the public F3 cube; regenerable"
+}

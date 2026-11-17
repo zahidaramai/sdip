@@ -54,3 +54,17 @@ integrity sentence and the wall time; the gates. Figure under `.qc/<date>/intake
 generated files are deleted after the run.
 
 ---
+
+## Results (2026-11-17, `sdip` a544b59, image `sdip-intake-vds:3.4.9` with the D-0149 probe, receipt `P39-receipt-2026-11-17.json`)
+
+| # | Result |
+|---|---|
+| T1 | met: 10/10 reports schema-valid through `.venv/bin/sdip intake`, exit 0 |
+| T2 | met: `f3_sub.vds` and `f3_sub_crs.vds` NEEDS_INPUT (CRS question), `SDIP_VDS_EXTENTS_INSIDE`, no truncation code; their maps end exactly at the file size |
+| T3 | met: 8/8 cuts QUARANTINE. `store-header` (16 B), `layout` (5,041 B), `file-table` (14,558 B), `index-page`, `half`, `data`: `SDIP_VDS_CONTAINER_INVALID` (HueBDS check exits 1); `p38-cut` and `last-byte`: `SDIP_VDS_TRUNCATED` |
+| T4 | met: `p38-cut` says "1,000 missing" |
+| T5 | met: 0.68-1.12 s per call |
+
+**Gate: met.** P38 V4 stays **missed** as registered (D-531 #11); P39 T3/T4 are its successors
+for this version. Not measured: damage that leaves every extent inside the file (a flipped
+byte inside a brick); a VDS written by another producer than `SEGYImport` 3.4.9.
