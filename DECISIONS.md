@@ -6722,3 +6722,25 @@ halves, including a synthetic SEGYImport cube cut at six points beside its intac
 brick); a VDS from a producer other than `SEGYImport` 3.4.9. The rule
 `vds-truncation-invisible-to-layout` still holds for `openvds.open`; SDIP's reader now detects
 the cut before it.
+
+## D-0150 — 2026-11-17 — Full tests owed since D-492/D-515 run: one guard failure fixed, suite green
+
+GeoSuite D-531 #1 (owner lifted D-515; one repository at a time). Through
+`gate_turn.py --name sdip -- uv run pytest -q` (addopts deselect `benchmark` and `campaign`:
+10,994 deselected in both runs, not run):
+
+| Run | Commit | unit | negative | integration | Total |
+|---|---|---|---|---|---|
+| before | `bb1e911` | 826 passed, **1 failed** | 656 passed | 630 passed | 2,112 passed, 1 failed (37 min) |
+| after | `f6a6a01` | 828 passed | 656 passed | 630 passed | 2,114 passed (35 min) |
+
+The failure was D62's structural guard: the SEG-Y intake reader (D-0142) reached the ingest
+preflight's defaulted keyword form `validate_segy_structure`. It now hands `validate_source` a
+whole `SurveyDeclaration` (revision, the template intake chose, the detected byte order as an
+evidenced override when little-endian); the preflight refusal test runs both byte orders.
+Other checks: `sdip doctor` 10/10 PASS; `ruff check .` had 22 errors in the intake
+programme's prereg harnesses (never linted), fixed without behaviour change; `ruff format
+--check .` clean; `mypy` strict clean (66 files); licence scan with the `intake` extra
+installed: 58 distributions (7 from the extra: BSD, MIT, PSF, MIT-CMU), no GPL/AGPL;
+`test_repository_contract.py` passed in both runs. Figure (local):
+`.qc/2026-11-17/fulltests/fulltests_per_area.png`, drawn by `prereg/fulltests_figure.py`.
