@@ -4,19 +4,60 @@
 
 Reads the layout and metadata only; no brick is requested. Exit 0 with {"ok": false, "error"}
 when OpenVDS cannot open the file.
+
+Before opening, OpenVDS's own ``HueBDS check`` reads the container's file table and index pages
+and prints its allocation map (no brick is read). Its exit code, first message line and the end
+of the furthest mapped extent go out as ``integrity``; the host compares that end with the size
+it measured itself (D-0149: a cut that leaves the layout whole is invisible to ``openvds.open``).
 """
 
+from __future__ import annotations
+
 import json
+import re
+import subprocess
 import sys
 
+EXTENT = re.compile(r"size:\s*(\d+)\s+at offset:\s*(\d+)")
 
-def main(path):
+
+def integrity(path: str) -> dict:
+    """HueBDS check: exit code, first line, mapped regions and the furthest extent end."""
+    try:
+        proc = subprocess.run(  # noqa: S603 - fixed argv; path is the read-only mount point
+            ["HueBDS", "check", path],  # noqa: S607 - OpenVDS's tool on the image's PATH
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"checked": False, "error": type(exc).__name__}
+    text = proc.stdout + proc.stderr
+    ends = [int(s) + int(o) for s, o in EXTENT.findall(text)]
+    first = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
+    return {
+        "checked": True,
+        "exit": proc.returncode,
+        "message": first[:300],
+        "regions": len(ends),
+        "maxExtentEnd": max(ends) if ends else None,
+    }
+
+
+def main(path: str) -> None:
+    """Print the container check and the layout of one VDS as one JSON line."""
     import openvds
 
+    check = integrity(path)
     try:
         handle = openvds.open(path, "")
     except Exception as exc:  # OpenVDS raises its own error types
-        print(json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}"[:400]}))
+        print(
+            json.dumps(
+                {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:400], "integrity": check}
+            )
+        )
         return
     layout = openvds.getLayout(handle)
     axes = []
@@ -45,7 +86,7 @@ def main(path):
             }
         )
 
-    def meta(category, name, kind):
+    def meta(category: str, name: str, kind: str) -> object:
         try:
             if kind == "s" and layout.isMetadataStringAvailable(category, name):
                 return layout.getMetadataString(category, name)
@@ -60,6 +101,7 @@ def main(path):
     survey = "SurveyCoordinateSystem"
     out = {
         "ok": True,
+        "integrity": check,
         "dimensionality": layout.getDimensionality(),
         "axes": axes,
         "channels": channels,

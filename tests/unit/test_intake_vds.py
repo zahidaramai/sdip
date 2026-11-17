@@ -8,6 +8,7 @@ absent (it is not part of CI).
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -33,7 +34,9 @@ GOOD = {
     "unit": "m",
     "compression": "None",
     "lossy": False,
+    "integrity": {"checked": True, "exit": 0, "message": "", "regions": 3, "maxExtentEnd": 80},
 }
+SIZE = 80  # vds_file's length; GOOD's map ends exactly there
 
 
 def vds_file(path: Path) -> Path:
@@ -81,7 +84,69 @@ def test_layout_maps_to_a_poststack_report(tmp_path, validator):
         462,
     )
     assert [q["code"] for q in rep["questions"]] == ["CRS_UNRESOLVED"]
-    assert "SDIP_VDS_INTEGRITY_UNCHECKED" in codes(rep)
+    assert rep["verdict"] == "NEEDS_INPUT"
+    assert "SDIP_VDS_EXTENTS_INSIDE" in codes(rep)
+
+
+TRUNCATION_CODES = {
+    "SDIP_VDS_TRUNCATED",
+    "SDIP_VDS_CONTAINER_INVALID",
+    "SDIP_VDS_INTEGRITY_UNCHECKED",
+}
+
+
+@pytest.mark.parametrize("end", [1, 17, SIZE - 1, SIZE])
+def test_a_map_inside_the_file_passes_the_check(tmp_path, validator, end):
+    """Pass half (D-0088): every extent end from the first byte to the last is not a cut."""
+    probe = GOOD | {"integrity": dict(GOOD["integrity"], maxExtentEnd=end)}
+    rep = qc(vds_file(tmp_path / "c.vds"), probe)
+    validator.validate(rep)
+    assert rep["verdict"] == "NEEDS_INPUT"
+    assert not codes(rep) & TRUNCATION_CODES
+
+
+@pytest.mark.parametrize("end", [SIZE + 1, SIZE + 1000, 2 * SIZE, 1 << 40])
+def test_a_map_past_the_end_is_truncated(tmp_path, validator, end):
+    probe = GOOD | {"integrity": dict(GOOD["integrity"], maxExtentEnd=end)}
+    rep = qc(vds_file(tmp_path / "c.vds"), probe)
+    validator.validate(rep)
+    assert rep["verdict"] == "QUARANTINE"
+    assert codes(rep) & TRUNCATION_CODES == {"SDIP_VDS_TRUNCATED"}
+    msg = next(f["message"] for f in rep["findings"] if f["code"] == "SDIP_VDS_TRUNCATED")
+    assert f"{end - SIZE:,} missing" in msg
+
+
+def test_a_failed_container_check_is_quarantined(tmp_path, validator):
+    bad = {"checked": True, "exit": 1, "message": "Couldn't read index page", "regions": 0}
+    rep = qc(vds_file(tmp_path / "c.vds"), GOOD | {"integrity": bad})
+    validator.validate(rep)
+    assert rep["verdict"] == "QUARANTINE"
+    assert codes(rep) & TRUNCATION_CODES == {"SDIP_VDS_CONTAINER_INVALID"}
+
+
+@pytest.mark.parametrize(
+    "integ",
+    [
+        None,
+        {"checked": False, "error": "TimeoutExpired"},
+        {"checked": True, "exit": 0, "regions": 0, "maxExtentEnd": None},
+        {"checked": True, "exit": 0, "regions": 1, "maxExtentEnd": True},
+    ],
+)
+def test_no_check_is_not_a_pass(tmp_path, validator, integ):
+    probe = {k: v for k, v in GOOD.items() if k != "integrity"}
+    if integ is not None:
+        probe["integrity"] = integ
+    rep = qc(vds_file(tmp_path / "c.vds"), probe)
+    validator.validate(rep)
+    assert rep["verdict"] == "QUARANTINE"
+    assert codes(rep) & TRUNCATION_CODES == {"SDIP_VDS_INTEGRITY_UNCHECKED"}
+
+
+def test_an_unopenable_cut_file_carries_both_findings(tmp_path):
+    bad = {"checked": True, "exit": 1, "message": "Couldn't read file table", "regions": 0}
+    rep = qc(vds_file(tmp_path / "c.vds"), {"ok": False, "error": "x", "integrity": bad})
+    assert {"SDIP_VDS_CONTAINER_INVALID", "HEADER_INVALID"} <= codes(rep)
 
 
 def test_wkt_is_a_candidate(tmp_path):
@@ -161,3 +226,88 @@ def test_the_container_refuses_garbage_cleanly(tmp_path):
     out = docker_runner(vds_file(tmp_path / "garbage.vds"))
     assert out["ok"] is False
     assert "error" in out and "unavailable" not in out  # OpenVDS ran and refused it
+
+
+CONTAINER_SKIP = pytest.mark.skipif(
+    not _image_present(), reason="needs Docker and the sdip-intake-vds image (not in CI)"
+)
+REGION = re.compile(r"^(.*?)\s+size:\s*(\d+)\s+at offset:\s*(\d+)", re.MULTILINE)
+
+
+@pytest.fixture(scope="module")
+def synthetic_vds(tmp_path_factory):
+    """A synthetic post-stack SEG-Y imported by OpenVDS's own SEGYImport, and its region map."""
+    from tests.fixtures.generators.poststack3d import make_poststack3d
+
+    root = tmp_path_factory.mktemp("vds")
+    make_poststack3d(
+        root / "s.sgy", n_inline=20, n_crossline=30, n_samples=200, sample_format="float32"
+    )
+    base = ["docker", "run", "--rm", "--platform", "linux/amd64", "--network", "none"]
+    imp = ["-v", f"{root}:/w", "--entrypoint", "SEGYImport", IMAGE, "--vdsfile", "/w/s.vds"]
+    subprocess.run(
+        [*base, *imp, "/w/s.sgy"],
+        capture_output=True,
+        check=True,
+    )
+    check = subprocess.run(
+        [*base, "-v", f"{root}:/in:ro", "--entrypoint", "HueBDS", IMAGE, "check", "/in/s.vds"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    regions = [(k.strip(), int(n), int(o)) for k, n, o in REGION.findall(check)]
+    return root / "s.vds", regions
+
+
+def cut_points(path: Path, regions: list) -> dict[str, int]:
+    """Where to cut, from the file's own map.
+
+    Inside the store header, the layout (the first chunk, offset 56), the file table, the largest
+    index page, the largest data run, and one byte short of the end.
+    """
+
+    def mid(kind: str, *, largest: bool = False) -> int:
+        cands = [r for r in regions if r[0].endswith(kind)]
+        _k, n, o = max(cands, key=lambda r: r[1]) if largest else min(cands, key=lambda r: r[2])
+        return o + n // 2
+
+    return {
+        "store header": mid("DataStoreHeader"),
+        "layout": mid("chunk"),
+        "file table": mid("FileTable"),
+        "index page": mid("indexpage", largest=True),
+        "data": mid("chunks", largest=True),
+        "last byte": path.stat().st_size - 1,
+    }
+
+
+def intake(path: Path) -> dict:
+    return qc_vds(path, upload_id=UPLOAD, member=path.name, sha256="0" * 64, commit=COMMIT).report  # type: ignore[return-value]
+
+
+@CONTAINER_SKIP
+def test_the_container_reads_an_intact_vds_as_whole(synthetic_vds, validator):
+    """The control: OpenVDS's own import, uncut, is not quarantined and not called truncated."""
+    path, regions = synthetic_vds
+    assert max(o + n for _k, n, o in regions) == path.stat().st_size
+    rep = intake(path)
+    validator.validate(rep)
+    assert rep["verdict"] == "NEEDS_INPUT"
+    assert "SDIP_VDS_EXTENTS_INSIDE" in codes(rep)
+    assert not codes(rep) & TRUNCATION_CODES
+
+
+@CONTAINER_SKIP
+@pytest.mark.parametrize(
+    "where", ["store header", "layout", "file table", "index page", "data", "last byte"]
+)
+def test_the_container_catches_a_cut_vds(synthetic_vds, tmp_path, validator, where):
+    path, regions = synthetic_vds
+    at = cut_points(path, regions)[where]
+    cut = tmp_path / "cut.vds"
+    cut.write_bytes(path.read_bytes()[:at])
+    rep = intake(cut)
+    validator.validate(rep)
+    assert rep["verdict"] == "QUARANTINE", (where, at, codes(rep))
+    assert codes(rep) & {"SDIP_VDS_TRUNCATED", "SDIP_VDS_CONTAINER_INVALID"}, (where, at)

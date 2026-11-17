@@ -9,10 +9,15 @@ Reported: dimensions and axes (names, units, sample counts, ranges), the vertica
 the sample axis unit, channels and their formats, the survey grid's unit, the CRS WKT (offered as
 a candidate, never taken), and the compression method (wavelet compression is lossy).
 
-**Not checked:** truncation. OpenVDS's layout sits at the front of the file and its public API
-opens a cut file without complaint (P38); proving the bricks are all present means reading them.
-Every report says so. OpenVDS's own reads inside the container are not counted in
-``headerBytesRead``, which counts SDIP's host-side reads only.
+**Truncation (D-0149).** OpenVDS's layout sits at the front of the file and ``openvds.open``
+accepts a cut file (P38 V4). The probe therefore runs OpenVDS's own ``HueBDS check`` first, which
+reads the container's file table and index pages (no brick) and prints the allocation map. A
+failed check is ``SDIP_VDS_CONTAINER_INVALID``; a mapped extent ending past the size the host
+measured is ``SDIP_VDS_TRUNCATED``; a probe that reports no check is
+``SDIP_VDS_INTEGRITY_UNCHECKED``. All three are ``QUARANTINE``: not checked is not passed.
+Not covered: damage that keeps every extent inside the file (a flipped byte inside a brick).
+OpenVDS's own reads inside the container are not counted in ``headerBytesRead``, which counts
+SDIP's host-side reads only.
 """
 
 from __future__ import annotations
@@ -88,6 +93,50 @@ def docker_runner(path: Path) -> dict[str, Any]:
         return {"ok": False, "unavailable": f"the OpenVDS container failed ({why})"}
     out: dict[str, Any] = json.loads(lines[-1])
     return out
+
+
+def integrity_findings(check: dict[str, Any] | None, size: int) -> list[dict[str, Any]]:
+    """Map the probe's ``HueBDS check`` result against the size measured on the host."""
+    if not isinstance(check, dict) or not check.get("checked"):
+        return [
+            rpt.finding(
+                "SDIP_VDS_INTEGRITY_UNCHECKED",
+                "quarantine",
+                "the container did not check the file's allocation map, so a cut-short file "
+                "cannot be ruled out: kept, not passed",
+            )
+        ]
+    if check.get("exit") != 0:
+        why = str(check.get("message") or f"exit {check.get('exit')}")
+        return [
+            rpt.finding(
+                "SDIP_VDS_CONTAINER_INVALID",
+                "quarantine",
+                f"OpenVDS's own container check rejects the file ({why}); it is cut short or "
+                "damaged: kept, not passed"[:400],
+            )
+        ]
+    end = check.get("maxExtentEnd")
+    if not isinstance(end, int) or isinstance(end, bool):
+        return integrity_findings(None, size)
+    if end > size:
+        return [
+            rpt.finding(
+                "SDIP_VDS_TRUNCATED",
+                "quarantine",
+                f"the file is cut short: its own allocation map runs to byte {end:,} but the "
+                f"file holds {size:,} bytes ({end - size:,} missing): kept, not passed",
+            )
+        ]
+    return [
+        rpt.finding(
+            "SDIP_VDS_EXTENTS_INSIDE",
+            "info",
+            f"every region in the file's allocation map ({check.get('regions')}) ends inside "
+            f"the file (furthest at byte {end:,} of {size:,}); a damaged byte inside a "
+            "brick is not checked",
+        )
+    ]
 
 
 def qc_vds(
@@ -181,6 +230,7 @@ def qc_vds(
                 )
             )
         else:
+            findings.extend(integrity_findings(probe.get("integrity"), size))
             findings.append(
                 rpt.finding(
                     "HEADER_INVALID",
@@ -189,6 +239,7 @@ def qc_vds(
                 )
             )
         return done()
+    findings.extend(integrity_findings(probe.get("integrity"), size))
 
     axes = probe.get("axes", [])
     names = [a.get("name", "") for a in axes]
@@ -264,15 +315,6 @@ def qc_vds(
                 f"{probe.get('compression')} compression is lossy: samples are an approximation",
             )
         )
-    findings.append(
-        rpt.finding(
-            "SDIP_VDS_INTEGRITY_UNCHECKED",
-            "info",
-            "truncation is not checked: OpenVDS opens a cut file from its layout, and "
-            "proving every brick is present "
-            "means reading them; OpenVDS's own reads are not counted in headerBytesRead",
-        )
-    )
     findings.append(
         rpt.finding(
             "SDIP_NO_MDIO_ROUTE",
